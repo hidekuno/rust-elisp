@@ -18,12 +18,14 @@ use crate::lisp::DataType::RsListDesc;
 use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
 lazy_static! {
-    static ref BUILTIN_TBL: HashMap<&'static str, fn(&Vec<Box<Expression>>) -> Result<Box<Expression>, String>> = {
-        let mut m: HashMap<&'static str,fn(&Vec<Box<Expression>>) -> Result<Box<Expression>, String>> = HashMap::new();
-        m.insert("+", |exp: &Vec<Box<Expression>>| calc(exp, |x: i64, y: i64| x + y));
-        m.insert("-", |exp: &Vec<Box<Expression>>| calc(exp, |x: i64, y: i64| x - y));
-        m.insert("*", |exp: &Vec<Box<Expression>>| calc(exp, |x: i64, y: i64| x * y));
-        m.insert("/", |exp: &Vec<Box<Expression>>| calc(exp, |x: i64, y: i64| x / y));
+    static ref BUILTIN_TBL: HashMap<&'static str, fn(&Vec<Box<Expression>>, &mut SimpleEnv)
+                                                     -> Result<Box<Expression>, String>> = {
+        let mut m: HashMap<&'static str,fn(&Vec<Box<Expression>>, &mut SimpleEnv) 
+                                           -> Result<Box<Expression>, String>> = HashMap::new();
+        m.insert("+", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x + y));
+        m.insert("-", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x - y));
+        m.insert("*", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x * y));
+        m.insert("/", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x / y));
 
         m
     };
@@ -145,16 +147,37 @@ impl Expression for RsSymbol {
         self
     }
 }
+
+pub struct SimpleEnv {
+    env:  LinkedList<HashMap<String,Box<Expression>>>,
+    root: HashMap<String,Box<Expression>>
+}
+
+impl SimpleEnv {
+    fn new() -> SimpleEnv {
+        let mut e: HashMap<String,Box<Expression>> = HashMap::new();
+        let mut l: LinkedList<HashMap<String,Box<Expression>>> = LinkedList::new();
+        l.push_back(e);
+        SimpleEnv{
+            env:  l,
+            root: HashMap::new()
+        }
+    }
+    //Find
+    //Add
+    //Delete
+}
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
-fn calc(exp: &Vec<Box<Expression>>, f: fn(x:i64, y:i64)->i64) -> Result<Box<Expression>, String> {
+fn calc(exp: &Vec<Box<Expression>>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64)
+        -> Result<Box<Expression>, String> {
     let mut result: i64 = 0;
     let mut first: bool = true;
 
     for n in &exp[1 as usize..] {
-        match eval(n) {
+        match eval(n,env) {
             Ok(o)  => {
                 if let Some(v) = o.as_any().downcast_ref::<RsInteger>() {
                     if first == true {
@@ -171,14 +194,12 @@ fn calc(exp: &Vec<Box<Expression>>, f: fn(x:i64, y:i64)->i64) -> Result<Box<Expr
     return Ok(Box::new(RsInteger::new(result)));
 }
 pub fn do_interactive() {
-    let mut root_env: HashMap<String,Box<Expression>> = HashMap::new();
-    let mut list: LinkedList<HashMap<String,Box<Expression>>> = LinkedList::new();
-    list.push_back(root_env);
+    let mut env = SimpleEnv::new();
 
     let mut stream =  BufReader::new(std::io::stdin());
-    repl(&mut stream, &mut list);
+    repl(&mut stream, &mut env);
 }
-fn repl(stream: &mut BufRead, root_env: &mut  LinkedList<HashMap<String,Box<Expression>>>) {
+fn repl(stream: &mut BufRead, env: &mut SimpleEnv) {
 
     let mut buffer = String::new();
     let mut program: Vec<String> = Vec::new();
@@ -205,7 +226,7 @@ fn repl(stream: &mut BufRead, root_env: &mut  LinkedList<HashMap<String,Box<Expr
             continue;
         }
         //do_core_logic(program.iter().cloned().collect::<String>());
-        do_core_logic(program.join(" "), root_env);
+        do_core_logic(program.join(" "), env);
         program.clear();
         prompt = PROMPT;
     }
@@ -232,14 +253,14 @@ fn count_parenthesis(program: String) -> bool {
     }
     return left <= right;
 }
-fn do_core_logic(program: String, root_env: &mut  LinkedList<HashMap<String,Box<Expression>>>) {
+fn do_core_logic(program: String, env: &mut SimpleEnv) {
 
     let token = tokenize(program);
 
     let mut c: i32 = 1;
     match parse(&token, &mut c) {
         Ok(exp)  => {
-            match eval(&exp) {
+            match eval(&exp, env) {
                 Ok(n)  => {println!("{}",n.value_string());},
                 Err(e) => {println!("{}",ERRMSG_TBL.get(e.as_str()).unwrap()); },
             }
@@ -342,7 +363,7 @@ fn atom(token: &String) -> Box<Expression> {
         Err(e) => return Box::new(RsSymbol::new(token.to_string())),
     }
 }
-fn eval(sexp: &Box<Expression>) -> Result<Box<Expression>, String> {
+fn eval(sexp: &Box<Expression>, env: &mut SimpleEnv) -> Result<Box<Expression>, String> {
 
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsInteger>() {
         return Ok(Box::new(RsInteger::new(val.value)));
@@ -359,7 +380,7 @@ fn eval(sexp: &Box<Expression>) -> Result<Box<Expression>, String> {
         let v = &l.value;
         if let Some(sym) = v[0].as_any().downcast_ref::<RsSymbol>() {
             if let Some(f) = BUILTIN_TBL.get(&sym.value.as_str()) {
-                return f(v);
+                return f(v, env);
             }
         }
     }
