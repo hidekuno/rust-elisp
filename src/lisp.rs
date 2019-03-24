@@ -18,17 +18,6 @@ use crate::lisp::DataType::RsListDesc;
 use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
 lazy_static! {
-    static ref BUILTIN_TBL: HashMap<&'static str, fn(&Vec<Box<Expression>>, &mut SimpleEnv)
-                                                     -> Result<Box<Expression>, String>> = {
-        let mut m: HashMap<&'static str,fn(&Vec<Box<Expression>>, &mut SimpleEnv) 
-                                           -> Result<Box<Expression>, String>> = HashMap::new();
-        m.insert("+", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x + y));
-        m.insert("-", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x - y));
-        m.insert("*", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x * y));
-        m.insert("/", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x / y));
-
-        m
-    };
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
         let mut e: HashMap<&'static str, &'static str> = HashMap::new();
 		e.insert("E0001","Unexpected EOF while reading");
@@ -149,8 +138,8 @@ impl Expression for RsSymbol {
 }
 
 pub struct SimpleEnv {
-    env:  LinkedList<HashMap<String,Box<Expression>>>,
-    root: HashMap<String,Box<Expression>>
+    env_tbl:     LinkedList<HashMap<String,Box<Expression>>>,
+    builtin_tbl: HashMap<&'static str,fn(&Vec<Box<Expression>>, &mut SimpleEnv) -> Result<Box<Expression>, &'static str>>
 }
 
 impl SimpleEnv {
@@ -158,21 +147,57 @@ impl SimpleEnv {
         let mut e: HashMap<String,Box<Expression>> = HashMap::new();
         let mut l: LinkedList<HashMap<String,Box<Expression>>> = LinkedList::new();
         l.push_back(e);
-        SimpleEnv{
-            env:  l,
-            root: HashMap::new()
+
+        let mut b: HashMap<&'static str, fn(&Vec<Box<Expression>>, &mut SimpleEnv) -> Result<Box<Expression>, &'static str>> = HashMap::new();
+        b.insert("+", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x + y));
+        b.insert("-", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x - y));
+        b.insert("*", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x * y));
+        b.insert("/", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x / y));
+
+        b.insert("define", define);
+        SimpleEnv {env_tbl: l, builtin_tbl: b}
+    }
+    fn create(&mut self) {
+        let mut e: HashMap<String,Box<Expression>> = HashMap::new();
+        self.env_tbl.push_front(e);
+    }
+    fn regist(&mut self, key: String, exp: Box<Expression>) {
+        match self.env_tbl.front_mut() {
+            Some(m) => { m.insert(key, exp); },
+            None => {},
         }
     }
-    //Find
-    //Add
-    //Delete
+    fn find(&self, key: String) -> Option<&Box<Expression>> {
+        for exp in self.env_tbl.iter() {
+            match exp.get(&key) {
+                Some(v) => {
+                    return Some(v);
+                },
+                None => {},
+            }
+        }
+        None
+    }
 }
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn define(exp: &Vec<Box<Expression>>, env: &mut SimpleEnv) -> Result<Box<Expression>, &'static str> {
+
+    if let Some(v) = exp[1].as_any().downcast_ref::<RsSymbol>() {
+        match eval(&exp[2],env) {
+            Ok(se) => {
+                env.regist(v.value.to_string(), se);
+                return Ok(Box::new(RsSymbol::new(v.value.to_string())));
+            },
+            Err(e) => {return Err(e);},
+        }
+    }
+    Err("E1004")
+}
 fn calc(exp: &Vec<Box<Expression>>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64)
-        -> Result<Box<Expression>, String> {
+        -> Result<Box<Expression>, &'static str> {
     let mut result: i64 = 0;
     let mut first: bool = true;
 
@@ -262,11 +287,11 @@ fn do_core_logic(program: String, env: &mut SimpleEnv) {
         Ok(exp)  => {
             match eval(&exp, env) {
                 Ok(n)  => {println!("{}",n.value_string());},
-                Err(e) => {println!("{}",ERRMSG_TBL.get(e.as_str()).unwrap()); },
+                Err(e) => {println!("{}",ERRMSG_TBL.get(e).unwrap()); },
             }
         },
         Err(e) => {
-            println!("{}",ERRMSG_TBL.get(e.as_str()).unwrap());
+            println!("{}",ERRMSG_TBL.get(e).unwrap());
         },
     }
 }
@@ -319,16 +344,16 @@ fn tokenize(program: String) -> Vec<String> {
     }
     return token;
 }
-fn parse(tokens: &Vec<String>, count: &mut i32) -> Result<Box<Expression>, String> {
+fn parse(tokens: &Vec<String>, count: &mut i32) -> Result<Box<Expression>, &'static str> {
 
     if tokens.len() == 0 {
-        return Err("E0001".to_string());
+        return Err("E0001");
     }
 
     let token = &tokens[0];
     if "(" == token {
         if tokens.len() <= 1 {
-            return Err("E0001".to_string());
+            return Err("E0001");
         }
         let mut list = RsList::new();
 
@@ -345,13 +370,13 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> Result<Box<Expression>, Strin
             }
             *count += c;
             if tokens.len() <= *count as usize {
-                return Err("E0002".to_string());
+                return Err("E0002");
             }
         }
         Ok(Box::new(list))
 
     } else if ")" == token {
-        Err("E0002".to_string())
+        Err("E0002")
     } else {
         let exp = atom(&token);
         Ok(exp)
@@ -363,14 +388,21 @@ fn atom(token: &String) -> Box<Expression> {
         Err(e) => return Box::new(RsSymbol::new(token.to_string())),
     }
 }
-fn eval(sexp: &Box<Expression>, env: &mut SimpleEnv) -> Result<Box<Expression>, String> {
+fn eval(sexp: &Box<Expression>, env: &mut SimpleEnv) -> Result<Box<Expression>, &'static str> {
 
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsInteger>() {
         return Ok(Box::new(RsInteger::new(val.value)));
-
     }
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsChar>() {
         return Ok(Box::new(RsChar::new(val.value)));
+    }
+
+    if let Some(val) = (*sexp).as_any().downcast_ref::<RsSymbol>() {
+
+//        match env.find(val.value.to_string()) {
+//            Some(v) => return Ok(*v),
+//            None    => return Err("E1008"),
+//        }
     }
 
     if let Some(l) = (*sexp).as_any().downcast_ref::<RsList>() {
@@ -379,10 +411,10 @@ fn eval(sexp: &Box<Expression>, env: &mut SimpleEnv) -> Result<Box<Expression>, 
         }
         let v = &l.value;
         if let Some(sym) = v[0].as_any().downcast_ref::<RsSymbol>() {
-            if let Some(f) = BUILTIN_TBL.get(&sym.value.as_str()) {
+            if let Some(f) = env.builtin_tbl.get(&sym.value.as_str()) {
                 return f(v, env);
             }
         }
     }
-    Err("Not pattern".to_string())
+    Err("E1008")
 }
