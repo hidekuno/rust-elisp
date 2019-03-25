@@ -16,6 +16,7 @@ use crate::lisp::DataType::RsIntegerDesc;
 use crate::lisp::DataType::RsCharDesc;
 use crate::lisp::DataType::RsListDesc;
 use crate::lisp::DataType::RsSymbolDesc;
+use crate::lisp::DataType::RsFunctionDesc;
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -40,22 +41,41 @@ lazy_static! {
 		e.insert("E1014","Not Found Program File");
 		e.insert("E1015","Not String");
 		e.insert("E9999","System Panic");
-
         e
 	};
 }
 //========================================================================
+type PtrExpression    = Box<Expression>;
+type ResultExpression = Result<PtrExpression, &'static str>;
+//========================================================================
+#[derive(Copy, Clone)]
 pub enum DataType {
     RsIntegerDesc,
     RsCharDesc,
     RsListDesc,
     RsSymbolDesc,
+    RsFunctionDesc,
 }
-pub trait Expression {
+pub trait Expression: ExpressionClone {
     fn type_id(&self) -> &DataType;
     fn value_string(&self) -> String;
     fn as_any(&self) -> &Any;
 }
+pub trait ExpressionClone {
+    fn clone_box(&self) -> PtrExpression;
+}
+impl<T: 'static + Expression + Clone> ExpressionClone for T {
+    fn clone_box(&self) -> PtrExpression {
+        Box::new(self.clone())
+    }
+}
+impl Clone for PtrExpression {
+    fn clone(&self) -> PtrExpression {
+        self.clone_box()
+    }
+}
+
+#[derive(Copy, Clone)]
 pub struct RsInteger {
     type_id: DataType,
     value: i64
@@ -76,6 +96,7 @@ impl Expression for RsInteger {
         self
     }
 }
+#[derive(Copy, Clone)]
 pub struct RsChar {
     type_id: DataType,
     value: char
@@ -96,26 +117,7 @@ impl Expression for RsChar {
         self
     }
 }
-pub struct RsList {
-    type_id: DataType,
-    value: Vec<Box<Expression>>
-}
-impl RsList {
-    fn new() -> RsList {
-        RsList{type_id:RsListDesc, value:Vec::new()}
-    }
-}
-impl Expression for RsList {
-    fn value_string(&self) -> String {
-        "List".to_string()
-    }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
-    }
-    fn as_any(&self) -> &Any {
-        self
-    }
-}
+#[derive(Clone)]
 pub struct RsSymbol {
     type_id: DataType,
     value: String
@@ -136,38 +138,115 @@ impl Expression for RsSymbol {
         self
     }
 }
-
-pub struct SimpleEnv {
-    env_tbl:     LinkedList<HashMap<String,Box<Expression>>>,
-    builtin_tbl: HashMap<&'static str,fn(&Vec<Box<Expression>>, &mut SimpleEnv) -> Result<Box<Expression>, &'static str>>
+#[derive(Clone)]
+pub struct RsList {
+    type_id: DataType,
+    value: Vec<PtrExpression>
+}
+impl RsList {
+    fn new() -> RsList {
+        RsList{type_id:RsListDesc, value:Vec::new()}
+    }
+}
+impl Expression for RsList {
+    fn value_string(&self) -> String {
+        "List".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
 }
 
+#[derive(Clone)]
+pub struct RsFunction {
+    type_id: DataType,
+    param:   RsList,
+    body:    RsList,
+    name:    String
+}
+impl RsFunction {
+    fn new(sexp: &Vec<PtrExpression>, _name: String) -> RsFunction {
+        let mut _param = RsList::new();
+        let mut _body  = RsList::new();
+
+        if let Some(val) = sexp[1].as_any().downcast_ref::<RsList>() {
+            for n in &val.value[..] {
+               _param.value.push(Box::new(RsSymbol::new(n.value_string())));
+            }
+        }
+        if let Some(val) = sexp[2].as_any().downcast_ref::<RsList>() {
+            _body.value.extend_from_slice(&val.value[..]);
+        }
+        RsFunction{type_id:RsFunctionDesc, param:_param, body:_body , name: _name}
+    }
+    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+
+        env.create();
+        let mut i = 1;
+        for p in &self.param.value[..] {
+            if let Some(s) = p.as_any().downcast_ref::<RsSymbol>() {
+                match eval(&exp[i].clone(), env) {
+                    Ok(result) => env.regist(s.value.to_string(), result),
+                    Err(e) => return Err(e),
+                }
+            }
+            i += 1;
+        }
+        let list   = Box::new(self.body.clone()) as PtrExpression;
+        let result = eval(&list, env);
+        env.delete();
+        return result;
+    }
+}
+impl Expression for RsFunction {
+    fn value_string(&self) -> String {
+        "Function".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+
+pub struct SimpleEnv {
+    env_tbl:     LinkedList<HashMap<String,PtrExpression>>,
+    builtin_tbl: HashMap<&'static str,fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression>
+}
 impl SimpleEnv {
     fn new() -> SimpleEnv {
-        let mut e: HashMap<String,Box<Expression>> = HashMap::new();
-        let mut l: LinkedList<HashMap<String,Box<Expression>>> = LinkedList::new();
+        let mut e: HashMap<String,PtrExpression> = HashMap::new();
+        let mut l: LinkedList<HashMap<String,PtrExpression>> = LinkedList::new();
         l.push_back(e);
 
-        let mut b: HashMap<&'static str, fn(&Vec<Box<Expression>>, &mut SimpleEnv) -> Result<Box<Expression>, &'static str>> = HashMap::new();
-        b.insert("+", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x + y));
-        b.insert("-", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x - y));
-        b.insert("*", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x * y));
-        b.insert("/", |exp: &Vec<Box<Expression>>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x / y));
+        let mut b: HashMap<&'static str, fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression> = HashMap::new();
+        b.insert("+", |exp: &Vec<PtrExpression>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x + y));
+        b.insert("-", |exp: &Vec<PtrExpression>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x - y));
+        b.insert("*", |exp: &Vec<PtrExpression>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x * y));
+        b.insert("/", |exp: &Vec<PtrExpression>,env: &mut SimpleEnv| calc(exp, env, |x: i64, y: i64| x / y));
 
         b.insert("define", define);
+        b.insert("lambda", lambda);
         SimpleEnv {env_tbl: l, builtin_tbl: b}
     }
     fn create(&mut self) {
-        let mut e: HashMap<String,Box<Expression>> = HashMap::new();
+        let mut e: HashMap<String,PtrExpression> = HashMap::new();
         self.env_tbl.push_front(e);
     }
-    fn regist(&mut self, key: String, exp: Box<Expression>) {
+    fn delete(&mut self) {
+        self.env_tbl.pop_front();
+    }
+    fn regist(&mut self, key: String, exp: PtrExpression) {
         match self.env_tbl.front_mut() {
             Some(m) => { m.insert(key, exp); },
             None => {},
         }
     }
-    fn find(&self, key: String) -> Option<&Box<Expression>> {
+    fn find(&self, key: String) -> Option<&PtrExpression> {
         for exp in self.env_tbl.iter() {
             match exp.get(&key) {
                 Some(v) => {
@@ -183,21 +262,23 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
-fn define(exp: &Vec<Box<Expression>>, env: &mut SimpleEnv) -> Result<Box<Expression>, &'static str> {
+fn lambda(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    return Ok(Box::new(RsFunction::new(exp, String::from("lambda"))));
+}
+fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
 
     if let Some(v) = exp[1].as_any().downcast_ref::<RsSymbol>() {
         match eval(&exp[2],env) {
             Ok(se) => {
                 env.regist(v.value.to_string(), se);
-                return Ok(Box::new(RsSymbol::new(v.value.to_string())));
+                return Ok(Box::new(v.clone()));
             },
             Err(e) => {return Err(e);},
         }
     }
     Err("E1004")
 }
-fn calc(exp: &Vec<Box<Expression>>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64)
-        -> Result<Box<Expression>, &'static str> {
+fn calc(exp: &Vec<PtrExpression>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64) -> ResultExpression {
     let mut result: i64 = 0;
     let mut first: bool = true;
 
@@ -344,7 +425,7 @@ fn tokenize(program: String) -> Vec<String> {
     }
     return token;
 }
-fn parse(tokens: &Vec<String>, count: &mut i32) -> Result<Box<Expression>, &'static str> {
+fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
 
     if tokens.len() == 0 {
         return Err("E0001");
@@ -382,29 +463,34 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> Result<Box<Expression>, &'sta
         Ok(exp)
     }
 }
-fn atom(token: &String) -> Box<Expression> {
+fn atom(token: &String) -> PtrExpression {
     match token.parse() {
         Ok(n)  => return Box::new(RsInteger::new(n)),
         Err(e) => return Box::new(RsSymbol::new(token.to_string())),
     }
 }
-fn eval(sexp: &Box<Expression>, env: &mut SimpleEnv) -> Result<Box<Expression>, &'static str> {
+fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
 
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsInteger>() {
-        return Ok(Box::new(RsInteger::new(val.value)));
+        return Ok(Box::new(val.clone()));
     }
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsChar>() {
-        return Ok(Box::new(RsChar::new(val.value)));
+        return Ok(Box::new(val.clone()));
     }
-
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsSymbol>() {
-
-//        match env.find(val.value.to_string()) {
-//            Some(v) => return Ok(*v),
-//            None    => return Err("E1008"),
-//        }
+        match env.find(val.value.to_string()) {
+            Some(v) => {
+                if let Some(val) = v.as_any().downcast_ref::<RsInteger>() {
+                    return Ok(Box::new(val.clone()));
+                }
+                if let Some(val) = v.as_any().downcast_ref::<RsFunction>() {
+                    return Ok(Box::new(val.clone()));
+                }
+            },
+            None => {},
+        }
+        return Err("E1008");
     }
-
     if let Some(l) = (*sexp).as_any().downcast_ref::<RsList>() {
         if l.value.len() == 0 {
             return Ok(Box::new(RsList::new()));
@@ -414,7 +500,13 @@ fn eval(sexp: &Box<Expression>, env: &mut SimpleEnv) -> Result<Box<Expression>, 
             if let Some(f) = env.builtin_tbl.get(&sym.value.as_str()) {
                 return f(v, env);
             }
+            if let Some(exp) = env.find(sym.value.to_string()) {
+                if let Some(f) = exp.as_any().downcast_ref::<RsFunction>() {
+                    let mut func = f.clone();
+                    return func.execute(v, env);
+                }
+            }
         }
     }
-    Err("E1008")
+    Err("E1009")
 }
