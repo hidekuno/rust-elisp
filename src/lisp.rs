@@ -291,7 +291,7 @@ pub struct SimpleEnv {
     builtin_tbl: HashMap<&'static str, fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression>,
 }
 impl SimpleEnv {
-    fn new() -> SimpleEnv {
+    pub fn new() -> SimpleEnv {
         let mut l: LinkedList<HashMap<String, PtrExpression>> = LinkedList::new();
         l.push_back(HashMap::new());
 
@@ -503,7 +503,10 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv) {
             continue;
         }
         //do_core_logic(program.iter().cloned().collect::<String>());
-        do_core_logic(program.join(" "), env);
+        match do_core_logic(program.join(" "), env) {
+            Ok(n) => println!("{}", n.value_string()),
+            Err(e) => print_error!(e),
+        }
         program.clear();
         prompt = PROMPT;
     }
@@ -529,23 +532,13 @@ fn count_parenthesis(program: String) -> bool {
     }
     return left <= right;
 }
-fn do_core_logic(program: String, env: &mut SimpleEnv) {
+pub fn do_core_logic(program: String, env: &mut SimpleEnv) -> ResultExpression {
     let token = tokenize(program);
 
     let mut c: i32 = 1;
-    match parse(&token, &mut c) {
-        Ok(exp) => match eval(&exp, env) {
-            Ok(n) => {
-                println!("{}", n.value_string());
-            }
-            Err(e) => {
-                print_error!(e);
-            }
-        },
-        Err(e) => {
-            print_error!(e);
-        }
-    }
+    let exp = parse(&token, &mut c)?;
+
+    return eval(&exp, env);
 }
 fn tokenize(program: String) -> Vec<String> {
     let mut token: Vec<String> = Vec::new();
