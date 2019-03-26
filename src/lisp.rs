@@ -44,9 +44,20 @@ lazy_static! {
         e
 	};
 }
+pub struct RsError {
+    code: &'static str,
+    line: u32,
+    file: &'static str
+}
+macro_rules! create_error {
+    ($e: expr) => (RsError{code: $e, line: line!(), file: file!() })
+}
+macro_rules! print_error {
+    ($e: expr) => (println!("{} ({}:{})", ERRMSG_TBL.get($e.code).unwrap(), $e.file, $e.line))
+}
 //========================================================================
 type PtrExpression    = Box<Expression>;
-type ResultExpression = Result<PtrExpression, &'static str>;
+type ResultExpression = Result<PtrExpression, RsError>;
 //========================================================================
 #[derive(Copy, Clone)]
 pub enum DataType {
@@ -185,7 +196,7 @@ impl RsFunction {
     fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
 	// Bind lambda function' parameters.
 	if self.param.value.len() != (exp.len() - 1) {
-		return Err("E1007");
+		return Err(create_error!("E1007"));
 	}
         env.create();
         let mut i = 1;
@@ -215,7 +226,6 @@ impl Expression for RsFunction {
         self
     }
 }
-
 pub struct SimpleEnv {
     env_tbl:     LinkedList<HashMap<String,PtrExpression>>,
     builtin_tbl: HashMap<&'static str,fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression>
@@ -268,22 +278,22 @@ const QUIT: &str = "(quit)";
 fn lambda(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
 
     if exp.len() != 3 {
-	return Err("E1007");
+	return Err(create_error!("E1007"));
     }
     match (exp[1]).type_id() {
         RsListDesc => {},
-        _ => return Err("E1005"),
+        _ => return Err(create_error!("E1005")),
     }
     match (exp[2]).type_id() {
         RsListDesc => {},
-        _ => return Err("E1005"),
+        _ => return Err(create_error!("E1005")),
     }
     return Ok(Box::new(RsFunction::new(exp, String::from("lambda"))));
 }
 fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
 
     if exp.len() != 3 {
-	return Err("E1007");
+	return Err(create_error!("E1007"));
     }
     if let Some(v) = exp[1].as_any().downcast_ref::<RsSymbol>() {
         match eval(&exp[2],env) {
@@ -296,7 +306,7 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
         if l.value.len() < 1 {
-            return Err("E1007");
+            return Err(create_error!("E1007"));
         }
         if let Some(s) = l.value[0].as_any().downcast_ref::<RsSymbol>() {
 
@@ -310,17 +320,17 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
             return Ok(Box::new(s.clone()));
 
         } else {
-            return Err("E1004");
+            return Err(create_error!("E1004"));
         }
     }
-    Err("E1004")
+    Err(create_error!("E1004"))
 }
 fn calc(exp: &Vec<PtrExpression>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64) -> ResultExpression {
     let mut result: i64 = 0;
     let mut first: bool = true;
 
     if 2 >= exp.len() {
-	return Err("E1007")
+	return Err(create_error!("E1007"))
     }
     for n in &exp[1 as usize..] {
         match eval(n,env) {
@@ -333,7 +343,7 @@ fn calc(exp: &Vec<PtrExpression>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64)
                         result = f(result, v.value);
                     }
                 } else {
-                    return Err("E1003");
+                    return Err(create_error!("E1003"));
                 }
             },
             Err(e) => {return Err(e) },
@@ -352,8 +362,8 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv) {
     let mut buffer = String::new();
     let mut program: Vec<String> = Vec::new();
     let mut w = std::io::stdout();
-    
     let mut prompt = PROMPT;
+
     loop {
         print!("{}", prompt);
         w.flush().unwrap();
@@ -410,12 +420,10 @@ fn do_core_logic(program: String, env: &mut SimpleEnv) {
         Ok(exp)  => {
             match eval(&exp, env) {
                 Ok(n)  => {println!("{}",n.value_string());},
-                Err(e) => {println!("{}",ERRMSG_TBL.get(e).unwrap()); },
+                Err(e) => {print_error!(e);},
             }
         },
-        Err(e) => {
-            println!("{}",ERRMSG_TBL.get(e).unwrap());
-        },
+        Err(e) => {print_error!(e);},
     }
 }
 fn tokenize(program: String) -> Vec<String> {
@@ -470,13 +478,13 @@ fn tokenize(program: String) -> Vec<String> {
 fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
 
     if tokens.len() == 0 {
-        return Err("E0001");
+        return Err(create_error!("E0001"));
     }
 
     let token = &tokens[0];
     if "(" == token {
         if tokens.len() <= 1 {
-            return Err("E0001");
+            return Err(create_error!("E0001"));
         }
         let mut list = RsList::new();
 
@@ -493,13 +501,13 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
             }
             *count += c;
             if tokens.len() <= *count as usize {
-                return Err("E0002");
+                return Err(create_error!("E0002"));
             }
         }
         Ok(Box::new(list))
 
     } else if ")" == token {
-        Err("E0002")
+        Err(create_error!("E0002"))
     } else {
         let exp = atom(&token);
         Ok(exp)
@@ -531,7 +539,7 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             },
             None => {},
         }
-        return Err("E1008");
+        return Err(create_error!("E1008"));
     }
     if let Some(l) = (*sexp).as_any().downcast_ref::<RsList>() {
         if l.value.len() == 0 {
@@ -550,5 +558,5 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             }
         }
     }
-    Err("E1009")
+    Err(create_error!("E1009"))
 }
