@@ -183,7 +183,10 @@ impl RsFunction {
         RsFunction{type_id:RsFunctionDesc, param:_param, body:_body , name: _name}
     }
     fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
-
+	// Bind lambda function' parameters.
+	if self.param.value.len() != (exp.len() - 1) {
+		return Err("E1007");
+	}
         env.create();
         let mut i = 1;
         for p in &self.param.value[..] {
@@ -263,10 +266,25 @@ const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
 fn lambda(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+
+    if exp.len() != 3 {
+	return Err("E1007");
+    }
+    match (exp[1]).type_id() {
+        RsListDesc => {},
+        _ => return Err("E1005"),
+    }
+    match (exp[2]).type_id() {
+        RsListDesc => {},
+        _ => return Err("E1005"),
+    }
     return Ok(Box::new(RsFunction::new(exp, String::from("lambda"))));
 }
 fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
 
+    if exp.len() != 3 {
+	return Err("E1007");
+    }
     if let Some(v) = exp[1].as_any().downcast_ref::<RsSymbol>() {
         match eval(&exp[2],env) {
             Ok(se) => {
@@ -276,12 +294,34 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
             Err(e) => {return Err(e);},
         }
     }
+    if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
+        if l.value.len() < 1 {
+            return Err("E1007");
+        }
+        if let Some(s) = l.value[0].as_any().downcast_ref::<RsSymbol>() {
+
+            let mut f = exp.clone();
+            let mut param = RsList::new();
+            for n in &l.value[1..] {
+                param.value.push((*n).clone());
+            }
+            f[1] = Box::new(param);
+            env.regist(s.value.to_string(), Box::new(RsFunction::new(&f, s.value.to_string())));
+            return Ok(Box::new(s.clone()));
+
+        } else {
+            return Err("E1004");
+        }
+    }
     Err("E1004")
 }
 fn calc(exp: &Vec<PtrExpression>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64) -> ResultExpression {
     let mut result: i64 = 0;
     let mut first: bool = true;
 
+    if 2 >= exp.len() {
+	return Err("E1007")
+    }
     for n in &exp[1 as usize..] {
         match eval(n,env) {
             Ok(o)  => {
@@ -292,9 +332,11 @@ fn calc(exp: &Vec<PtrExpression>, env: &mut SimpleEnv, f: fn(x:i64, y:i64)->i64)
                     } else {
                         result = f(result, v.value);
                     }
+                } else {
+                    return Err("E1003");
                 }
             },
-            Err(e) => { },
+            Err(e) => {return Err(e) },
         }
     }
     return Ok(Box::new(RsInteger::new(result)));
