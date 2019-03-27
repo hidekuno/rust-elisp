@@ -50,6 +50,11 @@ pub struct RsError {
     line: u32,
     file: &'static str,
 }
+impl RsError {
+    pub fn get_code(&self) -> String {
+        String::from(self.code)
+    }
+}
 macro_rules! create_error {
     ($e: expr) => {
         RsError {
@@ -230,26 +235,22 @@ impl Expression for RsList {
 pub struct RsFunction {
     type_id: DataType,
     param: RsList,
-    body: RsList,
+    body: PtrExpression,
     name: String,
 }
 impl RsFunction {
     fn new(sexp: &Vec<PtrExpression>, _name: String) -> RsFunction {
         let mut _param = RsList::new();
-        let mut _body = RsList::new();
 
         if let Some(val) = sexp[1].as_any().downcast_ref::<RsList>() {
             for n in &val.value[..] {
                 _param.value.push(Box::new(RsSymbol::new(n.value_string())));
             }
         }
-        if let Some(val) = sexp[2].as_any().downcast_ref::<RsList>() {
-            _body.value.extend_from_slice(&val.value[..]);
-        }
         RsFunction {
             type_id: RsFunctionDesc,
             param: _param,
-            body: _body,
+            body: sexp[2].clone(),
             name: _name,
         }
     }
@@ -264,13 +265,15 @@ impl RsFunction {
             if let Some(s) = p.as_any().downcast_ref::<RsSymbol>() {
                 match eval(&exp[i].clone(), env) {
                     Ok(result) => env.regist(s.value.to_string(), result),
-                    Err(e) => return Err(e),
+                    Err(e) => {
+                        env.delete();
+                        return Err(e);
+                    }
                 }
             }
             i += 1;
         }
-        let list = Box::new(self.body.clone()) as PtrExpression;
-        let result = eval(&list, env);
+        let result = eval(&self.body, env);
         env.delete();
         return result;
     }
@@ -312,10 +315,6 @@ impl SimpleEnv {
             calc(exp, env, |x: i64, y: i64| x / y)
         });
 
-        b.insert("define", define);
-        b.insert("lambda", lambda);
-        b.insert("if", if_f);
-
         b.insert("=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: i64, y: i64| x == y)
         });
@@ -331,6 +330,10 @@ impl SimpleEnv {
         b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: i64, y: i64| x >= y)
         });
+
+        b.insert("define", define);
+        b.insert("lambda", lambda);
+        b.insert("if", if_f);
 
         SimpleEnv {
             env_tbl: l,
@@ -371,13 +374,15 @@ fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
-    match (exp[1]).type_id() {
-        RsListDesc => {}
-        _ => return Err(create_error!("E1005")),
-    }
-    match (exp[2]).type_id() {
-        RsListDesc => {}
-        _ => return Err(create_error!("E1005")),
+    if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
+        for e in &l.value {
+            match e.type_id() {
+                RsSymbolDesc => {}
+                _ => return Err(create_error!("E1004")),
+            }
+        }
+    } else {
+        return Err(create_error!("E1005"));
     }
     return Ok(Box::new(RsFunction::new(exp, String::from("lambda"))));
 }
@@ -398,6 +403,10 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
             let mut f = exp.clone();
             let mut param = RsList::new();
             for n in &l.value[1..] {
+                match (*n).type_id() {
+                    RsSymbolDesc => {}
+                    _ => return Err(create_error!("E1004")),
+                }
                 param.value.push((*n).clone());
             }
             f[1] = Box::new(param);
@@ -638,7 +647,7 @@ fn atom(token: &String) -> PtrExpression {
             if token.as_str() == "#f" {
                 return Box::new(RsBoolean::new(false));
             }
-            if (token.len() == 3) && (&token.as_str()[0..1] == "#\\") {
+            if (token.len() == 3) && (&token.as_str()[0..2] == "#\\") {
                 let c = token.chars().collect::<Vec<char>>();
                 return Box::new(RsChar::new(c[2]));
             }
