@@ -13,6 +13,7 @@ use std::io::Write;
 use std::vec::Vec;
 
 use crate::lisp::DataType::RsBooleanDesc;
+use crate::lisp::DataType::RsBuildInFunctionDesc;
 use crate::lisp::DataType::RsCharDesc;
 use crate::lisp::DataType::RsFunctionDesc;
 use crate::lisp::DataType::RsIntegerDesc;
@@ -86,6 +87,7 @@ pub enum DataType {
     RsListDesc,
     RsSymbolDesc,
     RsFunctionDesc,
+    RsBuildInFunctionDesc,
 }
 pub trait Expression: ExpressionClone {
     fn type_id(&self) -> &DataType;
@@ -222,6 +224,40 @@ impl RsList {
 impl Expression for RsList {
     fn value_string(&self) -> String {
         "List".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct RsBuildInFunction {
+    type_id: DataType,
+    name: String,
+    func: fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
+}
+impl RsBuildInFunction {
+    fn new(
+        _func: fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
+        _name: String,
+    ) -> RsBuildInFunction {
+        RsBuildInFunction {
+            type_id: RsBuildInFunctionDesc,
+            func: _func,
+            name: _name,
+        }
+    }
+    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+        let f = self.func;
+        return f(exp, env);
+    }
+}
+impl Expression for RsBuildInFunction {
+    fn value_string(&self) -> String {
+        "BuildIn Function".to_string()
     }
     fn type_id(&self) -> &DataType {
         &self.type_id
@@ -665,6 +701,7 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsBoolean>() {
         return Ok(Box::new(val.clone()));
     }
+
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsSymbol>() {
         match env.find(val.value.to_string()) {
             Some(v) => {
@@ -677,6 +714,9 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             }
             None => {}
         }
+        if let Some(f) = env.builtin_tbl.get(val.value.as_str()) {
+            return Ok(Box::new(RsBuildInFunction::new(*f, val.value.to_string())));
+        }
         return Err(create_error!("E1008"));
     }
     if let Some(l) = (*sexp).as_any().downcast_ref::<RsList>() {
@@ -684,15 +724,15 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             return Ok(Box::new(RsList::new()));
         }
         let v = &l.value;
-        if let Some(sym) = v[0].as_any().downcast_ref::<RsSymbol>() {
-            if let Some(f) = env.builtin_tbl.get(&sym.value.as_str()) {
-                return f(v, env);
+        if let Some(_) = v[0].as_any().downcast_ref::<RsSymbol>() {
+            let sf = eval(&v[0], env)?;
+            if let Some(f) = sf.as_any().downcast_ref::<RsFunction>() {
+                let mut func = f.clone();
+                return func.execute(v, env);
             }
-            if let Some(exp) = env.find(sym.value.to_string()) {
-                if let Some(f) = exp.as_any().downcast_ref::<RsFunction>() {
-                    let mut func = f.clone();
-                    return func.execute(v, env);
-                }
+            if let Some(f) = sf.as_any().downcast_ref::<RsBuildInFunction>() {
+                let mut func = f.clone();
+                return func.execute(v, env);
             }
         }
     }
