@@ -15,6 +15,7 @@ use std::vec::Vec;
 use crate::lisp::DataType::RsBooleanDesc;
 use crate::lisp::DataType::RsBuildInFunctionDesc;
 use crate::lisp::DataType::RsCharDesc;
+use crate::lisp::DataType::RsFloatDesc;
 use crate::lisp::DataType::RsFunctionDesc;
 use crate::lisp::DataType::RsIntegerDesc;
 use crate::lisp::DataType::RsListDesc;
@@ -82,6 +83,7 @@ type ResultExpression = Result<PtrExpression, RsError>;
 #[derive(Copy, Clone)]
 pub enum DataType {
     RsIntegerDesc,
+    RsFloatDesc,
     RsCharDesc,
     RsBooleanDesc,
     RsListDesc,
@@ -122,6 +124,30 @@ impl RsInteger {
     }
 }
 impl Expression for RsInteger {
+    fn value_string(&self) -> String {
+        self.value.to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Copy, Clone)]
+pub struct RsFloat {
+    type_id: DataType,
+    value: f64,
+}
+impl RsFloat {
+    fn new(p: f64) -> RsFloat {
+        RsFloat {
+            type_id: RsFloatDesc,
+            value: p,
+        }
+    }
+}
+impl Expression for RsFloat {
     fn value_string(&self) -> String {
         self.value.to_string()
     }
@@ -674,27 +700,28 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
     }
 }
 fn atom(token: &String) -> PtrExpression {
-    match token.parse::<i64>() {
-        Ok(n) => return Box::new(RsInteger::new(n)),
-        _ => {
-            if token.as_str() == "#t" {
-                return Box::new(RsBoolean::new(true));
-            }
-            if token.as_str() == "#f" {
-                return Box::new(RsBoolean::new(false));
-            }
-            if (token.len() == 3) && (&token.as_str()[0..2] == "#\\") {
-                let c = token.chars().collect::<Vec<char>>();
-                return Box::new(RsChar::new(c[2]));
-            }
-            return Box::new(RsSymbol::new(token.to_string()));
-        }
+    if let Ok(n) = token.parse::<i64>() {
+        return Box::new(RsInteger::new(n));
     }
+    if let Ok(n) = token.parse::<f64>() {
+        return Box::new(RsFloat::new(n));
+    }
+    if token.as_str() == "#t" {
+        return Box::new(RsBoolean::new(true));
+    }
+    if token.as_str() == "#f" {
+        return Box::new(RsBoolean::new(false));
+    }
+    if (token.len() == 3) && (&token.as_str()[0..2] == "#\\") {
+        let c = token.chars().collect::<Vec<char>>();
+        return Box::new(RsChar::new(c[2]));
+    }
+    return Box::new(RsSymbol::new(token.to_string()));
 }
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
         match $e.type_id() {
-            RsBooleanDesc | RsCharDesc | RsIntegerDesc => {
+            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc => {
                 return Ok($e.clone_box());
             }
             _ => {}
