@@ -691,25 +691,25 @@ fn atom(token: &String) -> PtrExpression {
         }
     }
 }
+macro_rules! ret_clone_if_atom {
+    ($e: expr) => {
+        match $e.type_id() {
+            RsBooleanDesc | RsCharDesc | RsIntegerDesc => {
+                return Ok($e.clone_box());
+            }
+            _ => {}
+        }
+    };
+}
 fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
-    if let Some(val) = (*sexp).as_any().downcast_ref::<RsInteger>() {
-        return Ok(Box::new(val.clone()));
-    }
-    if let Some(val) = (*sexp).as_any().downcast_ref::<RsChar>() {
-        return Ok(Box::new(val.clone()));
-    }
-    if let Some(val) = (*sexp).as_any().downcast_ref::<RsBoolean>() {
-        return Ok(Box::new(val.clone()));
-    }
+    ret_clone_if_atom!(sexp);
 
     if let Some(val) = (*sexp).as_any().downcast_ref::<RsSymbol>() {
         match env.find(val.value.to_string()) {
             Some(v) => {
-                if let Some(val) = v.as_any().downcast_ref::<RsInteger>() {
-                    return Ok(Box::new(val.clone()));
-                }
-                if let Some(val) = v.as_any().downcast_ref::<RsFunction>() {
-                    return Ok(Box::new(val.clone()));
+                ret_clone_if_atom!(v);
+                if let Some(_) = v.as_any().downcast_ref::<RsFunction>() {
+                    return Ok(v.clone_box());
                 }
             }
             None => {}
@@ -721,16 +721,16 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
     }
     if let Some(l) = (*sexp).as_any().downcast_ref::<RsList>() {
         if l.value.len() == 0 {
-            return Ok(Box::new(RsList::new()));
+            return Ok(sexp.clone_box());
         }
         let v = &l.value;
         if let Some(_) = v[0].as_any().downcast_ref::<RsSymbol>() {
-            let sf = eval(&v[0], env)?;
-            if let Some(f) = sf.as_any().downcast_ref::<RsFunction>() {
+            let e = eval(&v[0], env)?;
+            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
                 let mut func = f.clone();
                 return func.execute(v, env);
             }
-            if let Some(f) = sf.as_any().downcast_ref::<RsBuildInFunction>() {
+            if let Some(f) = e.as_any().downcast_ref::<RsBuildInFunction>() {
                 let mut func = f.clone();
                 return func.execute(v, env);
             }
