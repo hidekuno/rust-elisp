@@ -27,6 +27,8 @@ mod tests {
     #[test]
     fn atom() {
         assert!(do_lisp("10") == "10".to_string());
+        assert!(do_lisp("10.5") == "10.5".to_string());
+        assert!(do_lisp("#t") == "#t".to_string());
         assert!(do_lisp("#\\a") == "a".to_string());
     }
     #[test]
@@ -80,6 +82,13 @@ mod tests {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env("(define a 100)", &mut env);
         assert!(do_lisp_env("a", &mut env) == "100".to_string());
+        do_lisp_env("(define a 10.5)", &mut env);
+        assert!(do_lisp_env("a", &mut env) == "10.5".to_string());
+        do_lisp_env("(define a #t)", &mut env);
+        assert!(do_lisp_env("a", &mut env) == "#t".to_string());
+        do_lisp_env("(define a #\\A)", &mut env);
+        assert!(do_lisp_env("a", &mut env) == "A".to_string());
+
         do_lisp_env("(define (fuga a b)(* a b))", &mut env);
         assert!(do_lisp_env("(fuga 6 8)", &mut env) == "48".to_string());
         do_lisp_env("(define (hoge a b) a)", &mut env);
