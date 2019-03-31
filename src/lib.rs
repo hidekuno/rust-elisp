@@ -34,18 +34,30 @@ mod tests {
     #[test]
     fn plus() {
         assert!(do_lisp("(+ 1 2)") == "3".to_string());
+        assert!(do_lisp("(+ 1.25 2.25)") == "3.5".to_string());
+        assert!(do_lisp("(+ 1 2.5)") == "3.5".to_string());
+        assert!(do_lisp("(+ 3 1.5)") == "4.5".to_string());
     }
     #[test]
     fn minus() {
         assert!(do_lisp("(- 6 1)") == "5".to_string());
+        assert!(do_lisp("(- 5.75 1.5)") == "4.25".to_string());
+        assert!(do_lisp("(- 6 1.5)") == "4.5".to_string());
+        assert!(do_lisp("(- 6.5 3)") == "3.5".to_string());
     }
     #[test]
     fn multi() {
         assert!(do_lisp("(* 3 6)") == "18".to_string());
+        assert!(do_lisp("(* 0.5 5.75)") == "2.875".to_string());
+        assert!(do_lisp("(* 3.5 6)") == "21".to_string());
+        assert!(do_lisp("(* 6 3.5)") == "21".to_string());
     }
     #[test]
     fn div() {
         assert!(do_lisp("(/ 9 3)") == "3".to_string());
+        assert!(do_lisp("(/ 0.75 0.25)") == "3".to_string());
+        assert!(do_lisp("(/ 9.5 5)") == "1.9".to_string());
+        assert!(do_lisp("(/ 6 2.5)") == "2.4".to_string());
     }
     #[test]
     fn eq() {
