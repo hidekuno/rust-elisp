@@ -420,7 +420,7 @@ impl Mul for Number {
 impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
-        return self.calc_template(other, |x:f64, y:f64| x * y,|x:i64, y:i64| x * y);
+        return self.calc_template(other, |x:f64, y:f64| x / y,|x:i64, y:i64| x / y);
     }
 }
 impl PartialEq for Number {
