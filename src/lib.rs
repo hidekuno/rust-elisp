@@ -20,6 +20,7 @@ fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
         }
     }
 }
+#[allow(unused_macros)]
 macro_rules! assert_str {
     ($a: expr,
      $b: expr) => {
@@ -124,6 +125,8 @@ mod tests {
     }
     #[test]
     fn lambda() {
+        assert_str!(do_lisp("((lambda (a b)(+ a b)) 1 2)"), "3");
+
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &mut env);
         assert_str!(do_lisp_env("(hoge 6 8)", &mut env), "14");
