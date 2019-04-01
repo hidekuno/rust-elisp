@@ -44,6 +44,7 @@ mod tests {
         assert_str!(do_lisp("(+ 1.25 2.25)"), "3.5");
         assert_str!(do_lisp("(+ 1 2.5)"), "3.5");
         assert_str!(do_lisp("(+ 3 1.5)"), "4.5");
+        assert_str!(do_lisp("(+ (* 1 2)(* 3 4))"), "14");
     }
     #[test]
     fn minus() {
@@ -51,6 +52,7 @@ mod tests {
         assert_str!(do_lisp("(- 5.75 1.5)"), "4.25");
         assert_str!(do_lisp("(- 6 1.5)"), "4.5");
         assert_str!(do_lisp("(- 6.5 3)"), "3.5");
+        assert_str!(do_lisp("(- (* 3 4)(* 1 2))"), "10");
     }
     #[test]
     fn multi() {
@@ -58,6 +60,7 @@ mod tests {
         assert_str!(do_lisp("(* 0.5 5.75)"), "2.875");
         assert_str!(do_lisp("(* 3.5 6)"), "21");
         assert_str!(do_lisp("(* 6 3.5)"), "21");
+        assert_str!(do_lisp("(* (+ 3 4)(+ 1 2))"),"21");
     }
     #[test]
     fn div() {
@@ -65,6 +68,12 @@ mod tests {
         assert_str!(do_lisp("(/ 0.75 0.25)"), "3");
         assert_str!(do_lisp("(/ 9.5 5)"), "1.9");
         assert_str!(do_lisp("(/ 6 2.5)"), "2.4");
+        assert_str!(do_lisp("(/ 0 0)"),"NaN");
+        assert_str!(do_lisp("(/ 9 0)"),"inf");
+        assert_str!(do_lisp("(/ 10 0.0)"),"inf");
+        assert_str!(do_lisp("(/ 0 9)"),"0");
+        assert_str!(do_lisp("(/ 0.0 9)"),"0");
+        assert_str!(do_lisp("(/ (+ 4 4)(+ 2 2))"),"2");
     }
     #[test]
     fn eq() {
@@ -73,6 +82,7 @@ mod tests {
         assert_str!(do_lisp("(= 5 5.0)"), "#t");
         assert_str!(do_lisp("(= 5 6)"), "#f");
         assert_str!(do_lisp("(= 5.5 6.6)"), "#f");
+        assert_str!(do_lisp("(= (+ 1 1)(+ 0 2))"), "#t");
     }
     #[test]
     fn than() {
@@ -80,6 +90,7 @@ mod tests {
         assert_str!(do_lisp("(> 6 6)"), "#f");
         assert_str!(do_lisp("(> 6.5 5.5)"), "#t");
         assert_str!(do_lisp("(> 4.5 5.5)"), "#f");
+        assert_str!(do_lisp("(> (+ 3 3) 5)"), "#t");
     }
     #[test]
     fn less() {
@@ -87,6 +98,7 @@ mod tests {
         assert_str!(do_lisp("(< 5.6 6.5)"), "#t");
         assert_str!(do_lisp("(> 6 6)"), "#f");
         assert_str!(do_lisp("(> 6.5 6.6)"), "#f");
+        assert_str!(do_lisp("(< 5 (+ 3 3))"), "#t");
     }
     #[test]
     fn than_eq() {
@@ -96,6 +108,7 @@ mod tests {
         assert_str!(do_lisp("(>= 6.3 5.2)"), "#t");
         assert_str!(do_lisp("(>= 5 6)"), "#f");
         assert_str!(do_lisp("(>= 5.1 6.2)"), "#f");
+        assert_str!(do_lisp("(>= (+ 2 3 1) 6)"), "#t");
     }
     #[test]
     fn less_eq() {
@@ -105,6 +118,7 @@ mod tests {
         assert_str!(do_lisp("(<= 5.2 6.9)"), "#t");
         assert_str!(do_lisp("(<= 6 5)"), "#f");
         assert_str!(do_lisp("(<= 8.6 5.4)"), "#f");
+        assert_str!(do_lisp("(<= (+ 3 3) 6)"), "#t");
     }
     #[test]
     fn define() {
@@ -122,6 +136,10 @@ mod tests {
         assert_str!(do_lisp_env("(fuga 6 8)", &mut env), "48");
         do_lisp_env("(define (hoge a b) a)", &mut env);
         assert_str!(do_lisp_env("(hoge 6 8)", &mut env), "6");
+
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b a)", &mut env);
+        assert_str!(do_lisp_env("b", &mut env), "100");
     }
     #[test]
     fn lambda() {
@@ -137,6 +155,38 @@ mod tests {
     fn if_f() {
         assert_str!(do_lisp("(if (<= 1 6) #\\a #\\b)"), "a");
         assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "b");
+    }
+    #[test]
+    fn modulo() {
+        assert_str!(do_lisp("(modulo 11 3)"), "2");
+        assert_str!(do_lisp("(modulo 11 (+ 1 2))"), "2");
+        assert_str!(do_lisp("(modulo  3 5)"), "3");
+    }
+    #[test]
+    fn expt() {
+        assert_str!(do_lisp("(expt 2 3)"), "8");
+        assert_str!(do_lisp("(expt 2 (+ 1 2))"), "8");
+        assert_str!(do_lisp("(expt 2 -2)"), "0.25");
+        assert_str!(do_lisp("(expt 2 0)"), "1");
+    }
+    #[test]
+    fn and() {
+        assert_str!(do_lisp("(and (= 1 1)(= 2 2))"), "#t");
+        assert_str!(do_lisp("(and (= 1 1)(= 2 3))"), "#f");
+        assert_str!(do_lisp("(and (= 2 1)(= 2 2))"), "#f");
+        assert_str!(do_lisp("(and (= 0 1)(= 2 3))"), "#f");
+    }
+    #[test]
+    fn or() {
+        assert_str!(do_lisp("(or (= 1 1)(= 2 2))"), "#t");
+        assert_str!(do_lisp("(or (= 1 1)(= 2 3))"), "#t");
+        assert_str!(do_lisp("(or (= 2 1)(= 2 2))"), "#t");
+        assert_str!(do_lisp("(or (= 0 1)(= 2 3))"), "#f");
+    }
+    #[test]
+    fn not() {
+        assert_str!(do_lisp("(not (= 1 1))"),"#f");
+        assert_str!(do_lisp("(not (= 2 1))"),"#t");
     }
 }
 mod error_tests {
@@ -244,5 +294,36 @@ mod error_tests {
         assert_str!(do_lisp("(if (<= 1 6) a #\\b)"), "E1008");
         assert_str!(do_lisp("(if (<= 9 6) #\\a b)"), "E1008");
         assert_str!(do_lisp("(if 9 #\\a b)"), "E1001");
+    }
+    #[test]
+    fn modulo() {
+        assert_str!(do_lisp("(modulo 10)"), "E1007");
+        assert_str!(do_lisp("(modulo 10 0)"), "E1013");
+        assert_str!(do_lisp("(modulo 13 5.5)"), "E1002");
+        assert_str!(do_lisp("(modulo 10 a)"), "E1008");
+    }
+    #[test]
+    fn expt() {
+        assert_str!(do_lisp("(expt 10)"), "E1007");
+        assert_str!(do_lisp("(expt a 2)"), "E1008");
+        assert_str!(do_lisp("(expt 10 #f)"), "E1002");
+    }
+    #[test]
+    fn and() {
+        assert_str!(do_lisp("(and (= 1 1))"), "E1007");
+        assert_str!(do_lisp("(and (= 1 1) 10)"), "E1001");
+        assert_str!(do_lisp("(and a (= 1 1))"), "E1008");
+    }
+    #[test]
+    fn or() {
+        assert_str!(do_lisp("(or (= 1 1))"), "E1007");
+        assert_str!(do_lisp("(or (= 1 2) 10)"), "E1001");
+        assert_str!(do_lisp("(or a (= 1 2) 10)"), "E1008");
+    }
+    #[test]
+    fn not() {
+        assert_str!(do_lisp("(not)"), "E1007");
+        assert_str!(do_lisp("(not 10)"), "E1001");
+        assert_str!(do_lisp("(not a)"), "E1008");
     }
 }
