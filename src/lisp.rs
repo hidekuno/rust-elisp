@@ -425,10 +425,16 @@ impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
         if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
-            if i.value == 0 {
-                return Number {
-                    value: Box::new(RsFloat::new(std::f64::NAN)),
-                };
+            if let Some(s) = self.value.as_any().downcast_ref::<RsInteger>() {
+                if i.value == 0 && s.value == 0{
+                    return Number {
+                        value: Box::new(RsFloat::new(std::f64::NAN)),
+                    };
+                } else if i.value == 0 {
+                    return Number {
+                        value: Box::new(RsFloat::new(std::f64::INFINITY)),
+                    };
+                }
             }
         }
         return self.calc_template(other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
@@ -496,10 +502,14 @@ impl SimpleEnv {
         b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x >= y)
         });
+        b.insert("expt",   expt);
         b.insert("modulo", modulo);
         b.insert("define", define);
         b.insert("lambda", lambda);
         b.insert("if", if_f);
+        b.insert("and", and);
+        b.insert("or", or);
+        b.insert("not", not);
 
         SimpleEnv {
             env_tbl: l,
@@ -536,6 +546,72 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn not(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+    let o = eval(&exp[1], env)?;
+    if let Some(b) = o.as_any().downcast_ref::<RsBoolean>() {
+        return Ok(Box::new(RsBoolean::new(!b.value)));
+    }
+    return Err(create_error!("E1001"));
+}
+fn or(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() < 3 {
+        return Err(create_error!("E1007"));
+    }
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        if let Some(b) = o.as_any().downcast_ref::<RsBoolean>() {
+            if b.value == true {
+                return Ok(o.clone_box());
+            }
+        } else {
+            return Err(create_error!("E1001"));
+        }
+    }
+    return Ok(Box::new(RsBoolean::new(false)));
+}
+fn and(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() < 3 {
+        return Err(create_error!("E1007"));
+    }
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        if let Some(b) = o.as_any().downcast_ref::<RsBoolean>() {
+            if b.value == false {
+                return Ok(o.clone_box());
+            }
+        } else {
+            return Err(create_error!("E1001"));
+        }
+    }
+    return Ok(Box::new(RsBoolean::new(true)));
+}
+fn expt(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error!("E1007"));
+    }
+    let mut vec: Vec<i64> = Vec::new();
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            vec.push(i.value);
+        } else {
+            return Err(create_error!("E1002"));
+        }
+    }
+    let m = vec[1].abs();
+    let mut result: i64 = 1;
+    for _i in 0..m {
+        result *= vec[0];
+    }
+    if vec[1] < 0 {
+        return Ok(Box::new(RsFloat::new(1 as f64 / result as f64)));
+    } else {
+        return Ok(Box::new(RsInteger::new(result)));
+    }
+}
 fn modulo(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
