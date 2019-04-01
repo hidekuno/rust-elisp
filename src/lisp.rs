@@ -424,6 +424,13 @@ impl Mul for Number {
 impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
+        if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
+            if i.value == 0 {
+                return Number {
+                    value: Box::new(RsFloat::new(std::f64::NAN)),
+                };
+            }
+        }
         return self.calc_template(other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
     }
 }
@@ -489,7 +496,7 @@ impl SimpleEnv {
         b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x >= y)
         });
-
+        b.insert("modulo", modulo);
         b.insert("define", define);
         b.insert("lambda", lambda);
         b.insert("if", if_f);
@@ -529,6 +536,24 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn modulo(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error!("E1007"));
+    }
+    let mut vec: Vec<i64> = Vec::new();
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            vec.push(i.value);
+        } else {
+            return Err(create_error!("E1002"));
+        }
+    }
+    if vec[1] == 0 {
+        return Err(create_error!("E1013"));
+    }
+    return Ok(Box::new(RsInteger::new(vec[0] % vec[1])));
+}
 fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));

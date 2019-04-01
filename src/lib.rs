@@ -138,6 +138,11 @@ mod tests {
         assert_str!(do_lisp("(if (<= 1 6) #\\a #\\b)"), "a");
         assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "b");
     }
+    #[test]
+    fn modulo() {
+        assert_str!(do_lisp("(modulo 11 3)"), "2");
+        assert_str!(do_lisp("(modulo  3 5)"), "3");
+    }
 }
 mod error_tests {
     #[allow(unused_imports)]
@@ -244,5 +249,11 @@ mod error_tests {
         assert_str!(do_lisp("(if (<= 1 6) a #\\b)"), "E1008");
         assert_str!(do_lisp("(if (<= 9 6) #\\a b)"), "E1008");
         assert_str!(do_lisp("(if 9 #\\a b)"), "E1001");
+    }
+    #[test]
+    fn modulo() {
+        assert_str!(do_lisp("(modulo 10)"), "E1007");
+        assert_str!(do_lisp("(modulo 10 0)"), "E1013");
+        assert_str!(do_lisp("(modulo 13 5.5)"), "E1002");
     }
 }
