@@ -5,11 +5,18 @@
    hidekuno@gmail.com
 */
 use std::any::Any;
+use std::cmp::Ordering;
+use std::cmp::PartialEq;
+use std::cmp::PartialOrd;
 use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
+use std::ops::Sub;
 use std::vec::Vec;
 
 use crate::lisp::DataType::RsBooleanDesc;
@@ -292,7 +299,6 @@ impl Expression for RsBuildInFunction {
         self
     }
 }
-
 #[derive(Clone)]
 pub struct RsFunction {
     type_id: DataType,
@@ -351,6 +357,98 @@ impl Expression for RsFunction {
         self
     }
 }
+#[derive(Clone)]
+pub struct Number {
+    value: PtrExpression,
+}
+impl Number {
+    fn calc_template(
+        self,
+        other: Number,
+        fcalc: fn(x: f64, y: f64) -> f64,
+        icalc: fn(x: i64, y: i64) -> i64,
+    ) -> Number {
+        if let Some(sf) = self.value.as_any().downcast_ref::<RsFloat>() {
+            if let Some(f) = other.value.as_any().downcast_ref::<RsFloat>() {
+                return Number {
+                    value: Box::new(RsFloat::new(fcalc(sf.value, f.value))),
+                };
+            }
+        }
+        if let Some(sf) = self.value.as_any().downcast_ref::<RsInteger>() {
+            if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
+                return Number {
+                    value: Box::new(RsInteger::new(icalc(sf.value, i.value))),
+                };
+            }
+        }
+        self
+    }
+    fn cmp_template(
+        &self,
+        other: &Number,
+        fop: fn(x: f64, y: f64) -> bool,
+        iop: fn(x: i64, y: i64) -> bool,
+    ) -> bool {
+        if let Some(sf) = self.value.as_any().downcast_ref::<RsFloat>() {
+            if let Some(f) = other.value.as_any().downcast_ref::<RsFloat>() {
+                return fop(sf.value, f.value);
+            }
+        } else if let Some(sf) = self.value.as_any().downcast_ref::<RsInteger>() {
+            if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
+                return iop(sf.value, i.value);
+            }
+        }
+        true
+    }
+}
+//impl<T: Add<Output=T>> Add for Number<T> {
+impl Add for Number {
+    type Output = Number;
+    fn add(self, other: Number) -> Number {
+        return self.calc_template(other, |x: f64, y: f64| x + y, |x: i64, y: i64| x + y);
+    }
+}
+impl Sub for Number {
+    type Output = Number;
+    fn sub(self, other: Number) -> Number {
+        return self.calc_template(other, |x: f64, y: f64| x - y, |x: i64, y: i64| x - y);
+    }
+}
+impl Mul for Number {
+    type Output = Number;
+    fn mul(self, other: Number) -> Number {
+        return self.calc_template(other, |x: f64, y: f64| x * y, |x: i64, y: i64| x * y);
+    }
+}
+impl Div for Number {
+    type Output = Number;
+    fn div(self, other: Number) -> Number {
+        return self.calc_template(other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
+    }
+}
+impl PartialEq for Number {
+    fn eq(&self, other: &Number) -> bool {
+        return self.cmp_template(other, |x: f64, y: f64| x == y, |x: i64, y: i64| x == y);
+    }
+}
+impl PartialOrd for Number {
+    fn lt(&self, other: &Number) -> bool {
+        return self.cmp_template(other, |x: f64, y: f64| x < y, |x: i64, y: i64| x < y);
+    }
+    fn le(&self, other: &Number) -> bool {
+        return self.cmp_template(other, |x: f64, y: f64| x <= y, |x: i64, y: i64| x <= y);
+    }
+    fn gt(&self, other: &Number) -> bool {
+        return self.cmp_template(other, |x: f64, y: f64| x > y, |x: i64, y: i64| x > y);
+    }
+    fn ge(&self, other: &Number) -> bool {
+        return self.cmp_template(other, |x: f64, y: f64| x >= y, |x: i64, y: i64| x >= y);
+    }
+    fn partial_cmp(&self, _: &Number) -> Option<Ordering> {
+        Some(Ordering::Equal)
+    }
+}
 pub struct SimpleEnv {
     env_tbl: LinkedList<HashMap<String, PtrExpression>>,
     builtin_tbl: HashMap<&'static str, fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression>,
@@ -365,32 +463,31 @@ impl SimpleEnv {
             fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
         > = HashMap::new();
         b.insert("+", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            calc(exp, env, |x: i64, y: i64| x + y)
+            calc(exp, env, |x: Number, y: Number| x + y)
         });
         b.insert("-", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            calc(exp, env, |x: i64, y: i64| x - y)
+            calc(exp, env, |x: Number, y: Number| x - y)
         });
         b.insert("*", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            calc(exp, env, |x: i64, y: i64| x * y)
+            calc(exp, env, |x: Number, y: Number| x * y)
         });
         b.insert("/", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            calc(exp, env, |x: i64, y: i64| x / y)
+            calc(exp, env, |x: Number, y: Number| x / y)
         });
-
         b.insert("=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            op(exp, env, |x: i64, y: i64| x == y)
+            op(exp, env, |x: &Number, y: &Number| x == y)
         });
         b.insert("<", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            op(exp, env, |x: i64, y: i64| x < y)
-        });
-        b.insert(">", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            op(exp, env, |x: i64, y: i64| x > y)
+            op(exp, env, |x: &Number, y: &Number| x < y)
         });
         b.insert("<=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            op(exp, env, |x: i64, y: i64| x <= y)
+            op(exp, env, |x: &Number, y: &Number| x <= y)
+        });
+        b.insert(">", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            op(exp, env, |x: &Number, y: &Number| x > y)
         });
         b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
-            op(exp, env, |x: i64, y: i64| x >= y)
+            op(exp, env, |x: &Number, y: &Number| x >= y)
         });
 
         b.insert("define", define);
@@ -501,46 +598,82 @@ fn if_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
 fn calc(
     exp: &Vec<PtrExpression>,
     env: &mut SimpleEnv,
-    f: fn(x: i64, y: i64) -> i64,
+    f: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
-    let mut result: i64 = 0;
+    let mut result = Number {
+        value: Box::new(RsInteger::new(0)),
+    };
     let mut first: bool = true;
 
     if 2 >= exp.len() {
         return Err(create_error!("E1007"));
     }
-    for n in &exp[1 as usize..] {
-        let o = eval(n, env)?;
-        if let Some(v) = o.as_any().downcast_ref::<RsInteger>() {
-            if first == true {
-                result = v.value;
-                first = false;
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        let mut param = Number {
+            value: o.clone_box(),
+        };
+        if first == true {
+            result = param;
+            first = false;
+            continue;
+        }
+        if let Some(_) = o.as_any().downcast_ref::<RsFloat>() {
+            if let Some(sf) = result.value.as_any().downcast_ref::<RsInteger>() {
+                result = Number {
+                    value: Box::new(RsFloat::new(sf.value as f64)),
+                };
+            }
+        } else if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            if let Some(_) = result.value.as_any().downcast_ref::<RsFloat>() {
+                param = Number {
+                    value: Box::new(RsFloat::new(i.value as f64)),
+                };
+            }
+        } else {
+            return Err(create_error!("E1003"));
+        }
+        result = f(result, param);
+    }
+    return Ok(result.value.clone_box());
+}
+fn op(
+    exp: &Vec<PtrExpression>,
+    env: &mut SimpleEnv,
+    f: fn(x: &Number, y: &Number) -> bool,
+) -> ResultExpression {
+    if 3 != exp.len() {
+        return Err(create_error!("E1007"));
+    }
+    let mut vec: Vec<Number> = Vec::new();
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+
+        if let Some(_) = o.as_any().downcast_ref::<RsFloat>() {
+            vec.push(Number {
+                value: o.clone_box(),
+            });
+        } else if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            if vec.len() > 0 {
+                if let Some(_) = vec[0].value.as_any().downcast_ref::<RsFloat>() {
+                    vec.push(Number {
+                        value: Box::new(RsFloat::new(i.value as f64)),
+                    });
+                } else {
+                    vec.push(Number {
+                        value: o.clone_box(),
+                    });
+                }
             } else {
-                result = f(result, v.value);
+                vec.push(Number {
+                    value: o.clone_box(),
+                });
             }
         } else {
             return Err(create_error!("E1003"));
         }
     }
-    return Ok(Box::new(RsInteger::new(result)));
-}
-fn op(
-    exp: &Vec<PtrExpression>,
-    env: &mut SimpleEnv,
-    f: fn(x: i64, y: i64) -> bool,
-) -> ResultExpression {
-    if 3 != exp.len() {
-        return Err(create_error!("E1007"));
-    }
-    let a = eval(&exp[1], env)?;
-    let b = eval(&exp[2], env)?;
-
-    if let Some(x) = a.as_any().downcast_ref::<RsInteger>() {
-        if let Some(y) = b.as_any().downcast_ref::<RsInteger>() {
-            return Ok(Box::new(RsBoolean::new(f(x.value, y.value))));
-        }
-    }
-    return Err(create_error!("E1003"));
+    return Ok(Box::new(RsBoolean::new(f(&vec[0], &vec[1]))));
 }
 pub fn do_interactive() {
     let mut env = SimpleEnv::new();
@@ -760,6 +893,14 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             if let Some(f) = e.as_any().downcast_ref::<RsBuildInFunction>() {
                 let mut func = f.clone();
                 return func.execute(v, env);
+            }
+        } else if let Some(_) = v[0].as_any().downcast_ref::<RsList>() {
+            let e = eval(&v[0], env)?;
+            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
+                let mut func = f.clone();
+                return func.execute(v, env);
+            } else {
+                return Err(create_error!("E1006"));
             }
         }
     }
