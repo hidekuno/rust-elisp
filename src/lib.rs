@@ -62,32 +62,42 @@ mod tests {
     #[test]
     fn eq() {
         assert!(do_lisp("(= 5 5)") == "#t".to_string());
-    }
-    #[test]
-    fn not_eq() {
+        assert!(do_lisp("(= 5.5 5.5)") == "#t".to_string());
+        assert!(do_lisp("(= 5 5.0)") == "#t".to_string());
         assert!(do_lisp("(= 5 6)") == "#f".to_string());
+        assert!(do_lisp("(= 5.5 6.6)") == "#f".to_string());
     }
     #[test]
     fn than() {
         assert!(do_lisp("(> 6 5)") == "#t".to_string());
         assert!(do_lisp("(> 6 6)") == "#f".to_string());
+        assert!(do_lisp("(> 6.5 5.5)") == "#t".to_string());
+        assert!(do_lisp("(> 4.5 5.5)") == "#f".to_string());
     }
     #[test]
     fn less() {
         assert!(do_lisp("(< 5 6)") == "#t".to_string());
+        assert!(do_lisp("(< 5.6 6.5)") == "#t".to_string());
         assert!(do_lisp("(> 6 6)") == "#f".to_string());
+        assert!(do_lisp("(> 6.5 6.6)") == "#f".to_string());
     }
     #[test]
     fn than_eq() {
         assert!(do_lisp("(>= 6 6)") == "#t".to_string());
+        assert!(do_lisp("(>= 7.6 7.6)") == "#t".to_string());
         assert!(do_lisp("(>= 6 5)") == "#t".to_string());
+        assert!(do_lisp("(>= 6.3 5.2)") == "#t".to_string());
         assert!(do_lisp("(>= 5 6)") == "#f".to_string());
+        assert!(do_lisp("(>= 5.1 6.2)") == "#f".to_string());
     }
     #[test]
     fn less_eq() {
         assert!(do_lisp("(<= 6 6)") == "#t".to_string());
+        assert!(do_lisp("(<= 6.1 6.1)") == "#t".to_string());
         assert!(do_lisp("(<= 5 6)") == "#t".to_string());
+        assert!(do_lisp("(<= 5.2 6.9)") == "#t".to_string());
         assert!(do_lisp("(<= 6 5)") == "#f".to_string());
+        assert!(do_lisp("(<= 8.6 5.4)") == "#f".to_string());
     }
     #[test]
     fn define() {
@@ -127,42 +137,56 @@ mod error_tests {
     #[test]
     fn plus() {
         assert!(do_lisp("(+ 1 a)") == "E1008".to_string());
+        assert!(do_lisp("(+ 1 3.4 #t)") == "E1003".to_string());
+        assert!(do_lisp("(+ 1)") == "E1007".to_string());
     }
     #[test]
     fn minus() {
         assert!(do_lisp("(- 6 a)") == "E1008".to_string());
+        assert!(do_lisp("(- 1 3.4 #t)") == "E1003".to_string());
+        assert!(do_lisp("(- 1)") == "E1007".to_string());
     }
     #[test]
     fn multi() {
-        assert!(do_lisp("(* 3 a)") == "E1008".to_string());
+        assert!(do_lisp("(* 6 a)") == "E1008".to_string());
+        assert!(do_lisp("(* 1 3.4 #t)") == "E1003".to_string());
+        assert!(do_lisp("(* 1)") == "E1007".to_string());
     }
     #[test]
     fn div() {
         assert!(do_lisp("(/ 9 a)") == "E1008".to_string());
+        assert!(do_lisp("(/ 1 3.4 #t)") == "E1003".to_string());
+        assert!(do_lisp("(/ 1)") == "E1007".to_string());
     }
     #[test]
     fn eq() {
+        assert!(do_lisp("(= 5)") == "E1007".to_string());
         assert!(do_lisp("(= 5 a)") == "E1008".to_string());
-    }
-    #[test]
-    fn not_eq() {
-        assert!(do_lisp("(= 5 a)") == "E1008".to_string());
+        assert!(do_lisp("(= 5 #f)") == "E1003".to_string());
     }
     #[test]
     fn than() {
+        assert!(do_lisp("(> 6)") == "E1007".to_string());
         assert!(do_lisp("(> 6 a)") == "E1008".to_string());
+        assert!(do_lisp("(> 6 #f)") == "E1003".to_string());
     }
     #[test]
     fn less() {
+        assert!(do_lisp("(< 5)") == "E1007".to_string());
         assert!(do_lisp("(< 5 a)") == "E1008".to_string());
+        assert!(do_lisp("(< 5 #f)") == "E1003".to_string());
     }
     #[test]
     fn than_eq() {
+        assert!(do_lisp("(>= 6)") == "E1007".to_string());
         assert!(do_lisp("(>= 6 a)") == "E1008".to_string());
+        assert!(do_lisp("(>= 6 #t)") == "E1003".to_string());
     }
     #[test]
     fn less_eq() {
+        assert!(do_lisp("(<= 6)") == "E1007".to_string());
         assert!(do_lisp("(<= 6 a)") == "E1008".to_string());
+        assert!(do_lisp("(<= 6 #t)") == "E1003".to_string());
     }
     #[test]
     fn define() {
