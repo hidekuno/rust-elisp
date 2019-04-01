@@ -5,19 +5,19 @@
    hidekuno@gmail.com
 */
 use std::any::Any;
+use std::cmp::Ordering;
+use std::cmp::PartialEq;
+use std::cmp::PartialOrd;
 use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
-use std::vec::Vec;
 use std::ops::Add;
-use std::ops::Sub;
-use std::ops::Mul;
 use std::ops::Div;
-use std::cmp::PartialEq;
-use std::cmp::PartialOrd;
-use std::cmp::Ordering;
+use std::ops::Mul;
+use std::ops::Sub;
+use std::vec::Vec;
 
 use crate::lisp::DataType::RsBooleanDesc;
 use crate::lisp::DataType::RsBuildInFunctionDesc;
@@ -359,38 +359,42 @@ impl Expression for RsFunction {
 }
 #[derive(Clone)]
 pub struct Number {
-    value: PtrExpression
+    value: PtrExpression,
 }
 impl Number {
-    fn calc_template(self,
-                     other: Number,
-                     fcalc: fn (x: f64, y: f64) -> f64,
-                     icalc: fn (x: i64, y: i64) -> i64,
+    fn calc_template(
+        self,
+        other: Number,
+        fcalc: fn(x: f64, y: f64) -> f64,
+        icalc: fn(x: i64, y: i64) -> i64,
     ) -> Number {
         if let Some(sf) = self.value.as_any().downcast_ref::<RsFloat>() {
             if let Some(f) = other.value.as_any().downcast_ref::<RsFloat>() {
-                return Number{value: Box::new(RsFloat::new(fcalc(sf.value, f.value)))};
+                return Number {
+                    value: Box::new(RsFloat::new(fcalc(sf.value, f.value))),
+                };
             }
-
         }
         if let Some(sf) = self.value.as_any().downcast_ref::<RsInteger>() {
             if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
-                return Number{value: Box::new(RsInteger::new(icalc(sf.value, i.value)))};
+                return Number {
+                    value: Box::new(RsInteger::new(icalc(sf.value, i.value))),
+                };
             }
         }
         self
     }
-    fn cmp_template(&self,
-                    other: &Number,
-                    fop: fn (x: f64, y: f64) -> bool,
-                    iop: fn (x: i64, y: i64) -> bool
+    fn cmp_template(
+        &self,
+        other: &Number,
+        fop: fn(x: f64, y: f64) -> bool,
+        iop: fn(x: i64, y: i64) -> bool,
     ) -> bool {
         if let Some(sf) = self.value.as_any().downcast_ref::<RsFloat>() {
             if let Some(f) = other.value.as_any().downcast_ref::<RsFloat>() {
                 return fop(sf.value, f.value);
             }
-        }
-        else if let Some(sf) = self.value.as_any().downcast_ref::<RsInteger>() {
+        } else if let Some(sf) = self.value.as_any().downcast_ref::<RsInteger>() {
             if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
                 return iop(sf.value, i.value);
             }
@@ -402,44 +406,44 @@ impl Number {
 impl Add for Number {
     type Output = Number;
     fn add(self, other: Number) -> Number {
-        return self.calc_template(other, |x:f64, y:f64| x + y,|x:i64, y:i64| x + y);
+        return self.calc_template(other, |x: f64, y: f64| x + y, |x: i64, y: i64| x + y);
     }
 }
 impl Sub for Number {
     type Output = Number;
     fn sub(self, other: Number) -> Number {
-        return self.calc_template(other, |x:f64, y:f64| x - y,|x:i64, y:i64| x - y);
+        return self.calc_template(other, |x: f64, y: f64| x - y, |x: i64, y: i64| x - y);
     }
 }
 impl Mul for Number {
     type Output = Number;
     fn mul(self, other: Number) -> Number {
-        return self.calc_template(other, |x:f64, y:f64| x * y,|x:i64, y:i64| x * y);
+        return self.calc_template(other, |x: f64, y: f64| x * y, |x: i64, y: i64| x * y);
     }
 }
 impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
-        return self.calc_template(other, |x:f64, y:f64| x / y,|x:i64, y:i64| x / y);
+        return self.calc_template(other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
     }
 }
 impl PartialEq for Number {
     fn eq(&self, other: &Number) -> bool {
-        return self.cmp_template(other, |x:f64, y:f64| x == y,|x:i64, y:i64| x == y);
+        return self.cmp_template(other, |x: f64, y: f64| x == y, |x: i64, y: i64| x == y);
     }
 }
 impl PartialOrd for Number {
     fn lt(&self, other: &Number) -> bool {
-        return self.cmp_template(other, |x:f64, y:f64| x < y,|x:i64, y:i64| x < y);
+        return self.cmp_template(other, |x: f64, y: f64| x < y, |x: i64, y: i64| x < y);
     }
     fn le(&self, other: &Number) -> bool {
-        return self.cmp_template(other, |x:f64, y:f64| x <= y,|x:i64, y:i64| x <= y);
+        return self.cmp_template(other, |x: f64, y: f64| x <= y, |x: i64, y: i64| x <= y);
     }
     fn gt(&self, other: &Number) -> bool {
-        return self.cmp_template(other, |x:f64, y:f64| x > y,|x:i64, y:i64| x > y);
+        return self.cmp_template(other, |x: f64, y: f64| x > y, |x: i64, y: i64| x > y);
     }
     fn ge(&self, other: &Number) -> bool {
-        return self.cmp_template(other, |x:f64, y:f64| x >= y,|x:i64, y:i64| x >= y);
+        return self.cmp_template(other, |x: f64, y: f64| x >= y, |x: i64, y: i64| x >= y);
     }
     fn partial_cmp(&self, _: &Number) -> Option<Ordering> {
         Some(Ordering::Equal)
@@ -458,15 +462,33 @@ impl SimpleEnv {
             &'static str,
             fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
         > = HashMap::new();
-        b.insert("+", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{calc(exp,env,|x: Number, y: Number| x + y)});
-        b.insert("-", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{calc(exp,env,|x: Number, y: Number| x - y)});
-        b.insert("*", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{calc(exp,env,|x: Number, y: Number| x * y)});
-        b.insert("/", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{calc(exp,env,|x: Number, y: Number| x / y)});
-        b.insert("=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{op(exp,env,|x: &Number, y: &Number| x == y)});
-        b.insert("<", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{op(exp,env,|x: &Number, y: &Number| x < y)});
-        b.insert("<=",|exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{op(exp,env,|x: &Number, y: &Number| x <= y)});
-        b.insert(">", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{op(exp,env,|x: &Number, y: &Number| x > y)});
-        b.insert(">=",|exp: &Vec<PtrExpression>, env: &mut SimpleEnv|{op(exp,env,|x: &Number, y: &Number| x >= y)});
+        b.insert("+", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            calc(exp, env, |x: Number, y: Number| x + y)
+        });
+        b.insert("-", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            calc(exp, env, |x: Number, y: Number| x - y)
+        });
+        b.insert("*", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            calc(exp, env, |x: Number, y: Number| x * y)
+        });
+        b.insert("/", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            calc(exp, env, |x: Number, y: Number| x / y)
+        });
+        b.insert("=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            op(exp, env, |x: &Number, y: &Number| x == y)
+        });
+        b.insert("<", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            op(exp, env, |x: &Number, y: &Number| x < y)
+        });
+        b.insert("<=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            op(exp, env, |x: &Number, y: &Number| x <= y)
+        });
+        b.insert(">", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            op(exp, env, |x: &Number, y: &Number| x > y)
+        });
+        b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
+            op(exp, env, |x: &Number, y: &Number| x >= y)
+        });
 
         b.insert("define", define);
         b.insert("lambda", lambda);
@@ -578,16 +600,19 @@ fn calc(
     env: &mut SimpleEnv,
     f: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
-
-    let mut result = Number{value: Box::new(RsInteger::new(0))};
+    let mut result = Number {
+        value: Box::new(RsInteger::new(0)),
+    };
     let mut first: bool = true;
 
     if 2 >= exp.len() {
         return Err(create_error!("E1007"));
     }
-    for n in &exp[1 as usize..] {
-        let o = eval(n, env)?;
-        let mut param  = Number{value: o.clone_box()};
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        let mut param = Number {
+            value: o.clone_box(),
+        };
         if first == true {
             result = param;
             first = false;
@@ -595,11 +620,15 @@ fn calc(
         }
         if let Some(_) = o.as_any().downcast_ref::<RsFloat>() {
             if let Some(sf) = result.value.as_any().downcast_ref::<RsInteger>() {
-                result =  Number{value: Box::new(RsFloat::new(sf.value as f64))};
+                result = Number {
+                    value: Box::new(RsFloat::new(sf.value as f64)),
+                };
             }
         } else if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
             if let Some(_) = result.value.as_any().downcast_ref::<RsFloat>() {
-                param = Number{value: Box::new(RsFloat::new(i.value  as f64))};
+                param = Number {
+                    value: Box::new(RsFloat::new(i.value as f64)),
+                };
             }
         } else {
             return Err(create_error!("E1003"));
@@ -616,29 +645,35 @@ fn op(
     if 3 != exp.len() {
         return Err(create_error!("E1007"));
     }
-    let a = eval(&exp[1], env)?;
-    let b = eval(&exp[2], env)?;
+    let mut vec: Vec<Number> = Vec::new();
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
 
-    if let Some(_) = a.as_any().downcast_ref::<RsFloat>() {
-        let x = Number{value: a.clone_box()};
-        if let Some(i) = b.as_any().downcast_ref::<RsInteger>() {
-            let y = Number{value: Box::new(RsFloat::new(i.value as f64))};
-            return Ok(Box::new(RsBoolean::new(f(&x, &y))));
+        if let Some(_) = o.as_any().downcast_ref::<RsFloat>() {
+            vec.push(Number {
+                value: o.clone_box(),
+            });
+        } else if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            if vec.len() > 0 {
+                if let Some(_) = vec[0].value.as_any().downcast_ref::<RsFloat>() {
+                    vec.push(Number {
+                        value: Box::new(RsFloat::new(i.value as f64)),
+                    });
+                } else {
+                    vec.push(Number {
+                        value: o.clone_box(),
+                    });
+                }
+            } else {
+                vec.push(Number {
+                    value: o.clone_box(),
+                });
+            }
+        } else {
+            return Err(create_error!("E1003"));
         }
-        let y = Number{value: b.clone_box()};
-        return Ok(Box::new(RsBoolean::new(f(&x, &y))));
     }
-    if let Some(i) = a.as_any().downcast_ref::<RsInteger>() {
-        let y = Number{value: b.clone_box()};
-
-        if let Some(_) = b.as_any().downcast_ref::<RsFloat>() {
-            let x = Number{value: Box::new(RsFloat::new(i.value as f64))};
-            return Ok(Box::new(RsBoolean::new(f(&x, &y))));
-        }
-        let x = Number{value: a.clone_box()};
-        return Ok(Box::new(RsBoolean::new(f(&x, &y))));
-    }
-    return Err(create_error!("E1003"));
+    return Ok(Box::new(RsBoolean::new(f(&vec[0], &vec[1]))));
 }
 pub fn do_interactive() {
     let mut env = SimpleEnv::new();
