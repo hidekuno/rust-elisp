@@ -894,6 +894,14 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
                 let mut func = f.clone();
                 return func.execute(v, env);
             }
+        } else if let Some(_) = v[0].as_any().downcast_ref::<RsList>() {
+            let e = eval(&v[0], env)?;
+            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
+                let mut func = f.clone();
+                return func.execute(v, env);
+            } else {
+                return Err(create_error!("E1006"));
+            }
         }
     }
     Err(create_error!("E1009"))
