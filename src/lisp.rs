@@ -25,6 +25,7 @@ use crate::lisp::DataType::RsCharDesc;
 use crate::lisp::DataType::RsFloatDesc;
 use crate::lisp::DataType::RsFunctionDesc;
 use crate::lisp::DataType::RsIntegerDesc;
+use crate::lisp::DataType::RsLetLoopDesc;
 use crate::lisp::DataType::RsListDesc;
 use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
@@ -97,6 +98,7 @@ pub enum DataType {
     RsSymbolDesc,
     RsFunctionDesc,
     RsBuildInFunctionDesc,
+    RsLetLoopDesc,
 }
 pub trait Expression: ExpressionClone {
     fn type_id(&self) -> &DataType;
@@ -303,7 +305,7 @@ impl Expression for RsBuildInFunction {
 pub struct RsFunction {
     type_id: DataType,
     param: RsList,
-    body: PtrExpression,
+    body: Vec<PtrExpression>,
     name: String,
 }
 impl RsFunction {
@@ -315,10 +317,12 @@ impl RsFunction {
                 _param.value.push(Box::new(RsSymbol::new(n.value_string())));
             }
         }
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        vec.extend_from_slice(&sexp[2..]);
         RsFunction {
             type_id: RsFunctionDesc,
             param: _param,
-            body: sexp[2].clone(),
+            body: vec,
             name: _name,
         }
     }
@@ -340,14 +344,87 @@ impl RsFunction {
             }
             idx += 1;
         }
-        let result = eval(&self.body, env);
+
+        let mut results: Vec<ResultExpression> = Vec::new();
+        for e in &self.body {
+            results.push(eval(e, env));
+        }
         env.delete();
-        return result;
+        if let Some(r) = results.pop() {
+            return r;
+        }
+        return Err(create_error!("E9999"));
     }
 }
 impl Expression for RsFunction {
     fn value_string(&self) -> String {
         "Function".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
+pub struct RsLetLoop {
+    type_id: DataType,
+    param: Vec<String>,
+    body: Vec<PtrExpression>,
+    name: String,
+}
+impl RsLetLoop {
+    fn new(
+        sexp: &Vec<PtrExpression>,
+        _name: String,
+        map: &mut HashMap<String, PtrExpression>,
+    ) -> RsLetLoop {
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        vec.extend_from_slice(&sexp[3..]);
+
+        let mut _param: Vec<String> = Vec::new();
+        for k in map.keys() {
+            _param.push((*k).to_string());
+        }
+        RsLetLoop {
+            type_id: RsLetLoopDesc,
+            param: _param,
+            body: vec,
+            name: _name,
+        }
+    }
+    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+        // Bind lambda function' parameters.
+        if self.param.len() != (exp.len() - 1) {
+            return Err(create_error!("E1007"));
+        }
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        for e in &exp[1 as usize..] {
+            let v = eval(e, env)?;
+            vec.push(v);
+        }
+        let mut idx = 0;
+        for s in &self.param {
+            env.regist(s.to_string(), vec[idx].clone_box());
+            //            if let Some(s) = p.as_any().downcast_ref::<RsSymbol>() {
+            //                env.regist(s.value.to_string(), vec[idx].clone_box());
+            //            }
+            idx += 1;
+        }
+        let mut results: Vec<ResultExpression> = Vec::new();
+        for e in &self.body {
+            results.push(eval(e, env));
+        }
+        if let Some(r) = results.pop() {
+            return r;
+        }
+        return Err(create_error!("E9999"));
+    }
+}
+impl Expression for RsLetLoop {
+    fn value_string(&self) -> String {
+        "Named Let".to_string()
     }
     fn type_id(&self) -> &DataType {
         &self.type_id
@@ -509,6 +586,7 @@ impl SimpleEnv {
         b.insert("and", and);
         b.insert("or", or);
         b.insert("not", not);
+        b.insert("let", let_f);
 
         SimpleEnv {
             env_tbl: l,
@@ -554,6 +632,58 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() < 3 {
+        return Err(create_error!("E1007"));
+    }
+    let mut param: HashMap<String, PtrExpression> = HashMap::new();
+
+    let mut idx = 1;
+    if let Some(_) = exp[idx].as_any().downcast_ref::<RsSymbol>() {
+        idx += 1;
+    }
+    // Parameter Setup
+    if let Some(l) = exp[idx].as_any().downcast_ref::<RsList>() {
+        for plist in &l.value {
+            if let Some(p) = plist.as_any().downcast_ref::<RsList>() {
+                if p.value.len() != 2 {
+                    return Err(create_error!("E1007"));
+                }
+                if let Some(s) = p.value[0].as_any().downcast_ref::<RsSymbol>() {
+                    let v = eval(&p.value[1], env)?;
+                    param.insert(s.value_string(), v);
+                } else {
+                    return Err(create_error!("E1004"));
+                }
+            } else {
+                return Err(create_error!("E1005"));
+            }
+        }
+        idx += 1;
+    } else {
+        return Err(create_error!("E1005"));
+    }
+    // Setup label name let
+    if let Some(s) = exp[1].as_any().downcast_ref::<RsSymbol>() {
+        let letloop = Box::new(RsLetLoop::new(&exp, s.value_string(), &mut param));
+        param.insert(s.value_string(), letloop);
+    }
+
+    // execute let
+    env.create();
+    for (k, v) in param {
+        env.regist(k, v);
+    }
+    let mut results: Vec<ResultExpression> = Vec::new();
+    for e in &exp[idx as usize..] {
+        results.push(eval(e, env));
+    }
+    env.delete();
+    if let Some(r) = results.pop() {
+        return r;
+    }
+    return Err(create_error!("E9999"));
+}
 fn not(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
@@ -639,7 +769,7 @@ fn modulo(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     return Ok(Box::new(RsInteger::new(vec[0] % vec[1])));
 }
 fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
     if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
@@ -980,6 +1110,9 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
                 if let Some(_) = v.as_any().downcast_ref::<RsFunction>() {
                     return Ok(v.clone_box());
                 }
+                if let Some(_) = v.as_any().downcast_ref::<RsLetLoop>() {
+                    return Ok(v.clone_box());
+                }
             }
             None => {}
         }
@@ -995,6 +1128,10 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
         let v = &l.value;
         if let Some(_) = v[0].as_any().downcast_ref::<RsSymbol>() {
             let e = eval(&v[0], env)?;
+            if let Some(ll) = e.as_any().downcast_ref::<RsLetLoop>() {
+                let mut func = ll.clone();
+                return func.execute(v, env);
+            }
             if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
                 let mut func = f.clone();
                 return func.execute(v, env);
