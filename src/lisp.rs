@@ -327,19 +327,18 @@ impl RsFunction {
         if self.param.value.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        for e in &exp[1 as usize..] {
+            let v = eval(e, env)?;
+            vec.push(v);
+        }
         env.create();
-        let mut i = 1;
+        let mut idx = 0;
         for p in &self.param.value[..] {
             if let Some(s) = p.as_any().downcast_ref::<RsSymbol>() {
-                match eval(&exp[i].clone(), env) {
-                    Ok(result) => env.regist(s.value.to_string(), result),
-                    Err(e) => {
-                        env.delete();
-                        return Err(e);
-                    }
-                }
+                env.regist(s.value.to_string(), vec[idx].clone_box());
             }
-            i += 1;
+            idx += 1;
         }
         let result = eval(&self.body, env);
         env.delete();
@@ -426,7 +425,7 @@ impl Div for Number {
     fn div(self, other: Number) -> Number {
         if let Some(i) = other.value.as_any().downcast_ref::<RsInteger>() {
             if let Some(s) = self.value.as_any().downcast_ref::<RsInteger>() {
-                if i.value == 0 && s.value == 0{
+                if i.value == 0 && s.value == 0 {
                     return Number {
                         value: Box::new(RsFloat::new(std::f64::NAN)),
                     };
@@ -502,7 +501,7 @@ impl SimpleEnv {
         b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x >= y)
         });
-        b.insert("expt",   expt);
+        b.insert("expt", expt);
         b.insert("modulo", modulo);
         b.insert("define", define);
         b.insert("lambda", lambda);
@@ -540,6 +539,15 @@ impl SimpleEnv {
             }
         }
         None
+    }
+    #[allow(dead_code)]
+    fn dump_env(&self) {
+        println!("dump_env start");
+        for exp in self.env_tbl.iter() {
+            for (k, v) in exp {
+                println!("{} {}", k, v.value_string());
+            }
+        }
     }
 }
 //========================================================================
