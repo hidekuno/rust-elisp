@@ -60,7 +60,7 @@ mod tests {
         assert_str!(do_lisp("(* 0.5 5.75)"), "2.875");
         assert_str!(do_lisp("(* 3.5 6)"), "21");
         assert_str!(do_lisp("(* 6 3.5)"), "21");
-        assert_str!(do_lisp("(* (+ 3 4)(+ 1 2))"),"21");
+        assert_str!(do_lisp("(* (+ 3 4)(+ 1 2))"), "21");
     }
     #[test]
     fn div() {
@@ -68,12 +68,12 @@ mod tests {
         assert_str!(do_lisp("(/ 0.75 0.25)"), "3");
         assert_str!(do_lisp("(/ 9.5 5)"), "1.9");
         assert_str!(do_lisp("(/ 6 2.5)"), "2.4");
-        assert_str!(do_lisp("(/ 0 0)"),"NaN");
-        assert_str!(do_lisp("(/ 9 0)"),"inf");
-        assert_str!(do_lisp("(/ 10 0.0)"),"inf");
-        assert_str!(do_lisp("(/ 0 9)"),"0");
-        assert_str!(do_lisp("(/ 0.0 9)"),"0");
-        assert_str!(do_lisp("(/ (+ 4 4)(+ 2 2))"),"2");
+        assert_str!(do_lisp("(/ 0 0)"), "NaN");
+        assert_str!(do_lisp("(/ 9 0)"), "inf");
+        assert_str!(do_lisp("(/ 10 0.0)"), "inf");
+        assert_str!(do_lisp("(/ 0 9)"), "0");
+        assert_str!(do_lisp("(/ 0.0 9)"), "0");
+        assert_str!(do_lisp("(/ (+ 4 4)(+ 2 2))"), "2");
     }
     #[test]
     fn eq() {
@@ -185,8 +185,19 @@ mod tests {
     }
     #[test]
     fn not() {
-        assert_str!(do_lisp("(not (= 1 1))"),"#f");
-        assert_str!(do_lisp("(not (= 2 1))"),"#t");
+        assert_str!(do_lisp("(not (= 1 1))"), "#f");
+        assert_str!(do_lisp("(not (= 2 1))"), "#t");
+    }
+    #[test]
+    fn gcm() {
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env(
+            "(define gcm  (lambda (n m) (if (= 0 (modulo n m)) m (gcm m (modulo n m)))))",
+            &mut env,
+        );
+        do_lisp_env("(define (lcm n m ) (/ (* n m)(gcm n m)))", &mut env);
+        assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
+        assert_str!(do_lisp_env("(lcm 36 27)", &mut env), "108");
     }
 }
 mod error_tests {
