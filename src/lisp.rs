@@ -17,6 +17,7 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
+use std::time::Instant;
 use std::vec::Vec;
 
 use crate::lisp::DataType::RsBooleanDesc;
@@ -27,6 +28,7 @@ use crate::lisp::DataType::RsFunctionDesc;
 use crate::lisp::DataType::RsIntegerDesc;
 use crate::lisp::DataType::RsLetLoopDesc;
 use crate::lisp::DataType::RsListDesc;
+use crate::lisp::DataType::RsNilDesc;
 use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
 lazy_static! {
@@ -99,6 +101,7 @@ pub enum DataType {
     RsFunctionDesc,
     RsBuildInFunctionDesc,
     RsLetLoopDesc,
+    RsNilDesc,
 }
 pub trait Expression: ExpressionClone {
     fn type_id(&self) -> &DataType;
@@ -235,6 +238,26 @@ impl RsSymbol {
 impl Expression for RsSymbol {
     fn value_string(&self) -> String {
         self.value.to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
+pub struct RsNil {
+    type_id: DataType,
+}
+impl RsNil {
+    fn new() -> RsNil {
+        RsNil { type_id: RsNilDesc }
+    }
+}
+impl Expression for RsNil {
+    fn value_string(&self) -> String {
+        "nil".to_string()
     }
     fn type_id(&self) -> &DataType {
         &self.type_id
@@ -577,6 +600,7 @@ impl SimpleEnv {
         b.insert("or", or);
         b.insert("not", not);
         b.insert("let", let_f);
+        b.insert("time", time_f);
 
         SimpleEnv {
             env_tbl: l,
@@ -622,6 +646,19 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn time_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+
+    let start = Instant::now();
+
+    let result = eval(&exp[1], env);
+    let end = start.elapsed();
+
+    println!("{}.{:03}", end.as_secs(), end.subsec_nanos() / 1_000_000);
+    return result;
+}
 fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
@@ -1097,7 +1134,7 @@ fn atom(token: &String) -> PtrExpression {
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
         match $e.type_id() {
-            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc => {
+            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc | RsNilDesc => {
                 return Ok($e.clone_box());
             }
             _ => {}
