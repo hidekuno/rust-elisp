@@ -153,6 +153,8 @@ mod tests {
     }
     #[test]
     fn if_f() {
+        assert_str!(do_lisp("(if (= 10 10) #\\a)"), "a");
+        assert_str!(do_lisp("(if (= 10 11) #\\a)"), "nil");
         assert_str!(do_lisp("(if (<= 1 6) #\\a #\\b)"), "a");
         assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "b");
     }
@@ -189,10 +191,23 @@ mod tests {
         assert_str!(do_lisp("(not (= 2 1))"), "#t");
     }
     #[test]
+    fn let_f() {
+        assert_str!(do_lisp("(let ((a 10)(b 20)) (+ a b))"), "30");
+        assert_str!(
+            do_lisp("(let loop ((i 0)) (if (<= 10 i) i (+ 10 (loop (+ i 1)))))"),
+            "110"
+        );
+        // stack overflow
+        assert_str!(
+            do_lisp("(let loop ((i 0)) (if (<= 10000 i) i (loop (+ i 1))))"),
+            "10000"
+        );
+    }
+    #[test]
     fn gcm() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(
-            "(define gcm  (lambda (n m) (if (= 0 (modulo n m)) m (gcm m (modulo n m)))))",
+            "(define gcm (lambda (n m) (if (= 0 (modulo n m)) m (gcm m (modulo n m)))))",
             &mut env,
         );
         do_lisp_env("(define (lcm n m ) (/ (* n m)(gcm n m)))", &mut env);
@@ -285,10 +300,6 @@ mod error_tests {
         let mut env = lisp::SimpleEnv::new();
         assert_str!(do_lisp_env("(lambda)", &mut env), "E1007");
         assert_str!(do_lisp_env("(lambda (a b))", &mut env), "E1007");
-        assert_str!(
-            do_lisp_env("(lambda (a b) (+ a b)(- a b))", &mut env),
-            "E1007"
-        );
         assert_str!(do_lisp_env("(lambda  a (+ a b))", &mut env), "E1005");
         assert_str!(do_lisp_env("(lambda (a 1) (+ a 10))", &mut env), "E1004");
 
@@ -300,8 +311,7 @@ mod error_tests {
     }
     #[test]
     fn if_f() {
-        assert_str!(do_lisp("(if (<= 1 6) #t)"), "E1004");
-        assert_str!(do_lisp("(if (<= 1 6) #t #f 10)"), "E1004");
+        assert_str!(do_lisp("(if (<= 1 6))"), "E1007");
         assert_str!(do_lisp("(if (<= 1 6) a #\\b)"), "E1008");
         assert_str!(do_lisp("(if (<= 9 6) #\\a b)"), "E1008");
         assert_str!(do_lisp("(if 9 #\\a b)"), "E1001");
@@ -336,5 +346,18 @@ mod error_tests {
         assert_str!(do_lisp("(not)"), "E1007");
         assert_str!(do_lisp("(not 10)"), "E1001");
         assert_str!(do_lisp("(not a)"), "E1008");
+    }
+    #[test]
+    fn let_f() {
+        assert_str!(do_lisp("(let loop)"), "E1007");
+        assert_str!(do_lisp("(let ((i 0 10)) (+ i 10))"), "E1007");
+        assert_str!(do_lisp("(let ((100 10)) (+ i 10))"), "E1004");
+        assert_str!(do_lisp("(let ((i a)) (+ i 10))"), "E1008");
+        assert_str!(do_lisp("(let (10) (+ i 10))"), "E1005");
+        assert_str!(do_lisp("(let 100 (+ i 10))"), "E1005");
+        assert_str!(
+            do_lisp("(let loop ((i 0)) (if (<= 10 i) i (loop (+ i 1)(+ i 1))))"),
+            "E1007"
+        );
     }
 }
