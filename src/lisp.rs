@@ -350,7 +350,6 @@ impl RsFunction {
         }
     }
     fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
-        // Bind lambda function' parameters.
         if self.param.value.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
@@ -396,6 +395,7 @@ pub struct RsLetLoop {
     param: Vec<String>,
     body: Vec<PtrExpression>,
     name: String,
+    tail_recurcieve: bool,
 }
 impl RsLetLoop {
     fn new(
@@ -415,10 +415,32 @@ impl RsLetLoop {
             param: _param,
             body: vec,
             name: _name,
+            tail_recurcieve: false,
         }
     }
+    // exp is slice
+    fn set_tail_recurcieve(&mut self) {
+        self.tail_recurcieve = self._set_tail_recurcieve(self.body.as_slice());
+    }
+    fn _set_tail_recurcieve(&self, exp: &[PtrExpression]) -> bool {
+        for e in exp {
+            if let Some(l) = e.as_any().downcast_ref::<RsList>() {
+                if 0 == l.value.len() {
+                    continue;
+                }
+                if let Some(n) = l.value[0].as_any().downcast_ref::<RsSymbol>() {
+                    if n.value.as_str() == "if" {
+                        return self._set_tail_recurcieve(&l.value[1..]);
+                    }
+                    if n.value == self.name {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
     fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
-        // Bind lambda function' parameters.
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
@@ -432,7 +454,19 @@ impl RsLetLoop {
             env.regist(s.to_string(), vec[idx].clone_box());
             idx += 1;
         }
-        return Ok(Box::new(self.clone()));
+        if self.tail_recurcieve == true {
+            return Ok(Box::new(self.clone()));
+        } else {
+            let mut results: Vec<PtrExpression> = Vec::new();
+            for exp in &self.body {
+                let r = eval(&exp, env)?;
+                results.push(r);
+            }
+            if let Some(r) = results.pop() {
+                return Ok(r);
+            }
+        }
+        return Err(create_error!("E9999"));
     }
 }
 impl Expression for RsLetLoop {
@@ -692,7 +726,8 @@ fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     // Setup label name let
     if let Some(s) = exp[1].as_any().downcast_ref::<RsSymbol>() {
-        let letloop = Box::new(RsLetLoop::new(&exp, s.value_string(), &mut param));
+        let mut letloop = Box::new(RsLetLoop::new(&exp, s.value_string(), &mut param));
+        letloop.set_tail_recurcieve();
         param.insert(s.value_string(), letloop);
     }
 
@@ -706,6 +741,7 @@ fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         loop {
             match eval(e, env) {
                 Ok(o) => {
+                    // tail recurcieve
                     if let Some(_) = o.as_any().downcast_ref::<RsLetLoop>() {
                         continue;
                     } else {
@@ -861,17 +897,18 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     Err(create_error!("E1004"))
 }
 fn if_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 4 {
-        return Err(create_error!("E1004"));
+    if exp.len() < 3 {
+        return Err(create_error!("E1007"));
     }
     let se = eval(&exp[1], env)?;
 
     if let Some(b) = se.as_any().downcast_ref::<RsBoolean>() {
         if b.value == true {
             return eval(&exp[2], env);
-        } else {
+        } else if 4 <= exp.len() {
             return eval(&exp[3], env);
         }
+        return Ok(Box::new(RsNil::new()));
     }
     return Err(create_error!("E1001"));
 }
