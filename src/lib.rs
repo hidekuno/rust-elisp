@@ -285,10 +285,6 @@ mod error_tests {
         let mut env = lisp::SimpleEnv::new();
         assert_str!(do_lisp_env("(lambda)", &mut env), "E1007");
         assert_str!(do_lisp_env("(lambda (a b))", &mut env), "E1007");
-        assert_str!(
-            do_lisp_env("(lambda (a b) (+ a b)(- a b))", &mut env),
-            "E1007"
-        );
         assert_str!(do_lisp_env("(lambda  a (+ a b))", &mut env), "E1005");
         assert_str!(do_lisp_env("(lambda (a 1) (+ a 10))", &mut env), "E1004");
 

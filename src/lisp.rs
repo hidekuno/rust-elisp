@@ -285,7 +285,7 @@ impl RsBuildInFunction {
             name: _name,
         }
     }
-    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         let f = self.func;
         return f(exp, env);
     }
@@ -326,7 +326,7 @@ impl RsFunction {
             name: _name,
         }
     }
-    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         // Bind lambda function' parameters.
         if self.param.value.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
@@ -394,7 +394,7 @@ impl RsLetLoop {
             name: _name,
         }
     }
-    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         // Bind lambda function' parameters.
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
@@ -407,19 +407,9 @@ impl RsLetLoop {
         let mut idx = 0;
         for s in &self.param {
             env.regist(s.to_string(), vec[idx].clone_box());
-            //            if let Some(s) = p.as_any().downcast_ref::<RsSymbol>() {
-            //                env.regist(s.value.to_string(), vec[idx].clone_box());
-            //            }
             idx += 1;
         }
-        let mut results: Vec<ResultExpression> = Vec::new();
-        for e in &self.body {
-            results.push(eval(e, env));
-        }
-        if let Some(r) = results.pop() {
-            return r;
-        }
-        return Err(create_error!("E9999"));
+        return Ok(Box::new(self.clone()));
     }
 }
 impl Expression for RsLetLoop {
@@ -674,13 +664,27 @@ fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     for (k, v) in param {
         env.regist(k, v);
     }
-    let mut results: Vec<ResultExpression> = Vec::new();
+    let mut results: Vec<PtrExpression> = Vec::new();
     for e in &exp[idx as usize..] {
-        results.push(eval(e, env));
+        loop {
+            match eval(e, env) {
+                Ok(o) => {
+                    if let Some(_) = o.as_any().downcast_ref::<RsLetLoop>() {
+                        continue;
+                    } else {
+                        results.push(o);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
     }
     env.delete();
     if let Some(r) = results.pop() {
-        return r;
+        return Ok(r);
     }
     return Err(create_error!("E9999"));
 }
@@ -1129,22 +1133,18 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
         if let Some(_) = v[0].as_any().downcast_ref::<RsSymbol>() {
             let e = eval(&v[0], env)?;
             if let Some(ll) = e.as_any().downcast_ref::<RsLetLoop>() {
-                let mut func = ll.clone();
-                return func.execute(v, env);
+                return ll.execute(v, env);
             }
             if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
-                let mut func = f.clone();
-                return func.execute(v, env);
+                return f.execute(v, env);
             }
-            if let Some(f) = e.as_any().downcast_ref::<RsBuildInFunction>() {
-                let mut func = f.clone();
-                return func.execute(v, env);
+            if let Some(b) = e.as_any().downcast_ref::<RsBuildInFunction>() {
+                return b.execute(v, env);
             }
         } else if let Some(_) = v[0].as_any().downcast_ref::<RsList>() {
             let e = eval(&v[0], env)?;
             if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
-                let mut func = f.clone();
-                return func.execute(v, env);
+                return f.execute(v, env);
             } else {
                 return Err(create_error!("E1006"));
             }
