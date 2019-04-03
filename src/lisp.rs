@@ -17,6 +17,7 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
+use std::time::Instant;
 use std::vec::Vec;
 
 use crate::lisp::DataType::RsBooleanDesc;
@@ -25,7 +26,9 @@ use crate::lisp::DataType::RsCharDesc;
 use crate::lisp::DataType::RsFloatDesc;
 use crate::lisp::DataType::RsFunctionDesc;
 use crate::lisp::DataType::RsIntegerDesc;
+use crate::lisp::DataType::RsLetLoopDesc;
 use crate::lisp::DataType::RsListDesc;
+use crate::lisp::DataType::RsNilDesc;
 use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
 lazy_static! {
@@ -97,6 +100,8 @@ pub enum DataType {
     RsSymbolDesc,
     RsFunctionDesc,
     RsBuildInFunctionDesc,
+    RsLetLoopDesc,
+    RsNilDesc,
 }
 pub trait Expression: ExpressionClone {
     fn type_id(&self) -> &DataType;
@@ -242,6 +247,26 @@ impl Expression for RsSymbol {
     }
 }
 #[derive(Clone)]
+pub struct RsNil {
+    type_id: DataType,
+}
+impl RsNil {
+    fn new() -> RsNil {
+        RsNil { type_id: RsNilDesc }
+    }
+}
+impl Expression for RsNil {
+    fn value_string(&self) -> String {
+        "nil".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
 pub struct RsList {
     type_id: DataType,
     value: Vec<PtrExpression>,
@@ -283,7 +308,7 @@ impl RsBuildInFunction {
             name: _name,
         }
     }
-    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         let f = self.func;
         return f(exp, env);
     }
@@ -303,7 +328,7 @@ impl Expression for RsBuildInFunction {
 pub struct RsFunction {
     type_id: DataType,
     param: RsList,
-    body: PtrExpression,
+    body: Vec<PtrExpression>,
     name: String,
 }
 impl RsFunction {
@@ -315,15 +340,16 @@ impl RsFunction {
                 _param.value.push(Box::new(RsSymbol::new(n.value_string())));
             }
         }
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        vec.extend_from_slice(&sexp[2..]);
         RsFunction {
             type_id: RsFunctionDesc,
             param: _param,
-            body: sexp[2].clone(),
+            body: vec,
             name: _name,
         }
     }
-    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
-        // Bind lambda function' parameters.
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         if self.param.value.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
@@ -340,14 +366,112 @@ impl RsFunction {
             }
             idx += 1;
         }
-        let result = eval(&self.body, env);
+
+        let mut results: Vec<ResultExpression> = Vec::new();
+        for e in &self.body {
+            results.push(eval(e, env));
+        }
         env.delete();
-        return result;
+        if let Some(r) = results.pop() {
+            return r;
+        }
+        return Err(create_error!("E9999"));
     }
 }
 impl Expression for RsFunction {
     fn value_string(&self) -> String {
         "Function".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
+pub struct RsLetLoop {
+    type_id: DataType,
+    param: Vec<String>,
+    body: Vec<PtrExpression>,
+    name: String,
+    tail_recurcieve: bool,
+}
+impl RsLetLoop {
+    fn new(
+        sexp: &Vec<PtrExpression>,
+        _name: String,
+        map: &mut HashMap<String, PtrExpression>,
+    ) -> RsLetLoop {
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        vec.extend_from_slice(&sexp[3..]);
+
+        let mut _param: Vec<String> = Vec::new();
+        for k in map.keys() {
+            _param.push((*k).to_string());
+        }
+        RsLetLoop {
+            type_id: RsLetLoopDesc,
+            param: _param,
+            body: vec,
+            name: _name,
+            tail_recurcieve: false,
+        }
+    }
+    // exp is slice
+    fn set_tail_recurcieve(&mut self) {
+        self.tail_recurcieve = self._set_tail_recurcieve(self.body.as_slice());
+    }
+    fn _set_tail_recurcieve(&self, exp: &[PtrExpression]) -> bool {
+        for e in exp {
+            if let Some(l) = e.as_any().downcast_ref::<RsList>() {
+                if 0 == l.value.len() {
+                    continue;
+                }
+                if let Some(n) = l.value[0].as_any().downcast_ref::<RsSymbol>() {
+                    if n.value.as_str() == "if" {
+                        return self._set_tail_recurcieve(&l.value[1..]);
+                    }
+                    if n.value == self.name {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+        if self.param.len() != (exp.len() - 1) {
+            return Err(create_error!("E1007"));
+        }
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        for e in &exp[1 as usize..] {
+            let v = eval(e, env)?;
+            vec.push(v);
+        }
+        let mut idx = 0;
+        for s in &self.param {
+            env.regist(s.to_string(), vec[idx].clone_box());
+            idx += 1;
+        }
+        if self.tail_recurcieve == true {
+            return Ok(Box::new(self.clone()));
+        } else {
+            let mut results: Vec<PtrExpression> = Vec::new();
+            for exp in &self.body {
+                let r = eval(&exp, env)?;
+                results.push(r);
+            }
+            if let Some(r) = results.pop() {
+                return Ok(r);
+            }
+        }
+        return Err(create_error!("E9999"));
+    }
+}
+impl Expression for RsLetLoop {
+    fn value_string(&self) -> String {
+        "Named Let".to_string()
     }
     fn type_id(&self) -> &DataType {
         &self.type_id
@@ -509,6 +633,8 @@ impl SimpleEnv {
         b.insert("and", and);
         b.insert("or", or);
         b.insert("not", not);
+        b.insert("let", let_f);
+        b.insert("time", time_f);
 
         SimpleEnv {
             env_tbl: l,
@@ -554,6 +680,87 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn time_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+
+    let start = Instant::now();
+
+    let result = eval(&exp[1], env);
+    let end = start.elapsed();
+
+    println!("{}.{:03}", end.as_secs(), end.subsec_nanos() / 1_000_000);
+    return result;
+}
+fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() < 3 {
+        return Err(create_error!("E1007"));
+    }
+    let mut param: HashMap<String, PtrExpression> = HashMap::new();
+
+    let mut idx = 1;
+    if let Some(_) = exp[idx].as_any().downcast_ref::<RsSymbol>() {
+        idx += 1;
+    }
+    // Parameter Setup
+    if let Some(l) = exp[idx].as_any().downcast_ref::<RsList>() {
+        for plist in &l.value {
+            if let Some(p) = plist.as_any().downcast_ref::<RsList>() {
+                if p.value.len() != 2 {
+                    return Err(create_error!("E1007"));
+                }
+                if let Some(s) = p.value[0].as_any().downcast_ref::<RsSymbol>() {
+                    let v = eval(&p.value[1], env)?;
+                    param.insert(s.value_string(), v);
+                } else {
+                    return Err(create_error!("E1004"));
+                }
+            } else {
+                return Err(create_error!("E1005"));
+            }
+        }
+        idx += 1;
+    } else {
+        return Err(create_error!("E1005"));
+    }
+    // Setup label name let
+    if let Some(s) = exp[1].as_any().downcast_ref::<RsSymbol>() {
+        let mut letloop = Box::new(RsLetLoop::new(&exp, s.value_string(), &mut param));
+        letloop.set_tail_recurcieve();
+        param.insert(s.value_string(), letloop);
+    }
+
+    // execute let
+    env.create();
+    for (k, v) in param {
+        env.regist(k, v);
+    }
+    let mut results: Vec<PtrExpression> = Vec::new();
+    for e in &exp[idx as usize..] {
+        loop {
+            match eval(e, env) {
+                Ok(o) => {
+                    // tail recurcieve
+                    if let Some(_) = o.as_any().downcast_ref::<RsLetLoop>() {
+                        continue;
+                    } else {
+                        results.push(o);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        }
+    }
+    env.delete();
+    if let Some(r) = results.pop() {
+        return Ok(r);
+    }
+    return Err(create_error!("E9999"));
+}
 fn not(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
@@ -639,7 +846,7 @@ fn modulo(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     return Ok(Box::new(RsInteger::new(vec[0] % vec[1])));
 }
 fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
     if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
@@ -690,17 +897,18 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     Err(create_error!("E1004"))
 }
 fn if_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 4 {
-        return Err(create_error!("E1004"));
+    if exp.len() < 3 {
+        return Err(create_error!("E1007"));
     }
     let se = eval(&exp[1], env)?;
 
     if let Some(b) = se.as_any().downcast_ref::<RsBoolean>() {
         if b.value == true {
             return eval(&exp[2], env);
-        } else {
+        } else if 4 <= exp.len() {
             return eval(&exp[3], env);
         }
+        return Ok(Box::new(RsNil::new()));
     }
     return Err(create_error!("E1001"));
 }
@@ -963,7 +1171,7 @@ fn atom(token: &String) -> PtrExpression {
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
         match $e.type_id() {
-            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc => {
+            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc | RsNilDesc => {
                 return Ok($e.clone_box());
             }
             _ => {}
@@ -978,6 +1186,9 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             Some(v) => {
                 ret_clone_if_atom!(v);
                 if let Some(_) = v.as_any().downcast_ref::<RsFunction>() {
+                    return Ok(v.clone_box());
+                }
+                if let Some(_) = v.as_any().downcast_ref::<RsLetLoop>() {
                     return Ok(v.clone_box());
                 }
             }
@@ -995,19 +1206,19 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
         let v = &l.value;
         if let Some(_) = v[0].as_any().downcast_ref::<RsSymbol>() {
             let e = eval(&v[0], env)?;
-            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
-                let mut func = f.clone();
-                return func.execute(v, env);
+            if let Some(ll) = e.as_any().downcast_ref::<RsLetLoop>() {
+                return ll.execute(v, env);
             }
-            if let Some(f) = e.as_any().downcast_ref::<RsBuildInFunction>() {
-                let mut func = f.clone();
-                return func.execute(v, env);
+            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
+                return f.execute(v, env);
+            }
+            if let Some(b) = e.as_any().downcast_ref::<RsBuildInFunction>() {
+                return b.execute(v, env);
             }
         } else if let Some(_) = v[0].as_any().downcast_ref::<RsList>() {
             let e = eval(&v[0], env)?;
             if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
-                let mut func = f.clone();
-                return func.execute(v, env);
+                return f.execute(v, env);
             } else {
                 return Err(create_error!("E1006"));
             }
