@@ -330,10 +330,12 @@ pub struct RsFunction {
     param: RsList,
     body: Vec<PtrExpression>,
     name: String,
+    closure_env: LinkedList<HashMap<String, PtrExpression>>,
 }
 impl RsFunction {
     fn new(sexp: &Vec<PtrExpression>, _name: String) -> RsFunction {
         let mut _param = RsList::new();
+        let l: LinkedList<HashMap<String, PtrExpression>> = LinkedList::new();
 
         if let Some(val) = sexp[1].as_any().downcast_ref::<RsList>() {
             for n in &val.value[..] {
@@ -347,17 +349,30 @@ impl RsFunction {
             param: _param,
             body: vec,
             name: _name,
+            closure_env: l,
         }
     }
-    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn set_closure_env(&mut self, param: HashMap<String, PtrExpression>) {
+        self.closure_env.push_back(param);
+    }
+    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         if self.param.value.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
+        // param eval
         let mut vec: Vec<PtrExpression> = Vec::new();
         for e in &exp[1 as usize..] {
             let v = eval(e, env)?;
             vec.push(v);
         }
+        // closure set
+        for h in self.closure_env.iter() {
+            env.create();
+            for (k, v) in h {
+                env.regist(k.to_string(), v.clone_box());
+            }
+        }
+        // param set
         env.create();
         let mut idx = 0;
         for p in &self.param.value[..] {
@@ -366,12 +381,26 @@ impl RsFunction {
             }
             idx += 1;
         }
-
         let mut results: Vec<ResultExpression> = Vec::new();
         for e in &self.body {
             results.push(eval(e, env));
         }
+        // param clear
         env.delete();
+
+        // clouser env clear
+        let mut l: LinkedList<HashMap<String, PtrExpression>> = LinkedList::new();
+        for h in self.closure_env.iter_mut().rev() {
+            let mut nh: HashMap<String, PtrExpression> = HashMap::new();
+            for (k, _v) in h {
+                if let Some(exp) = env.find(k.to_string()) {
+                    nh.insert(k.to_string(), exp.clone());
+                }
+            }
+            l.push_back(nh);
+            env.delete();
+        }
+        self.closure_env = l;
         if let Some(r) = results.pop() {
             return r;
         }
@@ -635,6 +664,7 @@ impl SimpleEnv {
         b.insert("not", not);
         b.insert("let", let_f);
         b.insert("time", time_f);
+        b.insert("set!", set_f);
 
         SimpleEnv {
             env_tbl: l,
@@ -656,8 +686,8 @@ impl SimpleEnv {
         }
     }
     fn find(&self, key: String) -> Option<&PtrExpression> {
-        for exp in self.env_tbl.iter() {
-            match exp.get(&key) {
+        for h in self.env_tbl.iter() {
+            match h.get(&key) {
                 Some(v) => {
                     return Some(v);
                 }
@@ -666,13 +696,26 @@ impl SimpleEnv {
         }
         None
     }
+    fn update(&mut self, key: String, exp: PtrExpression) {
+        for h in self.env_tbl.iter_mut() {
+            match h.get(&key) {
+                Some(_) => {
+                    h.insert(key.to_string(), exp);
+                    return;
+                }
+                None => {}
+            }
+        }
+    }
     #[allow(dead_code)]
     fn dump_env(&self) {
-        println!("dump_env start");
+        println!("======== dump_env start ============");
+        let mut i = 1;
         for exp in self.env_tbl.iter() {
             for (k, v) in exp {
-                println!("{} {}", k, v.value_string());
+                println!("{} {} nest:{}", k, v.value_string(), i);
             }
+            i += 1;
         }
     }
 }
@@ -680,6 +723,22 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
+fn set_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error!("E1007"));
+    }
+    if let Some(s) = exp[1].as_any().downcast_ref::<RsSymbol>() {
+        if let Some(_) = env.find(s.value.to_string()) {
+            let se = eval(&exp[2], env)?;
+            env.update(s.value.to_string(), se);
+            return Ok(Box::new(s.clone()));
+        } else {
+            return Err(create_error!("E1008"));
+        }
+    } else {
+        return Err(create_error!("E1004"));
+    }
+}
 fn time_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
@@ -732,6 +791,7 @@ fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     }
 
     // execute let
+    let closure_env = param.clone();
     env.create();
     for (k, v) in param {
         env.regist(k, v);
@@ -757,6 +817,11 @@ fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     env.delete();
     if let Some(r) = results.pop() {
+        if let Some(f) = r.as_any().downcast_ref::<RsFunction>() {
+            let mut c = f.clone();
+            c.set_closure_env(closure_env);
+            return Ok(Box::new(c));
+        }
         return Ok(r);
     }
     return Err(create_error!("E9999"));
@@ -1204,13 +1269,17 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
             return Ok(sexp.clone_box());
         }
         let v = &l.value;
-        if let Some(_) = v[0].as_any().downcast_ref::<RsSymbol>() {
+        if let Some(s) = v[0].as_any().downcast_ref::<RsSymbol>() {
             let e = eval(&v[0], env)?;
             if let Some(ll) = e.as_any().downcast_ref::<RsLetLoop>() {
                 return ll.execute(v, env);
             }
             if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
-                return f.execute(v, env);
+                let mut c = f.clone();
+                let result = c.execute(v, env);
+                // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
+                env.update(s.value_string(), Box::new(c));
+                return result;
             }
             if let Some(b) = e.as_any().downcast_ref::<RsBuildInFunction>() {
                 return b.execute(v, env);
@@ -1218,7 +1287,7 @@ fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
         } else if let Some(_) = v[0].as_any().downcast_ref::<RsList>() {
             let e = eval(&v[0], env)?;
             if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
-                return f.execute(v, env);
+                return (f.clone()).execute(v, env);
             } else {
                 return Err(create_error!("E1006"));
             }

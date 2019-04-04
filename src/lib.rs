@@ -204,7 +204,34 @@ mod tests {
         );
     }
     #[test]
-    fn gcm() {
+    fn set_f() {
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define c 0)", &mut env);
+        do_lisp_env("(set! c 10)", &mut env);
+        assert_str!(do_lisp_env("c", &mut env), "10");
+        do_lisp_env("(set! c (+ c 1))", &mut env);
+        assert_str!(do_lisp_env("c", &mut env), "11");
+    }
+    #[test]
+    fn closure() {
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env(
+            "(define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))",
+            &mut env,
+        );
+        do_lisp_env("(define a (counter))", &mut env);
+        do_lisp_env("(define b (counter))", &mut env);
+        for _i in 0..10 {
+            do_lisp_env("(a)", &mut env);
+        }
+        for _i in 0..5 {
+            do_lisp_env("(b)", &mut env);
+        }
+        assert_str!(do_lisp_env("(a)", &mut env), "11");
+        assert_str!(do_lisp_env("(b)", &mut env), "6");
+    }
+    #[test]
+    fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(
             "(define gcm (lambda (n m) (if (= 0 (modulo n m)) m (gcm m (modulo n m)))))",
@@ -359,5 +386,12 @@ mod error_tests {
             do_lisp("(let loop ((i 0)) (if (<= 10 i) i (loop (+ i 1)(+ i 1))))"),
             "E1007"
         );
+    }
+    #[test]
+    fn set_f() {
+        let mut env = lisp::SimpleEnv::new();
+        assert_str!(do_lisp_env("(set! c)", &mut env), "E1007");
+        assert_str!(do_lisp_env("(set! 10 10)", &mut env), "E1004");
+        assert_str!(do_lisp_env("(set! c 10)", &mut env), "E1008");
     }
 }
