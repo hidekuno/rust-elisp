@@ -1013,14 +1013,15 @@ fn calc(
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
 
-        let mut param = Number::Integer(0);
-        if let Some(v) = o.as_any().downcast_ref::<RsFloat>() {
-            param = Number::Float(v.value);
-        } else if let Some(v) = o.as_any().downcast_ref::<RsInteger>() {
-            param = Number::Integer(v.value);
-        } else {
-            return Err(create_error!("E1003"));
-        }
+        let param = match o.as_any().downcast_ref::<RsFloat>() {
+            Some(v) => Number::Float(v.value),
+            None => match o.as_any().downcast_ref::<RsInteger>() {
+                Some(v) => Number::Integer(v.value),
+                None => {
+                    return Err(create_error!("E1003"));
+                }
+            },
+        };
         if first == true {
             result = param;
             first = false;
