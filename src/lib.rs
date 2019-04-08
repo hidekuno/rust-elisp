@@ -13,7 +13,7 @@ fn do_lisp(program: &str) -> String {
 fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
     match lisp::do_core_logic(program.to_string(), env) {
         Ok(v) => {
-            return v.value_string();
+            return lisp::value_string(&v);
         }
         Err(e) => {
             return String::from(e.get_code());
