@@ -77,7 +77,7 @@ macro_rules! print_error {
 }
 //========================================================================
 type ResultExpression = Result<Expression, RsError>;
-type Operation = fn(&Vec<Expression>, &mut SimpleEnv) -> ResultExpression;
+type Operation = fn(&[Expression], &mut SimpleEnv) -> ResultExpression;
 //========================================================================
 #[derive(Clone)]
 pub enum Expression {
@@ -90,6 +90,7 @@ pub enum Expression {
     Function(RsFunction),
     BuildInFunction(Operation),
     LetLoop(RsLetLoop),
+    Nil(),
 }
 
 #[derive(Clone)]
@@ -100,20 +101,16 @@ pub struct RsFunction {
     closure_env: LinkedList<HashMap<String, Expression>>,
 }
 impl RsFunction {
-    fn new(sexp: &Vec<Expression>, _name: String) -> RsFunction {
+    fn new(sexp: &[Expression], _name: String) -> RsFunction {
         let mut _param: Vec<String> = Vec::new();
         let l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
 
-        match &sexp[1] {
-            Expression::List(val) => {
-                for n in val {
-                    match n {
-                        Expression::Symbol(s) => _param.push(s.to_string()),
-                        _ => {}
-                    }
+        if let Expression::List(val) = &sexp[1] {
+            for n in val {
+                if let Expression::Symbol(s) = n {
+                    _param.push(s.to_string());
                 }
             }
-            _ => {}
         }
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
@@ -163,7 +160,7 @@ impl RsFunction {
         for h in self.closure_env.iter_mut().rev() {
             let mut nh: HashMap<String, Expression> = HashMap::new();
             for (k, _v) in h {
-                if let Some(exp) = env.find(k.to_string()) {
+                if let Some(exp) = env.find(k) {
                     nh.insert(k.to_string(), (*exp).clone());
                 }
             }
@@ -185,11 +182,7 @@ pub struct RsLetLoop {
     tail_recurcieve: bool,
 }
 impl RsLetLoop {
-    fn new(
-        sexp: &Vec<Expression>,
-        _name: String,
-        map: &mut HashMap<String, Expression>,
-    ) -> RsLetLoop {
+    fn new(sexp: &[Expression], _name: String, map: &mut HashMap<String, Expression>) -> RsLetLoop {
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[3..]);
 
@@ -210,41 +203,33 @@ impl RsLetLoop {
     }
     fn _set_tail_recurcieve(&self, exp: &[Expression]) -> bool {
         for e in exp {
-            match e {
-                Expression::List(l) => {
-                    if 0 == l.len() {
-                        continue;
+            if let Expression::List(l) = e {
+                if 0 == l.len() {
+                    continue;
+                }
+                if let Expression::Symbol(s) = &l[0] {
+                    if s.as_str() == "if" {
+                        return self._set_tail_recurcieve(&l[1..]);
                     }
-                    match &l[0] {
-                        Expression::Symbol(s) => {
-                            if s.as_str() == "if" {
-                                return self._set_tail_recurcieve(&l[1..]);
-                            }
-                            if *s == self.name {
-                                return true;
-                            }
-                        }
-                        _ => {}
+                    if *s == self.name {
+                        return true;
                     }
                 }
-                _ => {}
             }
         }
         return false;
     }
-    fn execute(&self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&self, exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
-        let mut vec: Vec<Expression> = Vec::new();
-        for e in &exp[1 as usize..] {
-            let v = eval(e, env)?;
-            vec.push(v);
-        }
-        let mut idx = 0;
+        let mut iter = exp.iter();
+        iter.next();
         for s in &self.param {
-            env.regist(s.to_string(), vec[idx].clone());
-            idx += 1;
+            if let Some(e) = iter.next() {
+                let v = eval(e, env)?;
+                env.update(s, v);
+            }
         }
         if self.tail_recurcieve == true {
             return Ok(Expression::LetLoop(self.clone()));
@@ -324,19 +309,15 @@ impl Mul for Number {
 impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
-        match self {
-            Number::Integer(x) => match other {
-                Number::Integer(y) => {
-                    if x == 0 && y == 0 {
-                        return Number::Float(std::f64::NAN);
-                    }
-                    if y == 0 {
-                        return Number::Float(std::f64::INFINITY);
-                    }
+        if let Number::Integer(x) = self {
+            if let Number::Integer(y) = other {
+                if x == 0 && y == 0 {
+                    return Number::Float(std::f64::NAN);
                 }
-                Number::Float(_) => {}
-            },
-            Number::Float(_) => {}
+                if y == 0 {
+                    return Number::Float(std::f64::INFINITY);
+                }
+            }
         }
         return Number::calc_template(self, other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
     }
@@ -390,40 +371,40 @@ impl PartialOrd for Number {
 }
 pub struct SimpleEnv {
     env_tbl: LinkedList<HashMap<String, Expression>>,
-    builtin_tbl: HashMap<&'static str, fn(&Vec<Expression>, &mut SimpleEnv) -> ResultExpression>,
+    builtin_tbl: HashMap<&'static str, Operation>,
 }
 impl SimpleEnv {
     pub fn new() -> SimpleEnv {
         let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
         l.push_back(HashMap::new());
 
-        let mut b: HashMap<&'static str, fn(&Vec<Expression>, &mut SimpleEnv) -> ResultExpression> =
-            HashMap::new();
-        b.insert("+", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        let mut b: HashMap<&'static str, Operation> = HashMap::new();
+
+        b.insert("+", |exp: &[Expression], env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x + y)
         });
-        b.insert("-", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert("-", |exp: &[Expression], env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x - y)
         });
-        b.insert("*", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert("*", |exp: &[Expression], env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x * y)
         });
-        b.insert("/", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert("/", |exp: &[Expression], env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x / y)
         });
-        b.insert("=", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert("=", |exp: &[Expression], env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x == y)
         });
-        b.insert("<", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert("<", |exp: &[Expression], env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x < y)
         });
-        b.insert("<=", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert("<=", |exp: &[Expression], env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x <= y)
         });
-        b.insert(">", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert(">", |exp: &[Expression], env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x > y)
         });
-        b.insert(">=", |exp: &Vec<Expression>, env: &mut SimpleEnv| {
+        b.insert(">=", |exp: &[Expression], env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x >= y)
         });
         b.insert("expt", expt);
@@ -457,9 +438,9 @@ impl SimpleEnv {
             None => {}
         }
     }
-    fn find(&self, key: String) -> Option<&Expression> {
+    fn find(&self, key: &String) -> Option<&Expression> {
         for h in self.env_tbl.iter() {
-            match h.get(&key) {
+            match h.get(key) {
                 Some(v) => {
                     return Some(v);
                 }
@@ -468,9 +449,9 @@ impl SimpleEnv {
         }
         None
     }
-    fn update(&mut self, key: String, exp: Expression) {
+    fn update(&mut self, key: &String, exp: Expression) {
         for h in self.env_tbl.iter_mut() {
-            match h.get(&key) {
+            match h.get(key) {
                 Some(_) => {
                     h.insert(key.to_string(), exp);
                     return;
@@ -496,27 +477,34 @@ pub fn value_string(e: &Expression) -> String {
         Expression::Integer(v) => v.to_string(),
         Expression::Float(v) => v.to_string(),
         Expression::Char(v) => v.to_string(),
-        Expression::Boolean(v) => v.to_string(),
+        Expression::Boolean(v) => {
+            if *v {
+                "#t".to_string()
+            } else {
+                "#f".to_string()
+            }
+        }
         Expression::Symbol(v) => v.to_string(),
         Expression::List(_) => String::from("List"),
         Expression::Function(_) => String::from("Function"),
         Expression::BuildInFunction(_) => String::from("BuildInFunction"),
         Expression::LetLoop(_) => String::from("LetLoop"),
+        Expression::Nil() => String::from("nil"),
     };
 }
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
-fn set_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn set_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     match &exp[1] {
         Expression::Symbol(s) => {
-            if let Some(_) = env.find(s.to_string()) {
+            if let Some(_) = env.find(s) {
                 let se = eval(&exp[2], env)?;
-                env.update(s.to_string(), se);
+                env.update(s, se);
                 return Ok(Expression::Symbol(s.to_string()));
             } else {
                 return Err(create_error!("E1008"));
@@ -527,7 +515,7 @@ fn set_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
         }
     }
 }
-fn time_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn time_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
     }
@@ -540,7 +528,7 @@ fn time_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     println!("{}.{:06}", end.as_secs(), end.subsec_nanos() / 1_000_000);
     return result;
 }
-fn let_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
@@ -573,7 +561,7 @@ fn let_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     // Setup label name let
     if let Expression::Symbol(s) = &exp[1] {
-        let mut letloop = RsLetLoop::new(&exp, s.to_string(), &mut param);
+        let mut letloop = RsLetLoop::new(exp, s.to_string(), &mut param);
         letloop.set_tail_recurcieve();
         param.insert(s.to_string(), Expression::LetLoop(letloop));
     }
@@ -587,19 +575,13 @@ fn let_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     let mut results: Vec<Expression> = Vec::new();
     for e in &exp[idx as usize..] {
         loop {
-            match eval(e, env) {
-                Ok(o) => {
-                    if let Expression::LetLoop(_) = o {
-                        // tail recurcieve
-                        continue;
-                    } else {
-                        results.push(o);
-                        break;
-                    }
-                }
-                Err(e) => {
-                    return Err(e);
-                }
+            let o = eval(e, env)?;
+            if let Expression::LetLoop(_) = o {
+                // tail recurcieve
+                continue;
+            } else {
+                results.push(o);
+                break;
             }
         }
     }
@@ -613,7 +595,7 @@ fn let_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     return Err(create_error!("E9999"));
 }
-fn not(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn not(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
     }
@@ -623,7 +605,7 @@ fn not(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     return Err(create_error!("E1001"));
 }
-fn or(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn or(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
@@ -639,7 +621,7 @@ fn or(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::Boolean(false));
 }
-fn and(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn and(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
@@ -655,7 +637,7 @@ fn and(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::Boolean(true));
 }
-fn expt(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn expt(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
@@ -679,7 +661,7 @@ fn expt(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
         return Ok(Expression::Integer(result));
     }
 }
-fn modulo(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn modulo(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
@@ -698,7 +680,7 @@ fn modulo(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::Integer(vec[0] % vec[1]));
 }
-fn lambda(exp: &Vec<Expression>, _env: &mut SimpleEnv) -> ResultExpression {
+fn lambda(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
@@ -717,7 +699,7 @@ fn lambda(exp: &Vec<Expression>, _env: &mut SimpleEnv) -> ResultExpression {
         String::from("lambda"),
     )));
 }
-fn define(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
@@ -731,7 +713,7 @@ fn define(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
             return Err(create_error!("E1007"));
         }
         if let Expression::Symbol(s) = &l[0] {
-            let mut f = exp.clone();
+            let mut f = exp.to_vec();
 
             let mut param: Vec<Expression> = Vec::new();
             for n in &l[1..] {
@@ -754,8 +736,8 @@ fn define(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
     }
     Err(create_error!("E1004"))
 }
-fn if_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 4 {
+fn if_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
     let se = eval(&exp[1], env)?;
@@ -766,11 +748,12 @@ fn if_f(exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
         } else if 4 <= exp.len() {
             return eval(&exp[3], env);
         }
+        return Ok(Expression::Nil());
     }
     return Err(create_error!("E1001"));
 }
 fn calc(
-    exp: &Vec<Expression>,
+    exp: &[Expression],
     env: &mut SimpleEnv,
     f: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
@@ -809,7 +792,7 @@ fn calc(
     }
 }
 fn op(
-    exp: &Vec<Expression>,
+    exp: &[Expression],
     env: &mut SimpleEnv,
     f: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
@@ -970,10 +953,9 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
                 break;
             }
             let mut c: i32 = 1;
-            match parse(&tokens[*count as usize..].to_vec(), &mut c) {
-                Ok(n) => list.push(n),
-                Err(e) => return Err(e),
-            }
+            let o = parse(&tokens[*count as usize..].to_vec(), &mut c)?;
+            list.push(o);
+
             *count += c;
             if tokens.len() <= *count as usize {
                 return Err(create_error!("E0002"));
@@ -1009,10 +991,11 @@ fn atom(token: &String) -> Expression {
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
         match $e {
-            Expression::Boolean(_) => return Ok($e.clone()),
-            Expression::Char(_) => return Ok($e.clone()),
-            Expression::Integer(_) => return Ok($e.clone()),
-            Expression::Float(_) => return Ok($e.clone()),
+            Expression::Boolean(v) => return Ok(Expression::Boolean(*v)),
+            Expression::Char(v) => return Ok(Expression::Char(*v)),
+            Expression::Integer(v) => return Ok(Expression::Integer(*v)),
+            Expression::Float(v) => return Ok(Expression::Float(*v)),
+            Expression::Nil() => return Ok(Expression::Nil()),
             _ => {}
         }
     };
@@ -1021,7 +1004,7 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
     ret_clone_if_atom!(sexp);
 
     if let Expression::Symbol(val) = sexp {
-        match env.find(val.to_string()) {
+        match env.find(&val) {
             Some(v) => {
                 ret_clone_if_atom!(v);
                 if let Expression::Function(_) = v {
@@ -1051,16 +1034,16 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             if let Expression::Function(mut f) = e {
                 let result = f.execute(v, env);
                 // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
-                env.update(s.to_string(), Expression::Function(f));
+                env.update(s, Expression::Function(f));
                 return result;
             }
             if let Expression::BuildInFunction(b) = e {
-                return b(v, env);
+                return b(&v[..], env);
             }
         } else if let Expression::List(_) = v[0] {
             let e = eval(&v[0], env)?;
-            if let Expression::Function(f) = e {
-                return (f.clone()).execute(v, env);
+            if let Expression::Function(mut f) = e {
+                return f.execute(v, env);
             } else {
                 return Err(create_error!("E1006"));
             }
