@@ -91,6 +91,7 @@ pub enum Expression {
     BuildInFunction(Operation),
     LetLoop(RsLetLoop),
     Nil(),
+    TailRecursion(),
 }
 
 #[derive(Clone)]
@@ -232,7 +233,7 @@ impl RsLetLoop {
             }
         }
         if self.tail_recurcieve == true {
-            return Ok(Expression::LetLoop(self.clone()));
+            return Ok(Expression::TailRecursion());
         } else {
             let mut results: Vec<Expression> = Vec::new();
             for exp in &self.body {
@@ -490,6 +491,7 @@ pub fn value_string(e: &Expression) -> String {
         Expression::BuildInFunction(_) => String::from("BuildInFunction"),
         Expression::LetLoop(_) => String::from("LetLoop"),
         Expression::Nil() => String::from("nil"),
+        Expression::TailRecursion() => String::from("tail recursion"),
     };
 }
 //========================================================================
@@ -576,7 +578,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     for e in &exp[idx as usize..] {
         loop {
             let o = eval(e, env)?;
-            if let Expression::LetLoop(_) = o {
+            if let Expression::TailRecursion() = o {
                 // tail recurcieve
                 continue;
             } else {
