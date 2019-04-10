@@ -90,8 +90,9 @@ pub enum Expression {
     Function(RsFunction),
     BuildInFunction(Operation),
     LetLoop(RsLetLoop),
+    Loop(),
     Nil(),
-    TailRecursion(),
+    TailRecursion(RsFunction),
 }
 pub trait TailRecursion {
     fn myname(&self) -> &String;
@@ -103,7 +104,7 @@ pub trait TailRecursion {
                     continue;
                 }
                 if let Expression::Symbol(s) = &l[0] {
-                    if s.as_str() == "if" {
+                    if s.as_str() == "if" || s.as_str() == "let" {
                         return self.parse_tail_recurcieve(&l[1..]);
                     }
                     if *s == *self.myname() {
@@ -121,6 +122,7 @@ pub struct RsFunction {
     body: Vec<Expression>,
     name: String,
     closure_env: LinkedList<HashMap<String, Expression>>,
+    tail_recurcieve: bool,
 }
 impl RsFunction {
     fn new(sexp: &[Expression], _name: String) -> RsFunction {
@@ -141,10 +143,29 @@ impl RsFunction {
             body: vec,
             name: _name,
             closure_env: l,
+            tail_recurcieve: false,
         }
     }
     fn set_closure_env(&mut self, map: HashMap<String, Expression>) {
         self.closure_env.push_back(map);
+    }
+    fn set_tail_recurcieve(&mut self) {
+        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
+    }
+    fn set_param(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+        // param eval
+        let mut vec: Vec<Expression> = Vec::new();
+        for e in &exp[1 as usize..] {
+            let v = eval(e, env)?;
+            vec.push(v);
+        }
+        // env set
+        let mut idx = 0;
+        for s in &self.param {
+            env.update(&s, vec[idx].clone());
+            idx += 1;
+        }
+        return Ok(Expression::TailRecursion(self.clone()));
     }
     fn execute(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
@@ -170,9 +191,25 @@ impl RsFunction {
             env.regist(s.to_string(), vec[idx].clone());
             idx += 1;
         }
+        if self.tail_recurcieve == true {
+            env.regist(
+                self.name.to_string(),
+                Expression::TailRecursion(self.clone()),
+            );
+        }
+
+        // execute!
         let mut results: Vec<ResultExpression> = Vec::new();
         for e in &self.body {
-            results.push(eval(e, env));
+            loop {
+                let v = eval(e, env)?;
+                if let Expression::TailRecursion(_) = v {
+                    continue;
+                } else {
+                    results.push(Ok(v));
+                    break;
+                }
+            }
         }
         // param clear
         env.delete();
@@ -194,6 +231,11 @@ impl RsFunction {
             return r;
         }
         return Err(create_error!("E9999"));
+    }
+}
+impl TailRecursion for RsFunction {
+    fn myname(&self) -> &String {
+        &self.name
     }
 }
 #[derive(Clone)]
@@ -236,7 +278,7 @@ impl RsLetLoop {
             }
         }
         if self.tail_recurcieve == true {
-            return Ok(Expression::TailRecursion());
+            return Ok(Expression::Loop());
         } else {
             let mut results: Vec<Expression> = Vec::new();
             for exp in &self.body {
@@ -500,7 +542,8 @@ pub fn value_string(e: &Expression) -> String {
         Expression::BuildInFunction(_) => String::from("BuildInFunction"),
         Expression::LetLoop(_) => String::from("LetLoop"),
         Expression::Nil() => String::from("nil"),
-        Expression::TailRecursion() => String::from("tail recursion"),
+        Expression::Loop() => String::from("loop"),
+        Expression::TailRecursion(_) => String::from("tail recursion"),
     };
 }
 //========================================================================
@@ -587,7 +630,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     for e in &exp[idx as usize..] {
         loop {
             let o = eval(e, env)?;
-            if let Expression::TailRecursion() = o {
+            if let Expression::Loop() = o {
                 // tail recurcieve
                 continue;
             } else {
@@ -736,10 +779,9 @@ fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
                 }
             }
             f[1] = Expression::List(param);
-            env.regist(
-                s.to_string(),
-                Expression::Function(RsFunction::new(&f, s.to_string())),
-            );
+            let mut func = RsFunction::new(&f, s.to_string());
+            func.set_tail_recurcieve();
+            env.regist(s.to_string(), Expression::Function(func));
             return Ok(Expression::Symbol(s.to_string()));
         } else {
             return Err(create_error!("E1004"));
@@ -1021,6 +1063,9 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
                 if let Expression::Function(_) = v {
                     return Ok(v.clone());
                 }
+                if let Expression::TailRecursion(_) = v {
+                    return Ok(v.clone());
+                }
                 if let Expression::LetLoop(_) = v {
                     return Ok(v.clone());
                 }
@@ -1047,6 +1092,9 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
                 // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
                 env.update(s, Expression::Function(f));
                 return result;
+            }
+            if let Expression::TailRecursion(mut f) = e {
+                return f.set_param(v, env);
             }
             if let Expression::BuildInFunction(b) = e {
                 return b(&v[..], env);
