@@ -13,7 +13,7 @@ fn do_lisp(program: &str) -> String {
 fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
     match lisp::do_core_logic(program.to_string(), env) {
         Ok(v) => {
-            return v.value_string();
+            return lisp::value_string(&v);
         }
         Err(e) => {
             return String::from(e.get_code());
@@ -234,7 +234,7 @@ mod tests {
     fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(
-            "(define gcm (lambda (n m) (if (= 0 (modulo n m)) m (gcm m (modulo n m)))))",
+            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
             &mut env,
         );
         do_lisp_env("(define (lcm n m ) (/ (* n m)(gcm n m)))", &mut env);

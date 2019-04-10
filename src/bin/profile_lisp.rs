@@ -13,7 +13,7 @@ fn main() {
         "(let loop ((i 0)) (if (<= 100000 i) i (loop (+ i 1))))".to_string(),
         &mut env,
     ) {
-        Ok(r) => println!("{}", r.value_string()),
+        Ok(r) => println!("{}", lisp::value_string(&r)),
         Err(e) => println!("{}", e.get_code()),
     }
 }
