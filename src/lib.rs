@@ -401,4 +401,13 @@ mod error_tests {
         assert_str!(do_lisp_env("(set! 10 10)", &mut env), "E1004");
         assert_str!(do_lisp_env("(set! c 10)", &mut env), "E1008");
     }
+    #[test]
+    fn sample_program() {
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env(
+            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm f mod))))",
+            &mut env,
+        );
+        assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "E1008");
+    }
 }
