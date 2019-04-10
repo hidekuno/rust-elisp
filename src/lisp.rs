@@ -93,7 +93,28 @@ pub enum Expression {
     Nil(),
     TailRecursion(),
 }
+pub trait TailRecursion {
+    fn myname(&self) -> &String;
 
+    fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
+        for e in exp {
+            if let Expression::List(l) = e {
+                if 0 == l.len() {
+                    continue;
+                }
+                if let Expression::Symbol(s) = &l[0] {
+                    if s.as_str() == "if" {
+                        return self.parse_tail_recurcieve(&l[1..]);
+                    }
+                    if *s == *self.myname() {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
 #[derive(Clone)]
 pub struct RsFunction {
     param: Vec<String>,
@@ -200,25 +221,7 @@ impl RsLetLoop {
     }
     // exp is slice
     fn set_tail_recurcieve(&mut self) {
-        self.tail_recurcieve = self._set_tail_recurcieve(self.body.as_slice());
-    }
-    fn _set_tail_recurcieve(&self, exp: &[Expression]) -> bool {
-        for e in exp {
-            if let Expression::List(l) = e {
-                if 0 == l.len() {
-                    continue;
-                }
-                if let Expression::Symbol(s) = &l[0] {
-                    if s.as_str() == "if" {
-                        return self._set_tail_recurcieve(&l[1..]);
-                    }
-                    if *s == self.name {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
     }
     fn execute(&self, exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
@@ -247,6 +250,12 @@ impl RsLetLoop {
         return Err(create_error!("E9999"));
     }
 }
+impl TailRecursion for RsLetLoop {
+    fn myname(&self) -> &String {
+        &self.name
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum Number {
     Integer(i64),
