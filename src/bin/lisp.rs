@@ -7,12 +7,14 @@
 extern crate elisp;
 use elisp::lisp;
 
+extern crate env_logger;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let args: Vec<String> = env::args().collect();
+    env_logger::init();
 
     if args.len() < 2 {
         lisp::do_interactive();
