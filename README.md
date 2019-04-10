@@ -23,3 +23,9 @@ export PATH=$PATH:/home/kunohi/.cargo/bin
 cargo build --release --bin profile_lisp
 cargo profiler callgrind --bin ./target/release/profile_lisp -n 10
 ```
+
+debug
+```
+RUST_LOG=debug cargo run --bin lisp
+```
+
