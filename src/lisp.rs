@@ -512,6 +512,11 @@ impl SimpleEnv {
             }
         }
     }
+    fn cleanup(&mut self) {
+        while self.env_tbl.len() >= 2 {
+            self.delete();
+        }
+    }
     #[allow(dead_code)]
     fn dump_env(&self) {
         println!("======== dump_env start ============");
@@ -522,6 +527,13 @@ impl SimpleEnv {
             }
             i += 1;
         }
+    }
+    #[allow(dead_code)]
+    fn dump_env_level(&self) {
+        println!(
+            "======== dump_env level {} ============",
+            self.env_tbl.len()
+        );
     }
 }
 pub fn value_string(e: &Expression) -> String {
@@ -902,6 +914,8 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv) {
             Ok(n) => println!("{}", value_string(&n)),
             Err(e) => print_error!(e),
         }
+        // for error_handle
+        env.cleanup();
         program.clear();
         prompt = PROMPT;
     }
