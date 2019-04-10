@@ -234,7 +234,7 @@ mod tests {
     fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(
-            "(define gcm (lambda (n m) (if (= 0 (modulo n m)) m (gcm m (modulo n m)))))",
+            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
             &mut env,
         );
         do_lisp_env("(define (lcm n m ) (/ (* n m)(gcm n m)))", &mut env);
