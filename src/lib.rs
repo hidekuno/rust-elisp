@@ -240,6 +240,13 @@ mod tests {
         do_lisp_env("(define (lcm n m ) (/ (* n m)(gcm n m)))", &mut env);
         assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
         assert_str!(do_lisp_env("(lcm 36 27)", &mut env), "108");
+
+        // No tail recursion
+        do_lisp_env(
+            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (gcm m mod)))))",
+            &mut env,
+        );
+        assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
     }
 }
 mod error_tests {
