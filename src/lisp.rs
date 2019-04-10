@@ -19,6 +19,8 @@ use std::ops::Sub;
 use std::time::Instant;
 use std::vec::Vec;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -519,11 +521,11 @@ impl SimpleEnv {
     }
     #[allow(dead_code)]
     fn dump_env(&self) {
-        println!("======== dump_env start ============");
+        debug!("======== dump_env start ============");
         let mut i = 1;
         for exp in self.env_tbl.iter() {
             for (k, v) in exp {
-                println!("{} {} nest:{}", k, value_string(v), i);
+                debug!("{} {} nest:{}", k, value_string(v), i);
             }
             i += 1;
         }
