@@ -4,6 +4,7 @@
 
    hidekuno@gmail.com
 */
+use std::any::Any;
 use std::cmp::Ordering;
 use std::cmp::PartialEq;
 use std::cmp::PartialOrd;
@@ -19,6 +20,16 @@ use std::ops::Sub;
 use std::time::Instant;
 use std::vec::Vec;
 
+use crate::lisp::DataType::RsBooleanDesc;
+use crate::lisp::DataType::RsBuildInFunctionDesc;
+use crate::lisp::DataType::RsCharDesc;
+use crate::lisp::DataType::RsFloatDesc;
+use crate::lisp::DataType::RsFunctionDesc;
+use crate::lisp::DataType::RsIntegerDesc;
+use crate::lisp::DataType::RsLetLoopDesc;
+use crate::lisp::DataType::RsListDesc;
+use crate::lisp::DataType::RsNilDesc;
+use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -76,103 +87,280 @@ macro_rules! print_error {
     };
 }
 //========================================================================
-type ResultExpression = Result<Expression, RsError>;
-type Operation = fn(&[Expression], &mut SimpleEnv) -> ResultExpression;
+type PtrExpression = Box<Expression>;
+type ResultExpression = Result<PtrExpression, RsError>;
 //========================================================================
-#[derive(Clone)]
-pub enum Expression {
-    Integer(i64),
-    Float(f64),
-    Char(char),
-    Boolean(bool),
-    List(Vec<Expression>),
-    Symbol(String),
-    Function(RsFunction),
-    BuildInFunction(Operation),
-    LetLoop(RsLetLoop),
-    Loop(),
-    Nil(),
-    TailRecursion(RsFunction),
+#[derive(Copy, Clone)]
+pub enum DataType {
+    RsIntegerDesc,
+    RsFloatDesc,
+    RsCharDesc,
+    RsBooleanDesc,
+    RsListDesc,
+    RsSymbolDesc,
+    RsFunctionDesc,
+    RsBuildInFunctionDesc,
+    RsLetLoopDesc,
+    RsNilDesc,
 }
-pub trait TailRecursion {
-    fn myname(&self) -> &String;
+pub trait Expression: ExpressionClone {
+    fn type_id(&self) -> &DataType;
+    fn value_string(&self) -> String;
+    fn as_any(&self) -> &Any;
+}
+pub trait ExpressionClone {
+    fn clone_box(&self) -> PtrExpression;
+}
+impl<T: 'static + Expression + Clone> ExpressionClone for T {
+    fn clone_box(&self) -> PtrExpression {
+        Box::new(self.clone())
+    }
+}
+impl Clone for PtrExpression {
+    fn clone(&self) -> PtrExpression {
+        self.clone_box()
+    }
+}
 
-    fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
-        for e in exp {
-            if let Expression::List(l) = e {
-                if 0 == l.len() {
-                    continue;
-                }
-                if let Expression::Symbol(s) = &l[0] {
-                    if s.as_str() == "if" || s.as_str() == "let" {
-                        return self.parse_tail_recurcieve(&l[1..]);
-                    }
-                    if *s == *self.myname() {
-                        return true;
-                    }
-                }
-            }
+#[derive(Copy, Clone)]
+pub struct RsInteger {
+    type_id: DataType,
+    value: i64,
+}
+impl RsInteger {
+    fn new(p: i64) -> RsInteger {
+        RsInteger {
+            type_id: RsIntegerDesc,
+            value: p,
         }
-        return false;
+    }
+}
+impl Expression for RsInteger {
+    fn value_string(&self) -> String {
+        self.value.to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Copy, Clone)]
+pub struct RsFloat {
+    type_id: DataType,
+    value: f64,
+}
+impl RsFloat {
+    fn new(p: f64) -> RsFloat {
+        RsFloat {
+            type_id: RsFloatDesc,
+            value: p,
+        }
+    }
+}
+impl Expression for RsFloat {
+    fn value_string(&self) -> String {
+        self.value.to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Copy, Clone)]
+pub struct RsBoolean {
+    type_id: DataType,
+    value: bool,
+}
+impl RsBoolean {
+    fn new(p: bool) -> RsBoolean {
+        RsBoolean {
+            type_id: RsBooleanDesc,
+            value: p,
+        }
+    }
+}
+impl Expression for RsBoolean {
+    fn value_string(&self) -> String {
+        let mut b: String = String::from("#f");
+        if self.value == true {
+            b = String::from("#t");
+        }
+        b
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Copy, Clone)]
+pub struct RsChar {
+    type_id: DataType,
+    value: char,
+}
+impl RsChar {
+    fn new(p: char) -> RsChar {
+        RsChar {
+            type_id: RsCharDesc,
+            value: p,
+        }
+    }
+}
+impl Expression for RsChar {
+    fn value_string(&self) -> String {
+        self.value.to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
+pub struct RsSymbol {
+    type_id: DataType,
+    value: String,
+}
+impl RsSymbol {
+    fn new(p: String) -> RsSymbol {
+        RsSymbol {
+            type_id: RsSymbolDesc,
+            value: p,
+        }
+    }
+}
+impl Expression for RsSymbol {
+    fn value_string(&self) -> String {
+        self.value.to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
+pub struct RsNil {
+    type_id: DataType,
+}
+impl RsNil {
+    fn new() -> RsNil {
+        RsNil { type_id: RsNilDesc }
+    }
+}
+impl Expression for RsNil {
+    fn value_string(&self) -> String {
+        "nil".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+#[derive(Clone)]
+pub struct RsList {
+    type_id: DataType,
+    value: Vec<PtrExpression>,
+}
+impl RsList {
+    fn new() -> RsList {
+        RsList {
+            type_id: RsListDesc,
+            value: Vec::new(),
+        }
+    }
+}
+impl Expression for RsList {
+    fn value_string(&self) -> String {
+        "List".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct RsBuildInFunction {
+    type_id: DataType,
+    name: String,
+    func: fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
+}
+impl RsBuildInFunction {
+    fn new(
+        _func: fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
+        _name: String,
+    ) -> RsBuildInFunction {
+        RsBuildInFunction {
+            type_id: RsBuildInFunctionDesc,
+            func: _func,
+            name: _name,
+        }
+    }
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+        let f = self.func;
+        return f(exp, env);
+    }
+}
+impl Expression for RsBuildInFunction {
+    fn value_string(&self) -> String {
+        "BuildIn Function".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
     }
 }
 #[derive(Clone)]
 pub struct RsFunction {
-    param: Vec<String>,
-    body: Vec<Expression>,
+    type_id: DataType,
+    param: RsList,
+    body: Vec<PtrExpression>,
     name: String,
-    closure_env: LinkedList<HashMap<String, Expression>>,
-    tail_recurcieve: bool,
+    closure_env: LinkedList<HashMap<String, PtrExpression>>,
 }
 impl RsFunction {
-    fn new(sexp: &[Expression], _name: String) -> RsFunction {
-        let mut _param: Vec<String> = Vec::new();
-        let l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
+    fn new(sexp: &Vec<PtrExpression>, _name: String) -> RsFunction {
+        let mut _param = RsList::new();
+        let l: LinkedList<HashMap<String, PtrExpression>> = LinkedList::new();
 
-        if let Expression::List(val) = &sexp[1] {
-            for n in val {
-                if let Expression::Symbol(s) = n {
-                    _param.push(s.to_string());
-                }
+        if let Some(val) = sexp[1].as_any().downcast_ref::<RsList>() {
+            for n in &val.value[..] {
+                _param.value.push(Box::new(RsSymbol::new(n.value_string())));
             }
         }
-        let mut vec: Vec<Expression> = Vec::new();
+        let mut vec: Vec<PtrExpression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
         RsFunction {
+            type_id: RsFunctionDesc,
             param: _param,
             body: vec,
             name: _name,
             closure_env: l,
-            tail_recurcieve: false,
         }
     }
-    fn set_closure_env(&mut self, map: HashMap<String, Expression>) {
-        self.closure_env.push_back(map);
+    fn set_closure_env(&mut self, param: HashMap<String, PtrExpression>) {
+        self.closure_env.push_back(param);
     }
-    fn set_tail_recurcieve(&mut self) {
-        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
-    }
-    fn set_param(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
-        // param eval
-        let mut vec: Vec<Expression> = Vec::new();
-        for e in &exp[1 as usize..] {
-            let v = eval(e, env)?;
-            vec.push(v);
-        }
-        // env set
-        let mut idx = 0;
-        for s in &self.param {
-            env.update(&s, vec[idx].clone());
-            idx += 1;
-        }
-        return Ok(Expression::TailRecursion(self.clone()));
-    }
-    fn execute(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
-        if self.param.len() != (exp.len() - 1) {
+    fn execute(&mut self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
+        if self.param.value.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
         // param eval
-        let mut vec: Vec<Expression> = Vec::new();
+        let mut vec: Vec<PtrExpression> = Vec::new();
         for e in &exp[1 as usize..] {
             let v = eval(e, env)?;
             vec.push(v);
@@ -181,46 +369,32 @@ impl RsFunction {
         for h in self.closure_env.iter() {
             env.create();
             for (k, v) in h {
-                env.regist(k.to_string(), v.clone());
+                env.regist(k.to_string(), v.clone_box());
             }
         }
         // param set
         env.create();
         let mut idx = 0;
-        for s in &self.param {
-            env.regist(s.to_string(), vec[idx].clone());
+        for p in &self.param.value[..] {
+            if let Some(s) = p.as_any().downcast_ref::<RsSymbol>() {
+                env.regist(s.value.to_string(), vec[idx].clone_box());
+            }
             idx += 1;
         }
-        if self.tail_recurcieve == true {
-            env.regist(
-                self.name.to_string(),
-                Expression::TailRecursion(self.clone()),
-            );
-        }
-
-        // execute!
         let mut results: Vec<ResultExpression> = Vec::new();
         for e in &self.body {
-            loop {
-                let v = eval(e, env)?;
-                if let Expression::TailRecursion(_) = v {
-                    continue;
-                } else {
-                    results.push(Ok(v));
-                    break;
-                }
-            }
+            results.push(eval(e, env));
         }
         // param clear
         env.delete();
 
         // clouser env clear
-        let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
+        let mut l: LinkedList<HashMap<String, PtrExpression>> = LinkedList::new();
         for h in self.closure_env.iter_mut().rev() {
-            let mut nh: HashMap<String, Expression> = HashMap::new();
+            let mut nh: HashMap<String, PtrExpression> = HashMap::new();
             for (k, _v) in h {
-                if let Some(exp) = env.find(k) {
-                    nh.insert(k.to_string(), (*exp).clone());
+                if let Some(exp) = env.find(k.to_string()) {
+                    nh.insert(k.to_string(), exp.clone());
                 }
             }
             l.push_back(nh);
@@ -233,21 +407,32 @@ impl RsFunction {
         return Err(create_error!("E9999"));
     }
 }
-impl TailRecursion for RsFunction {
-    fn myname(&self) -> &String {
-        &self.name
+impl Expression for RsFunction {
+    fn value_string(&self) -> String {
+        "Function".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
     }
 }
 #[derive(Clone)]
 pub struct RsLetLoop {
+    type_id: DataType,
     param: Vec<String>,
-    body: Vec<Expression>,
+    body: Vec<PtrExpression>,
     name: String,
     tail_recurcieve: bool,
 }
 impl RsLetLoop {
-    fn new(sexp: &[Expression], _name: String, map: &mut HashMap<String, Expression>) -> RsLetLoop {
-        let mut vec: Vec<Expression> = Vec::new();
+    fn new(
+        sexp: &Vec<PtrExpression>,
+        _name: String,
+        map: &mut HashMap<String, PtrExpression>,
+    ) -> RsLetLoop {
+        let mut vec: Vec<PtrExpression> = Vec::new();
         vec.extend_from_slice(&sexp[3..]);
 
         let mut _param: Vec<String> = Vec::new();
@@ -255,6 +440,7 @@ impl RsLetLoop {
             _param.push((*k).to_string());
         }
         RsLetLoop {
+            type_id: RsLetLoopDesc,
             param: _param,
             body: vec,
             name: _name,
@@ -263,24 +449,44 @@ impl RsLetLoop {
     }
     // exp is slice
     fn set_tail_recurcieve(&mut self) {
-        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
+        self.tail_recurcieve = self._set_tail_recurcieve(self.body.as_slice());
     }
-    fn execute(&self, exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    fn _set_tail_recurcieve(&self, exp: &[PtrExpression]) -> bool {
+        for e in exp {
+            if let Some(l) = e.as_any().downcast_ref::<RsList>() {
+                if 0 == l.value.len() {
+                    continue;
+                }
+                if let Some(n) = l.value[0].as_any().downcast_ref::<RsSymbol>() {
+                    if n.value.as_str() == "if" {
+                        return self._set_tail_recurcieve(&l.value[1..]);
+                    }
+                    if n.value == self.name {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    fn execute(&self, exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error!("E1007"));
         }
-        let mut iter = exp.iter();
-        iter.next();
+        let mut vec: Vec<PtrExpression> = Vec::new();
+        for e in &exp[1 as usize..] {
+            let v = eval(e, env)?;
+            vec.push(v);
+        }
+        let mut idx = 0;
         for s in &self.param {
-            if let Some(e) = iter.next() {
-                let v = eval(e, env)?;
-                env.update(s, v);
-            }
+            env.regist(s.to_string(), vec[idx].clone_box());
+            idx += 1;
         }
         if self.tail_recurcieve == true {
-            return Ok(Expression::Loop());
+            return Ok(Box::new(self.clone()));
         } else {
-            let mut results: Vec<Expression> = Vec::new();
+            let mut results: Vec<PtrExpression> = Vec::new();
             for exp in &self.body {
                 let r = eval(&exp, env)?;
                 results.push(r);
@@ -292,12 +498,17 @@ impl RsLetLoop {
         return Err(create_error!("E9999"));
     }
 }
-impl TailRecursion for RsLetLoop {
-    fn myname(&self) -> &String {
-        &self.name
+impl Expression for RsLetLoop {
+    fn value_string(&self) -> String {
+        "Named Let".to_string()
+    }
+    fn type_id(&self) -> &DataType {
+        &self.type_id
+    }
+    fn as_any(&self) -> &Any {
+        self
     }
 }
-
 #[derive(Debug, Copy, Clone)]
 pub enum Number {
     Integer(i64),
@@ -361,15 +572,19 @@ impl Mul for Number {
 impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
-        if let Number::Integer(x) = self {
-            if let Number::Integer(y) = other {
-                if x == 0 && y == 0 {
-                    return Number::Float(std::f64::NAN);
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => {
+                    if x == 0 && y == 0 {
+                        return Number::Float(std::f64::NAN);
+                    }
+                    if y == 0 {
+                        return Number::Float(std::f64::INFINITY);
+                    }
                 }
-                if y == 0 {
-                    return Number::Float(std::f64::INFINITY);
-                }
-            }
+                Number::Float(_) => {}
+            },
+            Number::Float(_) => {}
         }
         return Number::calc_template(self, other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
     }
@@ -422,41 +637,43 @@ impl PartialOrd for Number {
     }
 }
 pub struct SimpleEnv {
-    env_tbl: LinkedList<HashMap<String, Expression>>,
-    builtin_tbl: HashMap<&'static str, Operation>,
+    env_tbl: LinkedList<HashMap<String, PtrExpression>>,
+    builtin_tbl: HashMap<&'static str, fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression>,
 }
 impl SimpleEnv {
     pub fn new() -> SimpleEnv {
-        let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
+        let mut l: LinkedList<HashMap<String, PtrExpression>> = LinkedList::new();
         l.push_back(HashMap::new());
 
-        let mut b: HashMap<&'static str, Operation> = HashMap::new();
-
-        b.insert("+", |exp: &[Expression], env: &mut SimpleEnv| {
+        let mut b: HashMap<
+            &'static str,
+            fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
+        > = HashMap::new();
+        b.insert("+", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x + y)
         });
-        b.insert("-", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("-", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x - y)
         });
-        b.insert("*", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("*", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x * y)
         });
-        b.insert("/", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("/", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             calc(exp, env, |x: Number, y: Number| x / y)
         });
-        b.insert("=", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x == y)
         });
-        b.insert("<", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("<", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x < y)
         });
-        b.insert("<=", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("<=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x <= y)
         });
-        b.insert(">", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert(">", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x > y)
         });
-        b.insert(">=", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert(">=", |exp: &Vec<PtrExpression>, env: &mut SimpleEnv| {
             op(exp, env, |x: &Number, y: &Number| x >= y)
         });
         b.insert("expt", expt);
@@ -482,7 +699,7 @@ impl SimpleEnv {
     fn delete(&mut self) {
         self.env_tbl.pop_front();
     }
-    fn regist(&mut self, key: String, exp: Expression) {
+    fn regist(&mut self, key: String, exp: PtrExpression) {
         match self.env_tbl.front_mut() {
             Some(m) => {
                 m.insert(key, exp);
@@ -490,9 +707,9 @@ impl SimpleEnv {
             None => {}
         }
     }
-    fn find(&self, key: &String) -> Option<&Expression> {
+    fn find(&self, key: String) -> Option<&PtrExpression> {
         for h in self.env_tbl.iter() {
-            match h.get(key) {
+            match h.get(&key) {
                 Some(v) => {
                     return Some(v);
                 }
@@ -501,9 +718,9 @@ impl SimpleEnv {
         }
         None
     }
-    fn update(&mut self, key: &String, exp: Expression) {
+    fn update(&mut self, key: String, exp: PtrExpression) {
         for h in self.env_tbl.iter_mut() {
-            match h.get(key) {
+            match h.get(&key) {
                 Some(_) => {
                     h.insert(key.to_string(), exp);
                     return;
@@ -518,58 +735,33 @@ impl SimpleEnv {
         let mut i = 1;
         for exp in self.env_tbl.iter() {
             for (k, v) in exp {
-                println!("{} {} nest:{}", k, value_string(v), i);
+                println!("{} {} nest:{}", k, v.value_string(), i);
             }
             i += 1;
         }
     }
 }
-pub fn value_string(e: &Expression) -> String {
-    return match e {
-        Expression::Integer(v) => v.to_string(),
-        Expression::Float(v) => v.to_string(),
-        Expression::Char(v) => v.to_string(),
-        Expression::Boolean(v) => {
-            if *v {
-                "#t".to_string()
-            } else {
-                "#f".to_string()
-            }
-        }
-        Expression::Symbol(v) => v.to_string(),
-        Expression::List(_) => String::from("List"),
-        Expression::Function(_) => String::from("Function"),
-        Expression::BuildInFunction(_) => String::from("BuildInFunction"),
-        Expression::LetLoop(_) => String::from("LetLoop"),
-        Expression::Nil() => String::from("nil"),
-        Expression::Loop() => String::from("loop"),
-        Expression::TailRecursion(_) => String::from("tail recursion"),
-    };
-}
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 //========================================================================
-fn set_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn set_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
-    match &exp[1] {
-        Expression::Symbol(s) => {
-            if let Some(_) = env.find(s) {
-                let se = eval(&exp[2], env)?;
-                env.update(s, se);
-                return Ok(Expression::Symbol(s.to_string()));
-            } else {
-                return Err(create_error!("E1008"));
-            }
+    if let Some(s) = exp[1].as_any().downcast_ref::<RsSymbol>() {
+        if let Some(_) = env.find(s.value.to_string()) {
+            let se = eval(&exp[2], env)?;
+            env.update(s.value.to_string(), se);
+            return Ok(Box::new(s.clone()));
+        } else {
+            return Err(create_error!("E1008"));
         }
-        _ => {
-            return Err(create_error!("E1004"));
-        }
+    } else {
+        return Err(create_error!("E1004"));
     }
 }
-fn time_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn time_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
     }
@@ -579,29 +771,29 @@ fn time_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     let result = eval(&exp[1], env);
     let end = start.elapsed();
 
-    println!("{}.{:06}", end.as_secs(), end.subsec_nanos() / 1_000_000);
+    println!("{}.{:03}", end.as_secs(), end.subsec_nanos() / 1_000_000);
     return result;
 }
-fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn let_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
-    let mut param: HashMap<String, Expression> = HashMap::new();
+    let mut param: HashMap<String, PtrExpression> = HashMap::new();
 
     let mut idx = 1;
-    if let Expression::Symbol(_) = exp[idx] {
+    if let Some(_) = exp[idx].as_any().downcast_ref::<RsSymbol>() {
         idx += 1;
     }
     // Parameter Setup
-    if let Expression::List(l) = &exp[idx] {
-        for plist in l {
-            if let Expression::List(p) = plist {
-                if p.len() != 2 {
+    if let Some(l) = exp[idx].as_any().downcast_ref::<RsList>() {
+        for plist in &l.value {
+            if let Some(p) = plist.as_any().downcast_ref::<RsList>() {
+                if p.value.len() != 2 {
                     return Err(create_error!("E1007"));
                 }
-                if let Expression::Symbol(s) = &p[0] {
-                    let v = eval(&p[1], env)?;
-                    param.insert(s.to_string(), v.clone());
+                if let Some(s) = p.value[0].as_any().downcast_ref::<RsSymbol>() {
+                    let v = eval(&p.value[1], env)?;
+                    param.insert(s.value_string(), v);
                 } else {
                     return Err(create_error!("E1004"));
                 }
@@ -614,10 +806,10 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Err(create_error!("E1005"));
     }
     // Setup label name let
-    if let Expression::Symbol(s) = &exp[1] {
-        let mut letloop = RsLetLoop::new(exp, s.to_string(), &mut param);
+    if let Some(s) = exp[1].as_any().downcast_ref::<RsSymbol>() {
+        let mut letloop = Box::new(RsLetLoop::new(&exp, s.value_string(), &mut param));
         letloop.set_tail_recurcieve();
-        param.insert(s.to_string(), Expression::LetLoop(letloop));
+        param.insert(s.value_string(), letloop);
     }
 
     // execute let
@@ -626,80 +818,87 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     for (k, v) in param {
         env.regist(k, v);
     }
-    let mut results: Vec<Expression> = Vec::new();
+    let mut results: Vec<PtrExpression> = Vec::new();
     for e in &exp[idx as usize..] {
         loop {
-            let o = eval(e, env)?;
-            if let Expression::Loop() = o {
-                // tail recurcieve
-                continue;
-            } else {
-                results.push(o);
-                break;
+            match eval(e, env) {
+                Ok(o) => {
+                    // tail recurcieve
+                    if let Some(_) = o.as_any().downcast_ref::<RsLetLoop>() {
+                        continue;
+                    } else {
+                        results.push(o);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
         }
     }
     env.delete();
     if let Some(r) = results.pop() {
-        if let Expression::Function(mut f) = r {
-            f.set_closure_env(closure_env);
-            return Ok(Expression::Function(f));
+        if let Some(f) = r.as_any().downcast_ref::<RsFunction>() {
+            let mut c = f.clone();
+            c.set_closure_env(closure_env);
+            return Ok(Box::new(c));
         }
         return Ok(r);
     }
     return Err(create_error!("E9999"));
 }
-fn not(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn not(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
     }
     let o = eval(&exp[1], env)?;
-    if let Expression::Boolean(b) = o {
-        return Ok(Expression::Boolean(!b));
+    if let Some(b) = o.as_any().downcast_ref::<RsBoolean>() {
+        return Ok(Box::new(RsBoolean::new(!b.value)));
     }
     return Err(create_error!("E1001"));
 }
-fn or(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn or(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
-        if let Expression::Boolean(b) = o {
-            if b == true {
-                return Ok(Expression::Boolean(b));
+        if let Some(b) = o.as_any().downcast_ref::<RsBoolean>() {
+            if b.value == true {
+                return Ok(o.clone_box());
             }
         } else {
             return Err(create_error!("E1001"));
         }
     }
-    return Ok(Expression::Boolean(false));
+    return Ok(Box::new(RsBoolean::new(false)));
 }
-fn and(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn and(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
-        if let Expression::Boolean(b) = o {
-            if b == false {
-                return Ok(Expression::Boolean(b));
+        if let Some(b) = o.as_any().downcast_ref::<RsBoolean>() {
+            if b.value == false {
+                return Ok(o.clone_box());
             }
         } else {
             return Err(create_error!("E1001"));
         }
     }
-    return Ok(Expression::Boolean(true));
+    return Ok(Box::new(RsBoolean::new(true)));
 }
-fn expt(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn expt(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     let mut vec: Vec<i64> = Vec::new();
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
-        if let Expression::Integer(i) = o {
-            vec.push(i);
+        if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            vec.push(i.value);
         } else {
             return Err(create_error!("E1002"));
         }
@@ -710,21 +909,20 @@ fn expt(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         result *= vec[0];
     }
     if vec[1] < 0 {
-        return Ok(Expression::Float(1 as f64 / result as f64));
+        return Ok(Box::new(RsFloat::new(1 as f64 / result as f64)));
     } else {
-        return Ok(Expression::Integer(result));
+        return Ok(Box::new(RsInteger::new(result)));
     }
 }
-fn modulo(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn modulo(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     let mut vec: Vec<i64> = Vec::new();
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
-
-        if let Expression::Integer(i) = o {
-            vec.push(i);
+        if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            vec.push(i.value);
         } else {
             return Err(create_error!("E1002"));
         }
@@ -732,81 +930,77 @@ fn modulo(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if vec[1] == 0 {
         return Err(create_error!("E1013"));
     }
-    return Ok(Expression::Integer(vec[0] % vec[1]));
+    return Ok(Box::new(RsInteger::new(vec[0] % vec[1])));
 }
-fn lambda(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
+fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
-    if let Expression::List(l) = &exp[1] {
-        for e in l {
-            match e {
-                Expression::Symbol(_) => {}
+    if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
+        for e in &l.value {
+            match e.type_id() {
+                RsSymbolDesc => {}
                 _ => return Err(create_error!("E1004")),
             }
         }
     } else {
         return Err(create_error!("E1005"));
     }
-    return Ok(Expression::Function(RsFunction::new(
-        exp,
-        String::from("lambda"),
-    )));
+    return Ok(Box::new(RsFunction::new(exp, String::from("lambda"))));
 }
-fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
-    if let Expression::Symbol(v) = &exp[1] {
+    if let Some(v) = exp[1].as_any().downcast_ref::<RsSymbol>() {
         let se = eval(&exp[2], env)?;
-        env.regist(v.to_string(), se);
-        return Ok(Expression::Symbol(v.to_string()));
+        env.regist(v.value.to_string(), se);
+        return Ok(Box::new(v.clone()));
     }
-    if let Expression::List(l) = &exp[1] {
-        if l.len() < 1 {
+    if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
+        if l.value.len() < 1 {
             return Err(create_error!("E1007"));
         }
-        if let Expression::Symbol(s) = &l[0] {
-            let mut f = exp.to_vec();
-
-            let mut param: Vec<Expression> = Vec::new();
-            for n in &l[1..] {
-                match n {
-                    Expression::Symbol(_) => {
-                        param.push(n.clone());
-                    }
+        if let Some(s) = l.value[0].as_any().downcast_ref::<RsSymbol>() {
+            let mut f = exp.clone();
+            let mut param = RsList::new();
+            for n in &l.value[1..] {
+                match (*n).type_id() {
+                    RsSymbolDesc => {}
                     _ => return Err(create_error!("E1004")),
                 }
+                param.value.push((*n).clone());
             }
-            f[1] = Expression::List(param);
-            let mut func = RsFunction::new(&f, s.to_string());
-            func.set_tail_recurcieve();
-            env.regist(s.to_string(), Expression::Function(func));
-            return Ok(Expression::Symbol(s.to_string()));
+            f[1] = Box::new(param);
+            env.regist(
+                s.value.to_string(),
+                Box::new(RsFunction::new(&f, s.value.to_string())),
+            );
+            return Ok(Box::new(s.clone()));
         } else {
             return Err(create_error!("E1004"));
         }
     }
     Err(create_error!("E1004"))
 }
-fn if_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn if_f(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error!("E1007"));
     }
     let se = eval(&exp[1], env)?;
 
-    if let Expression::Boolean(b) = se {
-        if b == true {
+    if let Some(b) = se.as_any().downcast_ref::<RsBoolean>() {
+        if b.value == true {
             return eval(&exp[2], env);
         } else if 4 <= exp.len() {
             return eval(&exp[3], env);
         }
-        return Ok(Expression::Nil());
+        return Ok(Box::new(RsNil::new()));
     }
     return Err(create_error!("E1001"));
 }
 fn calc(
-    exp: &[Expression],
+    exp: &Vec<PtrExpression>,
     env: &mut SimpleEnv,
     f: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
@@ -819,11 +1013,11 @@ fn calc(
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
 
-        let param = match o {
-            Expression::Float(v) => Number::Float(v),
-            _ => match o {
-                Expression::Integer(v) => Number::Integer(v),
-                _ => {
+        let param = match o.as_any().downcast_ref::<RsFloat>() {
+            Some(v) => Number::Float(v.value),
+            None => match o.as_any().downcast_ref::<RsInteger>() {
+                Some(v) => Number::Integer(v.value),
+                None => {
                     return Err(create_error!("E1003"));
                 }
             },
@@ -837,15 +1031,15 @@ fn calc(
     }
     match result {
         Number::Integer(a) => {
-            return Ok(Expression::Integer(a));
+            return Ok(Box::new(RsInteger::new(a)));
         }
         Number::Float(a) => {
-            return Ok(Expression::Float(a));
+            return Ok(Box::new(RsFloat::new(a)));
         }
     }
 }
 fn op(
-    exp: &[Expression],
+    exp: &Vec<PtrExpression>,
     env: &mut SimpleEnv,
     f: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
@@ -856,15 +1050,15 @@ fn op(
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
 
-        match o {
-            Expression::Float(f) => vec.push(Number::Float(f)),
-            Expression::Integer(i) => vec.push(Number::Integer(i)),
-            _ => {
-                return Err(create_error!("E1003"));
-            }
+        if let Some(f) = o.as_any().downcast_ref::<RsFloat>() {
+            vec.push(Number::Float(f.value));
+        } else if let Some(i) = o.as_any().downcast_ref::<RsInteger>() {
+            vec.push(Number::Integer(i.value));
+        } else {
+            return Err(create_error!("E1003"));
         }
     }
-    return Ok(Expression::Boolean(f(&vec[0], &vec[1])));
+    return Ok(Box::new(RsBoolean::new(f(&vec[0], &vec[1]))));
 }
 pub fn do_interactive() {
     let mut env = SimpleEnv::new();
@@ -899,7 +1093,7 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv) {
         }
         //do_core_logic(program.iter().cloned().collect::<String>());
         match do_core_logic(program.join(" "), env) {
-            Ok(n) => println!("{}", value_string(&n)),
+            Ok(n) => println!("{}", n.value_string()),
             Err(e) => print_error!(e),
         }
         program.clear();
@@ -997,7 +1191,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
         if tokens.len() <= 1 {
             return Err(create_error!("E0001"));
         }
-        let mut list: Vec<Expression> = Vec::new();
+        let mut list = RsList::new();
 
         *count = 1;
         loop {
@@ -1006,15 +1200,16 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
                 break;
             }
             let mut c: i32 = 1;
-            let o = parse(&tokens[*count as usize..].to_vec(), &mut c)?;
-            list.push(o);
-
+            match parse(&tokens[*count as usize..].to_vec(), &mut c) {
+                Ok(n) => list.value.push(n),
+                Err(e) => return Err(e),
+            }
             *count += c;
             if tokens.len() <= *count as usize {
                 return Err(create_error!("E0002"));
             }
         }
-        Ok(Expression::List(list))
+        Ok(Box::new(list))
     } else if ")" == token {
         Err(create_error!("E0002"))
     } else {
@@ -1022,87 +1217,80 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
         Ok(exp)
     }
 }
-fn atom(token: &String) -> Expression {
+fn atom(token: &String) -> PtrExpression {
     if let Ok(n) = token.parse::<i64>() {
-        return Expression::Integer(n);
+        return Box::new(RsInteger::new(n));
     }
     if let Ok(n) = token.parse::<f64>() {
-        return Expression::Float(n);
+        return Box::new(RsFloat::new(n));
     }
     if token.as_str() == "#t" {
-        return Expression::Boolean(true);
+        return Box::new(RsBoolean::new(true));
     }
     if token.as_str() == "#f" {
-        return Expression::Boolean(false);
+        return Box::new(RsBoolean::new(false));
     }
     if (token.len() == 3) && (&token.as_str()[0..2] == "#\\") {
         let c = token.chars().collect::<Vec<char>>();
-        return Expression::Char(c[2]);
+        return Box::new(RsChar::new(c[2]));
     }
-    return Expression::Symbol(token.to_string());
+    return Box::new(RsSymbol::new(token.to_string()));
 }
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
-        match $e {
-            Expression::Boolean(v) => return Ok(Expression::Boolean(*v)),
-            Expression::Char(v) => return Ok(Expression::Char(*v)),
-            Expression::Integer(v) => return Ok(Expression::Integer(*v)),
-            Expression::Float(v) => return Ok(Expression::Float(*v)),
-            Expression::Nil() => return Ok(Expression::Nil()),
+        match $e.type_id() {
+            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc | RsNilDesc => {
+                return Ok($e.clone_box());
+            }
             _ => {}
         }
     };
 }
-fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
+fn eval(sexp: &PtrExpression, env: &mut SimpleEnv) -> ResultExpression {
     ret_clone_if_atom!(sexp);
 
-    if let Expression::Symbol(val) = sexp {
-        match env.find(&val) {
+    if let Some(val) = (*sexp).as_any().downcast_ref::<RsSymbol>() {
+        match env.find(val.value.to_string()) {
             Some(v) => {
                 ret_clone_if_atom!(v);
-                if let Expression::Function(_) = v {
-                    return Ok(v.clone());
+                if let Some(_) = v.as_any().downcast_ref::<RsFunction>() {
+                    return Ok(v.clone_box());
                 }
-                if let Expression::TailRecursion(_) = v {
-                    return Ok(v.clone());
-                }
-                if let Expression::LetLoop(_) = v {
-                    return Ok(v.clone());
+                if let Some(_) = v.as_any().downcast_ref::<RsLetLoop>() {
+                    return Ok(v.clone_box());
                 }
             }
             None => {}
         }
-        if let Some(f) = env.builtin_tbl.get(val.as_str()) {
-            return Ok(Expression::BuildInFunction(*f));
+        if let Some(f) = env.builtin_tbl.get(val.value.as_str()) {
+            return Ok(Box::new(RsBuildInFunction::new(*f, val.value.to_string())));
         }
         return Err(create_error!("E1008"));
     }
-    if let Expression::List(l) = sexp {
-        if l.len() == 0 {
-            return Ok(sexp.clone());
+    if let Some(l) = (*sexp).as_any().downcast_ref::<RsList>() {
+        if l.value.len() == 0 {
+            return Ok(sexp.clone_box());
         }
-        let v = &l;
-        if let Expression::Symbol(s) = &v[0] {
+        let v = &l.value;
+        if let Some(s) = v[0].as_any().downcast_ref::<RsSymbol>() {
             let e = eval(&v[0], env)?;
-            if let Expression::LetLoop(ll) = e {
+            if let Some(ll) = e.as_any().downcast_ref::<RsLetLoop>() {
                 return ll.execute(v, env);
             }
-            if let Expression::Function(mut f) = e {
-                let result = f.execute(v, env);
+            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
+                let mut c = f.clone();
+                let result = c.execute(v, env);
                 // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
-                env.update(s, Expression::Function(f));
+                env.update(s.value_string(), Box::new(c));
                 return result;
             }
-            if let Expression::TailRecursion(mut f) = e {
-                return f.set_param(v, env);
+            if let Some(b) = e.as_any().downcast_ref::<RsBuildInFunction>() {
+                return b.execute(v, env);
             }
-            if let Expression::BuildInFunction(b) = e {
-                return b(&v[..], env);
-            }
-        } else if let Expression::List(_) = v[0] {
+        } else if let Some(_) = v[0].as_any().downcast_ref::<RsList>() {
             let e = eval(&v[0], env)?;
-            if let Expression::Function(mut f) = e {
-                return f.execute(v, env);
+            if let Some(f) = e.as_any().downcast_ref::<RsFunction>() {
+                return (f.clone()).execute(v, env);
             } else {
                 return Err(create_error!("E1006"));
             }

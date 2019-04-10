@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             program.push(l);
         }
         match lisp::do_core_logic(program.join(" "), &mut env) {
-            Ok(r) => println!("{}", r.value_string()),
+            Ok(r) => println!("{}", lisp::value_string(&r)),
             Err(e) => println!("{}", e.get_code()),
         }
     }
