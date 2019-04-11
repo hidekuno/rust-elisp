@@ -16,6 +16,7 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
+use std::rc::Rc;
 use std::time::Instant;
 use std::vec::Vec;
 
@@ -89,12 +90,12 @@ pub enum Expression {
     Boolean(bool),
     List(Vec<Expression>),
     Symbol(String),
-    Function(RsFunction),
+    Function(Rc<RsFunction>),
     BuildInFunction(Operation),
-    LetLoop(RsLetLoop),
+    LetLoop(Rc<RsLetLoop>),
     Loop(),
     Nil(),
-    TailRecursion(RsFunction),
+    TailRecursion(Rc<RsFunction>),
 }
 pub trait TailRecursion {
     fn myname(&self) -> &String;
@@ -154,7 +155,7 @@ impl RsFunction {
     fn set_tail_recurcieve(&mut self) {
         self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
     }
-    fn set_param(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn set_param(&self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
         for e in &exp[1 as usize..] {
@@ -167,7 +168,7 @@ impl RsFunction {
             env.update(&s, vec[idx].clone());
             idx += 1;
         }
-        return Ok(Expression::TailRecursion(self.clone()));
+        return Ok(Expression::TailRecursion(Rc::new(self.clone())));
     }
     fn execute(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
@@ -196,7 +197,7 @@ impl RsFunction {
         if self.tail_recurcieve == true {
             env.regist(
                 self.name.to_string(),
-                Expression::TailRecursion(self.clone()),
+                Expression::TailRecursion(Rc::new(self.clone())),
             );
         }
 
@@ -631,7 +632,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if let Expression::Symbol(s) = &exp[1] {
         let mut letloop = RsLetLoop::new(exp, s.to_string(), &mut param);
         letloop.set_tail_recurcieve();
-        param.insert(s.to_string(), Expression::LetLoop(letloop));
+        param.insert(s.to_string(), Expression::LetLoop(Rc::new(letloop)));
     }
 
     // execute let
@@ -655,9 +656,10 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     env.delete();
     if let Some(r) = results.pop() {
-        if let Expression::Function(mut f) = r {
+        if let Expression::Function(mut rc) = r {
+            let f = Rc::get_mut(&mut rc).unwrap();
             f.set_closure_env(closure_env);
-            return Ok(Expression::Function(f));
+            return Ok(Expression::Function(rc));
         }
         return Ok(r);
     }
@@ -762,10 +764,10 @@ fn lambda(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
     } else {
         return Err(create_error!("E1005"));
     }
-    return Ok(Expression::Function(RsFunction::new(
+    return Ok(Expression::Function(Rc::new(RsFunction::new(
         exp,
         String::from("lambda"),
-    )));
+    ))));
 }
 fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
@@ -795,7 +797,7 @@ fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             f[1] = Expression::List(param);
             let mut func = RsFunction::new(&f, s.to_string());
             func.set_tail_recurcieve();
-            env.regist(s.to_string(), Expression::Function(func));
+            env.regist(s.to_string(), Expression::Function(Rc::new(func)));
             return Ok(Expression::Symbol(s.to_string()));
         } else {
             return Err(create_error!("E1004"));
@@ -989,8 +991,8 @@ fn tokenize(program: String) -> Vec<String> {
                 if s.len() - 1 == i {
                     token.push(String::from(symbol_name.as_str()));
                 } else {
-                    match vc[i + 1] {
-                        0x28 | 0x29 | 0x20 => {
+                    match vc[i + 1] as char {
+                        '(' | ')' | ' ' => {
                             token.push(String::from(symbol_name.as_str()));
                             symbol_name.clear();
                         }
@@ -1103,13 +1105,14 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             if let Expression::LetLoop(ll) = e {
                 return ll.execute(v, env);
             }
-            if let Expression::Function(mut f) = e {
+            if let Expression::Function(mut rc) = e {
+                let f = Rc::make_mut(&mut rc);
                 let result = f.execute(v, env);
                 // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
-                env.update(s, Expression::Function(f));
+                env.update(s, Expression::Function(rc));
                 return result;
             }
-            if let Expression::TailRecursion(mut f) = e {
+            if let Expression::TailRecursion(f) = e {
                 return f.set_param(v, env);
             }
             if let Expression::BuildInFunction(b) = e {
@@ -1117,7 +1120,9 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             }
         } else if let Expression::List(_) = v[0] {
             let e = eval(&v[0], env)?;
-            if let Expression::Function(mut f) = e {
+
+            if let Expression::Function(mut rc) = e {
+                let f = Rc::make_mut(&mut rc);
                 return f.execute(v, env);
             } else {
                 return Err(create_error!("E1006"));
