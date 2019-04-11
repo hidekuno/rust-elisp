@@ -11,6 +11,8 @@ RustによるLisp(subset版)の実装
 ```
 
 ```
+cargo init --lib elisp
+mv elisp rust-elisp
 cargo run --bin lisp
 cargo test --lib
 cargo build --help
