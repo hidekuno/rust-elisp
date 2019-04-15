@@ -20,16 +20,6 @@ use std::ops::Sub;
 use std::time::Instant;
 use std::vec::Vec;
 
-use crate::lisp::DataType::RsBooleanDesc;
-use crate::lisp::DataType::RsBuildInFunctionDesc;
-use crate::lisp::DataType::RsCharDesc;
-use crate::lisp::DataType::RsFloatDesc;
-use crate::lisp::DataType::RsFunctionDesc;
-use crate::lisp::DataType::RsIntegerDesc;
-use crate::lisp::DataType::RsLetLoopDesc;
-use crate::lisp::DataType::RsListDesc;
-use crate::lisp::DataType::RsNilDesc;
-use crate::lisp::DataType::RsSymbolDesc;
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -130,7 +120,7 @@ pub struct RsInteger {
 impl RsInteger {
     fn new(p: i64) -> RsInteger {
         RsInteger {
-            type_id: RsIntegerDesc,
+            type_id: DataType::RsIntegerDesc,
             value: p,
         }
     }
@@ -154,7 +144,7 @@ pub struct RsFloat {
 impl RsFloat {
     fn new(p: f64) -> RsFloat {
         RsFloat {
-            type_id: RsFloatDesc,
+            type_id: DataType::RsFloatDesc,
             value: p,
         }
     }
@@ -178,7 +168,7 @@ pub struct RsBoolean {
 impl RsBoolean {
     fn new(p: bool) -> RsBoolean {
         RsBoolean {
-            type_id: RsBooleanDesc,
+            type_id: DataType::RsBooleanDesc,
             value: p,
         }
     }
@@ -206,7 +196,7 @@ pub struct RsChar {
 impl RsChar {
     fn new(p: char) -> RsChar {
         RsChar {
-            type_id: RsCharDesc,
+            type_id: DataType::RsCharDesc,
             value: p,
         }
     }
@@ -230,7 +220,7 @@ pub struct RsSymbol {
 impl RsSymbol {
     fn new(p: String) -> RsSymbol {
         RsSymbol {
-            type_id: RsSymbolDesc,
+            type_id: DataType::RsSymbolDesc,
             value: p,
         }
     }
@@ -252,7 +242,9 @@ pub struct RsNil {
 }
 impl RsNil {
     fn new() -> RsNil {
-        RsNil { type_id: RsNilDesc }
+        RsNil {
+            type_id: DataType::RsNilDesc,
+        }
     }
 }
 impl Expression for RsNil {
@@ -274,7 +266,7 @@ pub struct RsList {
 impl RsList {
     fn new() -> RsList {
         RsList {
-            type_id: RsListDesc,
+            type_id: DataType::RsListDesc,
             value: Vec::new(),
         }
     }
@@ -303,7 +295,7 @@ impl RsBuildInFunction {
         _name: String,
     ) -> RsBuildInFunction {
         RsBuildInFunction {
-            type_id: RsBuildInFunctionDesc,
+            type_id: DataType::RsBuildInFunctionDesc,
             func: _func,
             name: _name,
         }
@@ -345,7 +337,7 @@ impl RsFunction {
         let mut vec: Vec<PtrExpression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
         RsFunction {
-            type_id: RsFunctionDesc,
+            type_id: DataType::RsFunctionDesc,
             param: _param,
             body: vec,
             name: _name,
@@ -440,7 +432,7 @@ impl RsLetLoop {
             _param.push((*k).to_string());
         }
         RsLetLoop {
-            type_id: RsLetLoopDesc,
+            type_id: DataType::RsLetLoopDesc,
             param: _param,
             body: vec,
             name: _name,
@@ -939,7 +931,7 @@ fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
     if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
         for e in &l.value {
             match e.type_id() {
-                RsSymbolDesc => {}
+                DataType::RsSymbolDesc => {}
                 _ => return Err(create_error!("E1004")),
             }
         }
@@ -966,7 +958,7 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
             let mut param = RsList::new();
             for n in &l.value[1..] {
                 match (*n).type_id() {
-                    RsSymbolDesc => {}
+                    DataType::RsSymbolDesc => {}
                     _ => return Err(create_error!("E1004")),
                 }
                 param.value.push((*n).clone());
@@ -1239,7 +1231,11 @@ fn atom(token: &String) -> PtrExpression {
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
         match $e.type_id() {
-            RsBooleanDesc | RsCharDesc | RsIntegerDesc | RsFloatDesc | RsNilDesc => {
+            DataType::RsBooleanDesc
+            | DataType::RsCharDesc
+            | DataType::RsIntegerDesc
+            | DataType::RsFloatDesc
+            | DataType::RsNilDesc => {
                 return Ok($e.clone_box());
             }
             _ => {}
