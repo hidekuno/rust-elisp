@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+pub mod dyn_lisp;
 pub mod lisp;
 
 #[allow(dead_code)]
