@@ -6,6 +6,9 @@ pub mod dyn_lisp;
 pub mod lisp;
 use crate::lisp::EvalResult;
 
+//        assert_str!(do_lisp(""), "");
+//        let mut env = lisp::SimpleEnv::new();
+//        assert_str!(do_lisp_env("", &mut env), "");
 #[allow(dead_code)]
 fn do_lisp(program: &str) -> String {
     let mut env = lisp::SimpleEnv::new();
@@ -236,12 +239,167 @@ mod tests {
     fn list() {
         assert_str!(do_lisp("(list 1 2)"), "(1 2)");
         assert_str!(do_lisp("(list 0.5 1)"), "(0.5 1)");
-
+        assert_str!(do_lisp("(list #t #f)"), "(#t #f)");
         assert_str!(do_lisp("(list (list 1)(list 2))"), "((1)(2))");
         assert_str!(
             do_lisp("(list (list (list 1))(list 2)(list 3))"),
             "(((1))(2)(3))"
         );
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 10)", &mut env);
+        do_lisp_env("(define b 20)", &mut env);
+        assert_str!(do_lisp_env("(list a b)", &mut env), "(10 20)");
+    }
+    #[test]
+    fn null_f() {
+        assert_str!(do_lisp("(null? (list))"), "#t");
+        assert_str!(do_lisp("(null? (list 10))"), "#f");
+        assert_str!(do_lisp("(null? 10)"), "#f");
+    }
+    #[test]
+    fn length() {
+        assert_str!(do_lisp("(length (list))"), "0");
+        assert_str!(do_lisp("(length (list 3))"), "1");
+        assert_str!(do_lisp("(length (iota 10))"), "10");
+    }
+    #[test]
+    fn car() {
+        assert_str!(do_lisp("(car (list 1))"), "1");
+        assert_str!(do_lisp("(car (list (list 2)))"), "(2)");
+        assert_str!(
+            do_lisp("(car (list (list (list 1))(list 2)(list 3)))"),
+            "((1))"
+        );
+        assert_str!(do_lisp("(car (cons 10 20))"), "10");
+    }
+    #[test]
+    fn cdr() {
+        assert_str!(do_lisp("(cdr (list 1 2))"), "(2)");
+        assert_str!(do_lisp("(cdr (list 1 0.5))"), "(0.5)");
+        assert_str!(do_lisp("(cdr (list 1 (list 3)))"), "((3))");
+        assert_str!(do_lisp("(cdr (cons 1 2))"), "2");
+    }
+    #[test]
+    fn cadr() {
+        assert_str!(do_lisp("(cadr (list 1 2))"), "2");
+        assert_str!(do_lisp("(cadr (list 1 2 3))"), "2");
+    }
+    #[test]
+    fn cons() {
+        assert_str!(do_lisp("(cons  1 2)"), "(1 . 2)");
+        assert_str!(do_lisp("(cons 1.5 2.5)"), "(1.5 . 2.5)");
+        assert_str!(do_lisp("(cons  1 1.5)"), "(1 . 1.5)");
+        assert_str!(do_lisp("(cons 1 (list 2))"), "(1 2)");
+        assert_str!(do_lisp("(cons (list 1)(list 2))"), "((1) 2)");
+    }
+    #[test]
+    fn append() {
+        assert_str!(do_lisp("(append (list 1)(list 2))"), "(1 2)");
+        assert_str!(do_lisp("(append (list 1)(list 2)(list 3))"), "(1 2 3)");
+        assert_str!(
+            do_lisp("(append (list (list 10))(list 2)(list 3))"),
+            "((10) 2 3)"
+        );
+        assert_str!(do_lisp("(append (iota 5) (list 100))"), "(0 1 2 3 4 100)");
+    }
+    #[test]
+    fn last() {
+        assert_str!(do_lisp("(last (list 1))"), "1");
+        assert_str!(do_lisp("(last (list 1 2))"), "2");
+        assert_str!(do_lisp("(last (cons 1 2))"), "1");
+    }
+    #[test]
+    fn reverse() {
+        assert_str!(do_lisp("(reverse (list 10))"), "(10)");
+        //        assert_str!(do_lisp(""), "");
+        //        assert_str!(do_lisp(""), "");
+        assert_str!(do_lisp("(reverse (iota 10))"), "(9 8 7 6 5 4 3 2 1 0)");
+        assert_str!(do_lisp("(reverse (list))"), "()");
+    }
+    #[test]
+    fn iota() {
+        assert_str!(do_lisp("(iota 10)"), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_str!(do_lisp("(iota 10 1)"), "(1 2 3 4 5 6 7 8 9 10)");
+        assert_str!(do_lisp("(iota 1 10)"), "(10)");
+    }
+    #[test]
+    fn map() {
+        assert_str!(
+            do_lisp("(map (lambda (n) (* n 10)) (iota 10 1))"),
+            "(10 20 30 40 50 60 70 80 90 100)"
+        );
+        assert_str!(do_lisp("(map (lambda (n) (car n)) (list))"), "()");
+
+        assert_str!(
+            do_lisp("(map (lambda (n) (car n)) (list (list 1)(list 2)(list 3)))"),
+            "(1 2 3)"
+        );
+        assert_str!(
+            do_lisp("(map (lambda (n) (car n)) (list (list (list 1))(list 2)(list 3)))"),
+            "((1) 2 3)"
+        );
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b 200)", &mut env);
+        do_lisp_env("(define c 300)", &mut env);
+
+        assert_str!(
+            do_lisp_env(
+                "(map (lambda (n)(map (lambda (m)(/ m 10)) n))(list (list 10 20 30)(list a b c)))",
+                &mut env
+            ),
+            "((1 2 3)(10 20 30))"
+        );
+    }
+    #[test]
+    fn filter() {
+        assert_str!(
+            do_lisp("(filter (lambda (n) (= 0 (modulo n 2))) (iota 10 1))"),
+            "(2 4 6 8 10)"
+        );
+        assert_str!(
+            do_lisp("(filter (lambda (n) (not (= 0 (modulo n 2)))) (iota 10 1))"),
+            "(1 3 5 7 9)"
+        );
+
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b 200)", &mut env);
+        do_lisp_env("(define c 300)", &mut env);
+        assert_str!(
+            do_lisp_env("(filter (lambda (n) (= n 100)) (list a b c))", &mut env),
+            "(100)"
+        );
+        assert_str!(
+            do_lisp_env(
+                "(filter (lambda (n) (not (= n 100))) (list a b c))",
+                &mut env
+            ),
+            "(200 300)"
+        );
+    }
+    #[test]
+    fn reduce() {
+        assert_str!(do_lisp("(reduce (lambda (a b) (+ a b))(list 1 2 3))"), "6");
+        assert_str!(
+            do_lisp("(reduce (lambda (a b) (append a b))(list (list 1) (list 2) (list 3)))"),
+            "(1 2 3)"
+        );
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b 200)", &mut env);
+        do_lisp_env("(define c 300)", &mut env);
+        assert_str!(
+            do_lisp_env("(reduce (lambda (a b) (+ a b))(list a b c))", &mut env),
+            "600"
+        );
+    }
+    #[test]
+    fn for_each() {
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define c 0)", &mut env);
+        do_lisp_env("(for-each (lambda (n) (set! c (+ c n)))(iota 5))", &mut env);
+        assert_str!(do_lisp_env("c", &mut env), "10");
     }
     #[test]
     fn sample_program() {
@@ -414,6 +572,37 @@ mod error_tests {
         assert_str!(do_lisp_env("(set! 10 10)", &mut env), "E1004");
         assert_str!(do_lisp_env("(set! c 10)", &mut env), "E1008");
     }
+    #[test]
+    fn list() {}
+    #[test]
+    fn null_f() {}
+    #[test]
+    fn length() {}
+    #[test]
+    fn car() {}
+    #[test]
+    fn cdr() {}
+    #[test]
+    fn cadr() {}
+    #[test]
+    fn cons() {}
+    #[test]
+    fn append() {}
+    #[test]
+    fn last() {}
+    #[test]
+    fn reverse() {}
+    #[test]
+    fn iota() {}
+    #[test]
+    fn map() {}
+    #[test]
+    fn filter() {}
+    #[test]
+    fn reduce() {}
+    #[test]
+    fn for_each() {}
+
     #[test]
     fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
