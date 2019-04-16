@@ -278,6 +278,7 @@ mod tests {
         assert_str!(do_lisp("(cdr (list 1 0.5))"), "(0.5)");
         assert_str!(do_lisp("(cdr (list 1 (list 3)))"), "((3))");
         assert_str!(do_lisp("(cdr (cons 1 2))"), "2");
+        assert_str!(do_lisp("(cdr (list 1))"), "()");
     }
     #[test]
     fn cadr() {
@@ -573,35 +574,111 @@ mod error_tests {
         assert_str!(do_lisp_env("(set! c 10)", &mut env), "E1008");
     }
     #[test]
-    fn list() {}
+    fn list() {
+        assert_str!(do_lisp("(list c 10)"), "E1008");
+    }
     #[test]
-    fn null_f() {}
+    fn null_f() {
+        assert_str!(do_lisp("(null?)"), "E1007");
+        assert_str!(do_lisp("(null? (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(null? c)"), "E1008");
+    }
     #[test]
-    fn length() {}
+    fn length() {
+        assert_str!(do_lisp("(length)"), "E1007");
+        assert_str!(do_lisp("(length (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(length (cons 1 2))"), "E1005");
+    }
     #[test]
-    fn car() {}
+    fn car() {
+        assert_str!(do_lisp("(car)"), "E1007");
+        assert_str!(do_lisp("(car (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(car l)"), "E1008");
+        assert_str!(do_lisp("(car (list))"), "E1011");
+        assert_str!(do_lisp("(car 10)"), "E1005");
+    }
     #[test]
-    fn cdr() {}
+    fn cdr() {
+        assert_str!(do_lisp("(cdr)"), "E1007");
+        assert_str!(do_lisp("(cdr (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(cdr (list c))"), "E1008");
+        assert_str!(do_lisp("(cdr (list))"), "E1011");
+        assert_str!(do_lisp("(cdr 200)"), "E1005");
+    }
     #[test]
-    fn cadr() {}
+    fn cadr() {
+        assert_str!(do_lisp("(cadr)"), "E1007");
+        assert_str!(do_lisp("(cadr (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(cadr c)"), "E1008");
+        assert_str!(do_lisp("(cadr (list 1))"), "E1011");
+        assert_str!(do_lisp("(cadr 991)"), "E1005");
+    }
     #[test]
-    fn cons() {}
+    fn cons() {
+        assert_str!(do_lisp("(cons)"), "E1007");
+        assert_str!(do_lisp("(cons (list 1)(list 2)(list 3))"), "E1007");
+    }
     #[test]
-    fn append() {}
+    fn append() {
+        assert_str!(do_lisp("(append)"), "E1007");
+        assert_str!(do_lisp("(append (list 1))"), "E1007");
+        assert_str!(do_lisp("(append (list 1) 105)"), "E1005");
+    }
     #[test]
-    fn last() {}
+    fn last() {
+        assert_str!(do_lisp("(last)"), "E1007");
+        assert_str!(do_lisp("(last (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(last (list))"), "E1011");
+        assert_str!(do_lisp("(last 29)"), "E1005");
+    }
     #[test]
-    fn reverse() {}
+    fn reverse() {
+        assert_str!(do_lisp("(reverse)"), "E1007");
+        assert_str!(do_lisp("(reverse (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(reverse 29)"), "E1005");
+    }
     #[test]
-    fn iota() {}
+    fn iota() {
+        assert_str!(do_lisp("(iota)"), "E1007");
+        assert_str!(do_lisp("(iota 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(iota 1.5 2)"), "E1002");
+        assert_str!(do_lisp("(iota 1 10.5)"), "E1002");
+    }
     #[test]
-    fn map() {}
+    fn map() {
+        assert_str!(do_lisp("(map)"), "E1007");
+        assert_str!(do_lisp("(map (lambda (n) n))"), "E1007");
+        assert_str!(do_lisp("(map 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(map (iota 10) (lambda (n) n))"), "E1006");
+        assert_str!(do_lisp("(map  (lambda (n) n) 10)"), "E1005");
+    }
     #[test]
-    fn filter() {}
+    fn filter() {
+        assert_str!(do_lisp("(filter)"), "E1007");
+        assert_str!(do_lisp("(filter (lambda (n) n))"), "E1007");
+        assert_str!(do_lisp("(filter 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(filter (iota 10) (lambda (n) n))"), "E1006");
+        assert_str!(do_lisp("(filter (lambda (n) n) 10)"), "E1005");
+        assert_str!(do_lisp("(filter (lambda (n) n) (iota 4))"), "E1001");
+    }
     #[test]
-    fn reduce() {}
+    fn reduce() {
+        assert_str!(do_lisp("(reduce)"), "E1007");
+        assert_str!(do_lisp("(reduce (lambda (n) n))"), "E1007");
+        assert_str!(do_lisp("(reduce 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(reduce (lambda (n) n) (list))"), "E1011");
+        assert_str!(do_lisp("(reduce (list) (list))"), "E1006");
+        assert_str!(do_lisp("(reduce (lambda (n) n) 10)"), "E1005");
+        assert_str!(do_lisp("(reduce (lambda (n) n) (iota 4))"), "E1007");
+    }
     #[test]
-    fn for_each() {}
+    fn for_each() {
+        assert_str!(do_lisp("(for-each)"), "E1007");
+        assert_str!(do_lisp("(for-each (lambda (n) n))"), "E1007");
+        assert_str!(do_lisp("(for-each 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(for-each (list) (list))"), "E1006");
+        assert_str!(do_lisp("(for-each (lambda (n) n) 10)"), "E1005");
+    }
 
     #[test]
     fn sample_program() {
