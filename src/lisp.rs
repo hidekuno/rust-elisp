@@ -531,6 +531,7 @@ impl SimpleEnv {
         b.insert("cadr", cadr);
         b.insert("cons", cons);
         b.insert("append", append);
+        b.insert("last", last);
         b.insert("reverse", reverse);
         b.insert("iota", iota);
         b.insert("map", map);
@@ -979,6 +980,25 @@ fn append(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::List(v));
 }
+fn last(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+    let o = eval(&exp[1], env)?;
+
+    if let Expression::List(l) = o {
+        if 0 == l.len() {
+            return Err(create_error!("E1011"));
+        }
+        return Ok(l[l.len() - 1].clone());
+    }
+    if let Expression::Pair(car, _) = o {
+        return Ok(*car.clone());
+    }
+
+    return Err(create_error!("E1005"));
+}
+
 fn reverse(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
