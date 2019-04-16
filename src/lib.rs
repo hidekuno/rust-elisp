@@ -4,6 +4,7 @@ extern crate lazy_static;
 
 pub mod dyn_lisp;
 pub mod lisp;
+use crate::lisp::EvalResult;
 
 #[allow(dead_code)]
 fn do_lisp(program: &str) -> String {
@@ -14,7 +15,7 @@ fn do_lisp(program: &str) -> String {
 fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
     match lisp::do_core_logic(program.to_string(), env) {
         Ok(v) => {
-            return lisp::value_string(&v);
+            return v.value_string();
         }
         Err(e) => {
             return String::from(e.get_code());
