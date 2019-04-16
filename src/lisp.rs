@@ -1024,6 +1024,8 @@ fn iota(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         let o = eval(e, env)?;
         if let Expression::Integer(e) = o {
             max = e;
+        } else {
+            return Err(create_error!("E1002"));
         }
     }
     if let Some(e) = it.next() {
@@ -1031,6 +1033,8 @@ fn iota(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         if let Expression::Integer(e) = o {
             i = e;
             max += i;
+        } else {
+            return Err(create_error!("E1002"));
         }
     }
     for v in i..max {
@@ -1039,7 +1043,7 @@ fn iota(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     Ok(Expression::List(l))
 }
 fn map(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() <= 2 {
+    if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     if let Expression::Function(mut rc) = eval(&exp[1], env)? {
@@ -1058,7 +1062,7 @@ fn map(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
 }
 fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() <= 2 {
+    if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     if let Expression::Function(mut rc) = eval(&exp[1], env)? {
@@ -1085,7 +1089,7 @@ fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
 }
 fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() <= 2 {
+    if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     if let Expression::Function(mut rc) = eval(&exp[1], env)? {
@@ -1112,7 +1116,7 @@ fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
 }
 fn for_each(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() <= 2 {
+    if exp.len() != 3 {
         return Err(create_error!("E1007"));
     }
     if let Expression::Function(mut rc) = eval(&exp[1], env)? {
