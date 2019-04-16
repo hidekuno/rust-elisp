@@ -879,9 +879,9 @@ fn null_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     let o = eval(&exp[1], env)?;
     if let Expression::List(l) = o {
-        Ok(Expression::Boolean(l.len() == 0))
+        return Ok(Expression::Boolean(l.len() == 0));
     } else {
-        Err(create_error!("E1005"))
+        return Ok(Expression::Boolean(false));
     }
 }
 fn length(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
