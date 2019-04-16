@@ -5,6 +5,7 @@
    hidekuno@gmail.com
 */
 extern crate elisp;
+use crate::lisp::EvalResult;
 use elisp::lisp;
 
 extern crate env_logger;
@@ -28,7 +29,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             program.push(l);
         }
         match lisp::do_core_logic(program.join(" "), &mut env) {
-            Ok(r) => println!("{}", lisp::value_string(&r)),
+            Ok(r) => println!("{}", r.value_string()),
             Err(e) => println!("{}", e.get_code()),
         }
     }
