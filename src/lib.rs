@@ -233,6 +233,17 @@ mod tests {
         assert_str!(do_lisp_env("(b)", &mut env), "6");
     }
     #[test]
+    fn list() {
+        assert_str!(do_lisp("(list 1 2)"), "(1 2)");
+        assert_str!(do_lisp("(list 0.5 1)"), "(0.5 1)");
+
+        assert_str!(do_lisp("(list (list 1)(list 2))"), "((1)(2))");
+        assert_str!(
+            do_lisp("(list (list (list 1))(list 2)(list 3))"),
+            "(((1))(2)(3))"
+        );
+    }
+    #[test]
     fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(
