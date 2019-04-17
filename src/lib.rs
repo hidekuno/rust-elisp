@@ -343,6 +343,10 @@ mod tests {
         do_lisp_env("(define a 100)", &mut env);
         do_lisp_env("(define b 200)", &mut env);
         do_lisp_env("(define c 300)", &mut env);
+        do_lisp_env(
+            "(define d (list (list (list 1))(list (list 2))(list (list 3))))",
+            &mut env,
+        );
 
         assert_str!(
             do_lisp_env(
@@ -350,6 +354,10 @@ mod tests {
                 &mut env
             ),
             "((1 2 3)(10 20 30))"
+        );
+        assert_str!(
+            do_lisp_env("(map (lambda (n) (car n)) d)", &mut env),
+            "((1)(2)(3))"
         );
     }
     #[test]
@@ -508,6 +516,7 @@ mod error_tests {
         assert_str!(do_lisp_env("(lambda (a b))", &mut env), "E1007");
         assert_str!(do_lisp_env("(lambda  a (+ a b))", &mut env), "E1005");
         assert_str!(do_lisp_env("(lambda (a 1) (+ a 10))", &mut env), "E1004");
+        assert_str!(do_lisp_env("((list 1) 10)", &mut env), "E1006");
 
         do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &mut env);
         assert_str!(do_lisp_env("(hoge 10 ga)", &mut env), "E1008");
