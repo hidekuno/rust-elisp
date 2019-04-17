@@ -1165,12 +1165,8 @@ fn calc(
         result = f(result, param);
     }
     match result {
-        Number::Integer(a) => {
-            return Ok(Expression::Integer(a));
-        }
-        Number::Float(a) => {
-            return Ok(Expression::Float(a));
-        }
+        Number::Integer(a) => Ok(Expression::Integer(a)),
+        Number::Float(a) => Ok(Expression::Float(a)),
     }
 }
 fn op(
@@ -1188,9 +1184,7 @@ fn op(
         match o {
             Expression::Float(f) => vec.push(Number::Float(f)),
             Expression::Integer(i) => vec.push(Number::Integer(i)),
-            _ => {
-                return Err(create_error!("E1003"));
-            }
+            _ => return Err(create_error!("E1003")),
         }
     }
     return Ok(Expression::Boolean(f(&vec[0], &vec[1])));
@@ -1391,20 +1385,13 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
         match env.find(&val) {
             Some(v) => {
                 ret_clone_if_atom!(v);
-                if let Expression::Function(_) = v {
-                    return Ok(v.clone());
-                }
-                if let Expression::TailRecursion(_) = v {
-                    return Ok(v.clone());
-                }
-                if let Expression::LetLoop(_) = v {
-                    return Ok(v.clone());
-                }
-                if let Expression::List(_) = v {
-                    return Ok(v.clone());
-                }
-                if let Expression::Pair(_, _) = v {
-                    return Ok(v.clone());
+                match v {
+                    Expression::Function(_) => return Ok(v.clone()),
+                    Expression::TailRecursion(_) => return Ok(v.clone()),
+                    Expression::LetLoop(_) => return Ok(v.clone()),
+                    Expression::List(_) => return Ok(v.clone()),
+                    Expression::Pair(_, _) => return Ok(v.clone()),
+                    _ => {}
                 }
             }
             None => {}
@@ -1419,34 +1406,21 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             return Ok(sexp.clone());
         }
         let v = &l;
-        if let Expression::Symbol(s) = &v[0] {
-            let e = eval(&v[0], env)?;
-            if let Expression::LetLoop(ll) = e {
-                return ll.execute(v, env);
-            }
-            if let Expression::Function(mut rc) = e {
+        let e = eval(&v[0], env)?;
+        match e {
+            Expression::LetLoop(f) => return f.execute(v, env),
+            Expression::Function(mut rc) => {
                 let f = Rc::make_mut(&mut rc);
                 let result = f.execute(v, env);
-                // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
-                env.update(s, Expression::Function(rc));
+                if let Expression::Symbol(s) = &v[0] {
+                    // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
+                    env.update(s, Expression::Function(rc));
+                }
                 return result;
             }
-            if let Expression::TailRecursion(f) = e {
-                return f.set_param(v, env);
-            }
-            if let Expression::BuildInFunction(b) = e {
-                return b(&v[..], env);
-            }
-        } else if let Expression::List(_) = v[0] {
-            // ex. ((lambda (a b) (+ a b)) 10 20)
-            let e = eval(&v[0], env)?;
-
-            if let Expression::Function(mut rc) = e {
-                let f = Rc::make_mut(&mut rc);
-                return f.execute(v, env);
-            } else {
-                return Err(create_error!("E1006"));
-            }
+            Expression::TailRecursion(f) => return f.set_param(v, env),
+            Expression::BuildInFunction(f) => return f(&v[..], env),
+            _ => return Err(create_error!("E1006")),
         }
     }
     Err(create_error!("E1009"))
