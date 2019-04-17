@@ -229,6 +229,12 @@ impl RsFunction {
             let v = eval(e, env)?;
             vec.push(v);
         }
+        return self.execute_noeval(&vec, env);
+    }
+    fn execute_noeval(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+        if self.param.len() != exp.len() {
+            return Err(create_error!("E1007"));
+        }
         // closure set
         for h in self.closure_env.iter() {
             env.create();
@@ -240,7 +246,7 @@ impl RsFunction {
         env.create();
         let mut idx = 0;
         for s in &self.param {
-            env.regist(s.to_string(), vec[idx].clone());
+            env.regist(s.to_string(), exp[idx].clone());
             idx += 1;
         }
         if self.tail_recurcieve == true {
@@ -1051,7 +1057,7 @@ fn map(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             let mut result: Vec<Expression> = Vec::new();
             for e in l {
                 let func = Rc::make_mut(&mut rc);
-                result.push(func.execute(&[Expression::Nil(), e.clone()].to_vec(), env)?);
+                result.push(func.execute_noeval(&[e.clone()].to_vec(), env)?);
             }
             return Ok(Expression::List(result));
         } else {
@@ -1070,9 +1076,7 @@ fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             let mut result: Vec<Expression> = Vec::new();
             for e in &l {
                 let func = Rc::make_mut(&mut rc);
-                if let Expression::Boolean(b) =
-                    func.execute(&[Expression::Nil(), e.clone()].to_vec(), env)?
-                {
+                if let Expression::Boolean(b) = func.execute_noeval(&[e.clone()].to_vec(), env)? {
                     if b {
                         result.push(e.clone());
                     }
@@ -1102,10 +1106,7 @@ fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             // not carfully length,  safety
             for e in &l[1 as usize..] {
                 let func = Rc::make_mut(&mut rc);
-                result = func.execute(
-                    &[Expression::Nil(), result.clone(), e.clone()].to_vec(),
-                    env,
-                )?;
+                result = func.execute_noeval(&[result.clone(), e.clone()].to_vec(), env)?;
             }
             return Ok(result);
         } else {
@@ -1443,9 +1444,10 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             if let Expression::Function(mut rc) = e {
                 let f = Rc::make_mut(&mut rc);
                 return f.execute(v, env);
+            } else {
+                return Err(create_error!("E1006"));
             }
         }
-        return Ok(sexp.clone());
     }
     Err(create_error!("E1009"))
 }
