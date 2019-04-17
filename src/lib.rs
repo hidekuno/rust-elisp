@@ -411,6 +411,34 @@ mod tests {
         assert_str!(do_lisp_env("c", &mut env), "10");
     }
     #[test]
+    fn sqrt() {
+        assert_str!(do_lisp("(sqrt 9)"), "3");
+    }
+    #[test]
+    fn sin() {
+    }
+    #[test]
+    fn cos() {
+    }
+    #[test]
+    fn tan() {
+    }
+    #[test]
+    fn atan() {
+    }
+    #[test]
+    fn exp() {
+        assert_str!(do_lisp("(exp 1)"), "2.718281828459045");
+        assert_str!(do_lisp("(exp 2)"), "7.38905609893065");
+        assert_str!(do_lisp("(exp 3)"), "20.085536923187668");
+    }
+    #[test]
+    fn log() {
+        assert_str!(do_lisp("(/ (log 8 (exp 1))(log 2 (exp 1)))"), "3");
+        assert_str!(do_lisp("(exp (/(log 8 (exp 1)) 3))"), "2");
+        assert_str!(do_lisp("(exp (* (log 2 (exp 1)) 3))"), "7.999999999999998");
+    }
+    #[test]
     fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(

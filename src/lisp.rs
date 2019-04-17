@@ -560,10 +560,10 @@ impl SimpleEnv {
         b.insert("atan", |exp: &[Expression], env: &mut SimpleEnv| {
             Ok(Expression::Float(to_f64(exp, env)?.atan()))
         });
-        b.insert("log", log);
         b.insert("exp", |exp: &[Expression], env: &mut SimpleEnv| {
             Ok(Expression::Float(to_f64(exp, env)?.exp()))
         });
+        b.insert("log", log);
         b.insert("rand-init", log);
         b.insert("rand-integer", log);
 
