@@ -545,6 +545,28 @@ impl SimpleEnv {
         b.insert("reduce", reduce);
         b.insert("for-each", for_each);
 
+        b.insert("sqrt", |exp: &[Expression], env: &mut SimpleEnv| {
+            Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
+        });
+        b.insert("sin", |exp: &[Expression], env: &mut SimpleEnv| {
+            Ok(Expression::Float(to_f64(exp, env)?.sin()))
+        });
+        b.insert("cos", |exp: &[Expression], env: &mut SimpleEnv| {
+            Ok(Expression::Float(to_f64(exp, env)?.cos()))
+        });
+        b.insert("tan", |exp: &[Expression], env: &mut SimpleEnv| {
+            Ok(Expression::Float(to_f64(exp, env)?.tan()))
+        });
+        b.insert("atan", |exp: &[Expression], env: &mut SimpleEnv| {
+            Ok(Expression::Float(to_f64(exp, env)?.atan()))
+        });
+        b.insert("log", log);
+        b.insert("exp", |exp: &[Expression], env: &mut SimpleEnv| {
+            Ok(Expression::Float(to_f64(exp, env)?.exp()))
+        });
+        b.insert("rand-init", log);
+        b.insert("rand-integer", log);
+
         SimpleEnv {
             env_tbl: l,
             builtin_tbl: b,
@@ -1133,6 +1155,33 @@ fn for_each(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Err(create_error!("E1006"));
     }
     Ok(Expression::Nil())
+}
+fn log(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error!("E1007"));
+    }
+    let x = match eval(&exp[1], env)? {
+        Expression::Float(f) => f,
+        Expression::Integer(i) => i as f64,
+        _ => return Err(create_error!("E1003")),
+    };
+    let y = match eval(&exp[2], env)? {
+        Expression::Float(f) => f,
+        Expression::Integer(i) => i as f64,
+        _ => return Err(create_error!("E1003")),
+    };
+    Ok(Expression::Float(x.log(y)))
+}
+fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+    let v = eval(&exp[1], env)?;
+    match v {
+        Expression::Float(f) => return Ok(f),
+        Expression::Integer(i) => return Ok(i as f64),
+        _ => return Err(create_error!("E1003")),
+    }
 }
 fn calc(
     exp: &[Expression],
