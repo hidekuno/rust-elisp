@@ -553,6 +553,9 @@ impl SimpleEnv {
         b.insert("rand-integer", rand_integer);
         b.insert("rand-list", rand_list);
 
+        if let Some(r) = b.get("/") {
+            b.insert("quotient", *r);
+        }
         SimpleEnv {
             env_tbl: l,
             builtin_tbl: b,
