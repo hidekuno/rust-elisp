@@ -501,21 +501,69 @@ mod tests {
     }
     #[test]
     fn sample_program() {
+        let program = ["(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
+                       "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
+                       "(define (lcm n m) (/(* n m)(gcm n m)))",
+                       "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
+                       "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
+                       "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
+                       "(define delete (lambda (x l) (filter (lambda (n) (not (= x n))) l)))",
+                       "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
+                       "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
+                       "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
+                       "(define take (lambda (l n)(if (>= 0 n) (list)(cons (car l)(take (cdr l)(- n 1))))))",
+                       "(define drop (lambda (l n)(if (>= 0 n) l (drop (cdr l)(- n 1)))))",
+                       "(define merge (lambda (a b)(if (or (null? a)(null? b)) (append a b) (if (< (car a)(car b))(cons (car a)(merge (cdr a) b))(cons (car b) (merge a (cdr b)))))))",
+                       "(define msort (lambda (l)(let ((n (length l)))(if (>= 1 n ) l (if (= n 2) (if (< (car l)(cadr l)) l (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid)))))))))",
+                       "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))"];
+
         let mut env = lisp::SimpleEnv::new();
-        do_lisp_env(
-            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
-            &mut env,
-        );
-        do_lisp_env("(define (lcm n m ) (/ (* n m)(gcm n m)))", &mut env);
+        for p in &program {
+            do_lisp_env(p, &mut env);
+        }
         assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
         assert_str!(do_lisp_env("(lcm 36 27)", &mut env), "108");
-
-        // No tail recursion
-        do_lisp_env(
-            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (gcm m mod)))))",
-            &mut env,
+        assert_str!(do_lisp_env("(bad-gcm 36 27)", &mut env), "9");
+        assert_str!(
+            do_lisp_env("(prime (iota 30 2))", &mut env),
+            "(2 3 5 7 11 13 17 19 23 29 31)"
         );
-        assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
+        assert_str!(
+            do_lisp_env("(perm (list 1 2 3) 2)", &mut env),
+            "((1 2)(1 3)(2 1)(2 3)(3 1)(3 2))"
+        );
+        assert_str!(
+            do_lisp_env("(comb (list 1 2 3) 2)", &mut env),
+            "((1 2)(1 3)(2 3))"
+        );
+        assert_str!(
+            do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &mut env),
+            "(1 2 3 4 5 6 7 8 9 10)"
+        );
+        assert_str!(
+            do_lisp_env("(take (list 2 4 6 8 10) 3)", &mut env),
+            "(2 4 6)"
+        );
+        assert_str!(
+            do_lisp_env("(drop (list 2 4 6 8 10) 3)", &mut env),
+            "(8 10)"
+        );
+        assert_str!(
+            do_lisp_env("(qsort test-list (lambda (a b)(< a b)))", &mut env),
+            "(0 2 3 6 7 8 9 14 19 27 36)"
+        );
+        assert_str!(
+            do_lisp_env("(qsort test-list (lambda (a b)(> a b)))", &mut env),
+            "(36 27 19 14 9 8 7 6 3 2 0)"
+        );
+        assert_str!(
+            do_lisp_env("(bsort test-list)", &mut env),
+            "(0 2 3 6 7 8 9 14 19 27 36)"
+        );
+        assert_str!(
+            do_lisp_env("(msort test-list)", &mut env),
+            "(0 2 3 6 7 8 9 14 19 27 36)"
+        );
     }
 }
 mod error_tests {
