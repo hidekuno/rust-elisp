@@ -20,6 +20,8 @@ use std::rc::Rc;
 use std::time::Instant;
 use std::vec::Vec;
 
+use rand::Rng;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 //========================================================================
@@ -490,33 +492,15 @@ impl SimpleEnv {
 
         let mut b: HashMap<&'static str, Operation> = HashMap::new();
 
-        b.insert("+", |exp: &[Expression], env: &mut SimpleEnv| {
-            calc(exp, env, |x: Number, y: Number| x + y)
-        });
-        b.insert("-", |exp: &[Expression], env: &mut SimpleEnv| {
-            calc(exp, env, |x: Number, y: Number| x - y)
-        });
-        b.insert("*", |exp: &[Expression], env: &mut SimpleEnv| {
-            calc(exp, env, |x: Number, y: Number| x * y)
-        });
-        b.insert("/", |exp: &[Expression], env: &mut SimpleEnv| {
-            calc(exp, env, |x: Number, y: Number| x / y)
-        });
-        b.insert("=", |exp: &[Expression], env: &mut SimpleEnv| {
-            op(exp, env, |x: &Number, y: &Number| x == y)
-        });
-        b.insert("<", |exp: &[Expression], env: &mut SimpleEnv| {
-            op(exp, env, |x: &Number, y: &Number| x < y)
-        });
-        b.insert("<=", |exp: &[Expression], env: &mut SimpleEnv| {
-            op(exp, env, |x: &Number, y: &Number| x <= y)
-        });
-        b.insert(">", |exp: &[Expression], env: &mut SimpleEnv| {
-            op(exp, env, |x: &Number, y: &Number| x > y)
-        });
-        b.insert(">=", |exp: &[Expression], env: &mut SimpleEnv| {
-            op(exp, env, |x: &Number, y: &Number| x >= y)
-        });
+        b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
+        b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
+        b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
+        b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
+        b.insert("=", |exp, env| op(exp, env, |x, y| x == y));
+        b.insert("<", |exp, env| op(exp, env, |x, y| x < y));
+        b.insert("<=", |exp, env| op(exp, env, |x, y| x <= y));
+        b.insert(">", |exp, env| op(exp, env, |x, y| x > y));
+        b.insert(">=", |exp, env| op(exp, env, |x, y| x >= y));
         b.insert("expt", expt);
         b.insert("modulo", modulo);
         b.insert("define", define);
@@ -545,27 +529,29 @@ impl SimpleEnv {
         b.insert("reduce", reduce);
         b.insert("for-each", for_each);
 
-        b.insert("sqrt", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("sqrt", |exp, env| {
             Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
         });
-        b.insert("sin", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("sin", |exp, env| {
             Ok(Expression::Float(to_f64(exp, env)?.sin()))
         });
-        b.insert("cos", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("cos", |exp, env| {
             Ok(Expression::Float(to_f64(exp, env)?.cos()))
         });
-        b.insert("tan", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("tan", |exp, env| {
             Ok(Expression::Float(to_f64(exp, env)?.tan()))
         });
-        b.insert("atan", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("atan", |exp, env| {
             Ok(Expression::Float(to_f64(exp, env)?.atan()))
         });
-        b.insert("exp", |exp: &[Expression], env: &mut SimpleEnv| {
+        b.insert("exp", |exp, env| {
             Ok(Expression::Float(to_f64(exp, env)?.exp()))
         });
-        b.insert("log", log);
-        b.insert("rand-init", log);
-        b.insert("rand-integer", log);
+        b.insert("log", |exp, env| {
+            Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
+        });
+        b.insert("rand-integer", rand_integer);
+        b.insert("rand-list", rand_list);
 
         SimpleEnv {
             env_tbl: l,
@@ -636,6 +622,7 @@ impl SimpleEnv {
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
+const SAMPLE_INT: i64 = 10000000000000;
 //========================================================================
 fn set_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() != 3 {
@@ -1156,21 +1143,29 @@ fn for_each(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn log(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 3 {
+fn rand_integer(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
+    if 1 < exp.len() {
         return Err(create_error!("E1007"));
     }
-    let x = match eval(&exp[1], env)? {
-        Expression::Float(f) => f,
-        Expression::Integer(i) => i as f64,
-        _ => return Err(create_error!("E1003")),
-    };
-    let y = match eval(&exp[2], env)? {
-        Expression::Float(f) => f,
-        Expression::Integer(i) => i as f64,
-        _ => return Err(create_error!("E1003")),
-    };
-    Ok(Expression::Float(x.log(y)))
+    let mut rng = rand::thread_rng();
+    let x: i64 = rng.gen();
+    return Ok(Expression::Integer(x.abs() / SAMPLE_INT));
+}
+fn rand_list(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if 2 < exp.len() {
+        return Err(create_error!("E1007"));
+    }
+    if let Expression::Integer(i) = eval(&exp[1], env)? {
+        let mut rng = rand::thread_rng();
+        let mut vec = Vec::new();
+        for _ in 0..i {
+            let x: i64 = rng.gen();
+            vec.push(Expression::Integer(x.abs() / SAMPLE_INT));
+        }
+        return Ok(Expression::List(vec));
+    } else {
+        return Err(create_error!("E1002"));
+    }
 }
 fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
     if exp.len() != 2 {
