@@ -411,6 +411,95 @@ mod tests {
         assert_str!(do_lisp_env("c", &mut env), "10");
     }
     #[test]
+    fn sqrt() {
+        assert_str!(do_lisp("(sqrt 9)"), "3");
+        assert_str!(do_lisp("(sqrt 25.0)"), "5");
+
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 16)", &mut env);
+        assert_str!(do_lisp_env("(sqrt a)", &mut env), "4");
+    }
+    #[test]
+    fn sin() {
+        assert_str!(
+            do_lisp("(sin (/(* 30 (* 4 (atan 1))) 180))"),
+            "0.49999999999999994"
+        );
+        assert_str!(
+            do_lisp("(sin (/(* 30.025 (* 4 (atan 1))) 180))"),
+            "0.5003778272590873"
+        );
+        assert_str!(
+            do_lisp("(sin (/(* 60 (* 4 (atan 1))) 180))"),
+            "0.8660254037844386"
+        );
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a (/(* 30 (* 4 (atan 1))) 180))", &mut env);
+        assert_str!(do_lisp_env("(sin a)", &mut env), "0.49999999999999994");
+    }
+    #[test]
+    fn cos() {
+        assert_str!(
+            do_lisp("(cos (/(* 30 (* 4 (atan 1))) 180))"),
+            "0.8660254037844387"
+        );
+        assert_str!(
+            do_lisp("(cos (/(* 60 (* 4 (atan 1))) 180))"),
+            "0.5000000000000001"
+        );
+        assert_str!(
+            do_lisp("(cos (/(* 59.725 (* 4 (atan 1))) 180))"),
+            "0.5041508484218754"
+        );
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a (/(* 60 (* 4 (atan 1))) 180))", &mut env);
+        assert_str!(do_lisp_env("(cos a)", &mut env), "0.5000000000000001");
+    }
+    #[test]
+    fn tan() {
+        assert_str!(
+            do_lisp("(tan (/(* 45 (* 4 (atan 1))) 180))"),
+            "0.9999999999999999"
+        );
+        assert_str!(
+            do_lisp("(tan (/(* 45.025 (* 4 (atan 1))) 180))"),
+            "1.0008730456194168"
+        );
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a (/(* 45 (* 4 (atan 1))) 180))", &mut env);
+        assert_str!(do_lisp_env("(tan a)", &mut env), "0.9999999999999999");
+    }
+    #[test]
+    fn atan() {
+        assert_str!(do_lisp("(* 4 (atan 1))"), "3.141592653589793");
+        assert_str!(do_lisp("(* 4 (atan 1.0))"), "3.141592653589793");
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 1)", &mut env);
+        assert_str!(do_lisp_env("(* 4 (atan a))", &mut env), "3.141592653589793");
+    }
+    #[test]
+    fn exp() {
+        assert_str!(do_lisp("(exp 1)"), "2.718281828459045");
+        assert_str!(do_lisp("(exp 1.025)"), "2.7870954605658507");
+        assert_str!(do_lisp("(exp 2)"), "7.38905609893065");
+
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 3)", &mut env);
+        assert_str!(do_lisp_env("(exp a)", &mut env), "20.085536923187668");
+    }
+    #[test]
+    fn log() {
+        assert_str!(do_lisp("(/(log 8)(log 2))"), "3");
+        assert_str!(do_lisp("(/(log 9.0)(log 3.0))"), "2");
+        assert_str!(do_lisp("(exp (/(log 8) 3))"), "2");
+        assert_str!(do_lisp("(exp (* (log 2) 3))"), "7.999999999999998");
+
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define a 9)", &mut env);
+        do_lisp_env("(define b 3)", &mut env);
+        assert_str!(do_lisp_env("(/(log a)(log b))", &mut env), "2");
+    }
+    #[test]
     fn sample_program() {
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env(
@@ -687,6 +776,55 @@ mod error_tests {
         assert_str!(do_lisp("(for-each 1 2 3)"), "E1007");
         assert_str!(do_lisp("(for-each (list) (list))"), "E1006");
         assert_str!(do_lisp("(for-each (lambda (n) n) 10)"), "E1005");
+    }
+    #[test]
+    fn sqrt() {
+        assert_str!(do_lisp("(sqrt)"), "E1007");
+        assert_str!(do_lisp("(sqrt 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(sqrt #t)"), "E1003");
+        assert_str!(do_lisp("(sqrt a)"), "E1008");
+    }
+    #[test]
+    fn sin() {
+        assert_str!(do_lisp("(sin)"), "E1007");
+        assert_str!(do_lisp("(sin 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(sin #t)"), "E1003");
+        assert_str!(do_lisp("(sin a)"), "E1008");
+    }
+    #[test]
+    fn cos() {
+        assert_str!(do_lisp("(cos)"), "E1007");
+        assert_str!(do_lisp("(cos 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(cos #t)"), "E1003");
+        assert_str!(do_lisp("(cos a)"), "E1008");
+    }
+    #[test]
+    fn tan() {
+        assert_str!(do_lisp("(tan)"), "E1007");
+        assert_str!(do_lisp("(tan 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(tan #t)"), "E1003");
+        assert_str!(do_lisp("(tan a)"), "E1008");
+    }
+    #[test]
+    fn atan() {
+        assert_str!(do_lisp("(atan)"), "E1007");
+        assert_str!(do_lisp("(atan 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(atan #t)"), "E1003");
+        assert_str!(do_lisp("(atan a)"), "E1008");
+    }
+    #[test]
+    fn exp() {
+        assert_str!(do_lisp("(exp)"), "E1007");
+        assert_str!(do_lisp("(exp 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(exp #t)"), "E1003");
+        assert_str!(do_lisp("(exp a)"), "E1008");
+    }
+    #[test]
+    fn log() {
+        assert_str!(do_lisp("(log)"), "E1007");
+        assert_str!(do_lisp("(log 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(log #t)"), "E1003");
+        assert_str!(do_lisp("(log a)"), "E1008");
     }
 
     #[test]
