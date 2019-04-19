@@ -9,3 +9,4 @@ lazy_static = "1.3.0"
 log = "*"
 env_logger = "*"
 rand = "0.6"
+gtk = { git = "https://github.com/gtk-rs/gtk.git" }
