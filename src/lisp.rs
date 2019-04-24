@@ -602,6 +602,9 @@ impl SimpleEnv {
             self.delete();
         }
     }
+    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
+        self.builtin_tbl.insert(key, func);
+    }
     #[allow(dead_code)]
     fn dump_env(&self) {
         debug!("======== dump_env start ============");
