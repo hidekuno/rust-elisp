@@ -10,3 +10,5 @@ log = "*"
 env_logger = "*"
 rand = "0.6"
 gtk = { git = "https://github.com/gtk-rs/gtk.git" }
+gdk = { git = "https://github.com/gtk-rs/gdk.git" }
+glib = { git = "https://github.com/gtk-rs/glib.git" }
