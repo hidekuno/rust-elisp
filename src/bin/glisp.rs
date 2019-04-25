@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate elisp;
 extern crate gtk;
 
@@ -115,7 +114,7 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
         let r = rc.clone();
         let mut e = (*r).borrow_mut();
         let clear_canvas = canvas.clone();
-        e.add_builtin_closure("draw-clear", move |exp, env| {
+        e.add_builtin_closure("draw-clear", move |exp, _| {
             if exp.len() != 1 {
                 return Err(create_error!("E1007"));
             }
