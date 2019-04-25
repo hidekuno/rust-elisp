@@ -78,21 +78,6 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             Ok(r) => r.value_string(),
             Err(e) => e.get_code(),
         };
-        clear_canvas.connect_draw(move |_, cr| {
-            if "draw-clear" == result {
-                cr.scale(720 as f64, 560 as f64);
-                cr.set_source_rgb(0.9, 0.9, 0.9);
-                cr.paint();
-            } else {
-                cr.set_source_rgb(0.0, 0.0, 0.0);
-                cr.set_font_size(0.15);
-                cr.move_to(0.04, 0.50);
-                //            cr.show_text(result.as_str());
-                cr.fill_preserve();
-                cr.stroke();
-            }
-            Inhibit(false)
-        });
         clear_canvas.queue_draw();
     });
     menu.append(&eval);
@@ -125,10 +110,41 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     {
         let r = rc.clone();
         let mut e = (*r).borrow_mut();
-        e.add_builtin_func("draw-clear", |exp, env| {
+        let clear_canvas = canvas.clone();
+        e.add_builtin_closure("draw-clear", move |exp, env| {
+            clear_canvas.connect_draw(move |_, cr| {
+                cr.set_source_rgb(0.9, 0.9, 0.9);
+                cr.paint();
+
+                Inhibit(false)
+            });
             Ok(Expression::Symbol(String::from("draw-clear")))
         });
-        e.add_builtin_func("draw-line", |exp, env| Ok(Expression::Nil()));
+    }
+    {
+        let r = rc.clone();
+        let mut e = (*r).borrow_mut();
+        let clear_canvas = canvas.clone();
+
+        e.add_builtin_closure("draw-line", move |exp, env| {
+            let mut vec: Vec<f64> = Vec::new();
+            for e in exp {
+                if let Expression::Float(f) = lisp::eval(e, env)? {
+                    vec.push(f);
+                }
+            }
+            let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);
+            clear_canvas.connect_draw(move |_, cr| {
+                cr.set_source_rgb(0.0, 0.0, 0.0);
+                cr.set_line_width(0.5);
+                cr.move_to(x0, y0);
+                cr.line_to(x1, y1);
+                cr.stroke();
+
+                Inhibit(false)
+            });
+            Ok(Expression::Symbol(String::from("draw-line")))
+        });
     }
     //--------------------------------------------------------
     // Build Up finish
