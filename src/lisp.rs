@@ -52,15 +52,16 @@ lazy_static! {
     };
 }
 pub struct RsError {
-    code: &'static str,
-    line: u32,
-    file: &'static str,
+    pub code: &'static str,
+    pub line: u32,
+    pub file: &'static str,
 }
 impl RsError {
     pub fn get_code(&self) -> String {
         String::from(self.code)
     }
 }
+#[macro_export]
 macro_rules! create_error {
     ($e: expr) => {
         RsError {
@@ -70,6 +71,7 @@ macro_rules! create_error {
         }
     };
 }
+#[macro_export]
 macro_rules! print_error {
     ($e: expr) => {
         println!(
@@ -98,6 +100,7 @@ pub enum Expression {
     Symbol(String),
     Function(Rc<RsFunction>),
     BuildInFunction(Operation),
+    BuildInFunctionExt(Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static>),
     LetLoop(Rc<RsLetLoop>),
     Loop(),
     Nil(),
@@ -117,6 +120,7 @@ impl EvalResult for Expression {
             }
             Expression::Function(_) => String::from("Function"),
             Expression::BuildInFunction(_) => String::from("BuildIn Function"),
+            Expression::BuildInFunctionExt(_) => String::from("BuildIn Function Ext"),
             Expression::LetLoop(_) => String::from("LetLoop"),
             Expression::Nil() => String::from("nil"),
             Expression::Loop() => String::from("loop"),
@@ -484,6 +488,8 @@ impl PartialOrd for Number {
 pub struct SimpleEnv {
     env_tbl: LinkedList<HashMap<String, Expression>>,
     builtin_tbl: HashMap<&'static str, Operation>,
+    builtin_tbl_ext:
+        HashMap<&'static str, Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression>>,
 }
 impl SimpleEnv {
     pub fn new() -> SimpleEnv {
@@ -559,6 +565,7 @@ impl SimpleEnv {
         SimpleEnv {
             env_tbl: l,
             builtin_tbl: b,
+            builtin_tbl_ext: HashMap::new(),
         }
     }
     fn create(&mut self) {
@@ -601,6 +608,18 @@ impl SimpleEnv {
         while self.env_tbl.len() >= 2 {
             self.delete();
         }
+    }
+    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
+        self.builtin_tbl.insert(key, func);
+    }
+    pub fn add_builtin_closure<
+        F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
+    >(
+        &mut self,
+        key: &'static str,
+        c: F,
+    ) {
+        self.builtin_tbl_ext.insert(key, Rc::new(c));
     }
     #[allow(dead_code)]
     fn dump_env(&self) {
@@ -1425,7 +1444,7 @@ macro_rules! ret_clone_if_atom {
         }
     };
 }
-fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
+pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
     ret_clone_if_atom!(sexp);
 
     if let Expression::Symbol(val) = sexp {
@@ -1445,6 +1464,9 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
         }
         if let Some(f) = env.builtin_tbl.get(val.as_str()) {
             return Ok(Expression::BuildInFunction(*f));
+        }
+        if let Some(f) = env.builtin_tbl_ext.get(val.as_str()) {
+            return Ok(Expression::BuildInFunctionExt(f.clone()));
         }
         return Err(create_error!("E1008"));
     }
@@ -1467,6 +1489,7 @@ fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             }
             Expression::TailRecursion(f) => return f.set_param(v, env),
             Expression::BuildInFunction(f) => return f(&v[..], env),
+            Expression::BuildInFunctionExt(f) => return (*f)(&v[..], env),
             _ => return Err(create_error!("E1006")),
         }
     }
