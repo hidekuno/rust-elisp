@@ -1,9 +1,12 @@
+#[macro_use]
 extern crate elisp;
 extern crate gtk;
 
+use elisp::create_error;
 use elisp::lisp;
 use lisp::EvalResult;
 use lisp::Expression;
+use lisp::RsError;
 use lisp::SimpleEnv;
 
 use gtk::prelude::*;
@@ -78,6 +81,7 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             Ok(r) => r.value_string(),
             Err(e) => e.get_code(),
         };
+        println!("{}", result);
         clear_canvas.queue_draw();
     });
     menu.append(&eval);
@@ -112,6 +116,9 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
         let mut e = (*r).borrow_mut();
         let clear_canvas = canvas.clone();
         e.add_builtin_closure("draw-clear", move |exp, env| {
+            if exp.len() != 1 {
+                return Err(create_error!("E1007"));
+            }
             clear_canvas.connect_draw(move |_, cr| {
                 cr.set_source_rgb(0.9, 0.9, 0.9);
                 cr.paint();
@@ -127,10 +134,16 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
         let clear_canvas = canvas.clone();
 
         e.add_builtin_closure("draw-line", move |exp, env| {
+            if exp.len() != 5 {
+                return Err(create_error!("E1007"));
+            }
+
             let mut vec: Vec<f64> = Vec::new();
-            for e in exp {
+            for e in &exp[1 as usize..] {
                 if let Expression::Float(f) = lisp::eval(e, env)? {
                     vec.push(f);
+                } else {
+                    return Err(create_error!("E1003"));
                 }
             }
             let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);

@@ -52,15 +52,16 @@ lazy_static! {
     };
 }
 pub struct RsError {
-    code: &'static str,
-    line: u32,
-    file: &'static str,
+    pub code: &'static str,
+    pub line: u32,
+    pub file: &'static str,
 }
 impl RsError {
     pub fn get_code(&self) -> String {
         String::from(self.code)
     }
 }
+#[macro_export]
 macro_rules! create_error {
     ($e: expr) => {
         RsError {
@@ -70,6 +71,7 @@ macro_rules! create_error {
         }
     };
 }
+#[macro_export]
 macro_rules! print_error {
     ($e: expr) => {
         println!(
