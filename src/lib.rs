@@ -234,6 +234,19 @@ mod tests {
         }
         assert_str!(do_lisp_env("(a)", &mut env), "11");
         assert_str!(do_lisp_env("(b)", &mut env), "6");
+
+        do_lisp_env(
+            "(define (scounter step) (let ((c 0)) (lambda () (set! c (+ step c)) c)))",
+            &mut env,
+        );
+        do_lisp_env("(define x (scounter 10))", &mut env);
+        do_lisp_env("(define y (scounter 100))", &mut env);
+        for _i in 0..2 {
+            do_lisp_env("(x)", &mut env);
+            do_lisp_env("(y)", &mut env);
+        }
+        assert_str!(do_lisp_env("(x)", &mut env), "30");
+        assert_str!(do_lisp_env("(y)", &mut env), "300");
     }
     #[test]
     fn list() {

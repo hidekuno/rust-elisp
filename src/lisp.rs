@@ -156,6 +156,7 @@ pub trait TailRecursion {
     fn myname(&self) -> &String;
 
     fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
+        let mut n = 0;
         for e in exp {
             if let Expression::List(l) = e {
                 if 0 == l.len() {
@@ -166,10 +167,13 @@ pub trait TailRecursion {
                         return self.parse_tail_recurcieve(&l[1..]);
                     }
                     if *s == *self.myname() {
-                        return true;
+                        n = n + 1;
                     }
                 }
             }
+        }
+        if n == 1 {
+            return true;
         }
         return false;
     }
@@ -204,7 +208,7 @@ impl RsFunction {
             tail_recurcieve: false,
         }
     }
-    fn set_closure_env(&mut self, map: HashMap<String, Expression>) {
+    fn add_closure_env(&mut self, map: HashMap<String, Expression>) {
         self.closure_env.push_back(map);
     }
     fn set_tail_recurcieve(&mut self) {
@@ -263,14 +267,14 @@ impl RsFunction {
         }
 
         // execute!
-        let mut results: Vec<ResultExpression> = Vec::new();
+        let mut results: Vec<Expression> = Vec::new();
         for e in &self.body {
             loop {
                 let v = eval(e, env)?;
                 if let Expression::TailRecursion(_) = v {
                     continue;
                 } else {
-                    results.push(Ok(v));
+                    results.push(v);
                     break;
                 }
             }
@@ -278,21 +282,33 @@ impl RsFunction {
         // param clear
         env.delete();
 
-        // clouser env clear
-        let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
+        // env(closure) clear and self(closure) saved
         for h in self.closure_env.iter_mut().rev() {
-            let mut nh: HashMap<String, Expression> = HashMap::new();
-            for (k, _v) in h {
-                if let Some(exp) = env.find(k) {
-                    nh.insert(k.to_string(), (*exp).clone());
+            for (k, _v) in h.clone() {
+                if let Some(exp) = env.find(&k) {
+                    h.insert(k.to_string(), (*exp).clone());
                 }
             }
-            l.push_back(nh);
             env.delete();
         }
-        self.closure_env = l;
+
+        // created function set clonsure
         if let Some(r) = results.pop() {
-            return r;
+            if let Expression::Function(mut rc) = r {
+                let f = Rc::get_mut(&mut rc).unwrap();
+                let mut closure_env: HashMap<String, Expression> = HashMap::new();
+
+                let mut idx = 0;
+                for s in &self.param {
+                    closure_env.insert(s.to_string(), exp[idx].clone());
+                    idx += 1;
+                }
+                if idx > 0 {
+                    f.add_closure_env(closure_env);
+                }
+                return Ok(Expression::Function(rc));
+            }
+            return Ok(r);
         }
         return Err(create_error!("E9999"));
     }
@@ -739,7 +755,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if let Some(r) = results.pop() {
         if let Expression::Function(mut rc) = r {
             let f = Rc::get_mut(&mut rc).unwrap();
-            f.set_closure_env(closure_env);
+            f.add_closure_env(closure_env);
             return Ok(Expression::Function(rc));
         }
         return Ok(r);
