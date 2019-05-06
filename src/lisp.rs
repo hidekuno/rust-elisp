@@ -156,6 +156,7 @@ pub trait TailRecursion {
     fn myname(&self) -> &String;
 
     fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
+        let mut n = 0;
         for e in exp {
             if let Expression::List(l) = e {
                 if 0 == l.len() {
@@ -166,10 +167,13 @@ pub trait TailRecursion {
                         return self.parse_tail_recurcieve(&l[1..]);
                     }
                     if *s == *self.myname() {
-                        return true;
+                        n = n + 1;
                     }
                 }
             }
+        }
+        if n == 1 {
+            return true;
         }
         return false;
     }
