@@ -9,6 +9,7 @@ use std::cmp::PartialEq;
 use std::cmp::PartialOrd;
 use std::collections::HashMap;
 use std::collections::LinkedList;
+use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
@@ -98,6 +99,7 @@ pub enum Expression {
     List(Vec<Expression>),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
+    String(String),
     Function(Rc<RsFunction>),
     BuildInFunction(Operation),
     BuildInFunctionExt(Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static>),
@@ -114,6 +116,7 @@ impl EvalResult for Expression {
             Expression::Char(v) => v.to_string(),
             Expression::Boolean(v) => (if *v { "#t" } else { "#f" }).to_string(),
             Expression::Symbol(v) => v.to_string(),
+            Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => list_string(&v[..]),
             Expression::Pair(car, cdr) => {
                 String::from(format!("({} . {})", car.value_string(), cdr.value_string()))
@@ -578,6 +581,8 @@ impl SimpleEnv {
         if let Some(r) = b.get("/") {
             b.insert("quotient", *r);
         }
+        b.insert("load-file", load_file);
+
         SimpleEnv {
             env_tbl: l,
             builtin_tbl: b,
@@ -1205,6 +1210,22 @@ fn rand_list(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Err(create_error!("E1002"));
     }
 }
+fn load_file(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+    let v = eval(&exp[1], env)?;
+    if let Expression::String(s) = v {
+        let file = match File::open(s) {
+            Err(_) => return Err(create_error!("E1014")),
+            Ok(file) => file,
+        };
+        let mut stream = BufReader::new(file);
+        repl(&mut stream, env, true);
+        return Ok(Expression::Nil());
+    }
+    return Err(create_error!("E1015"));
+}
 fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
@@ -1275,20 +1296,24 @@ pub fn do_interactive() {
     let mut env = SimpleEnv::new();
 
     let mut stream = BufReader::new(std::io::stdin());
-    repl(&mut stream, &mut env);
+    repl(&mut stream, &mut env, false);
 }
-fn repl(stream: &mut BufRead, env: &mut SimpleEnv) {
+fn repl(stream: &mut BufRead, env: &mut SimpleEnv, batch: bool) {
     let mut buffer = String::new();
     let mut program: Vec<String> = Vec::new();
     let mut w = std::io::stdout();
     let mut prompt = PROMPT;
 
     loop {
-        print!("{}", prompt);
+        if !batch {
+            print!("{}", prompt);
+        }
         w.flush().unwrap();
         buffer.clear();
-        stream.read_line(&mut buffer).unwrap();
-
+        let n = stream.read_line(&mut buffer).unwrap();
+        if n == 0 {
+            break;
+        }
         if buffer.trim() == QUIT {
             println!("Bye");
             break;
@@ -1446,6 +1471,11 @@ fn atom(token: &String) -> Expression {
         let c = token.chars().collect::<Vec<char>>();
         return Expression::Char(c[2]);
     }
+    if (token.len() >= 2) && (token.as_str().starts_with("\"")) && (token.as_str().ends_with("\""))
+    {
+        let s = token.as_str()[1..token.len() - 1].to_string();
+        return Expression::String(s);
+    }
     return Expression::Symbol(token.to_string());
 }
 macro_rules! ret_clone_if_atom {
@@ -1453,6 +1483,7 @@ macro_rules! ret_clone_if_atom {
         match $e {
             Expression::Boolean(v) => return Ok(Expression::Boolean(*v)),
             Expression::Char(v) => return Ok(Expression::Char(*v)),
+            Expression::String(_) => return Ok($e.clone()),
             Expression::Integer(v) => return Ok(Expression::Integer(*v)),
             Expression::Float(v) => return Ok(Expression::Float(*v)),
             Expression::Nil() => return Ok(Expression::Nil()),
