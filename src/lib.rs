@@ -6,6 +6,11 @@ pub mod dyn_lisp;
 pub mod lisp;
 use crate::lisp::EvalResult;
 
+use std::env;
+use std::fs::File;
+#[allow(unused_imports)]
+use std::io::Write;
+use std::path::Path;
 //        assert_str!(do_lisp(""), "");
 //        let mut env = lisp::SimpleEnv::new();
 //        assert_str!(do_lisp_env("", &mut env), "");
@@ -42,6 +47,7 @@ mod tests {
         assert_str!(do_lisp("10.5"), "10.5");
         assert_str!(do_lisp("#t"), "#t");
         assert_str!(do_lisp("#\\a"), "a");
+        assert_str!(do_lisp("\"abc\""), "\"abc\"");
     }
     #[test]
     fn plus() {
@@ -513,6 +519,32 @@ mod tests {
         assert_str!(do_lisp_env("(/(log a)(log b))", &mut env), "2");
     }
     #[test]
+    fn load_file() {
+        let test_file = Path::new(&env::var("HOME").unwrap())
+            .join("tmp")
+            .join("test.scm");
+
+        match std::fs::remove_file(&test_file) {
+            Err(_) => (),
+            _ => (),
+        }
+        let mut file = File::create(&test_file).unwrap();
+        writeln!(file, "(define foo 100)").unwrap();
+        writeln!(file, "(define hoge 200)").unwrap();
+        writeln!(file, "(define fuga (+ foo hoge))").unwrap();
+        file.flush().unwrap();
+
+        let mut env = lisp::SimpleEnv::new();
+        let f = test_file.as_path().to_str().expect("die");
+        do_lisp_env(
+            format!("(load-file \"{}\")", f.to_string()).as_str(),
+            &mut env,
+        );
+        assert_str!(do_lisp_env("foo", &mut env), "100");
+        assert_str!(do_lisp_env("hoge", &mut env), "200");
+        assert_str!(do_lisp_env("fuga", &mut env), "300");
+    }
+    #[test]
     fn sample_program() {
         let program = ["(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
                        "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
@@ -582,6 +614,11 @@ mod tests {
 mod error_tests {
     #[allow(unused_imports)]
     use super::*;
+
+    #[test]
+    fn atom() {
+        assert_str!(do_lisp("\"a"), "E0001");
+    }
 
     #[test]
     fn plus() {
@@ -896,5 +933,13 @@ mod error_tests {
             &mut env,
         );
         assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "E1008");
+    }
+    #[test]
+    fn load_file() {
+        assert_str!(do_lisp("(load-file)"), "E1007");
+        assert_str!(do_lisp("(load-file 1 2)"), "E1007");
+        assert_str!(do_lisp("(load-file hoge)"), "E1008");
+        assert_str!(do_lisp("(load-file #t)"), "E1015");
+        assert_str!(do_lisp("(load-file \"/etc/test.scm\")"), "E1014");
     }
 }
