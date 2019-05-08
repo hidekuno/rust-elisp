@@ -298,7 +298,8 @@ impl RsFunction {
         // created function set clonsure
         if let Some(r) = results.pop() {
             if let Expression::Function(mut rc) = r {
-                let f = Rc::get_mut(&mut rc).unwrap();
+                // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.get_mut
+                let f = Rc::make_mut(&mut rc);
                 let mut closure_env: HashMap<String, Expression> = HashMap::new();
 
                 let mut idx = 0;
@@ -582,6 +583,7 @@ impl SimpleEnv {
             b.insert("quotient", *r);
         }
         b.insert("load-file", load_file);
+        b.insert("display", display);
 
         SimpleEnv {
             env_tbl: l,
@@ -759,7 +761,8 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     env.delete();
     if let Some(r) = results.pop() {
         if let Expression::Function(mut rc) = r {
-            let f = Rc::get_mut(&mut rc).unwrap();
+            // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.get_mut
+            let f = Rc::make_mut(&mut rc);
             f.add_closure_env(closure_env);
             return Ok(Expression::Function(rc));
         }
@@ -1226,6 +1229,16 @@ fn load_file(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Err(create_error!("E1015"));
 }
+fn display(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() < 2 {
+        return Ok(Expression::Nil());
+    }
+    for e in &exp[1 as usize..] {
+        let o = eval(e, env)?;
+        print!("{} ", o.value_string());
+    }
+    return Ok(Expression::Nil());
+}
 fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error!("E1007"));
@@ -1319,7 +1332,7 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv, batch: bool) {
             break;
         } else if buffer.trim() == "" {
             continue;
-        } else if buffer.trim() == ";" {
+        } else if buffer.as_bytes()[0] as char == ';' {
             continue;
         }
         program.push(buffer.trim().to_string());
@@ -1516,6 +1529,9 @@ pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             return Ok(Expression::BuildInFunctionExt(f.clone()));
         }
         return Err(create_error!("E1008"));
+    }
+    if let Expression::Pair(_, _) = sexp {
+        return Ok(sexp.clone());
     }
     if let Expression::List(l) = sexp {
         if l.len() == 0 {
