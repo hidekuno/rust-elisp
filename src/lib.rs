@@ -6,10 +6,13 @@ pub mod dyn_lisp;
 pub mod lisp;
 use crate::lisp::EvalResult;
 
+#[allow(unused_imports)]
 use std::env;
+#[allow(unused_imports)]
 use std::fs::File;
 #[allow(unused_imports)]
 use std::io::Write;
+#[allow(unused_imports)]
 use std::path::Path;
 //        assert_str!(do_lisp(""), "");
 //        let mut env = lisp::SimpleEnv::new();
