@@ -864,6 +864,10 @@ mod error_tests {
     fn map() {
         assert_str!(do_lisp("(map)"), "E1007");
         assert_str!(do_lisp("(map (lambda (n) n))"), "E1007");
+        assert_str!(
+            do_lisp("(map (lambda (a b) (* 10 a)) (list 1 2 3))"),
+            "E1007"
+        );
         assert_str!(do_lisp("(map 1 2 3)"), "E1007");
         assert_str!(do_lisp("(map (iota 10) (lambda (n) n))"), "E1006");
         assert_str!(do_lisp("(map  (lambda (n) n) 10)"), "E1005");
@@ -873,6 +877,10 @@ mod error_tests {
         assert_str!(do_lisp("(filter)"), "E1007");
         assert_str!(do_lisp("(filter (lambda (n) n))"), "E1007");
         assert_str!(do_lisp("(filter 1 2 3)"), "E1007");
+        assert_str!(
+            do_lisp("(filter (lambda (a b) (= 0 a))(iota 10 1))"),
+            "E1007"
+        );
         assert_str!(do_lisp("(filter (iota 10) (lambda (n) n))"), "E1006");
         assert_str!(do_lisp("(filter (lambda (n) n) 10)"), "E1005");
         assert_str!(do_lisp("(filter (lambda (n) n) (iota 4))"), "E1001");
