@@ -2,6 +2,8 @@
 ;; ペインタは規定した並行四辺形の フレームの中に合うように,
 ;; ずらしたり大きさを変えたりした画像を描く
 ;;======================================================================
+(define draw-line-vect (lambda (p1 p2) (draw-line (xcor-vect p1)(ycor-vect p1)(xcor-vect p2)(ycor-vect p2))))
+
 (define (segments->painter segment-list)
   (lambda (frame)
     (for-each
