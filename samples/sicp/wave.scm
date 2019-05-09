@@ -47,11 +47,4 @@
                    (make-segment(make-vect 0.5 0.7)   (make-vect 0.4 1))
                    )))
     (segments->painter segments)))
-
-(define draw-line-vect (lambda (p1 p2) (draw-line (* (xcor-vect p1) 718.0)(* (ycor-vect p1) 558.0)(* (xcor-vect p2) 718.0)(* (ycor-vect p2) 558.0))))
-
-;;(load-file "examples/sicp/abstract-data.scm")
-;;(load-file "examples/sicp/painter.scm")
-;;(load-file "examples/sicp/wave.scm")
 ;;((square-limit wave 4) frame)
-

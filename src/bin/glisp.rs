@@ -12,6 +12,9 @@ use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+const DRAW_WIDTH: i32 = 720;
+const DRAW_HEIGHT: i32 = 560;
+
 fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     gtk::init().expect("Failed to initialize GTK.");
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
@@ -32,9 +35,9 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     // DrawingArea
     //--------------------------------------------------------
     let canvas = gtk::DrawingArea::new();
-    canvas.set_size_request(720, 560);
+    canvas.set_size_request(DRAW_WIDTH, DRAW_HEIGHT);
     canvas.connect_draw(|_, cr| {
-        cr.scale(720 as f64, 560 as f64);
+        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.set_font_size(0.25);
 
         cr.move_to(0.04, 0.50);
@@ -147,8 +150,9 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             }
             let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);
             clear_canvas.connect_draw(move |_, cr| {
+                cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
                 cr.set_source_rgb(0.0, 0.0, 0.0);
-                cr.set_line_width(0.5);
+                cr.set_line_width(0.001);
                 cr.move_to(x0, y0);
                 cr.line_to(x1, y1);
                 cr.stroke();
