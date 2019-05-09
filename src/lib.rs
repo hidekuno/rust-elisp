@@ -258,6 +258,23 @@ mod tests {
         assert_str!(do_lisp_env("(y)", &mut env), "300");
     }
     #[test]
+    fn closure_nest() {
+        let mut env = lisp::SimpleEnv::new();
+
+        do_lisp_env("(define (testf x) (lambda () (* x 10)))", &mut env);
+        do_lisp_env("(define (foo x) (testf (* 2 x)))", &mut env);
+        assert_str!(do_lisp_env("((foo 2))", &mut env), "40");
+
+        do_lisp_env(
+            "(define (counter x) (let ((c 0)) (lambda () (set! c (+ x c)) c)))",
+            &mut env,
+        );
+        do_lisp_env("(define (make-counter c) (counter c))", &mut env);
+        do_lisp_env("(define c (make-counter 10))", &mut env);
+        assert_str!(do_lisp_env("(c)", &mut env), "10");
+        assert_str!(do_lisp_env("(c)", &mut env), "20");
+    }
+    #[test]
     fn list() {
         assert_str!(do_lisp("(list 1 2)"), "(1 2)");
         assert_str!(do_lisp("(list 0.5 1)"), "(0.5 1)");
