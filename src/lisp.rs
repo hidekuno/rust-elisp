@@ -212,7 +212,7 @@ impl RsFunction {
         }
     }
     fn add_closure_env(&mut self, map: HashMap<String, Expression>) {
-        self.closure_env.push_back(map);
+        self.closure_env.push_front(map);
     }
     fn set_tail_recurcieve(&mut self) {
         self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
