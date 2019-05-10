@@ -428,17 +428,21 @@ mod tests {
     }
     #[test]
     fn reduce() {
-        assert_str!(do_lisp("(reduce (lambda (a b) (+ a b))(list 1 2 3))"), "6");
+        assert_str!(do_lisp("(reduce (lambda (a b) (+ a b))0(list 1 2 3))"), "6");
         assert_str!(
-            do_lisp("(reduce (lambda (a b) (append a b))(list (list 1) (list 2) (list 3)))"),
+            do_lisp("(reduce (lambda (a b) (append a b))(list)(list (list 1) (list 2) (list 3)))"),
             "(1 2 3)"
+        );
+        assert_str!(
+            do_lisp("(reduce (lambda (a b) (+ a b))(* 10 10)(list))"),
+            "100"
         );
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env("(define a 100)", &mut env);
         do_lisp_env("(define b 200)", &mut env);
         do_lisp_env("(define c 300)", &mut env);
         assert_str!(
-            do_lisp_env("(reduce (lambda (a b) (+ a b))(list a b c))", &mut env),
+            do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &mut env),
             "600"
         );
     }
@@ -573,7 +577,7 @@ mod tests {
                        "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
                        "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
                        "(define delete (lambda (x l) (filter (lambda (n) (not (= x n))) l)))",
-                       "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
+                       "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(list)(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
                        "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
                        "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
                        "(define take (lambda (l n)(if (>= 0 n) (list)(cons (car l)(take (cdr l)(- n 1))))))",
@@ -889,11 +893,10 @@ mod error_tests {
     fn reduce() {
         assert_str!(do_lisp("(reduce)"), "E1007");
         assert_str!(do_lisp("(reduce (lambda (n) n))"), "E1007");
-        assert_str!(do_lisp("(reduce 1 2 3)"), "E1007");
-        assert_str!(do_lisp("(reduce (lambda (n) n) (list))"), "E1011");
-        assert_str!(do_lisp("(reduce (list) (list))"), "E1006");
-        assert_str!(do_lisp("(reduce (lambda (n) n) 10)"), "E1005");
-        assert_str!(do_lisp("(reduce (lambda (n) n) (iota 4))"), "E1007");
+        assert_str!(do_lisp("(reduce 1 2 3 4)"), "E1007");
+        assert_str!(do_lisp("(reduce 0 (list) (list))"), "E1006");
+        assert_str!(do_lisp("(reduce (lambda (n) n) 10 10)"), "E1005");
+        assert_str!(do_lisp("(reduce (lambda (n) n) 0 (iota 4))"), "E1007");
     }
     #[test]
     fn for_each() {
