@@ -1171,15 +1171,14 @@ fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
 }
 fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 4 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     if let Expression::Function(mut rc) = eval(&exp[1], env)? {
-        if let Expression::List(l) = eval(&exp[2], env)? {
+        if let Expression::List(l) = eval(&exp[3], env)? {
             if l.len() == 0 {
-                return Err(create_error!("E1011"));
+                return eval(&exp[2], env);
             }
-
             let mut result = l[0].clone();
             // not carfully length,  safety
             for e in &l[1 as usize..] {
