@@ -648,6 +648,14 @@ mod tests {
             do_lisp_env("(msort test-list)", &mut env),
             "(0 2 3 6 7 8 9 14 19 27 36)"
         );
+        assert_str!(
+            do_lisp_env("(inf-list (lambda (n) (list (+ 1 (car n)))) (list 0) 10)", &mut env),
+            "(0 1 2 3 4 5 6 7 8 9)"
+        );
+        assert_str!(
+            do_lisp_env("(inf-list (lambda (n) (list (cadr n)(+ (cadr n) (car n)))) (list 0 1) 10)", &mut env),
+            "(0 1 1 2 3 5 8 13 21 34)"
+        );
     }
 }
 mod error_tests {
