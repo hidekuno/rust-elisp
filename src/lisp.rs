@@ -152,7 +152,7 @@ impl EvalResult for Expression {
             Expression::Nil() => String::from("nil"),
             Expression::Loop() => String::from("loop"),
             Expression::TailRecursion(_) => String::from("Tail Recursion"),
-            Expression::Promise(_,_) => String::from("Promise"),
+            Expression::Promise(_, _) => String::from("Promise"),
         };
     }
 }
@@ -1547,7 +1547,7 @@ macro_rules! ret_clone_if_atom {
             Expression::Float(v) => return Ok(Expression::Float(*v)),
             Expression::Nil() => return Ok(Expression::Nil()),
             Expression::Pair(_, _) => return Ok($e.clone()),
-            Expression::Promise(_,_) => return Ok($e.clone()),
+            Expression::Promise(_, _) => return Ok($e.clone()),
             _ => {}
         }
     };
