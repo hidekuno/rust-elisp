@@ -130,6 +130,7 @@ pub enum Expression {
     Loop(),
     Nil(),
     TailRecursion(Rc<RsFunction>),
+    Promise(Box<Expression>, SimpleEnv),
 }
 impl EvalResult for Expression {
     fn value_string(&self) -> String {
@@ -151,6 +152,7 @@ impl EvalResult for Expression {
             Expression::Nil() => String::from("nil"),
             Expression::Loop() => String::from("loop"),
             Expression::TailRecursion(_) => String::from("Tail Recursion"),
+            Expression::Promise(_, _) => String::from("Promise"),
         };
     }
 }
@@ -528,6 +530,7 @@ impl PartialOrd for Number {
         Some(Ordering::Equal)
     }
 }
+#[derive(Clone)]
 pub struct SimpleEnv {
     env_tbl: LinkedList<HashMap<String, Expression>>,
     builtin_tbl: HashMap<&'static str, Operation>,
@@ -607,6 +610,8 @@ impl SimpleEnv {
         }
         b.insert("load-file", load_file);
         b.insert("display", display);
+        b.insert("delay", delay);
+        b.insert("force", force);
 
         SimpleEnv {
             env_tbl: l,
@@ -1261,6 +1266,25 @@ fn display(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::Nil());
 }
+
+fn delay(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    Ok(Expression::Promise(Box::new(exp[1].clone()), env.clone()))
+}
+fn force(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let v = eval(&exp[1], env)?;
+    if let Expression::Promise(p, mut pe) = v {
+        return eval(&(*p), &mut pe);
+    } else {
+        return Ok(v);
+    }
+}
+
 fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
@@ -1522,13 +1546,14 @@ macro_rules! ret_clone_if_atom {
             Expression::Integer(v) => return Ok(Expression::Integer(*v)),
             Expression::Float(v) => return Ok(Expression::Float(*v)),
             Expression::Nil() => return Ok(Expression::Nil()),
+            Expression::Pair(_, _) => return Ok($e.clone()),
+            Expression::Promise(_, _) => return Ok($e.clone()),
             _ => {}
         }
     };
 }
 pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
     ret_clone_if_atom!(sexp);
-
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
             Some(v) => {
@@ -1538,7 +1563,6 @@ pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
                     Expression::TailRecursion(_) => return Ok(v.clone()),
                     Expression::LetLoop(_) => return Ok(v.clone()),
                     Expression::List(_) => return Ok(v.clone()),
-                    Expression::Pair(_, _) => return Ok(v.clone()),
                     _ => {}
                 }
             }
@@ -1551,9 +1575,6 @@ pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             return Ok(Expression::BuildInFunctionExt(f.clone()));
         }
         return Err(create_error_value!("E1008", val));
-    }
-    if let Expression::Pair(_, _) = sexp {
-        return Ok(sexp.clone());
     }
     if let Expression::List(l) = sexp {
         if l.len() == 0 {
