@@ -355,16 +355,11 @@ pub struct RsLetLoop {
     tail_recurcieve: bool,
 }
 impl RsLetLoop {
-    fn new(sexp: &[Expression], _name: String, map: &mut HashMap<String, Expression>) -> RsLetLoop {
+    fn new(sexp: &[Expression], _name: String, _param: &Vec<String>) -> RsLetLoop {
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[3..]);
-
-        let mut _param: Vec<String> = Vec::new();
-        for k in map.keys() {
-            _param.push((*k).to_string());
-        }
         RsLetLoop {
-            param: _param,
+            param: _param.clone(),
             body: vec,
             name: _name,
             tail_recurcieve: false,
@@ -740,6 +735,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         idx += 1;
     }
     // Parameter Setup
+    let mut param_list = Vec::new();
     if let Expression::List(l) = &exp[idx] {
         for plist in l {
             if let Expression::List(p) = plist {
@@ -749,6 +745,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
                 if let Expression::Symbol(s) = &p[0] {
                     let v = eval(&p[1], env)?;
                     param.insert(s.to_string(), v.clone());
+                    param_list.push(s.clone());
                 } else {
                     return Err(create_error!("E1004"));
                 }
@@ -762,7 +759,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     // Setup label name let
     if let Expression::Symbol(s) = &exp[1] {
-        let mut letloop = RsLetLoop::new(exp, s.to_string(), &mut param);
+        let mut letloop = RsLetLoop::new(exp, s.to_string(), &param_list);
         letloop.set_tail_recurcieve();
         param.insert(s.to_string(), Expression::LetLoop(Rc::new(letloop)));
     }
@@ -1309,7 +1306,6 @@ fn calc(
     }
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
-
         let param = match o {
             Expression::Float(v) => Number::Float(v),
             _ => match o {
