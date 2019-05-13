@@ -1,29 +1,25 @@
 // cargo test --lib
 #[macro_use]
 extern crate lazy_static;
-
 pub mod dyn_lisp;
 pub mod lisp;
-use crate::lisp::EvalResult;
 
-#[allow(unused_imports)]
-use std::env;
-#[allow(unused_imports)]
-use std::fs::File;
-#[allow(unused_imports)]
-use std::io::Write;
-#[allow(unused_imports)]
-use std::path::Path;
-//        assert_str!(do_lisp(""), "");
-//        let mut env = lisp::SimpleEnv::new();
-//        assert_str!(do_lisp_env("", &mut env), "");
-#[allow(dead_code)]
-fn do_lisp(program: &str) -> String {
+#[cfg(test)]
+macro_rules! assert_str {
+    ($a: expr,
+     $b: expr) => {
+        assert!($a == $b.to_string())
+    };
+}
+#[cfg(test)]
+pub fn do_lisp(program: &str) -> String {
     let mut env = lisp::SimpleEnv::new();
     return do_lisp_env(program, &mut env);
 }
-#[allow(dead_code)]
-fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
+#[cfg(test)]
+pub fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
+    use crate::lisp::EvalResult;
+
     match lisp::do_core_logic(program.to_string(), env) {
         Ok(v) => {
             return v.value_string();
@@ -33,16 +29,13 @@ fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
         }
     }
 }
-#[allow(unused_macros)]
-macro_rules! assert_str {
-    ($a: expr,
-     $b: expr) => {
-        assert!($a == $b.to_string())
-    };
-}
+#[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
     use super::*;
+    use std::env;
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::Path;
 
     #[test]
     fn atom() {
