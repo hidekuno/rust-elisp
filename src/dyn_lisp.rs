@@ -94,7 +94,7 @@ pub enum DataType {
     RsNilDesc,
 }
 pub trait Expression: ExpressionClone {
-    fn type_id(&self) -> &DataType;
+    fn data_type(&self) -> &DataType;
     fn value_string(&self) -> String;
     fn as_any(&self) -> &Any;
 }
@@ -114,13 +114,13 @@ impl Clone for PtrExpression {
 
 #[derive(Copy, Clone)]
 pub struct RsInteger {
-    type_id: DataType,
+    data_type: DataType,
     value: i64,
 }
 impl RsInteger {
     fn new(p: i64) -> RsInteger {
         RsInteger {
-            type_id: DataType::RsIntegerDesc,
+            data_type: DataType::RsIntegerDesc,
             value: p,
         }
     }
@@ -129,8 +129,8 @@ impl Expression for RsInteger {
     fn value_string(&self) -> String {
         self.value.to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -138,13 +138,13 @@ impl Expression for RsInteger {
 }
 #[derive(Copy, Clone)]
 pub struct RsFloat {
-    type_id: DataType,
+    data_type: DataType,
     value: f64,
 }
 impl RsFloat {
     fn new(p: f64) -> RsFloat {
         RsFloat {
-            type_id: DataType::RsFloatDesc,
+            data_type: DataType::RsFloatDesc,
             value: p,
         }
     }
@@ -153,8 +153,8 @@ impl Expression for RsFloat {
     fn value_string(&self) -> String {
         self.value.to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -162,13 +162,13 @@ impl Expression for RsFloat {
 }
 #[derive(Copy, Clone)]
 pub struct RsBoolean {
-    type_id: DataType,
+    data_type: DataType,
     value: bool,
 }
 impl RsBoolean {
     fn new(p: bool) -> RsBoolean {
         RsBoolean {
-            type_id: DataType::RsBooleanDesc,
+            data_type: DataType::RsBooleanDesc,
             value: p,
         }
     }
@@ -181,8 +181,8 @@ impl Expression for RsBoolean {
         }
         b
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -190,13 +190,13 @@ impl Expression for RsBoolean {
 }
 #[derive(Copy, Clone)]
 pub struct RsChar {
-    type_id: DataType,
+    data_type: DataType,
     value: char,
 }
 impl RsChar {
     fn new(p: char) -> RsChar {
         RsChar {
-            type_id: DataType::RsCharDesc,
+            data_type: DataType::RsCharDesc,
             value: p,
         }
     }
@@ -205,8 +205,8 @@ impl Expression for RsChar {
     fn value_string(&self) -> String {
         self.value.to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -214,13 +214,13 @@ impl Expression for RsChar {
 }
 #[derive(Clone)]
 pub struct RsSymbol {
-    type_id: DataType,
+    data_type: DataType,
     value: String,
 }
 impl RsSymbol {
     fn new(p: String) -> RsSymbol {
         RsSymbol {
-            type_id: DataType::RsSymbolDesc,
+            data_type: DataType::RsSymbolDesc,
             value: p,
         }
     }
@@ -229,8 +229,8 @@ impl Expression for RsSymbol {
     fn value_string(&self) -> String {
         self.value.to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -238,12 +238,12 @@ impl Expression for RsSymbol {
 }
 #[derive(Clone)]
 pub struct RsNil {
-    type_id: DataType,
+    data_type: DataType,
 }
 impl RsNil {
     fn new() -> RsNil {
         RsNil {
-            type_id: DataType::RsNilDesc,
+            data_type: DataType::RsNilDesc,
         }
     }
 }
@@ -251,8 +251,8 @@ impl Expression for RsNil {
     fn value_string(&self) -> String {
         "nil".to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -260,13 +260,13 @@ impl Expression for RsNil {
 }
 #[derive(Clone)]
 pub struct RsList {
-    type_id: DataType,
+    data_type: DataType,
     value: Vec<PtrExpression>,
 }
 impl RsList {
     fn new() -> RsList {
         RsList {
-            type_id: DataType::RsListDesc,
+            data_type: DataType::RsListDesc,
             value: Vec::new(),
         }
     }
@@ -275,8 +275,8 @@ impl Expression for RsList {
     fn value_string(&self) -> String {
         "List".to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -285,7 +285,7 @@ impl Expression for RsList {
 
 #[derive(Clone)]
 pub struct RsBuildInFunction {
-    type_id: DataType,
+    data_type: DataType,
     name: String,
     func: fn(&Vec<PtrExpression>, &mut SimpleEnv) -> ResultExpression,
 }
@@ -295,7 +295,7 @@ impl RsBuildInFunction {
         _name: String,
     ) -> RsBuildInFunction {
         RsBuildInFunction {
-            type_id: DataType::RsBuildInFunctionDesc,
+            data_type: DataType::RsBuildInFunctionDesc,
             func: _func,
             name: _name,
         }
@@ -309,8 +309,8 @@ impl Expression for RsBuildInFunction {
     fn value_string(&self) -> String {
         "BuildIn Function".to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -318,7 +318,7 @@ impl Expression for RsBuildInFunction {
 }
 #[derive(Clone)]
 pub struct RsFunction {
-    type_id: DataType,
+    data_type: DataType,
     param: RsList,
     body: Vec<PtrExpression>,
     name: String,
@@ -337,7 +337,7 @@ impl RsFunction {
         let mut vec: Vec<PtrExpression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
         RsFunction {
-            type_id: DataType::RsFunctionDesc,
+            data_type: DataType::RsFunctionDesc,
             param: _param,
             body: vec,
             name: _name,
@@ -403,8 +403,8 @@ impl Expression for RsFunction {
     fn value_string(&self) -> String {
         "Function".to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -412,7 +412,7 @@ impl Expression for RsFunction {
 }
 #[derive(Clone)]
 pub struct RsLetLoop {
-    type_id: DataType,
+    data_type: DataType,
     param: Vec<String>,
     body: Vec<PtrExpression>,
     name: String,
@@ -432,7 +432,7 @@ impl RsLetLoop {
             _param.push((*k).to_string());
         }
         RsLetLoop {
-            type_id: DataType::RsLetLoopDesc,
+            data_type: DataType::RsLetLoopDesc,
             param: _param,
             body: vec,
             name: _name,
@@ -494,8 +494,8 @@ impl Expression for RsLetLoop {
     fn value_string(&self) -> String {
         "Named Let".to_string()
     }
-    fn type_id(&self) -> &DataType {
-        &self.type_id
+    fn data_type(&self) -> &DataType {
+        &self.data_type
     }
     fn as_any(&self) -> &Any {
         self
@@ -930,7 +930,7 @@ fn lambda(exp: &Vec<PtrExpression>, _env: &mut SimpleEnv) -> ResultExpression {
     }
     if let Some(l) = exp[1].as_any().downcast_ref::<RsList>() {
         for e in &l.value {
-            match e.type_id() {
+            match e.data_type() {
                 DataType::RsSymbolDesc => {}
                 _ => return Err(create_error!("E1004")),
             }
@@ -957,7 +957,7 @@ fn define(exp: &Vec<PtrExpression>, env: &mut SimpleEnv) -> ResultExpression {
             let mut f = exp.clone();
             let mut param = RsList::new();
             for n in &l.value[1..] {
-                match (*n).type_id() {
+                match (*n).data_type() {
                     DataType::RsSymbolDesc => {}
                     _ => return Err(create_error!("E1004")),
                 }
@@ -1230,7 +1230,7 @@ fn atom(token: &String) -> PtrExpression {
 }
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
-        match $e.type_id() {
+        match $e.data_type() {
             DataType::RsBooleanDesc
             | DataType::RsCharDesc
             | DataType::RsIntegerDesc
