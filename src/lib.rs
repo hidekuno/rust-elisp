@@ -49,6 +49,7 @@ mod tests {
         assert_str!(do_lisp("10"), "10");
         assert_str!(do_lisp("10.5"), "10.5");
         assert_str!(do_lisp("#t"), "#t");
+        assert_str!(do_lisp("#f"), "#f");
         assert_str!(do_lisp("#\\a"), "a");
         assert_str!(do_lisp("\"abc\""), "\"abc\"");
     }
@@ -85,6 +86,8 @@ mod tests {
         assert_str!(do_lisp("(/ 0 0)"), "NaN");
         assert_str!(do_lisp("(/ 9 0)"), "inf");
         assert_str!(do_lisp("(/ 10 0.0)"), "inf");
+        assert_str!(do_lisp("(+ 10 (/ 0 0))"), "NaN");
+        assert_str!(do_lisp("(+ 10 (/ 9 0))"), "inf");
         assert_str!(do_lisp("(/ 0 9)"), "0");
         assert_str!(do_lisp("(/ 0.0 9)"), "0");
         assert_str!(do_lisp("(/ (+ 4 4)(+ 2 2))"), "2");
@@ -94,44 +97,63 @@ mod tests {
         assert_str!(do_lisp("(= 5 5)"), "#t");
         assert_str!(do_lisp("(= 5.5 5.5)"), "#t");
         assert_str!(do_lisp("(= 5 5.0)"), "#t");
+        assert_str!(do_lisp("(= 5.0 5)"), "#t");
         assert_str!(do_lisp("(= 5 6)"), "#f");
         assert_str!(do_lisp("(= 5.5 6.6)"), "#f");
+        assert_str!(do_lisp("(= 5 6.6)"), "#f");
+        assert_str!(do_lisp("(= 5.0 6)"), "#f");
         assert_str!(do_lisp("(= (+ 1 1)(+ 0 2))"), "#t");
     }
     #[test]
     fn than() {
         assert_str!(do_lisp("(> 6 5)"), "#t");
-        assert_str!(do_lisp("(> 6 6)"), "#f");
         assert_str!(do_lisp("(> 6.5 5.5)"), "#t");
+        assert_str!(do_lisp("(> 6.1 6)"), "#t");
+        assert_str!(do_lisp("(> 6 5.9)"), "#t");
+        assert_str!(do_lisp("(> 6 6)"), "#f");
         assert_str!(do_lisp("(> 4.5 5.5)"), "#f");
+        assert_str!(do_lisp("(> 4 5.5)"), "#f");
+        assert_str!(do_lisp("(> 4.5 5)"), "#f");
         assert_str!(do_lisp("(> (+ 3 3) 5)"), "#t");
     }
     #[test]
     fn less() {
         assert_str!(do_lisp("(< 5 6)"), "#t");
         assert_str!(do_lisp("(< 5.6 6.5)"), "#t");
+        assert_str!(do_lisp("(< 5 6.1)"), "#t");
+        assert_str!(do_lisp("(< 5 6.5)"), "#t");
         assert_str!(do_lisp("(> 6 6)"), "#f");
         assert_str!(do_lisp("(> 6.5 6.6)"), "#f");
+        assert_str!(do_lisp("(> 6 6.0)"), "#f");
+        assert_str!(do_lisp("(> 5.9 6)"), "#f");
         assert_str!(do_lisp("(< 5 (+ 3 3))"), "#t");
     }
     #[test]
     fn than_eq() {
         assert_str!(do_lisp("(>= 6 6)"), "#t");
-        assert_str!(do_lisp("(>= 7.6 7.6)"), "#t");
         assert_str!(do_lisp("(>= 6 5)"), "#t");
+        assert_str!(do_lisp("(>= 6.1 5)"), "#t");
+        assert_str!(do_lisp("(>= 7.6 7.6)"), "#t");
         assert_str!(do_lisp("(>= 6.3 5.2)"), "#t");
+        assert_str!(do_lisp("(>= 6 5.1)"), "#t");
         assert_str!(do_lisp("(>= 5 6)"), "#f");
         assert_str!(do_lisp("(>= 5.1 6.2)"), "#f");
+        assert_str!(do_lisp("(>= 5.9 6)"), "#f");
+        assert_str!(do_lisp("(>= 5 6.1)"), "#f");
         assert_str!(do_lisp("(>= (+ 2 3 1) 6)"), "#t");
     }
     #[test]
     fn less_eq() {
         assert_str!(do_lisp("(<= 6 6)"), "#t");
-        assert_str!(do_lisp("(<= 6.1 6.1)"), "#t");
-        assert_str!(do_lisp("(<= 5 6)"), "#t");
-        assert_str!(do_lisp("(<= 5.2 6.9)"), "#t");
         assert_str!(do_lisp("(<= 6 5)"), "#f");
-        assert_str!(do_lisp("(<= 8.6 5.4)"), "#f");
+        assert_str!(do_lisp("(<= 6.1 5)"), "#f");
+        assert_str!(do_lisp("(<= 7.6 7.6)"), "#t");
+        assert_str!(do_lisp("(<= 6.3 5.2)"), "#f");
+        assert_str!(do_lisp("(<= 6 5.1)"), "#f");
+        assert_str!(do_lisp("(<= 5 6)"), "#t");
+        assert_str!(do_lisp("(<= 5.1 6.2)"), "#t");
+        assert_str!(do_lisp("(<= 5.9 6)"), "#t");
+        assert_str!(do_lisp("(<= 5 6.1)"), "#t");
         assert_str!(do_lisp("(<= (+ 3 3) 6)"), "#t");
     }
     #[test]
@@ -351,8 +373,6 @@ mod tests {
     #[test]
     fn reverse() {
         assert_str!(do_lisp("(reverse (list 10))"), "(10)");
-        //        assert_str!(do_lisp(""), "");
-        //        assert_str!(do_lisp(""), "");
         assert_str!(do_lisp("(reverse (iota 10))"), "(9 8 7 6 5 4 3 2 1 0)");
         assert_str!(do_lisp("(reverse (list))"), "()");
     }
@@ -571,7 +591,7 @@ mod tests {
     #[test]
     fn delay_force() {
         assert_str!(do_lisp("(delay (+ 1 1))"), "Promise");
-        assert_str!(do_lisp("(force (delay (+ 1 1)))"),"2");
+        assert_str!(do_lisp("(force (delay (+ 1 1)))"), "2");
         assert_str!(do_lisp("(force  (+ 1 2))"), "3");
 
         let mut env = lisp::SimpleEnv::new();
@@ -649,11 +669,17 @@ mod tests {
             "(0 2 3 6 7 8 9 14 19 27 36)"
         );
         assert_str!(
-            do_lisp_env("(inf-list (lambda (n) (list (+ 1 (car n)))) (list 0) 10)", &mut env),
+            do_lisp_env(
+                "(inf-list (lambda (n) (list (+ 1 (car n)))) (list 0) 10)",
+                &mut env
+            ),
             "(0 1 2 3 4 5 6 7 8 9)"
         );
         assert_str!(
-            do_lisp_env("(inf-list (lambda (n) (list (cadr n)(+ (cadr n) (car n)))) (list 0 1) 10)", &mut env),
+            do_lisp_env(
+                "(inf-list (lambda (n) (list (cadr n)(+ (cadr n) (car n)))) (list 0 1) 10)",
+                &mut env
+            ),
             "(0 1 1 2 3 5 8 13 21 34)"
         );
     }
