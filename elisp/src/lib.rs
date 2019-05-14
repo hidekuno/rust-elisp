@@ -5,19 +5,12 @@ pub mod dyn_lisp;
 pub mod lisp;
 
 #[cfg(test)]
-macro_rules! assert_str {
-    ($a: expr,
-     $b: expr) => {
-        assert!($a == $b.to_string())
-    };
-}
-#[cfg(test)]
-pub fn do_lisp(program: &str) -> String {
+fn do_lisp(program: &str) -> String {
     let mut env = lisp::SimpleEnv::new();
     return do_lisp_env(program, &mut env);
 }
 #[cfg(test)]
-pub fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
+fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
     use crate::lisp::EvalResult;
 
     match lisp::do_core_logic(program.to_string(), env) {
@@ -29,6 +22,14 @@ pub fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
         }
     }
 }
+#[cfg(test)]
+macro_rules! assert_str {
+    ($a: expr,
+     $b: expr) => {
+        assert!($a == $b.to_string())
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -518,8 +519,8 @@ mod tests {
             "0.9999999999999999"
         );
         assert_str!(
-            do_lisp("(tan (/(* 45.025 (* 4 (atan 1))) 180))"),
-            "1.0008730456194168"
+            do_lisp("(tan (/(* 45.5 (* 4 (atan 1))) 180))"),
+            "1.0176073929721252"
         );
         let mut env = lisp::SimpleEnv::new();
         do_lisp_env("(define a (/(* 45 (* 4 (atan 1))) 180))", &mut env);
