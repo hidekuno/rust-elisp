@@ -22,7 +22,13 @@ fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
         }
     }
 }
-#[macro_use]
+macro_rules! assert_str {
+    ($a: expr,
+     $b: expr) => {
+        assert!($a == $b.to_string())
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -30,13 +36,6 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
-
-    macro_rules! assert_str {
-        ($a: expr,
-         $b: expr) => {
-            assert!($a == $b.to_string())
-        };
-    }
 
     #[test]
     fn atom() {
