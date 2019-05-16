@@ -30,6 +30,14 @@ macro_rules! assert_str {
 }
 
 #[cfg(test)]
+macro_rules! assert_str {
+    ($a: expr,
+     $b: expr) => {
+        assert!($a == $b.to_string())
+    };
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::env;
