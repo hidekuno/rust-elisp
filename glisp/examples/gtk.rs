@@ -1,3 +1,4 @@
+extern crate cairo;
 extern crate gdk;
 extern crate glib;
 extern crate gtk;
@@ -5,7 +6,10 @@ extern crate gtk;
 use std::f64::consts::PI;
 use std::thread;
 
+use cairo::ImageSurface;
+use cairo::Matrix;
 use gtk::prelude::*;
+use std::fs::File;
 
 pub struct Koch {
     sender: glib::Sender<(f64, f64, f64, f64)>,
@@ -156,14 +160,36 @@ fn scheme_gtk() {
     let canvas = gtk::DrawingArea::new();
     canvas.set_size_request(720, 560);
     canvas.connect_draw(|_, cr| {
+        cr.scale(2.5, 2.5);
+        // let mut file = File::open("glenda.png").expect("Couldn't create 'duke.png'");
+        // let mut file = File::open("duke.png").expect("Couldn't create 'duke.png'");
+        let mut file = File::open("sicp.png").expect("Couldn't create 'sicp.png'");
+        let surface = ImageSurface::create_from_png(&mut file).expect("Can't create surface");
+        cr.move_to(0.0, 0.0);
+        // cr.translate(560.0, 1.0);
+        // cr.scale(-1.0, 1.0);
+        // cr.translate(1.0, 300.0);
+        // cr.scale(1.0, -1.0);
+        let matrix = Matrix {
+            xx: 1.0,
+            yx: 0.0,
+            xy: 0.0,
+            yy: 1.0,
+            x0: 100.0,
+            y0: 100.0,
+        };
+        cr.transform(matrix);
+        cr.set_source_surface(&surface, 0.0, 0.0);
+        cr.paint();
+
         cr.scale(720 as f64, 560 as f64);
         cr.set_font_size(0.25);
-
-        cr.move_to(0.04, 0.53);
+        cr.move_to(0.27, 0.83);
         cr.show_text("Rust");
 
-        cr.move_to(0.27, 0.65);
+        cr.move_to(0.27, 0.75);
         cr.text_path("eLisp");
+
         cr.set_source_rgb(0.5, 0.5, 1.0);
         cr.fill_preserve();
         cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -174,12 +200,6 @@ fn scheme_gtk() {
         cr.arc(0.04, 0.53, 0.02, 0.0, PI * 2.);
         cr.arc(0.27, 0.65, 0.02, 0.0, PI * 2.);
         cr.fill();
-
-        // cr.set_source_rgb(0.0, 0.0, 0.0);
-        // cr.set_line_width(0.002);
-        // cr.move_to(0.0, 0.0);
-        // cr.line_to(1.0, 1.0);
-        // cr.stroke();
 
         Inhibit(false)
     });
