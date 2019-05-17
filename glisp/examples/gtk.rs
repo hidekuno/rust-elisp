@@ -160,25 +160,22 @@ fn scheme_gtk() {
     let canvas = gtk::DrawingArea::new();
     canvas.set_size_request(720, 560);
     canvas.connect_draw(|_, cr| {
-        cr.scale(2.5, 2.5);
-        // let mut file = File::open("glenda.png").expect("Couldn't create 'duke.png'");
-        // let mut file = File::open("duke.png").expect("Couldn't create 'duke.png'");
-        let mut file = File::open("sicp.png").expect("Couldn't create 'sicp.png'");
-        let surface = ImageSurface::create_from_png(&mut file).expect("Can't create surface");
+        cr.scale(1.0, 1.0);
+
+        let png_data: Vec<u8> = vec![
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08,
+            0xd7, 0x63, 0xd0, 0xd2, 0xd2, 0x02, 0x00, 0x01, 0x00, 0x00, 0x7f, 0x09, 0xa9, 0x5a,
+            0x4d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        let surface =
+            ImageSurface::create_from_png(&mut &png_data[..]).expect("Can't create surface");
         cr.move_to(0.0, 0.0);
         // cr.translate(560.0, 1.0);
         // cr.scale(-1.0, 1.0);
         // cr.translate(1.0, 300.0);
         // cr.scale(1.0, -1.0);
-        let matrix = Matrix {
-            xx: 1.0,
-            yx: 0.0,
-            xy: 0.0,
-            yy: 1.0,
-            x0: 100.0,
-            y0: 100.0,
-        };
-        cr.transform(matrix);
         cr.set_source_surface(&surface, 0.0, 0.0);
         cr.paint();
 
