@@ -4,6 +4,7 @@ extern crate gtk;
 extern crate elisp;
 
 use elisp::create_error;
+use elisp::create_error_value;
 use elisp::lisp;
 use lisp::EvalResult;
 use lisp::Expression;
@@ -176,8 +177,8 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             Ok(Expression::Symbol(String::from("draw-line")))
         });
     }
-    //(draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 0.0 0.0)(list -1.0 0.0 0.0 1.0 180.0 0.0))
-    //(draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 0.0 0.0)(list 1.0 0.0 0.0 1.0 0.0 0.0))
+    //(draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list -1.0 0.0 0.0 1.0 180.0 0.0))
+    //(draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 1.0 0.0 0.0 1.0 0.0 0.0))
     {
         let r = rc.clone();
         let mut e = (*r).borrow_mut();
@@ -190,6 +191,14 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             let filename = match lisp::eval(&exp[1], env)? {
                 Expression::String(s) => s,
                 _ => return Err(create_error!("E1015")),
+            };
+            let mut file = match File::open(filename) {
+                Ok(f) => f,
+                Err(e) => return Err(create_error_value!("E9999", e.to_string())),
+            };
+            let surface = match ImageSurface::create_from_png(&mut file) {
+                Ok(s) => s,
+                Err(e) => return Err(create_error_value!("E9999", e.to_string())),
             };
             let mut ctm: Vec<f64> = Vec::new();
             if let Expression::List(l) = lisp::eval(&exp[2], env)? {
@@ -208,9 +217,6 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             }
             clear_canvas.connect_draw(move |_, cr| {
                 cr.scale(1.0, 1.0);
-                let mut file = File::open(filename.clone()).expect("Couldn't create 'sicp.png'");
-                let surface =
-                    ImageSurface::create_from_png(&mut file).expect("Can't create surface");
                 cr.move_to(0.0, 0.0);
                 let matrix = Matrix {
                     xx: ctm[0],
