@@ -1,0 +1,12 @@
+---
+rustelisp:
+  build: .
+  dockerfile: docker/Dockerfile
+  stdin_open: true
+  volumes:
+    - ./:/root/rust-elisp
+  environment:
+    - "TZ=Japan"
+    - "DISPLAY=docker.for.mac.localhost:0"
+  container_name: rust-elisp
+
