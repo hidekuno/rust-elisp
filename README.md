@@ -12,11 +12,12 @@ RustによるLisp(subset版)の実装
 - SICPの図形言語プログラムが動作するところまで確認した。
 
 ![image](https://user-images.githubusercontent.com/22115777/57493176-d8702a80-72fe-11e9-86d2-bc3e563e4c40.png)
+![image](https://user-images.githubusercontent.com/22115777/57909858-dc7fe780-78be-11e9-9509-3ea7cac4cba9.png)
 
 ## 開発環境
 | Item   | Ver. |備考|
 |--------|--------|--------|
-| OS     | CentOS | draw系を使わなければ特になし|
+| OS     | CentOS7 | draw系を使わなければ特になし|
 | Gtk+   | 3.22.30||
 | rust   | 1.33.0||
 | rust-gtk |0.6.0|https://github.com/gtk-rs/gtk|
