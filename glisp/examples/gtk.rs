@@ -1,3 +1,4 @@
+extern crate cairo;
 extern crate gdk;
 extern crate glib;
 extern crate gtk;
@@ -5,7 +6,10 @@ extern crate gtk;
 use std::f64::consts::PI;
 use std::thread;
 
+use cairo::ImageSurface;
+use cairo::Matrix;
 use gtk::prelude::*;
+use std::fs::File;
 
 pub struct Koch {
     sender: glib::Sender<(f64, f64, f64, f64)>,
@@ -156,14 +160,33 @@ fn scheme_gtk() {
     let canvas = gtk::DrawingArea::new();
     canvas.set_size_request(720, 560);
     canvas.connect_draw(|_, cr| {
+        cr.scale(1.0, 1.0);
+
+        let png_data: Vec<u8> = vec![
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08,
+            0xd7, 0x63, 0xd0, 0xd2, 0xd2, 0x02, 0x00, 0x01, 0x00, 0x00, 0x7f, 0x09, 0xa9, 0x5a,
+            0x4d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        let surface =
+            ImageSurface::create_from_png(&mut &png_data[..]).expect("Can't create surface");
+        cr.move_to(0.0, 0.0);
+        // cr.translate(560.0, 1.0);
+        // cr.scale(-1.0, 1.0);
+        // cr.translate(1.0, 300.0);
+        // cr.scale(1.0, -1.0);
+        cr.set_source_surface(&surface, 0.0, 0.0);
+        cr.paint();
+
         cr.scale(720 as f64, 560 as f64);
         cr.set_font_size(0.25);
-
-        cr.move_to(0.04, 0.53);
+        cr.move_to(0.27, 0.83);
         cr.show_text("Rust");
 
-        cr.move_to(0.27, 0.65);
+        cr.move_to(0.27, 0.75);
         cr.text_path("eLisp");
+
         cr.set_source_rgb(0.5, 0.5, 1.0);
         cr.fill_preserve();
         cr.set_source_rgb(0.0, 0.0, 0.0);
@@ -174,12 +197,6 @@ fn scheme_gtk() {
         cr.arc(0.04, 0.53, 0.02, 0.0, PI * 2.);
         cr.arc(0.27, 0.65, 0.02, 0.0, PI * 2.);
         cr.fill();
-
-        // cr.set_source_rgb(0.0, 0.0, 0.0);
-        // cr.set_line_width(0.002);
-        // cr.move_to(0.0, 0.0);
-        // cr.line_to(1.0, 1.0);
-        // cr.stroke();
 
         Inhibit(false)
     });
