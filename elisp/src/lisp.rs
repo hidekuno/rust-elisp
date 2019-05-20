@@ -658,13 +658,10 @@ impl SimpleEnv {
     pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
         self.builtin_tbl.insert(key, func);
     }
-    pub fn add_builtin_closure<
+    pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
+    where
         F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
-    >(
-        &mut self,
-        key: &'static str,
-        c: F,
-    ) {
+    {
         self.builtin_tbl_ext.insert(key, Rc::new(c));
     }
     #[allow(dead_code)]
