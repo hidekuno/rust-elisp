@@ -15,3 +15,5 @@ RUN cargo build --release --bin lisp
 
 WORKDIR $HOME/rust-elisp/glisp
 RUN cargo build --release --bin glisp
+RUN sed -i "s/home.kunohi/root/" samples/sicp/roger.scm
+RUN dbus-uuidgen > /etc/machine-id
