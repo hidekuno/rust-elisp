@@ -22,12 +22,6 @@ fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
         }
     }
 }
-macro_rules! assert_str {
-    ($a: expr,
-     $b: expr) => {
-        assert!($a == $b.to_string())
-    };
-}
 
 #[cfg(test)]
 macro_rules! assert_str {
