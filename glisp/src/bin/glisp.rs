@@ -118,17 +118,28 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     vbox.pack_start(&scroll, true, true, 0);
 
     //--------------------------------------------------------
-    // DrawLine
+    // Create Lisp Function
+    //--------------------------------------------------------
+    build_lisp_function(rc, &canvas);
+
+    //--------------------------------------------------------
+    // Build Up finish
+    //--------------------------------------------------------
+    window.add(&vbox);
+    window.show_all();
+}
+fn build_lisp_function(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea) {
+    let mut e = (*rc).borrow_mut();
+    //--------------------------------------------------------
+    // Draw Clear
     //--------------------------------------------------------
     {
-        let r = rc.clone();
-        let mut e = (*r).borrow_mut();
-        let clear_canvas = canvas.clone();
+        let canvas_ = canvas.clone();
         e.add_builtin_closure("draw-clear", move |exp, _| {
             if exp.len() != 1 {
                 return Err(create_error!("E1007"));
             }
-            clear_canvas.connect_draw(move |_, cr| {
+            canvas_.connect_draw(move |_, cr| {
                 cr.transform(Matrix {
                     xx: 1.0,
                     yx: 0.0,
@@ -145,11 +156,11 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             Ok(Expression::Symbol(String::from("draw-clear")))
         });
     }
+    //--------------------------------------------------------
+    // DrawLine
+    //--------------------------------------------------------
     {
-        let r = rc.clone();
-        let mut e = (*r).borrow_mut();
-        let clear_canvas = canvas.clone();
-
+        let canvas_ = canvas.clone();
         e.add_builtin_closure("draw-line", move |exp, env| {
             if exp.len() != 5 {
                 return Err(create_error!("E1007"));
@@ -164,7 +175,7 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
                 }
             }
             let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);
-            clear_canvas.connect_draw(move |_, cr| {
+            canvas_.connect_draw(move |_, cr| {
                 cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
                 cr.set_source_rgb(0.0, 0.0, 0.0);
                 cr.set_line_width(0.001);
@@ -177,13 +188,13 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             Ok(Expression::Symbol(String::from("draw-line")))
         });
     }
-    //(draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list -1.0 0.0 0.0 1.0 180.0 0.0))
-    //(draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 1.0 0.0 0.0 1.0 0.0 0.0))
+    //--------------------------------------------------------
+    // Draw Clear
+    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list -1.0 0.0 0.0 1.0 180.0 0.0))
+    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 1.0 0.0 0.0 1.0 0.0 0.0))
+    //--------------------------------------------------------
     {
-        let r = rc.clone();
-        let mut e = (*r).borrow_mut();
-        let clear_canvas = canvas.clone();
-
+        let canvas_ = canvas.clone();
         e.add_builtin_closure("draw-image", move |exp, env| {
             if exp.len() != 3 {
                 return Err(create_error!("E1007"));
@@ -215,7 +226,7 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             } else {
                 return Err(create_error!("E1005"));
             }
-            clear_canvas.connect_draw(move |_, cr| {
+            canvas_.connect_draw(move |_, cr| {
                 cr.scale(1.0, 1.0);
                 cr.move_to(0.0, 0.0);
                 let matrix = Matrix {
@@ -235,11 +246,6 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
             Ok(Expression::Symbol(String::from("draw-image")))
         });
     }
-    //--------------------------------------------------------
-    // Build Up finish
-    //--------------------------------------------------------
-    window.add(&vbox);
-    window.show_all();
 }
 fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch15-05-interior-mutability.html
