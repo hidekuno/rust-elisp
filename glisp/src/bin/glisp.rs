@@ -240,12 +240,102 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     //--------------------------------------------------------
     window.add(&vbox);
     window.show_all();
-
-    gtk::main();
 }
 fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch15-05-interior-mutability.html
     let rc = Rc::new(RefCell::new(SimpleEnv::new()));
 
     scheme_gtk(&rc);
+
+    gtk::main();
+}
+
+#[cfg(test)]
+use std::io::Write;
+#[cfg(test)]
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(test)]
+macro_rules! assert_str {
+    ($a: expr,
+     $b: expr) => {
+        assert!($a == $b.to_string())
+    };
+}
+#[cfg(test)]
+fn do_lisp_env(program: &str, rc: &Rc<RefCell<SimpleEnv>>) -> String {
+    match lisp::do_core_logic(program.to_string(), &mut (*rc).borrow_mut()) {
+        Ok(v) => {
+            return v.value_string();
+        }
+        Err(e) => {
+            return String::from(e.get_code());
+        }
+    }
+}
+
+#[test]
+fn test_error_check() {
+    let png = format!(
+        "/tmp/hoge_{}.png",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    );
+    let rc = Rc::new(RefCell::new(SimpleEnv::new()));
+    scheme_gtk(&rc);
+    assert_str!(do_lisp_env("(draw-clear 10)", &rc), "E1007");
+    assert_str!(do_lisp_env("(draw-line)", &rc), "E1007");
+    assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &rc), "E1003");
+    assert_str!(do_lisp_env("(draw-image)", &rc), "E1007");
+    assert_str!(
+        do_lisp_env(
+            format!("(draw-image \"{}\" (list 1 2 3) 10)", png).as_str(),
+            &rc
+        ),
+        "E1007"
+    );
+    assert_str!(
+        do_lisp_env(
+            format!("(draw-image \"{}\" (list 1 2 3))", png).as_str(),
+            &rc
+        ),
+        "E9999"
+    );
+
+    let png_data: Vec<u8> = vec![
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+        0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xd0,
+        0xd2, 0xd2, 0x02, 0x00, 0x01, 0x00, 0x00, 0x7f, 0x09, 0xa9, 0x5a, 0x4d, 0x00, 0x00, 0x00,
+        0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ];
+    let mut file = File::create(&png).unwrap();
+    file.write_all(&png_data).unwrap();
+    file.flush().unwrap();
+
+    assert_str!(
+        do_lisp_env(
+            format!(
+                "(draw-image \"{}\" (list 0.0 0.1 0.2 0.3 0.4 0.5 0.6))",
+                png
+            )
+            .as_str(),
+            &rc
+        ),
+        "E1007"
+    );
+    assert_str!(
+        do_lisp_env(format!("(draw-image \"{}\" 10)", png).as_str(), &rc),
+        "E1005"
+    );
+    assert_str!(
+        do_lisp_env(
+            format!("(draw-image \"{}\" (list 0.0 0.1 0.2 0.3 0.4 5))", png).as_str(),
+            &rc
+        ),
+        "E1003"
+    );
+    std::fs::remove_file(png).unwrap();
 }
