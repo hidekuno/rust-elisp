@@ -187,7 +187,7 @@ fn build_lisp_function(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea) {
             });
             canvas_.queue_draw();
             while gtk::events_pending() {
-                gtk::main_iteration_do(false);
+                gtk::main_iteration_do(true);
             }
             Ok(Expression::Symbol(String::from("draw-line")))
         });
@@ -247,6 +247,10 @@ fn build_lisp_function(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea) {
 
                 Inhibit(false)
             });
+            canvas_.queue_draw();
+            while gtk::events_pending() {
+                gtk::main_iteration_do(true);
+            }
             Ok(Expression::Symbol(String::from("draw-image")))
         });
     }
