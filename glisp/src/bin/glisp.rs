@@ -1,4 +1,5 @@
 extern crate cairo;
+extern crate glib;
 extern crate gtk;
 
 extern crate elisp;
@@ -21,6 +22,7 @@ use std::rc::Rc;
 
 const DRAW_WIDTH: i32 = 720;
 const DRAW_HEIGHT: i32 = 560;
+const MONTHON_DELAY: i32 = 700;
 
 fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     gtk::init().expect("Failed to initialize GTK.");
@@ -78,20 +80,27 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     let file = gtk::MenuItem::new_with_label("File");
     let eval = gtk::MenuItem::new_with_label("Eval");
 
-    let clear_canvas = canvas.clone();
     let text_buffer = text_view.get_buffer().expect("Couldn't get window");
     let env = rc.clone();
+    let canvas_ = canvas.clone();
+
     eval.connect_activate(move |_| {
+        let drawing_area = canvas_.clone();
+
+        let sid = gtk::timeout_add(MONTHON_DELAY as u32, move || {
+            drawing_area.queue_draw();
+            gtk::Continue(true)
+        });
         let s = text_buffer.get_start_iter();
         let e = text_buffer.get_end_iter();
         let exp = text_buffer.get_text(&s, &e, false).expect("die");
-
         let result = match lisp::do_core_logic(exp.to_string(), &mut (*env).borrow_mut()) {
             Ok(r) => r.value_string(),
             Err(e) => e.get_code(),
         };
         println!("{}", result);
-        clear_canvas.queue_draw();
+        glib::source::source_remove(sid);
+        canvas_.queue_draw();
     });
     menu.append(&eval);
 
@@ -121,7 +130,6 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     // Create Lisp Function
     //--------------------------------------------------------
     build_lisp_function(rc, &canvas);
-
     //--------------------------------------------------------
     // Build Up finish
     //--------------------------------------------------------
@@ -133,119 +141,118 @@ fn build_lisp_function(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
-    {
-        let canvas_ = canvas.clone();
-        e.add_builtin_closure("draw-clear", move |exp, _| {
-            if exp.len() != 1 {
-                return Err(create_error!("E1007"));
-            }
-            canvas_.connect_draw(move |_, cr| {
-                cr.transform(Matrix {
-                    xx: 1.0,
-                    yx: 0.0,
-                    xy: 0.0,
-                    yy: 1.0,
-                    x0: 0.0,
-                    y0: 0.0,
-                });
-                cr.set_source_rgb(0.9, 0.9, 0.9);
-                cr.paint();
-
-                Inhibit(false)
+    let canvas_ = canvas.clone();
+    e.add_builtin_closure("draw-clear", move |exp, _| {
+        if exp.len() != 1 {
+            return Err(create_error!("E1007"));
+        }
+        canvas_.connect_draw(move |_, cr| {
+            cr.transform(Matrix {
+                xx: 1.0,
+                yx: 0.0,
+                xy: 0.0,
+                yy: 1.0,
+                x0: 0.0,
+                y0: 0.0,
             });
-            Ok(Expression::Symbol(String::from("draw-clear")))
+            cr.set_source_rgb(0.9, 0.9, 0.9);
+            cr.paint();
+
+            Inhibit(false)
         });
-    }
+        Ok(Expression::Symbol(String::from("draw-clear")))
+    });
     //--------------------------------------------------------
     // DrawLine
     //--------------------------------------------------------
-    {
-        let canvas_ = canvas.clone();
-        e.add_builtin_closure("draw-line", move |exp, env| {
-            if exp.len() != 5 {
+    let canvas_ = canvas.clone();
+    e.add_builtin_closure("draw-line", move |exp, env| {
+        if exp.len() != 5 {
+            return Err(create_error!("E1007"));
+        }
+
+        let mut vec: Vec<f64> = Vec::new();
+        for e in &exp[1 as usize..] {
+            if let Expression::Float(f) = lisp::eval(e, env)? {
+                vec.push(f);
+            } else {
+                return Err(create_error!("E1003"));
+            }
+        }
+        let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);
+        canvas_.connect_draw(move |_, cr| {
+            cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+            cr.set_source_rgb(0.0, 0.0, 0.0);
+            cr.set_line_width(0.001);
+            cr.move_to(x0, y0);
+            cr.line_to(x1, y1);
+            cr.stroke();
+
+            Inhibit(false)
+        });
+        while gtk::events_pending() {
+            gtk::main_iteration_do(true);
+        }
+        Ok(Expression::Symbol(String::from("draw-line")))
+    });
+    //--------------------------------------------------------
+    // Draw Image
+    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list -1.0 0.0 0.0 1.0 180.0 0.0))
+    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 1.0 0.0 0.0 1.0 0.0 0.0))
+    //--------------------------------------------------------
+    let canvas_ = canvas.clone();
+    e.add_builtin_closure("draw-image", move |exp, env| {
+        if exp.len() != 3 {
+            return Err(create_error!("E1007"));
+        }
+        let filename = match lisp::eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!("E1015")),
+        };
+        let mut file = match File::open(filename) {
+            Ok(f) => f,
+            Err(e) => return Err(create_error_value!("E9999", e.to_string())),
+        };
+        let surface = match ImageSurface::create_from_png(&mut file) {
+            Ok(s) => s,
+            Err(e) => return Err(create_error_value!("E9999", e.to_string())),
+        };
+        let mut ctm: Vec<f64> = Vec::new();
+        if let Expression::List(l) = lisp::eval(&exp[2], env)? {
+            if l.len() != 6 {
                 return Err(create_error!("E1007"));
             }
-
-            let mut vec: Vec<f64> = Vec::new();
-            for e in &exp[1 as usize..] {
+            for e in &l {
                 if let Expression::Float(f) = lisp::eval(e, env)? {
-                    vec.push(f);
+                    ctm.push(f);
                 } else {
                     return Err(create_error!("E1003"));
                 }
             }
-            let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);
-            canvas_.connect_draw(move |_, cr| {
-                cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-                cr.set_source_rgb(0.0, 0.0, 0.0);
-                cr.set_line_width(0.001);
-                cr.move_to(x0, y0);
-                cr.line_to(x1, y1);
-                cr.stroke();
-
-                Inhibit(false)
-            });
-            Ok(Expression::Symbol(String::from("draw-line")))
+        } else {
+            return Err(create_error!("E1005"));
+        }
+        canvas_.connect_draw(move |_, cr| {
+            cr.scale(1.0, 1.0);
+            cr.move_to(0.0, 0.0);
+            let matrix = Matrix {
+                xx: ctm[0],
+                yx: ctm[1],
+                xy: ctm[2],
+                yy: ctm[3],
+                x0: ctm[4],
+                y0: ctm[5],
+            };
+            cr.transform(matrix);
+            cr.set_source_surface(&surface, 0.0, 0.0);
+            cr.paint();
+            Inhibit(false)
         });
-    }
-    //--------------------------------------------------------
-    // Draw Clear
-    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list -1.0 0.0 0.0 1.0 180.0 0.0))
-    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 1.0 0.0 0.0 1.0 0.0 0.0))
-    //--------------------------------------------------------
-    {
-        let canvas_ = canvas.clone();
-        e.add_builtin_closure("draw-image", move |exp, env| {
-            if exp.len() != 3 {
-                return Err(create_error!("E1007"));
-            }
-            let filename = match lisp::eval(&exp[1], env)? {
-                Expression::String(s) => s,
-                _ => return Err(create_error!("E1015")),
-            };
-            let mut file = match File::open(filename) {
-                Ok(f) => f,
-                Err(e) => return Err(create_error_value!("E9999", e.to_string())),
-            };
-            let surface = match ImageSurface::create_from_png(&mut file) {
-                Ok(s) => s,
-                Err(e) => return Err(create_error_value!("E9999", e.to_string())),
-            };
-            let mut ctm: Vec<f64> = Vec::new();
-            if let Expression::List(l) = lisp::eval(&exp[2], env)? {
-                if l.len() != 6 {
-                    return Err(create_error!("E1007"));
-                }
-                for e in &l {
-                    if let Expression::Float(f) = lisp::eval(e, env)? {
-                        ctm.push(f);
-                    } else {
-                        return Err(create_error!("E1003"));
-                    }
-                }
-            } else {
-                return Err(create_error!("E1005"));
-            }
-            canvas_.connect_draw(move |_, cr| {
-                cr.scale(1.0, 1.0);
-                cr.move_to(0.0, 0.0);
-                let matrix = Matrix {
-                    xx: ctm[0],
-                    yx: ctm[1],
-                    xy: ctm[2],
-                    yy: ctm[3],
-                    x0: ctm[4],
-                    y0: ctm[5],
-                };
-                cr.transform(matrix);
-                cr.set_source_surface(&surface, 0.0, 0.0);
-                cr.paint();
-
-                Inhibit(false)
-            });
-            Ok(Expression::Symbol(String::from("draw-image")))
-        });
-    }
+        while gtk::events_pending() {
+            gtk::main_iteration_do(true);
+        }
+        Ok(Expression::Symbol(String::from("draw-image")))
+    });
 }
 fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch15-05-interior-mutability.html
