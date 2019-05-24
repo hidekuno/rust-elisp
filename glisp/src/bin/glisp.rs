@@ -1,4 +1,5 @@
 extern crate cairo;
+extern crate gdk;
 extern crate glib;
 extern crate gtk;
 
@@ -23,6 +24,7 @@ use std::rc::Rc;
 const DRAW_WIDTH: i32 = 720;
 const DRAW_HEIGHT: i32 = 560;
 const MONTHON_DELAY: i32 = 700;
+const EVAL_KEYCODE: u32 = 101;
 
 fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     gtk::init().expect("Failed to initialize GTK.");
@@ -72,39 +74,32 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     scroll.add(&text_view);
     scroll.set_size_request(720, 240);
 
+    let rc_ = rc.clone();
+    let canvas_ = canvas.clone();
+    text_view.connect_key_press_event(move |w, key| {
+        if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK)
+            && key.get_keyval() == EVAL_KEYCODE
+        {
+            execute_lisp(&rc_, &canvas_, w);
+        }
+        Inhibit(false)
+    });
     //--------------------------------------------------------
     // GtkMenuBar
     //--------------------------------------------------------
     let menu_bar = gtk::MenuBar::new();
     let menu = gtk::Menu::new();
-    let file = gtk::MenuItem::new_with_label("File");
-    let eval = gtk::MenuItem::new_with_label("Eval");
+    let file = gtk::MenuItem::new_with_mnemonic("_File");
+    let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
 
-    let text_buffer = text_view.get_buffer().expect("Couldn't get window");
-    let env = rc.clone();
+    let rc_ = rc.clone();
     let canvas_ = canvas.clone();
-
     eval.connect_activate(move |_| {
-        let drawing_area = canvas_.clone();
-
-        let sid = gtk::timeout_add(MONTHON_DELAY as u32, move || {
-            drawing_area.queue_draw();
-            gtk::Continue(true)
-        });
-        let s = text_buffer.get_start_iter();
-        let e = text_buffer.get_end_iter();
-        let exp = text_buffer.get_text(&s, &e, false).expect("die");
-        let result = match lisp::do_core_logic(exp.to_string(), &mut (*env).borrow_mut()) {
-            Ok(r) => r.value_string(),
-            Err(e) => e.get_code(),
-        };
-        println!("{}", result);
-        glib::source::source_remove(sid);
-        canvas_.queue_draw();
+        execute_lisp(&rc_, &canvas_, &text_view);
     });
     menu.append(&eval);
 
-    let quit = gtk::MenuItem::new_with_label("Quit");
+    let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
     // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
     let window_weak = window.downgrade();
     quit.connect_activate(move |_| {
@@ -135,6 +130,26 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     //--------------------------------------------------------
     window.add(&vbox);
     window.show_all();
+}
+fn execute_lisp(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea, text_view: &gtk::TextView) {
+    let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+
+    let canvas_ = canvas.clone();
+    let sid = gtk::timeout_add(MONTHON_DELAY as u32, move || {
+        canvas_.queue_draw();
+        gtk::Continue(true)
+    });
+    let s = text_buffer.get_start_iter();
+    let e = text_buffer.get_end_iter();
+    let exp = text_buffer.get_text(&s, &e, false).expect("die");
+
+    let result = match lisp::do_core_logic(exp.to_string(), &mut (*rc).borrow_mut()) {
+        Ok(r) => r.value_string(),
+        Err(e) => e.get_code(),
+    };
+    println!("{}", result);
+    glib::source::source_remove(sid);
+    canvas.queue_draw();
 }
 fn build_lisp_function(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea) {
     let mut e = (*rc).borrow_mut();
