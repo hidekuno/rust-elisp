@@ -25,6 +25,7 @@ const DRAW_WIDTH: i32 = 720;
 const DRAW_HEIGHT: i32 = 560;
 const MONTHON_DELAY: i32 = 700;
 const EVAL_KEYCODE: u32 = 101;
+const EVAL_RESULT_ID: &str = "result";
 
 fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     gtk::init().expect("Failed to initialize GTK.");
@@ -41,6 +42,14 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     //--------------------------------------------------------
     let vbox = gtk::Box::new(gtk::Orientation::Vertical, 5);
     vbox.set_border_width(5);
+
+    //--------------------------------------------------------
+    // GtkStatusBar
+    //--------------------------------------------------------
+    let status_bar = gtk::Statusbar::new();
+    status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), "");
+    status_bar.set_margin_top(0);
+    status_bar.set_margin_bottom(0);
 
     //--------------------------------------------------------
     // DrawingArea
@@ -72,15 +81,16 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     let scroll = gtk::ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
     scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
     scroll.add(&text_view);
-    scroll.set_size_request(720, 240);
+    scroll.set_size_request(DRAW_WIDTH, 160);
 
     let rc_ = rc.clone();
     let canvas_ = canvas.clone();
+    let clone_bar = status_bar.clone();
     text_view.connect_key_press_event(move |w, key| {
         if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK)
             && key.get_keyval() == EVAL_KEYCODE
         {
-            execute_lisp(&rc_, &canvas_, w);
+            execute_lisp(&rc_, &canvas_, w, &clone_bar);
         }
         Inhibit(false)
     });
@@ -94,8 +104,9 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
 
     let rc_ = rc.clone();
     let canvas_ = canvas.clone();
+    let clone_bar = status_bar.clone();
     eval.connect_activate(move |_| {
-        execute_lisp(&rc_, &canvas_, &text_view);
+        execute_lisp(&rc_, &canvas_, &text_view, &clone_bar);
     });
     menu.append(&eval);
 
@@ -120,22 +131,30 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     vbox.pack_start(&menu_bar, false, false, 0);
     vbox.pack_start(&canvas, true, true, 0);
     vbox.pack_start(&scroll, true, true, 0);
+    vbox.pack_start(&status_bar, true, true, 0);
 
     //--------------------------------------------------------
     // Create Lisp Function
     //--------------------------------------------------------
     build_lisp_function(rc, &canvas);
+
     //--------------------------------------------------------
     // Build Up finish
     //--------------------------------------------------------
     window.add(&vbox);
     window.show_all();
 }
-fn execute_lisp(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea, text_view: &gtk::TextView) {
+fn execute_lisp(
+    rc: &Rc<RefCell<SimpleEnv>>,
+    canvas: &gtk::DrawingArea,
+    text_view: &gtk::TextView,
+    status_bar: &gtk::Statusbar,
+) {
     let text_buffer = text_view.get_buffer().expect("Couldn't get window");
 
     let canvas_ = canvas.clone();
     let sid = gtk::timeout_add(MONTHON_DELAY as u32, move || {
+        println!("timeout");
         canvas_.queue_draw();
         gtk::Continue(true)
     });
@@ -147,7 +166,9 @@ fn execute_lisp(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea, text_vie
         Ok(r) => r.value_string(),
         Err(e) => e.get_code(),
     };
+
     println!("{}", result);
+    status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
     glib::source::source_remove(sid);
     canvas.queue_draw();
 }
