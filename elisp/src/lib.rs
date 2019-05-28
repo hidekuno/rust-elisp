@@ -49,6 +49,11 @@ mod tests {
         assert_str!(do_lisp("\"abc\""), "\"abc\"");
     }
     #[test]
+    fn atom_utf8() {
+        assert_str!(do_lisp("\"山田太郎\""), "\"山田太郎\"");
+        assert_str!(do_lisp("\"山田(太郎\""), "\"山田(太郎\"");
+    }
+    #[test]
     fn plus() {
         assert_str!(do_lisp("(+ 1 2)"), "3");
         assert_str!(do_lisp("(+ 1.25 2.25)"), "3.5");
@@ -687,7 +692,10 @@ mod error_tests {
     fn atom() {
         assert_str!(do_lisp("\"a"), "E0001");
     }
-
+    #[test]
+    fn atom_utf8() {
+        assert_str!(do_lisp("\"山"), "E0001");
+    }
     #[test]
     fn plus() {
         assert_str!(do_lisp("(+ 1 a)"), "E1008");

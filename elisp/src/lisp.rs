@@ -1433,6 +1433,7 @@ fn tokenize(program: String) -> Vec<String> {
     s = s.replace("\r", " ");
     let vc = s.as_bytes();
 
+    //A String is a wrapper over a Vec<u8>.(https://doc.rust-lang.org/book/ch08-02-strings.html)
     for c in s.as_str().chars() {
         if string_mode {
             if c == '"' {
@@ -1454,11 +1455,10 @@ fn tokenize(program: String) -> Vec<String> {
                 // Nop
             } else {
                 symbol_name.push(c);
-
-                if s.len() - 1 == i {
+                if s.len() - c.len_utf8() == i {
                     token.push(String::from(symbol_name.as_str()));
                 } else {
-                    match vc[i + 1] as char {
+                    match vc[i + c.len_utf8()] as char {
                         '(' | ')' | ' ' => {
                             token.push(String::from(symbol_name.as_str()));
                             symbol_name.clear();
@@ -1468,7 +1468,7 @@ fn tokenize(program: String) -> Vec<String> {
                 }
             }
         }
-        i += 1;
+        i += c.len_utf8();
     }
     return token;
 }
