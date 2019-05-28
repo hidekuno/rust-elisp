@@ -1520,7 +1520,7 @@ fn atom(token: &String) -> Expression {
     if token.as_str() == "#f" {
         return Expression::Boolean(false);
     }
-    if (token.len() == 3) && (&token.as_str()[0..2] == "#\\") {
+    if (token.len() == 3) && (token.as_str().starts_with("#\\")) {
         let c = token.chars().collect::<Vec<char>>();
         return Expression::Char(c[2]);
     }

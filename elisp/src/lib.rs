@@ -52,6 +52,9 @@ mod tests {
     fn atom_utf8() {
         assert_str!(do_lisp("\"山田太郎\""), "\"山田太郎\"");
         assert_str!(do_lisp("\"山田(太郎\""), "\"山田(太郎\"");
+        let mut env = lisp::SimpleEnv::new();
+        do_lisp_env("(define 山 200)", &mut env);
+        assert_str!(do_lisp_env("山", &mut env), "200");
     }
     #[test]
     fn plus() {
@@ -695,6 +698,7 @@ mod error_tests {
     #[test]
     fn atom_utf8() {
         assert_str!(do_lisp("\"山"), "E0001");
+        assert_str!(do_lisp("山"), "E1008");
     }
     #[test]
     fn plus() {
