@@ -566,15 +566,14 @@ mod tests {
         assert_str!(do_lisp_env("(/(log a)(log b))", &mut env), "2");
     }
     #[test]
+    #[allow(unused_must_use)]
     fn load_file() {
-        let test_file = Path::new(&env::var("HOME").unwrap())
-            .join("tmp")
-            .join("test.scm");
+        let test_dir = Path::new(&env::var("HOME").unwrap()).join("tmp");
+        let test_file = test_dir.join("test.scm");
 
-        match std::fs::remove_file(&test_file) {
-            Err(_) => (),
-            _ => (),
-        }
+        std::fs::create_dir(test_dir);
+        std::fs::remove_file(&test_file);
+
         let mut file = File::create(&test_file).unwrap();
         writeln!(file, "(define foo 100)").unwrap();
         writeln!(file, "(define hoge 200)").unwrap();
@@ -1028,6 +1027,8 @@ mod error_tests {
         assert_str!(do_lisp("(load-file hoge)"), "E1008");
         assert_str!(do_lisp("(load-file #t)"), "E1015");
         assert_str!(do_lisp("(load-file \"/etc/test.scm\")"), "E1014");
+        assert_str!(do_lisp("(load-file \"/tmp\")"), "E1016");
+        assert_str!(do_lisp("(load-file \"/bin/cp\")"), "E9999");
     }
     #[test]
     fn delay_force() {
