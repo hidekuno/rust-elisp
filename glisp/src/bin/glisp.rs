@@ -27,7 +27,9 @@ const MONTHON_DELAY: i32 = 700;
 const EVAL_KEYCODE: u32 = 101;
 const EVAL_RESULT_ID: &str = "result";
 
-fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
+type Environment = Rc<RefCell<SimpleEnv>>;
+
+fn scheme_gtk(rc: &Environment) {
     gtk::init().expect("Failed to initialize GTK.");
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
 
@@ -145,7 +147,7 @@ fn scheme_gtk(rc: &Rc<RefCell<SimpleEnv>>) {
     window.show_all();
 }
 fn execute_lisp(
-    rc: &Rc<RefCell<SimpleEnv>>,
+    rc: &Environment,
     canvas: &gtk::DrawingArea,
     text_view: &gtk::TextView,
     status_bar: &gtk::Statusbar,
@@ -172,7 +174,7 @@ fn execute_lisp(
     glib::source::source_remove(sid);
     canvas.queue_draw();
 }
-fn build_lisp_function(rc: &Rc<RefCell<SimpleEnv>>, canvas: &gtk::DrawingArea) {
+fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
     let mut e = (*rc).borrow_mut();
     //--------------------------------------------------------
     // Draw Clear
@@ -312,7 +314,7 @@ macro_rules! assert_str {
     };
 }
 #[cfg(test)]
-fn do_lisp_env(program: &str, rc: &Rc<RefCell<SimpleEnv>>) -> String {
+fn do_lisp_env(program: &str, rc: &Environment) -> String {
     match lisp::do_core_logic(program.to_string(), &mut (*rc).borrow_mut()) {
         Ok(v) => {
             return v.value_string();
