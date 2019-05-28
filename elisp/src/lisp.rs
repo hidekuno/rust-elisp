@@ -109,6 +109,7 @@ macro_rules! print_error {
 //========================================================================
 type ResultExpression = Result<Expression, RsError>;
 type Operation = fn(&[Expression], &mut SimpleEnv) -> ResultExpression;
+type ExtOperation = Fn(&[Expression], &mut SimpleEnv) -> ResultExpression;
 //========================================================================
 pub trait EvalResult {
     fn value_string(&self) -> String;
@@ -125,7 +126,7 @@ pub enum Expression {
     String(String),
     Function(Rc<RsFunction>),
     BuildInFunction(Operation),
-    BuildInFunctionExt(Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static>),
+    BuildInFunctionExt(Rc<ExtOperation>),
     LetLoop(Rc<RsLetLoop>),
     Loop(),
     Nil(),
@@ -529,8 +530,7 @@ impl PartialOrd for Number {
 pub struct SimpleEnv {
     env_tbl: LinkedList<HashMap<String, Expression>>,
     builtin_tbl: HashMap<&'static str, Operation>,
-    builtin_tbl_ext:
-        HashMap<&'static str, Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression>>,
+    builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
 }
 impl SimpleEnv {
     pub fn new() -> SimpleEnv {
@@ -661,6 +661,7 @@ impl SimpleEnv {
     pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
     where
         F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
+        // F: ExtOperation + 'static, => type aliases cannot be used as traits
     {
         self.builtin_tbl_ext.insert(key, Rc::new(c));
     }
