@@ -17,6 +17,7 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
+use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 use std::vec::Vec;
@@ -48,6 +49,7 @@ lazy_static! {
         e.insert("E1013", "Calculate A Division By Zero");
         e.insert("E1014", "Not Found Program File");
         e.insert("E1015", "Not String");
+        e.insert("E1016", "Not Program File");
         e.insert("E9999", "System Panic");
         e
     };
@@ -1241,13 +1243,25 @@ fn load_file(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     let v = eval(&exp[1], env)?;
     if let Expression::String(s) = v {
+        if false == Path::new(&s).exists() {
+            return Err(create_error!("E1014"));
+        }
         let file = match File::open(s) {
-            Err(_) => return Err(create_error!("E1014")),
+            Err(e) => return Err(create_error_value!("E1014", e)),
             Ok(file) => file,
         };
+        let meta = match file.metadata() {
+            Err(e) => return Err(create_error_value!("E9999", e)),
+            Ok(meta) => meta,
+        };
+        if true == meta.is_dir() {
+            return Err(create_error!("E1016"));
+        }
         let mut stream = BufReader::new(file);
-        repl(&mut stream, env, true);
-        return Ok(Expression::Nil());
+        match repl(&mut stream, env, true) {
+            Err(e) => return Err(create_error_value!("E9999", e)),
+            Ok(_) => return Ok(Expression::Nil()),
+        }
     }
     return Err(create_error!("E1015"));
 }
@@ -1347,11 +1361,18 @@ fn op(
 }
 pub fn do_interactive() {
     let mut env = SimpleEnv::new();
-
     let mut stream = BufReader::new(std::io::stdin());
-    repl(&mut stream, &mut env, false);
+
+    match repl(&mut stream, &mut env, false) {
+        Err(e) => println!("{}", e),
+        Ok(_) => {}
+    }
 }
-fn repl(stream: &mut BufRead, env: &mut SimpleEnv, batch: bool) {
+fn repl(
+    stream: &mut BufRead,
+    env: &mut SimpleEnv,
+    batch: bool,
+) -> Result<(), Box<std::error::Error>> {
     let mut buffer = String::new();
     let mut program: Vec<String> = Vec::new();
     let mut w = std::io::stdout();
@@ -1363,7 +1384,7 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv, batch: bool) {
         }
         w.flush().unwrap();
         buffer.clear();
-        let n = stream.read_line(&mut buffer).unwrap();
+        let n = stream.read_line(&mut buffer)?;
         if n == 0 {
             break;
         }
@@ -1390,6 +1411,7 @@ fn repl(stream: &mut BufRead, env: &mut SimpleEnv, batch: bool) {
         program.clear();
         prompt = PROMPT;
     }
+    Ok(())
 }
 fn count_parenthesis(program: String) -> bool {
     let mut left = 0;
