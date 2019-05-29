@@ -1401,10 +1401,31 @@ fn repl(
             prompt = "";
             continue;
         }
-        //do_core_logic(program.iter().cloned().collect::<String>());
-        match do_core_logic(program.join(" "), env) {
-            Ok(n) => println!("{}", n.value_string()),
-            Err(e) => print_error!(e),
+        debug!("{}", program.iter().cloned().collect::<String>());
+        {
+            let mut token = tokenize(program.join(" "));
+            let mut c: i32 = 1;
+            loop {
+                let exp = match parse(&token, &mut c) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        print_error!(e);
+                        continue;
+                    }
+                };
+                match eval(&exp, env) {
+                    Ok(n) => println!("{}", n.value_string()),
+                    Err(e) => print_error!(e),
+                };
+                debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
+                if c == token.len() as i32 {
+                    break;
+                } else {
+                    for _i in 0..c as usize {
+                        token.remove(0);
+                    }
+                }
+            }
         }
         // for error_handle
         env.cleanup();
@@ -1439,7 +1460,6 @@ pub fn do_core_logic(program: String, env: &mut SimpleEnv) -> ResultExpression {
 
     let mut c: i32 = 1;
     let exp = parse(&token, &mut c)?;
-
     return eval(&exp, env);
 }
 fn tokenize(program: String) -> Vec<String> {
