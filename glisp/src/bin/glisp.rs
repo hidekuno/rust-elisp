@@ -156,7 +156,6 @@ fn execute_lisp(
 
     let canvas_ = canvas.clone();
     let sid = gtk::timeout_add(MONTHON_DELAY as u32, move || {
-        println!("timeout");
         canvas_.queue_draw();
         gtk::Continue(true)
     });
@@ -198,7 +197,7 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
 
             Inhibit(false)
         });
-        Ok(Expression::Symbol(String::from("draw-clear")))
+        Ok(Expression::Nil())
     });
     //--------------------------------------------------------
     // DrawLine
@@ -231,7 +230,7 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
         while gtk::events_pending() {
             gtk::main_iteration_do(true);
         }
-        Ok(Expression::Symbol(String::from("draw-line")))
+        Ok(Expression::Nil())
     });
     //--------------------------------------------------------
     // Draw Image
@@ -249,11 +248,11 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
         };
         let mut file = match File::open(filename) {
             Ok(f) => f,
-            Err(e) => return Err(create_error_value!("E9999", e.to_string())),
+            Err(e) => return Err(create_error_value!("E9999", e)),
         };
         let surface = match ImageSurface::create_from_png(&mut file) {
             Ok(s) => s,
-            Err(e) => return Err(create_error_value!("E9999", e.to_string())),
+            Err(e) => return Err(create_error_value!("E9999", e)),
         };
         let mut ctm: Vec<f64> = Vec::new();
         if let Expression::List(l) = lisp::eval(&exp[2], env)? {
@@ -289,7 +288,7 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
         while gtk::events_pending() {
             gtk::main_iteration_do(true);
         }
-        Ok(Expression::Symbol(String::from("draw-image")))
+        Ok(Expression::Nil())
     });
 }
 fn main() {
