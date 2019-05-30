@@ -551,7 +551,8 @@ impl SimpleEnv {
         b.insert(">", |exp, env| op(exp, env, |x, y| x > y));
         b.insert(">=", |exp, env| op(exp, env, |x, y| x >= y));
         b.insert("expt", expt);
-        b.insert("modulo", modulo);
+        b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
+        b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
         b.insert("define", define);
         b.insert("lambda", lambda);
         b.insert("if", if_f);
@@ -602,9 +603,6 @@ impl SimpleEnv {
         b.insert("rand-integer", rand_integer);
         b.insert("rand-list", rand_list);
 
-        if let Some(r) = b.get("/") {
-            b.insert("quotient", *r);
-        }
         b.insert("load-file", load_file);
         b.insert("display", display);
         b.insert("delay", delay);
@@ -861,24 +859,24 @@ fn expt(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Ok(Expression::Integer(result));
     }
 }
-fn modulo(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn divide(
+    exp: &[Expression],
+    env: &mut SimpleEnv,
+    f: fn(x: &i64, y: &i64) -> i64,
+) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let mut vec: Vec<i64> = Vec::new();
-    for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-
-        if let Expression::Integer(i) = o {
-            vec.push(i);
-        } else {
-            return Err(create_error!("E1002"));
+    let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
+    match (a, b) {
+        (Expression::Integer(x), Expression::Integer(y)) => {
+            if y == 0 {
+                return Err(create_error!("E1013"));
+            }
+            return Ok(Expression::Integer(f(&x, &y)));
         }
-    }
-    if vec[1] == 0 {
-        return Err(create_error!("E1013"));
-    }
-    return Ok(Expression::Integer(vec[0] % vec[1]));
+        (_, _) => return Err(create_error!("E1002")),
+    };
 }
 fn lambda(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
     if exp.len() < 3 {
