@@ -697,14 +697,17 @@ mod error_tests {
     fn syntax_error() {
         assert_str!(do_lisp("("), "E0001");
         assert_str!(do_lisp(")"), "E0002");
+        assert_str!(do_lisp("(list (+ 1 2) 3"), "E0002");
     }
     #[test]
     fn atom() {
-        assert_str!(do_lisp("\"a"), "E0001");
+        assert_str!(do_lisp("\""), "E0004");
+        assert_str!(do_lisp("\"a"), "E0004");
+        assert_str!(do_lisp("a\""), "E0004");
     }
     #[test]
     fn atom_utf8() {
-        assert_str!(do_lisp("\"山"), "E0001");
+        assert_str!(do_lisp("\"山"), "E0004");
         assert_str!(do_lisp("山"), "E1008");
     }
     #[test]

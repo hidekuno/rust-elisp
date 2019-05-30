@@ -1514,6 +1514,9 @@ fn tokenize(program: String) -> Vec<String> {
         }
         i += c.len_utf8();
     }
+    if string_mode {
+        token.push(s.get(from..i).unwrap().to_string());
+    }
     return token;
 }
 fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
@@ -1547,6 +1550,11 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
     } else if ")" == token {
         Err(create_error!("E0002"))
     } else {
+        // string check
+        if (token == "\"") || (token.as_str().starts_with("\"") && !token.as_str().ends_with("\""))
+        {
+            return Err(create_error!("E0004"));
+        }
         let exp = atom(&token);
         Ok(exp)
     }
