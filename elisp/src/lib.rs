@@ -578,6 +578,8 @@ mod tests {
         writeln!(file, "(define foo 100)").unwrap();
         writeln!(file, "(define hoge 200)").unwrap();
         writeln!(file, "(define fuga (+ foo hoge))").unwrap();
+        writeln!(file, "(define a 100)(define b 200)(define c 300)").unwrap();
+        writeln!(file, "(define d 100)").unwrap();
         file.flush().unwrap();
 
         let mut env = lisp::SimpleEnv::new();
@@ -589,6 +591,7 @@ mod tests {
         assert_str!(do_lisp_env("foo", &mut env), "100");
         assert_str!(do_lisp_env("hoge", &mut env), "200");
         assert_str!(do_lisp_env("fuga", &mut env), "300");
+        assert_str!(do_lisp_env("(+ a b c)", &mut env), "600");
     }
     #[test]
     fn delay_force() {
@@ -690,6 +693,11 @@ mod error_tests {
     #[allow(unused_imports)]
     use super::*;
 
+    #[test]
+    fn syntax_error() {
+        assert_str!(do_lisp("("), "E0001");
+        assert_str!(do_lisp(")"), "E0002");
+    }
     #[test]
     fn atom() {
         assert_str!(do_lisp("\"a"), "E0001");
