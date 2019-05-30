@@ -19,6 +19,15 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     if args.len() < 2 {
         lisp::do_interactive();
+    } else if args[1] == "--profile" {
+        let mut env = lisp::SimpleEnv::new();
+        match lisp::do_core_logic(
+            "(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))".to_string(),
+            &mut env,
+        ) {
+            Ok(r) => println!("{}", r.value_string()),
+            Err(e) => println!("{}", e.get_code()),
+        }
     } else {
         let filename = &args[1];
         let mut program: Vec<String> = Vec::new();
