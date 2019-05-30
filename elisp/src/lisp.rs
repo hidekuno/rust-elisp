@@ -1401,10 +1401,32 @@ fn repl(
             prompt = "";
             continue;
         }
-        //do_core_logic(program.iter().cloned().collect::<String>());
-        match do_core_logic(program.join(" "), env) {
-            Ok(n) => println!("{}", n.value_string()),
-            Err(e) => print_error!(e),
+        debug!("{}", program.iter().cloned().collect::<String>());
+        {
+            let mut token = tokenize(program.join(" "));
+            let mut c: i32 = 1;
+            loop {
+                let exp = match parse(&token, &mut c) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        print_error!(e);
+                        break;
+                    }
+                };
+                match eval(&exp, env) {
+                    Ok(n) => println!("{}", n.value_string()),
+                    Err(e) => print_error!(e),
+                };
+                debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
+                if c == token.len() as i32 {
+                    break;
+                } else {
+                    for _ in 0..c as usize {
+                        token.remove(0);
+                    }
+                    c = 1;
+                }
+            }
         }
         // for error_handle
         env.cleanup();
