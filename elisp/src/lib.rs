@@ -12,7 +12,7 @@ fn do_lisp(program: &str) -> String {
 fn do_lisp_env(program: &str, env: &mut lisp::SimpleEnv) -> String {
     use crate::lisp::EvalResult;
 
-    match lisp::do_core_logic(program.to_string(), env) {
+    match lisp::do_core_logic(&String::from(program), env) {
         Ok(v) => {
             return v.value_string();
         }

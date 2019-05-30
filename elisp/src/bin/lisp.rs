@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     } else if args[1] == "--profile" {
         let mut env = lisp::SimpleEnv::new();
         match lisp::do_core_logic(
-            "(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))".to_string(),
+            &String::from("(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))"),
             &mut env,
         ) {
             Ok(r) => println!("{}", r.value_string()),
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             let l = result?;
             program.push(l);
         }
-        match lisp::do_core_logic(program.join(" "), &mut env) {
+        match lisp::do_core_logic(&program.join(" "), &mut env) {
             Ok(r) => println!("{}", r.value_string()),
             Err(e) => println!("{}", e.get_code()),
         }
