@@ -1410,7 +1410,7 @@ fn repl(
                     Ok(v) => v,
                     Err(e) => {
                         print_error!(e);
-                        continue;
+                        break;
                     }
                 };
                 match eval(&exp, env) {
@@ -1421,9 +1421,10 @@ fn repl(
                 if c == token.len() as i32 {
                     break;
                 } else {
-                    for _i in 0..c as usize {
+                    for _ in 0..c as usize {
                         token.remove(0);
                     }
+                    c = 1;
                 }
             }
         }
