@@ -203,6 +203,12 @@ mod tests {
         assert_str!(do_lisp("(modulo  3 5)"), "3");
     }
     #[test]
+    fn quotient() {
+        assert_str!(do_lisp("(quotient 11 3)"), "3");
+        assert_str!(do_lisp("(quotient 11 (+ 1 2))"), "3");
+        assert_str!(do_lisp("(quotient 3 5)"), "0");
+    }
+    #[test]
     fn expt() {
         assert_str!(do_lisp("(expt 2 3)"), "8");
         assert_str!(do_lisp("(expt 2 (+ 1 2))"), "8");
@@ -813,6 +819,13 @@ mod error_tests {
         assert_str!(do_lisp("(modulo 10 0)"), "E1013");
         assert_str!(do_lisp("(modulo 13 5.5)"), "E1002");
         assert_str!(do_lisp("(modulo 10 a)"), "E1008");
+    }
+    #[test]
+    fn quotient() {
+        assert_str!(do_lisp("(quotient 10)"), "E1007");
+        assert_str!(do_lisp("(quotient 10 0)"), "E1013");
+        assert_str!(do_lisp("(quotient 13 5.5)"), "E1002");
+        assert_str!(do_lisp("(quotient 10 a)"), "E1008");
     }
     #[test]
     fn expt() {
