@@ -1403,7 +1403,7 @@ fn repl(
         }
         debug!("{}", program.iter().cloned().collect::<String>());
         {
-            let mut token = tokenize(program.join(" "));
+            let mut token = tokenize(&program.join(" "));
             let mut c: i32 = 1;
             loop {
                 let exp = match parse(&token, &mut c) {
@@ -1456,7 +1456,7 @@ fn count_parenthesis(program: String) -> bool {
     }
     return left <= right;
 }
-pub fn do_core_logic(program: String, env: &mut SimpleEnv) -> ResultExpression {
+pub fn do_core_logic(program: &String, env: &mut SimpleEnv) -> ResultExpression {
     let token = tokenize(program);
 
     let mut c: i32 = 1;
@@ -1464,14 +1464,14 @@ pub fn do_core_logic(program: String, env: &mut SimpleEnv) -> ResultExpression {
 
     return eval(&exp, env);
 }
-fn tokenize(program: String) -> Vec<String> {
+fn tokenize(program: &String) -> Vec<String> {
     let mut token: Vec<String> = Vec::new();
     let mut string_mode = false;
     let mut symbol_name = String::new();
     let mut from = 0;
     let mut i = 0;
 
-    let mut s = String::from(program);
+    let mut s = program.clone();
     s = s.replace("\t", " ");
     s = s.replace("\n", " ");
     s = s.replace("\r", " ");
