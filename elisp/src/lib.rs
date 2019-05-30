@@ -1,7 +1,6 @@
 // cargo test --lib
 #[macro_use]
 extern crate lazy_static;
-pub mod dyn_lisp;
 pub mod lisp;
 
 #[cfg(test)]
