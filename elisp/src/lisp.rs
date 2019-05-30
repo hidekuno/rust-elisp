@@ -1461,6 +1461,7 @@ pub fn do_core_logic(program: String, env: &mut SimpleEnv) -> ResultExpression {
 
     let mut c: i32 = 1;
     let exp = parse(&token, &mut c)?;
+
     return eval(&exp, env);
 }
 fn tokenize(program: String) -> Vec<String> {
