@@ -20,6 +20,7 @@ use std::vec::Vec;
 use log::{debug, error, info, warn};
 
 use crate::number::Number;
+use crate::number::Rat;
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -128,6 +129,7 @@ pub enum Expression {
     Nil(),
     TailRecursion(Rc<RsFunction>),
     Promise(Box<Expression>, SimpleEnv),
+    Rational(Rat),
 }
 impl EvalResult for Expression {
     fn value_string(&self) -> String {
@@ -150,6 +152,7 @@ impl EvalResult for Expression {
             Expression::Loop() => String::from("loop"),
             Expression::TailRecursion(_) => String::from("Tail Recursion"),
             Expression::Promise(_, _) => String::from("Promise"),
+            Expression::Rational(v) => v.to_string(),
         };
     }
 }
@@ -1161,7 +1164,6 @@ fn force(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Ok(v);
     }
 }
-
 fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
@@ -1170,6 +1172,7 @@ fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
     match v {
         Expression::Float(f) => return Ok(f),
         Expression::Integer(i) => return Ok(i as f64),
+        Expression::Rational(r) => return Ok(r.div_float()),
         _ => return Err(create_error!("E1003")),
     }
 }
@@ -1185,10 +1188,10 @@ fn calc(
         return Err(create_error_value!("E1007", exp.len()));
     }
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        let param = match o {
+        let param = match eval(e, env)? {
             Expression::Float(v) => Number::Float(v),
             Expression::Integer(v) => Number::Integer(v),
+            Expression::Rational(v) => Number::Rational(v),
             _ => return Err(create_error!("E1003")),
         };
         if first == true {
@@ -1201,7 +1204,7 @@ fn calc(
     match result {
         Number::Integer(a) => Ok(Expression::Integer(a)),
         Number::Float(a) => Ok(Expression::Float(a)),
-        Number::Rational(a) => Ok(Expression::Nil()),
+        Number::Rational(a) => Ok(Expression::Rational(a)),
     }
 }
 fn cmp(
@@ -1214,11 +1217,10 @@ fn cmp(
     }
     let mut vec: Vec<Number> = Vec::new();
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-
-        match o {
+        match eval(e, env)? {
             Expression::Float(f) => vec.push(Number::Float(f)),
             Expression::Integer(i) => vec.push(Number::Integer(i)),
+            Expression::Rational(r) => vec.push(Number::Rational(r)),
             _ => return Err(create_error!("E1003")),
         }
     }
@@ -1447,6 +1449,17 @@ fn atom(token: &String) -> Expression {
         let s = token.as_str()[1..token.len() - 1].to_string();
         return Expression::String(s);
     }
+    {
+        let mut v = Vec::new();
+        for e in token.split("/") {
+            if let Ok(n) = e.parse::<i64>() {
+                v.push(n);
+            }
+        }
+        if v.len() == 2 {
+            return Expression::Rational(Rat::new(v[0], v[1]));
+        }
+    }
     return Expression::Symbol(token.to_string());
 }
 macro_rules! ret_clone_if_atom {
@@ -1460,6 +1473,7 @@ macro_rules! ret_clone_if_atom {
             Expression::Nil() => return Ok(Expression::Nil()),
             Expression::Pair(_, _) => return Ok($e.clone()),
             Expression::Promise(_, _) => return Ok($e.clone()),
+            Expression::Rational(v) => return Ok(Expression::Rational(*v)),
             _ => {}
         }
     };
