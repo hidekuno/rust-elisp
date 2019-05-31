@@ -30,7 +30,11 @@ impl Rat {
         }
     }
     pub fn to_string(&self) -> String {
-        format!("{}/{}", self.numer, self.denom)
+        if self.denom == 1 {
+            self.numer.to_string()
+        } else {
+            format!("{}/{}", self.numer, self.denom)
+        }
     }
     pub fn div_float(&self) -> f64 {
         self.numer as f64 / self.denom as f64
@@ -176,14 +180,18 @@ impl Mul for Number {
 impl Div for Number {
     type Output = Number;
     fn div(self, other: Number) -> Number {
-        if let Number::Integer(x) = self {
-            if let Number::Integer(y) = other {
-                if x == 0 && y == 0 {
-                    return Number::Float(std::f64::NAN);
-                }
-                if y == 0 {
-                    return Number::Float(std::f64::INFINITY);
-                }
+        if let (Number::Integer(x), Number::Integer(y)) = (self, other) {
+            if x == 0 && y == 0 {
+                return Number::Float(std::f64::NAN);
+            }
+            if y == 0 {
+                return Number::Float(std::f64::INFINITY);
+            }
+            if 0 != (x % y) {
+                return self.calc(
+                    Number::Rational(Rat::new(y, 1)),
+                    Calc::new(|x: f64, y: f64| x / y, |x: i64, y: i64| x / y, rat_div),
+                );
             }
         }
         return self.calc(
