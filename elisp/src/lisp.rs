@@ -4,28 +4,22 @@
 
    hidekuno@gmail.com
 */
-use std::cmp::Ordering;
-use std::cmp::PartialEq;
-use std::cmp::PartialOrd;
+use rand::Rng;
 use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
-use std::ops::Add;
-use std::ops::Div;
-use std::ops::Mul;
-use std::ops::Sub;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 use std::vec::Vec;
 
-use rand::Rng;
-
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
+
+use crate::number::Number;
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -404,130 +398,6 @@ impl TailRecursion for RsLetLoop {
         &self.name
     }
 }
-
-#[derive(Debug, Copy, Clone)]
-pub enum Number {
-    Integer(i64),
-    Float(f64),
-}
-impl Number {
-    fn calc_template(
-        x: Number,
-        y: Number,
-        fcalc: fn(x: f64, y: f64) -> f64,
-        icalc: fn(x: i64, y: i64) -> i64,
-    ) -> Number {
-        match x {
-            Number::Integer(a) => match y {
-                Number::Integer(b) => Number::Integer(icalc(a, b)),
-                Number::Float(b) => Number::Float(fcalc(a as f64, b)),
-            },
-            Number::Float(a) => match y {
-                Number::Integer(b) => Number::Float(fcalc(a, b as f64)),
-                Number::Float(b) => Number::Float(fcalc(a, b)),
-            },
-        }
-    }
-    fn cmp_template(
-        x: Number,
-        y: Number,
-        fop: fn(x: f64, y: f64) -> bool,
-        iop: fn(x: i64, y: i64) -> bool,
-    ) -> bool {
-        match x {
-            Number::Integer(a) => match y {
-                Number::Integer(b) => return iop(a, b),
-                Number::Float(b) => return fop(a as f64, b),
-            },
-            Number::Float(a) => match y {
-                Number::Integer(b) => return fop(a, b as f64),
-                Number::Float(b) => return fop(a, b),
-            },
-        }
-    }
-}
-//impl<T: Add<Output=T>> Add for Number<T> {
-impl Add for Number {
-    type Output = Number;
-    fn add(self, other: Number) -> Number {
-        return Number::calc_template(self, other, |x: f64, y: f64| x + y, |x: i64, y: i64| x + y);
-    }
-}
-impl Sub for Number {
-    type Output = Number;
-    fn sub(self, other: Number) -> Number {
-        return Number::calc_template(self, other, |x: f64, y: f64| x - y, |x: i64, y: i64| x - y);
-    }
-}
-impl Mul for Number {
-    type Output = Number;
-    fn mul(self, other: Number) -> Number {
-        return Number::calc_template(self, other, |x: f64, y: f64| x * y, |x: i64, y: i64| x * y);
-    }
-}
-impl Div for Number {
-    type Output = Number;
-    fn div(self, other: Number) -> Number {
-        if let Number::Integer(x) = self {
-            if let Number::Integer(y) = other {
-                if x == 0 && y == 0 {
-                    return Number::Float(std::f64::NAN);
-                }
-                if y == 0 {
-                    return Number::Float(std::f64::INFINITY);
-                }
-            }
-        }
-        return Number::calc_template(self, other, |x: f64, y: f64| x / y, |x: i64, y: i64| x / y);
-    }
-}
-impl PartialEq for Number {
-    fn eq(&self, other: &Number) -> bool {
-        return Number::cmp_template(
-            *self,
-            *other,
-            |x: f64, y: f64| x == y,
-            |x: i64, y: i64| x == y,
-        );
-    }
-}
-impl PartialOrd for Number {
-    fn lt(&self, other: &Number) -> bool {
-        return Number::cmp_template(
-            *self,
-            *other,
-            |x: f64, y: f64| x < y,
-            |x: i64, y: i64| x < y,
-        );
-    }
-    fn le(&self, other: &Number) -> bool {
-        return Number::cmp_template(
-            *self,
-            *other,
-            |x: f64, y: f64| x <= y,
-            |x: i64, y: i64| x <= y,
-        );
-    }
-    fn gt(&self, other: &Number) -> bool {
-        return Number::cmp_template(
-            *self,
-            *other,
-            |x: f64, y: f64| x > y,
-            |x: i64, y: i64| x > y,
-        );
-    }
-    fn ge(&self, other: &Number) -> bool {
-        return Number::cmp_template(
-            *self,
-            *other,
-            |x: f64, y: f64| x >= y,
-            |x: i64, y: i64| x >= y,
-        );
-    }
-    fn partial_cmp(&self, _: &Number) -> Option<Ordering> {
-        Some(Ordering::Equal)
-    }
-}
 #[derive(Clone)]
 pub struct SimpleEnv {
     env_tbl: LinkedList<HashMap<String, Expression>>,
@@ -545,11 +415,11 @@ impl SimpleEnv {
         b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
         b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
         b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
-        b.insert("=", |exp, env| op(exp, env, |x, y| x == y));
-        b.insert("<", |exp, env| op(exp, env, |x, y| x < y));
-        b.insert("<=", |exp, env| op(exp, env, |x, y| x <= y));
-        b.insert(">", |exp, env| op(exp, env, |x, y| x > y));
-        b.insert(">=", |exp, env| op(exp, env, |x, y| x >= y));
+        b.insert("=", |exp, env| cmp(exp, env, |x, y| x == y));
+        b.insert("<", |exp, env| cmp(exp, env, |x, y| x < y));
+        b.insert("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
+        b.insert(">", |exp, env| cmp(exp, env, |x, y| x > y));
+        b.insert(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
         b.insert("expt", expt);
         b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
         b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
@@ -1318,12 +1188,8 @@ fn calc(
         let o = eval(e, env)?;
         let param = match o {
             Expression::Float(v) => Number::Float(v),
-            _ => match o {
-                Expression::Integer(v) => Number::Integer(v),
-                _ => {
-                    return Err(create_error!("E1003"));
-                }
-            },
+            Expression::Integer(v) => Number::Integer(v),
+            _ => return Err(create_error!("E1003")),
         };
         if first == true {
             result = param;
@@ -1335,9 +1201,10 @@ fn calc(
     match result {
         Number::Integer(a) => Ok(Expression::Integer(a)),
         Number::Float(a) => Ok(Expression::Float(a)),
+        Number::Rational(a) => Ok(Expression::Nil()),
     }
 }
-fn op(
+fn cmp(
     exp: &[Expression],
     env: &mut SimpleEnv,
     f: fn(x: &Number, y: &Number) -> bool,
@@ -1357,6 +1224,7 @@ fn op(
     }
     return Ok(Expression::Boolean(f(&vec[0], &vec[1])));
 }
+
 pub fn do_interactive() {
     let mut env = SimpleEnv::new();
     let mut stream = BufReader::new(std::io::stdin());
