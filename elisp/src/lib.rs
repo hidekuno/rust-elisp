@@ -43,6 +43,7 @@ mod tests {
     fn atom() {
         assert_str!(do_lisp("10"), "10");
         assert_str!(do_lisp("10.5"), "10.5");
+        assert_str!(do_lisp("1/2"), "1/2");
         assert_str!(do_lisp("#t"), "#t");
         assert_str!(do_lisp("#f"), "#f");
         assert_str!(do_lisp("#\\a"), "a");
@@ -60,7 +61,7 @@ mod tests {
     fn plus() {
         assert_str!(do_lisp("(+ 1 2)"), "3");
         assert_str!(do_lisp("(+ 1.25 2.25)"), "3.5");
-        assert_str!(do_lisp("(+ 1 2.5)"), "3.5");
+        assert_str!(do_lisp("(+ 2.5 1)"), "3.5");
         assert_str!(do_lisp("(+ 3 1.5)"), "4.5");
         assert_str!(do_lisp("(+ (* 1 2)(* 3 4))"), "14");
     }
@@ -82,6 +83,8 @@ mod tests {
     }
     #[test]
     fn div() {
+        assert_str!(do_lisp("(/ 4 3)"), "4/3");
+        assert_str!(do_lisp("(/ 1 2)"), "1/2");
         assert_str!(do_lisp("(/ 9 3)"), "3");
         assert_str!(do_lisp("(/ 0.75 0.25)"), "3");
         assert_str!(do_lisp("(/ 9.5 5)"), "1.9");
@@ -694,6 +697,91 @@ mod tests {
             "(0 1 1 2 3 5 8 13 21 34)"
         );
     }
+    #[test]
+    fn test_add_rational() {
+        assert_str!(do_lisp("(+ 1 1/2)"), "3/2");
+        assert_str!(do_lisp("(+ 2.5 1/4)"), "2.75");
+        assert_str!(do_lisp("(+ 3/4 1)"), "7/4");
+        assert_str!(do_lisp("(+ 1/4 2.5)"), "2.75");
+        assert_str!(do_lisp("(+ 3/4 1/3)"), "13/12");
+    }
+    #[test]
+    fn test_sub_rational() {
+        assert_str!(do_lisp("(- 1 1/2)"), "1/2");
+        assert_str!(do_lisp("(- 2.5 1/4)"), "2.25");
+        assert_str!(do_lisp("(- 1/2 1)"), "-1/2");
+        assert_str!(do_lisp("(- 3/4 0.5)"), "0.25");
+        assert_str!(do_lisp("(- 3/4 1/2)"), "1/4");
+    }
+    #[test]
+    fn test_mul_rational() {
+        assert_str!(do_lisp("(* 3 1/2)"), "3/2");
+        assert_str!(do_lisp("(* 2.5 1/4)"), "0.625");
+        assert_str!(do_lisp("(* 1/2 3)"), "3/2");
+        assert_str!(do_lisp("(* 3/4 0.5)"), "0.375");
+        assert_str!(do_lisp("(* 3/4 1/2)"), "3/8");
+    }
+    #[test]
+    fn test_div_rational() {
+        assert_str!(do_lisp("(/ 3 1/2)"), "6");
+        assert_str!(do_lisp("(/ 2.5 1/3)"), "7.5");
+        assert_str!(do_lisp("(/ 1/2 3)"), "1/6");
+        assert_str!(do_lisp("(/ 3/4 0.5)"), "1.5");
+        assert_str!(do_lisp("(/ 3/4 1/2)"), "3/2");
+    }
+    #[test]
+    fn test_eq_rational() {
+        assert_str!(do_lisp("(= 3 6/2)"), "#t");
+        assert_str!(do_lisp("(= 0.5 1/2)"), "#t");
+        assert_str!(do_lisp("(= 6/2 3)"), "#t");
+        assert_str!(do_lisp("(= 3/2 1.5)"), "#t");
+        assert_str!(do_lisp("(= 4/8 2/4)"), "#t");
+    }
+
+    #[test]
+    fn test_lt_rational() {
+        assert_str!(do_lisp("(< 3 7/2)"), "#t");
+        assert_str!(do_lisp("(< 0.3 1/2)"), "#t");
+        assert_str!(do_lisp("(< 6/2 4)"), "#t");
+        assert_str!(do_lisp("(< 4/8 3/4)"), "#t");
+    }
+
+    #[test]
+    fn test_le_rational() {
+        assert_str!(do_lisp("(<= 3 7/2)"), "#t");
+        assert_str!(do_lisp("(<= 0.3 1/2)"), "#t");
+        assert_str!(do_lisp("(<= 6/2 4)"), "#t");
+        assert_str!(do_lisp("(<= 4/8 3/4)"), "#t");
+
+        assert_str!(do_lisp("(<= 3 6/2)"), "#t");
+        assert_str!(do_lisp("(<= 0.5 1/2)"), "#t");
+        assert_str!(do_lisp("(<= 6/2 3)"), "#t");
+        assert_str!(do_lisp("(<= 3/2 1.5)"), "#t");
+        assert_str!(do_lisp("(<= 4/8 2/4)"), "#t");
+    }
+
+    #[test]
+    fn test_gt_rational() {
+        assert_str!(do_lisp("(> 7/2 3)"), "#t");
+        assert_str!(do_lisp("(> 1/2 0.3)"), "#t");
+        assert_str!(do_lisp("(> 4 6/2)"), "#t");
+        assert_str!(do_lisp("(> 1.6 3/2)"), "#t");
+        assert_str!(do_lisp("(> 3/4 4/8)"), "#t");
+    }
+    #[test]
+    fn test_ge_rational() {
+        assert_str!(do_lisp("(>= 7/2 3)"), "#t");
+        assert_str!(do_lisp("(>= 1/2 0.3)"), "#t");
+        assert_str!(do_lisp("(>= 4 6/2)"), "#t");
+        assert_str!(do_lisp("(>= 1.6 3/2)"), "#t");
+        assert_str!(do_lisp("(>= 3/4 4/8)"), "#t");
+
+        assert_str!(do_lisp("(>= 3 6/2)"), "#t");
+        assert_str!(do_lisp("(>= 0.5 1/2)"), "#t");
+        assert_str!(do_lisp("(>= 6/2 3)"), "#t");
+        assert_str!(do_lisp("(>= 3/2 1.5)"), "#t");
+        assert_str!(do_lisp("(>= 4/8 2/4)"), "#t");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1062,308 +1150,5 @@ mod error_tests {
         assert_str!(do_lisp("(force)"), "E1007");
         assert_str!(do_lisp("(force 1 2)"), "E1007");
         assert_str!(do_lisp("(force hoge)"), "E1008");
-    }
-}
-#[cfg(test)]
-mod number_tests {
-    #[allow(unused_imports)]
-    use super::*;
-    use crate::number::Number;
-    use crate::number::Rat;
-
-    #[test]
-    fn test_add_integer() {
-        match Number::Integer(2) + Number::Integer(3) {
-            Number::Integer(v) => assert_eq!(v, 5),
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(1) + Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 3);
-                assert_eq!(v.denom, 2);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(2) + Number::Float(2.5) {
-            Number::Float(v) => assert_eq!(v, 4.5),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_add_float() {
-        match Number::Float(1.5) + Number::Integer(3) {
-            Number::Float(v) => assert_eq!(v, 4.5),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(1.5) + Number::Float(1.25) {
-            Number::Float(v) => assert_eq!(v, 2.75),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(2.5) + Number::Rational(Rat::new(1, 4)) {
-            Number::Float(v) => assert_eq!(v, 2.75),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_add_rational() {
-        match Number::Rational(Rat::new(3, 4)) + Number::Integer(1) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 7);
-                assert_eq!(v.denom, 4);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(1, 4)) + Number::Float(2.5) {
-            Number::Float(v) => assert_eq!(v, 2.75),
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) + Number::Rational(Rat::new(1, 3)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 13);
-                assert_eq!(v.denom, 12);
-            }
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_sub_integer() {
-        match Number::Integer(10) - Number::Integer(3) {
-            Number::Integer(v) => assert_eq!(v, 7),
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(1) - Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 1);
-                assert_eq!(v.denom, 2);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(1) - Number::Float(2.5) {
-            Number::Float(v) => assert_eq!(v, -1.5),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_sub_float() {
-        match Number::Float(4.5) - Number::Integer(3) {
-            Number::Float(v) => assert_eq!(v, 1.5),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(1.5) - Number::Float(1.25) {
-            Number::Float(v) => assert_eq!(v, 0.25),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(2.5) - Number::Rational(Rat::new(1, 4)) {
-            Number::Float(v) => assert_eq!(v, 2.25),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_sub_rational() {
-        match Number::Rational(Rat::new(1, 2)) - Number::Integer(1) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, -1);
-                assert_eq!(v.denom, 2);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) - Number::Float(0.5) {
-            Number::Float(v) => assert_eq!(v, 0.25),
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) - Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 1);
-                assert_eq!(v.denom, 4);
-            }
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_mul_integer() {
-        match Number::Integer(10) * Number::Integer(3) {
-            Number::Integer(v) => assert_eq!(v, 30),
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(3) * Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 3);
-                assert_eq!(v.denom, 2);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(1) * Number::Float(2.5) {
-            Number::Float(v) => assert_eq!(v, 2.5),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_mul_float() {
-        match Number::Float(4.5) * Number::Integer(3) {
-            Number::Float(v) => assert_eq!(v, 13.5),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(1.8) * Number::Float(1.8) {
-            Number::Float(v) => assert_eq!(v, 3.24),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(2.5) * Number::Rational(Rat::new(1, 4)) {
-            Number::Float(v) => assert_eq!(v, 0.625),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_mul_rational() {
-        match Number::Rational(Rat::new(1, 2)) * Number::Integer(3) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 3);
-                assert_eq!(v.denom, 2);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) * Number::Float(0.5) {
-            Number::Float(v) => assert_eq!(v, 0.375),
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) * Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 3);
-                assert_eq!(v.denom, 8);
-            }
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_div_integer() {
-        match Number::Integer(8) / Number::Integer(2) {
-            Number::Integer(v) => assert_eq!(v, 4),
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(3) / Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 6);
-                assert_eq!(v.denom, 1);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Integer(1) / Number::Float(2.5) {
-            Number::Float(v) => assert_eq!(v, 0.4),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_div_float() {
-        match Number::Float(4.5) / Number::Integer(3) {
-            Number::Float(v) => assert_eq!(v, 1.5),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(3.6) / Number::Float(3.2) {
-            Number::Float(v) => assert_eq!(v, 1.125),
-            _ => panic!("test failure"),
-        }
-        match Number::Float(2.5) / Number::Rational(Rat::new(1, 3)) {
-            Number::Float(v) => assert_eq!(v, 7.5),
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_div_rational() {
-        match Number::Rational(Rat::new(1, 2)) / Number::Integer(3) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 1);
-                assert_eq!(v.denom, 6);
-            }
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) / Number::Float(0.5) {
-            Number::Float(v) => assert_eq!(v, 1.5),
-            _ => panic!("test failure"),
-        }
-        match Number::Rational(Rat::new(3, 4)) / Number::Rational(Rat::new(1, 2)) {
-            Number::Rational(v) => {
-                assert_eq!(v.numer, 3);
-                assert_eq!(v.denom, 2);
-            }
-            _ => panic!("test failure"),
-        }
-    }
-    #[test]
-    fn test_eq_rational() {
-        assert_eq!(Number::Integer(3) == Number::Rational(Rat::new(6, 2)), true);
-        assert_eq!(Number::Float(0.5) == Number::Rational(Rat::new(1, 2)), true);
-
-        assert_eq!(Number::Rational(Rat::new(6, 2)) == Number::Integer(3), true);
-        assert_eq!(Number::Rational(Rat::new(3, 2)) == Number::Float(1.5), true);
-        assert_eq!(
-            Number::Rational(Rat::new(4, 8)) == Number::Rational(Rat::new(2, 4)),
-            true
-        );
-    }
-
-    #[test]
-    fn test_lt_rational() {
-        assert_eq!(Number::Integer(3) < Number::Rational(Rat::new(7, 2)), true);
-        assert_eq!(Number::Float(0.3) < Number::Rational(Rat::new(1, 2)), true);
-
-        assert_eq!(Number::Rational(Rat::new(6, 2)) < Number::Integer(4), true);
-        assert_eq!(Number::Rational(Rat::new(3, 2)) < Number::Float(1.6), true);
-        assert_eq!(
-            Number::Rational(Rat::new(4, 8)) < Number::Rational(Rat::new(3, 4)),
-            true
-        );
-    }
-
-    #[test]
-    fn test_le_rational() {
-        assert_eq!(Number::Integer(3) <= Number::Rational(Rat::new(7, 2)), true);
-        assert_eq!(Number::Float(0.3) <= Number::Rational(Rat::new(1, 2)), true);
-        assert_eq!(Number::Rational(Rat::new(6, 2)) <= Number::Integer(4), true);
-        assert_eq!(Number::Rational(Rat::new(3, 2)) <= Number::Float(1.6), true);
-        assert_eq!(
-            Number::Rational(Rat::new(4, 8)) <= Number::Rational(Rat::new(3, 4)),
-            true
-        );
-
-        assert_eq!(Number::Integer(3) <= Number::Rational(Rat::new(6, 2)), true);
-        assert_eq!(Number::Float(0.5) <= Number::Rational(Rat::new(1, 2)), true);
-        assert_eq!(Number::Rational(Rat::new(6, 2)) <= Number::Integer(3), true);
-        assert_eq!(Number::Rational(Rat::new(3, 2)) <= Number::Float(1.5), true);
-        assert_eq!(
-            Number::Rational(Rat::new(4, 8)) <= Number::Rational(Rat::new(2, 4)),
-            true
-        );
-    }
-
-    #[test]
-    fn test_gt_rational() {
-        assert_eq!(Number::Rational(Rat::new(7, 2)) > Number::Integer(3), true);
-        assert_eq!(Number::Rational(Rat::new(1, 2)) > Number::Float(0.3), true);
-
-        assert_eq!(Number::Integer(4) > Number::Rational(Rat::new(6, 2)), true);
-        assert_eq!(Number::Float(1.6) > Number::Rational(Rat::new(3, 2)), true);
-        assert_eq!(
-            Number::Rational(Rat::new(3, 4)) > Number::Rational(Rat::new(4, 8)),
-            true
-        );
-    }
-    #[test]
-    fn test_ge_rational() {
-        assert_eq!(Number::Rational(Rat::new(7, 2)) >= Number::Integer(3), true);
-        assert_eq!(Number::Rational(Rat::new(1, 2)) >= Number::Float(0.3), true);
-        assert_eq!(Number::Integer(4) >= Number::Rational(Rat::new(6, 2)), true);
-        assert_eq!(Number::Float(1.6) >= Number::Rational(Rat::new(3, 2)), true);
-        assert_eq!(
-            Number::Rational(Rat::new(3, 4)) >= Number::Rational(Rat::new(4, 8)),
-            true
-        );
-
-        assert_eq!(Number::Integer(3) >= Number::Rational(Rat::new(6, 2)), true);
-        assert_eq!(Number::Float(0.5) >= Number::Rational(Rat::new(1, 2)), true);
-        assert_eq!(Number::Rational(Rat::new(6, 2)) >= Number::Integer(3), true);
-        assert_eq!(Number::Rational(Rat::new(3, 2)) >= Number::Float(1.5), true);
-        assert_eq!(
-            Number::Rational(Rat::new(4, 8)) >= Number::Rational(Rat::new(2, 4)),
-            true
-        );
     }
 }
