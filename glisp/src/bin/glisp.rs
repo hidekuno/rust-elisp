@@ -18,6 +18,7 @@ use cairo::Matrix;
 use gtk::prelude::*;
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fs::File;
 use std::rc::Rc;
 
@@ -28,8 +29,9 @@ const EVAL_KEYCODE: u32 = 101;
 const EVAL_RESULT_ID: &str = "result";
 
 type Environment = Rc<RefCell<SimpleEnv>>;
+type ImageTable = Rc<RefCell<HashMap<String, ImageSurface>>>;
 
-fn scheme_gtk(rc: &Environment) {
+fn scheme_gtk(rc: &Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
 
@@ -105,10 +107,15 @@ fn scheme_gtk(rc: &Environment) {
     let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
 
     let rc_ = rc.clone();
-    let canvas_ = canvas.clone();
-    let clone_bar = status_bar.clone();
+    let canvas_weak = canvas.downgrade();
+    let status_bar_weak = status_bar.downgrade();
     eval.connect_activate(move |_| {
-        execute_lisp(&rc_, &canvas_, &text_view, &clone_bar);
+        execute_lisp(
+            &rc_,
+            &canvas_weak.upgrade().unwrap(),
+            &text_view,
+            &status_bar_weak.upgrade().unwrap(),
+        );
     });
     menu.append(&eval);
 
@@ -138,7 +145,7 @@ fn scheme_gtk(rc: &Environment) {
     //--------------------------------------------------------
     // Create Lisp Function
     //--------------------------------------------------------
-    build_lisp_function(rc, &canvas);
+    build_lisp_function(rc, &canvas, image_table);
 
     //--------------------------------------------------------
     // Build Up finish
@@ -173,17 +180,18 @@ fn execute_lisp(
     glib::source::source_remove(sid);
     canvas.queue_draw();
 }
-fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
+fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea, image_table: &ImageTable) {
     let mut e = (*rc).borrow_mut();
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
-    let canvas_ = canvas.clone();
+    let canvas_weak = canvas.downgrade();
     e.add_builtin_closure("draw-clear", move |exp, _| {
         if exp.len() != 1 {
             return Err(create_error!("E1007"));
         }
-        canvas_.connect_draw(move |_, cr| {
+        let canvas = canvas_weak.upgrade().unwrap();
+        canvas.connect_draw(move |_, cr| {
             cr.transform(Matrix {
                 xx: 1.0,
                 yx: 0.0,
@@ -201,23 +209,27 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
     });
     //--------------------------------------------------------
     // DrawLine
+    // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
-    let canvas_ = canvas.clone();
+    let canvas_weak = canvas.downgrade();
     e.add_builtin_closure("draw-line", move |exp, env| {
         if exp.len() != 5 {
             return Err(create_error!("E1007"));
         }
-
-        let mut vec: Vec<f64> = Vec::new();
-        for e in &exp[1 as usize..] {
-            if let Expression::Float(f) = lisp::eval(e, env)? {
-                vec.push(f);
-            } else {
-                return Err(create_error!("E1003"));
+        let mut loc: [f64; 4] = [0.0; 4];
+        let mut iter = exp[1 as usize..].iter();
+        for i in 0..4 {
+            if let Some(e) = iter.next() {
+                if let Expression::Float(f) = lisp::eval(e, env)? {
+                    loc[i] = f;
+                } else {
+                    return Err(create_error!("E1003"));
+                }
             }
         }
-        let (x0, y0, x1, y1) = (vec[0], vec[1], vec[2], vec[3]);
-        canvas_.connect_draw(move |_, cr| {
+        let (x0, y0, x1, y1) = (loc[0], loc[1], loc[2], loc[3]);
+        let canvas = canvas_weak.upgrade().unwrap();
+        canvas.connect_draw(move |_, cr| {
             cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
             cr.set_source_rgb(0.0, 0.0, 0.0);
             cr.set_line_width(0.001);
@@ -233,16 +245,19 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
-    // Draw Image
-    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list -1.0 0.0 0.0 1.0 180.0 0.0))
-    // (draw-image "/home/kunohi/rust-elisp/glisp/examples/sicp.png" (list 1.0 0.0 0.0 1.0 0.0 0.0))
+    // Create Image
+    // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
     //--------------------------------------------------------
-    let canvas_ = canvas.clone();
-    e.add_builtin_closure("draw-image", move |exp, env| {
+    let image_table_clone = image_table.clone();
+    e.add_builtin_closure("create-image-from-png", move |exp, env| {
         if exp.len() != 3 {
             return Err(create_error!("E1007"));
         }
-        let filename = match lisp::eval(&exp[1], env)? {
+        let symbol = match lisp::eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!("E1015")),
+        };
+        let filename = match lisp::eval(&exp[2], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!("E1015")),
         };
@@ -254,22 +269,49 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
             Ok(s) => s,
             Err(e) => return Err(create_error_value!("E9999", e)),
         };
-        let mut ctm: Vec<f64> = Vec::new();
+        (*image_table_clone).borrow_mut().insert(symbol, surface);
+        Ok(Expression::Nil())
+    });
+    //--------------------------------------------------------
+    // Draw Image
+    // ex. (draw-image "roger" (list -1.0 0.0 0.0 1.0 180.0 0.0))
+    // ex. (draw-image "roger" (list 1.0 0.0 0.0 1.0 0.0 0.0))
+    //--------------------------------------------------------
+    let canvas_weak = canvas.downgrade();
+    let image_table_clone = image_table.clone();
+    e.add_builtin_closure("draw-image", move |exp, env| {
+        if exp.len() != 3 {
+            return Err(create_error!("E1007"));
+        }
+        let symbol = match lisp::eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!("E1015")),
+        };
+        let surface = match (*image_table_clone).borrow().get(&symbol) {
+            Some(v) => v.clone(),
+            None => return Err(create_error!("E1008")),
+        };
+
+        let mut ctm: [f64; 6] = [0.0; 6];
         if let Expression::List(l) = lisp::eval(&exp[2], env)? {
             if l.len() != 6 {
                 return Err(create_error!("E1007"));
             }
-            for e in &l {
-                if let Expression::Float(f) = lisp::eval(e, env)? {
-                    ctm.push(f);
-                } else {
-                    return Err(create_error!("E1003"));
+            let mut iter = l.iter();
+            for i in 0..6 {
+                if let Some(e) = iter.next() {
+                    if let Expression::Float(f) = lisp::eval(e, env)? {
+                        ctm[i] = f;
+                    } else {
+                        return Err(create_error!("E1003"));
+                    }
                 }
             }
         } else {
             return Err(create_error!("E1005"));
         }
-        canvas_.connect_draw(move |_, cr| {
+        let canvas = canvas_weak.upgrade().unwrap();
+        canvas.connect_draw(move |_, cr| {
             cr.scale(1.0, 1.0);
             cr.move_to(0.0, 0.0);
             let matrix = Matrix {
@@ -294,8 +336,8 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea) {
 fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch15-05-interior-mutability.html
     let rc = Rc::new(RefCell::new(SimpleEnv::new()));
-
-    scheme_gtk(&rc);
+    let image_table = Rc::new(RefCell::new(HashMap::new()));
+    scheme_gtk(&rc, &image_table);
 
     gtk::main();
 }
@@ -323,7 +365,6 @@ fn do_lisp_env(program: &str, rc: &Environment) -> String {
         }
     }
 }
-
 #[test]
 fn test_error_check() {
     let png = format!(
@@ -334,26 +375,46 @@ fn test_error_check() {
             .as_secs()
     );
     let rc = Rc::new(RefCell::new(SimpleEnv::new()));
-    scheme_gtk(&rc);
+    let image_table = Rc::new(RefCell::new(HashMap::new()));
+    scheme_gtk(&rc, &image_table);
+
+    // draw-clear check
     assert_str!(do_lisp_env("(draw-clear 10)", &rc), "E1007");
+
+    // draw-line check
     assert_str!(do_lisp_env("(draw-line)", &rc), "E1007");
     assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &rc), "E1003");
-    assert_str!(do_lisp_env("(draw-image)", &rc), "E1007");
+    assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &rc), "E1008");
+
+    // create-image-from-png check
+    assert_str!(do_lisp_env("(create-image-from-png)", &rc), "E1007");
     assert_str!(
-        do_lisp_env(
-            format!("(draw-image \"{}\" (list 1 2 3) 10)", png).as_str(),
-            &rc
-        ),
+        do_lisp_env("(create-image-from-png \"sample\")", &rc),
         "E1007"
     );
     assert_str!(
+        do_lisp_env("(create-image-from-png 10 \"/tmp/hoge.png\")", &rc),
+        "E1015"
+    );
+    assert_str!(
+        do_lisp_env("(create-image-from-png \"sample\" 20)", &rc),
+        "E1015"
+    );
+    assert_str!(
         do_lisp_env(
-            format!("(draw-image \"{}\" (list 1 2 3))", png).as_str(),
+            format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
             &rc
         ),
         "E9999"
     );
-
+    let mut file = File::create(&png).unwrap();
+    assert_str!(
+        do_lisp_env(
+            format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
+            &rc
+        ),
+        "E9999"
+    );
     let png_data: Vec<u8> = vec![
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
         0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
@@ -361,31 +422,36 @@ fn test_error_check() {
         0xd2, 0xd2, 0x02, 0x00, 0x01, 0x00, 0x00, 0x7f, 0x09, 0xa9, 0x5a, 0x4d, 0x00, 0x00, 0x00,
         0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
     ];
-    let mut file = File::create(&png).unwrap();
     file.write_all(&png_data).unwrap();
     file.flush().unwrap();
+    do_lisp_env(
+        format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
+        &rc,
+    );
 
+    assert_str!(do_lisp_env("(draw-image)", &rc), "E1007");
+    assert_str!(do_lisp_env("(draw-image 10)", &rc), "E1007");
     assert_str!(
-        do_lisp_env(
-            format!(
-                "(draw-image \"{}\" (list 0.0 0.1 0.2 0.3 0.4 0.5 0.6))",
-                png
-            )
-            .as_str(),
-            &rc
-        ),
+        do_lisp_env("(draw-image \"sample\" (list 1 2 3) 10)", &rc),
         "E1007"
     );
     assert_str!(
-        do_lisp_env(format!("(draw-image \"{}\" 10)", png).as_str(), &rc),
-        "E1005"
+        do_lisp_env("(draw-image 10 (list 0.0 0.0 1.0 1.0))", &rc),
+        "E1015"
     );
     assert_str!(
-        do_lisp_env(
-            format!("(draw-image \"{}\" (list 0.0 0.1 0.2 0.3 0.4 5))", png).as_str(),
-            &rc
-        ),
+        do_lisp_env("(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0))", &rc),
+        "E1008"
+    );
+    assert_str!(
+        do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0))", &rc),
+        "E1007"
+    );
+    assert_str!(
+        do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0 1.0 10))", &rc),
         "E1003"
     );
+    assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &rc), "E1005");
+
     std::fs::remove_file(png).unwrap();
 }

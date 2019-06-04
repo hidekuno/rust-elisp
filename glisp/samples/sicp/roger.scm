@@ -1,8 +1,10 @@
 (define gframe (make-frame (make-vect 0.0 0.0) (make-vect 540.0 0.0) (make-vect 0.0 540.0)))
+(create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
+
 (define roger
-  (let ((filename "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png"))
+  (let ((image-name "roger"))
     (lambda (f)
-      (draw-image filename 
+      (draw-image image-name
                   (list 
                    (/ (xcor-vect (edge1-frame f)) 180.0)
                    (/ (ycor-vect (edge1-frame f)) 180.0)
