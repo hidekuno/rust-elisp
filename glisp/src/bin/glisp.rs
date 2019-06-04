@@ -213,12 +213,13 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea, image_table:
     //--------------------------------------------------------
     let canvas_weak = canvas.downgrade();
     e.add_builtin_closure("draw-line", move |exp, env| {
-        if exp.len() != 5 {
+        const N: usize = 4;
+        if exp.len() != (N + 1) {
             return Err(create_error!("E1007"));
         }
-        let mut loc: [f64; 4] = [0.0; 4];
+        let mut loc: [f64; N] = [0.0; N];
         let mut iter = exp[1 as usize..].iter();
-        for i in 0..4 {
+        for i in 0..N {
             if let Some(e) = iter.next() {
                 if let Expression::Float(f) = lisp::eval(e, env)? {
                     loc[i] = f;
@@ -292,13 +293,14 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea, image_table:
             None => return Err(create_error!("E1008")),
         };
 
-        let mut ctm: [f64; 6] = [0.0; 6];
+        const N: usize = 6;
+        let mut ctm: [f64; N] = [0.0; N];
         if let Expression::List(l) = lisp::eval(&exp[2], env)? {
             if l.len() != 6 {
                 return Err(create_error!("E1007"));
             }
             let mut iter = l.iter();
-            for i in 0..6 {
+            for i in 0..N {
                 if let Some(e) = iter.next() {
                     if let Expression::Float(f) = lisp::eval(e, env)? {
                         ctm[i] = f;
