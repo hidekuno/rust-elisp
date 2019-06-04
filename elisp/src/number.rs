@@ -40,43 +40,63 @@ impl Rat {
         self.numer as f64 / self.denom as f64
     }
 }
-fn rat_add(x: Rat, y: Rat) -> Number {
-    Number::Rational(Rat::new(
-        (x.numer * y.denom) + (y.numer * x.denom),
-        x.denom * y.denom,
-    ))
-}
-fn rat_sub(x: Rat, y: Rat) -> Number {
-    Number::Rational(Rat::new(
-        (x.numer * y.denom) - (y.numer * x.denom),
-        x.denom * y.denom,
-    ))
-}
-fn rat_mul(x: Rat, y: Rat) -> Number {
-    Number::Rational(Rat::new(x.numer * y.numer, x.denom * y.denom))
-}
-fn rat_div(x: Rat, y: Rat) -> Number {
-    Number::Rational(Rat::new(x.numer * y.denom, x.denom * y.numer))
-}
-fn rat_eq(x: Rat, y: Rat) -> bool {
-    return (x.numer == y.numer) && (x.denom == y.denom);
-}
-fn rat_lt(x: Rat, y: Rat) -> bool {
-    return (x.numer * y.denom) < (y.numer * x.denom);
-}
-fn rat_le(x: Rat, y: Rat) -> bool {
-    return (x.numer * y.denom) <= (y.numer * x.denom);
-}
-fn rat_gt(x: Rat, y: Rat) -> bool {
-    return (x.numer * y.denom) > (y.numer * x.denom);
-}
-fn rat_ge(x: Rat, y: Rat) -> bool {
-    return (x.numer * y.denom) >= (y.numer * x.denom);
-}
 fn gcm(n: i64, m: i64) -> i64 {
     match n % m {
         0 => m.wrapping_abs(),
         l => gcm(m, l),
+    }
+}
+impl Add for Rat {
+    type Output = Rat;
+    fn add(self: Rat, other: Rat) -> Rat {
+        Rat::new(
+            (self.numer * other.denom) + (other.numer * self.denom),
+            self.denom * other.denom,
+        )
+    }
+}
+impl Sub for Rat {
+    type Output = Rat;
+    fn sub(self: Rat, other: Rat) -> Rat {
+        Rat::new(
+            (self.numer * other.denom) - (other.numer * self.denom),
+            self.denom * other.denom,
+        )
+    }
+}
+impl Mul for Rat {
+    type Output = Rat;
+    fn mul(self: Rat, other: Rat) -> Rat {
+        Rat::new(self.numer * other.numer, self.denom * other.denom)
+    }
+}
+impl Div for Rat {
+    type Output = Rat;
+    fn div(self: Rat, other: Rat) -> Rat {
+        Rat::new(self.numer * other.denom, self.denom * other.numer)
+    }
+}
+impl PartialEq for Rat {
+    fn eq(&self, other: &Rat) -> bool {
+        (self.numer == other.numer) && (self.denom == other.denom)
+    }
+}
+impl PartialOrd for Rat {
+    fn lt(&self, other: &Rat) -> bool {
+        (self.numer * other.denom) < (other.numer * self.denom)
+    }
+    fn le(&self, other: &Rat) -> bool {
+        (self.numer * other.denom) <= (other.numer * self.denom)
+    }
+    fn gt(&self, other: &Rat) -> bool {
+        (self.numer * other.denom) > (other.numer * self.denom)
+    }
+    fn ge(&self, other: &Rat) -> bool {
+        (self.numer * other.denom) >= (other.numer * self.denom)
+    }
+    fn partial_cmp(&self, _: &Rat) -> Option<Ordering> {
+        // This is same as nop
+        Some(Ordering::Equal)
     }
 }
 #[derive(Debug, Copy, Clone)]
@@ -121,7 +141,7 @@ impl Add for Number {
                 other,
                 |x: i64, y: i64| Number::Integer(x + y),
                 |x: f64, y: f64| Number::Float(x + y),
-                rat_add,
+                |x: Rat, y: Rat| Number::Rational(x + y),
             );
     }
 }
@@ -133,7 +153,7 @@ impl Sub for Number {
                 other,
                 |x: i64, y: i64| Number::Integer(x - y),
                 |x: f64, y: f64| Number::Float(x - y),
-                rat_sub,
+                |x: Rat, y: Rat| Number::Rational(x - y),
             );
     }
 }
@@ -145,7 +165,7 @@ impl Mul for Number {
                 other,
                 |x: i64, y: i64| Number::Integer(x * y),
                 |x: f64, y: f64| Number::Float(x * y),
-                rat_mul,
+                |x: Rat, y: Rat| Number::Rational(x * y),
             );
     }
 }
@@ -165,7 +185,7 @@ impl Div for Number {
                         Number::Rational(Rat::new(y, 1)),
                         |x: i64, y: i64| Number::Integer(x / y),
                         |x: f64, y: f64| Number::Float(x / y),
-                        rat_div,
+                        |x: Rat, y: Rat| Number::Rational(x / y),
                     );
             }
         }
@@ -174,7 +194,7 @@ impl Div for Number {
                 other,
                 |x: i64, y: i64| Number::Integer(x / y),
                 |x: f64, y: f64| Number::Float(x / y),
-                rat_div,
+                |x: Rat, y: Rat| Number::Rational(x / y),
             );
     }
 }
@@ -185,7 +205,7 @@ impl PartialEq for Number {
                 *other,
                 |x: i64, y: i64| x == y,
                 |x: f64, y: f64| x == y,
-                rat_eq,
+                |x: Rat, y: Rat| x == y,
             );
     }
 }
@@ -196,7 +216,7 @@ impl PartialOrd for Number {
                 *other,
                 |x: i64, y: i64| x < y,
                 |x: f64, y: f64| x < y,
-                rat_lt,
+                |x: Rat, y: Rat| x < y,
             );
     }
     fn le(&self, other: &Number) -> bool {
@@ -205,7 +225,7 @@ impl PartialOrd for Number {
                 *other,
                 |x: i64, y: i64| x <= y,
                 |x: f64, y: f64| x <= y,
-                rat_le,
+                |x: Rat, y: Rat| x <= y,
             );
     }
     fn gt(&self, other: &Number) -> bool {
@@ -214,7 +234,7 @@ impl PartialOrd for Number {
                 *other,
                 |x: i64, y: i64| x > y,
                 |x: f64, y: f64| x > y,
-                rat_gt,
+                |x: Rat, y: Rat| x > y,
             );
     }
     fn ge(&self, other: &Number) -> bool {
@@ -223,7 +243,7 @@ impl PartialOrd for Number {
                 *other,
                 |x: i64, y: i64| x >= y,
                 |x: f64, y: f64| x >= y,
-                rat_ge,
+                |x: Rat, y: Rat| x >= y,
             );
     }
     fn partial_cmp(&self, _: &Number) -> Option<Ordering> {
