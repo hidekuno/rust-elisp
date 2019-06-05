@@ -402,18 +402,13 @@ impl TailRecursion for RsLetLoop {
     }
 }
 #[derive(Clone)]
-pub struct SimpleEnv {
-    env_tbl: LinkedList<HashMap<String, Expression>>,
+pub struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
     builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
 }
-impl SimpleEnv {
-    pub fn new() -> SimpleEnv {
-        let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
-        l.push_back(HashMap::new());
-
+impl GlobalTbl {
+    pub fn new() -> GlobalTbl {
         let mut b: HashMap<&'static str, Operation> = HashMap::new();
-
         b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
         b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
         b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
@@ -481,10 +476,34 @@ impl SimpleEnv {
         b.insert("delay", delay);
         b.insert("force", force);
 
-        SimpleEnv {
-            env_tbl: l,
+        GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: HashMap::new(),
+        }
+    }
+    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
+        self.builtin_tbl.insert(key, func);
+    }
+    pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
+    where
+        F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
+    {
+        self.builtin_tbl_ext.insert(key, Rc::new(c));
+    }
+}
+#[derive(Clone)]
+pub struct SimpleEnv {
+    env_tbl: LinkedList<HashMap<String, Expression>>,
+    globals: GlobalTbl,
+}
+impl SimpleEnv {
+    pub fn new() -> SimpleEnv {
+        let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
+        l.push_back(HashMap::new());
+
+        SimpleEnv {
+            env_tbl: l,
+            globals: GlobalTbl::new(),
         }
     }
     fn create(&mut self) {
@@ -528,33 +547,24 @@ impl SimpleEnv {
             self.delete();
         }
     }
+    pub fn get_builtin_func(&self, key: &str) -> Option<&Operation> {
+        return self.globals.builtin_tbl.get(key);
+    }
+    pub fn get_builtin_ext_func(
+        &self,
+        key: &str,
+    ) -> Option<&Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static>> {
+        return self.globals.builtin_tbl_ext.get(key);
+    }
     pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
-        self.builtin_tbl.insert(key, func);
+        self.globals.builtin_tbl.insert(key, func);
     }
     pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
     where
         F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
         // F: ExtOperation + 'static, => type aliases cannot be used as traits
     {
-        self.builtin_tbl_ext.insert(key, Rc::new(c));
-    }
-    #[allow(dead_code)]
-    fn dump_env(&self) {
-        debug!("======== dump_env start ============");
-        let mut i = 1;
-        for exp in self.env_tbl.iter() {
-            for (k, v) in exp {
-                debug!("{} {} nest:{}", k, v.value_string(), i);
-            }
-            i += 1;
-        }
-    }
-    #[allow(dead_code)]
-    fn dump_env_level(&self) {
-        debug!(
-            "======== dump_env level {} ============",
-            self.env_tbl.len()
-        );
+        self.globals.builtin_tbl_ext.insert(key, Rc::new(c));
     }
 }
 
@@ -1494,10 +1504,10 @@ pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             }
             None => {}
         }
-        if let Some(f) = env.builtin_tbl.get(val.as_str()) {
+        if let Some(f) = env.get_builtin_func(val.as_str()) {
             return Ok(Expression::BuildInFunction(*f));
         }
-        if let Some(f) = env.builtin_tbl_ext.get(val.as_str()) {
+        if let Some(f) = env.get_builtin_ext_func(val.as_str()) {
             return Ok(Expression::BuildInFunctionExt(f.clone()));
         }
         return Err(create_error_value!("E1008", val));
