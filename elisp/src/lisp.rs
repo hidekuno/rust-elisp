@@ -5,8 +5,8 @@
    hidekuno@gmail.com
 */
 use rand::Rng;
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::collections::LinkedList;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -104,9 +104,10 @@ macro_rules! print_error {
     };
 }
 //========================================================================
-type ResultExpression = Result<Expression, RsError>;
-type Operation = fn(&[Expression], &mut SimpleEnv) -> ResultExpression;
-type ExtOperation = Fn(&[Expression], &mut SimpleEnv) -> ResultExpression;
+pub type ResultExpression = Result<Expression, RsError>;
+pub type Environment = Rc<RefCell<SimpleEnv>>;
+type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
+type ExtOperation = Fn(&[Expression], &mut Environment) -> ResultExpression;
 //========================================================================
 pub trait EvalResult {
     fn value_string(&self) -> String;
@@ -128,7 +129,7 @@ pub enum Expression {
     Loop(),
     Nil(),
     TailRecursion(Rc<RsFunction>),
-    Promise(Box<Expression>, SimpleEnv),
+    Promise(Box<Expression>, Environment),
     Rational(Rat),
 }
 impl EvalResult for Expression {
@@ -211,38 +212,34 @@ pub struct RsFunction {
     param: Vec<String>,
     body: Vec<Expression>,
     name: String,
-    closure_env: LinkedList<HashMap<String, Expression>>,
+    closure_env: Environment,
     tail_recurcieve: bool,
 }
 impl RsFunction {
-    fn new(sexp: &[Expression], _name: String) -> RsFunction {
-        let mut _param: Vec<String> = Vec::new();
-        let l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
+    fn new(sexp: &[Expression], name: String, closure_env: Environment) -> RsFunction {
+        let mut param: Vec<String> = Vec::new();
 
         if let Expression::List(val) = &sexp[1] {
             for n in val {
                 if let Expression::Symbol(s) = n {
-                    _param.push(s.to_string());
+                    param.push(s.to_string());
                 }
             }
         }
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
         RsFunction {
-            param: _param,
+            param: param,
             body: vec,
-            name: _name,
-            closure_env: l,
+            name: name,
+            closure_env: closure_env,
             tail_recurcieve: false,
         }
-    }
-    fn add_closure_env(&mut self, map: HashMap<String, Expression>) {
-        self.closure_env.push_front(map);
     }
     fn set_tail_recurcieve(&mut self) {
         self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
     }
-    fn set_param(&self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn set_param(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
         for e in &exp[1 as usize..] {
@@ -251,13 +248,14 @@ impl RsFunction {
         }
         // env set
         let mut idx = 0;
+        let mut rc = env.borrow_mut();
         for s in &self.param {
-            env.update(&s, vec[idx].clone());
+            rc.update(&s, vec[idx].clone());
             idx += 1;
         }
         return Ok(Expression::TailRecursion(Rc::new(self.clone())));
     }
-    fn execute(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&mut self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -267,28 +265,21 @@ impl RsFunction {
             let v = eval(e, env)?;
             vec.push(v);
         }
-        return self.execute_noeval(&vec, env);
+        return self.execute_noeval(&vec);
     }
-    fn execute_noeval(&mut self, exp: &Vec<Expression>, env: &mut SimpleEnv) -> ResultExpression {
+    fn execute_noeval(&mut self, exp: &Vec<Expression>) -> ResultExpression {
         if self.param.len() != exp.len() {
             return Err(create_error_value!("E1007", exp.len()));
         }
-        // closure set
-        for h in self.closure_env.iter() {
-            env.create();
-            for (k, v) in h {
-                env.regist(k.to_string(), v.clone());
-            }
-        }
-        // param set
-        env.create();
+        // @@@ env.create();
+        let mut rc = SimpleEnv::new(Some(self.closure_env.clone()));
         let mut idx = 0;
         for s in &self.param {
-            env.regist(s.to_string(), exp[idx].clone());
+            rc.regist(s.to_string(), exp[idx].clone());
             idx += 1;
         }
         if self.tail_recurcieve == true {
-            env.regist(
+            rc.regist(
                 self.name.to_string(),
                 Expression::TailRecursion(Rc::new(self.clone())),
             );
@@ -296,9 +287,10 @@ impl RsFunction {
 
         // execute!
         let mut results: Vec<Expression> = Vec::new();
+        let mut new_env = Rc::new(RefCell::new(rc));
         for e in &self.body {
             loop {
-                let v = eval(e, env)?;
+                let v = eval(e, &mut new_env)?;
                 if let Expression::TailRecursion(_) = v {
                     continue;
                 } else {
@@ -307,36 +299,8 @@ impl RsFunction {
                 }
             }
         }
-        // param clear
-        env.delete();
-
-        // env(closure) clear and self(closure) saved
-        for h in self.closure_env.iter_mut().rev() {
-            for (k, _v) in h.clone() {
-                if let Some(exp) = env.find(&k) {
-                    h.insert(k.to_string(), (*exp).clone());
-                }
-            }
-            env.delete();
-        }
-
         // created function set clonsure
         if let Some(r) = results.pop() {
-            if let Expression::Function(mut rc) = r {
-                // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.get_mut
-                let f = Rc::make_mut(&mut rc);
-                let mut closure_env: HashMap<String, Expression> = HashMap::new();
-
-                let mut idx = 0;
-                for s in &self.param {
-                    closure_env.insert(s.to_string(), exp[idx].clone());
-                    idx += 1;
-                }
-                if idx > 0 {
-                    f.add_closure_env(closure_env);
-                }
-                return Ok(Expression::Function(rc));
-            }
             return Ok(r);
         }
         return Err(create_error!("E9999"));
@@ -369,16 +333,21 @@ impl RsLetLoop {
     fn set_tail_recurcieve(&mut self) {
         self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
     }
-    fn execute(&self, exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+    fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
+
         let mut iter = exp.iter();
         iter.next();
         for s in &self.param {
             if let Some(e) = iter.next() {
                 let v = eval(e, env)?;
-                env.update(s, v);
+                {
+                    debug!("function execute(): let mut rc = env.borrow_mut();");
+                    let mut rc = env.borrow_mut();
+                    rc.update(s, v);
+                }
             }
         }
         if self.tail_recurcieve == true {
@@ -481,118 +450,106 @@ impl GlobalTbl {
             builtin_tbl_ext: HashMap::new(),
         }
     }
-    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
-        self.builtin_tbl.insert(key, func);
-    }
-    pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
-    where
-        F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
-    {
-        self.builtin_tbl_ext.insert(key, Rc::new(c));
-    }
 }
 #[derive(Clone)]
 pub struct SimpleEnv {
-    env_tbl: LinkedList<HashMap<String, Expression>>,
-    globals: GlobalTbl,
+    env_tbl: HashMap<String, Expression>,
+    globals: Rc<RefCell<GlobalTbl>>,
+    parent: Option<Rc<RefCell<SimpleEnv>>>,
 }
 impl SimpleEnv {
-    pub fn new() -> SimpleEnv {
-        let mut l: LinkedList<HashMap<String, Expression>> = LinkedList::new();
-        l.push_back(HashMap::new());
-
-        SimpleEnv {
-            env_tbl: l,
-            globals: GlobalTbl::new(),
+    pub fn new(parent: Option<Rc<RefCell<SimpleEnv>>>) -> SimpleEnv {
+        if let Some(p) = parent {
+            SimpleEnv {
+                env_tbl: HashMap::new(),
+                globals: p.borrow().globals.clone(),
+                parent: Some(p.clone()),
+            }
+        } else {
+            SimpleEnv {
+                env_tbl: HashMap::new(),
+                globals: Rc::new(RefCell::new(GlobalTbl::new())),
+                parent: parent,
+            }
         }
-    }
-    fn create(&mut self) {
-        self.env_tbl.push_front(HashMap::new());
-    }
-    fn delete(&mut self) {
-        self.env_tbl.pop_front();
     }
     fn regist(&mut self, key: String, exp: Expression) {
-        match self.env_tbl.front_mut() {
-            Some(m) => {
-                m.insert(key, exp);
-            }
-            None => {}
-        }
+        self.env_tbl.insert(key, exp);
     }
-    fn find(&self, key: &String) -> Option<&Expression> {
-        for h in self.env_tbl.iter() {
-            match h.get(key) {
-                Some(v) => {
-                    return Some(v);
-                }
-                None => {}
-            }
+    fn find(&self, key: &String) -> Option<Expression> {
+        match self.env_tbl.get(key) {
+            Some(v) => Some(v.clone()),
+            None => match self.parent {
+                // p.borrow().find(key), cannot return value referencing temporary value
+                Some(ref p) => p.borrow().find(key),
+                None => None,
+            },
         }
-        None
     }
     fn update(&mut self, key: &String, exp: Expression) {
-        for h in self.env_tbl.iter_mut() {
-            match h.get(key) {
-                Some(_) => {
-                    h.insert(key.to_string(), exp);
-                    return;
-                }
+        if self.env_tbl.contains_key(key) {
+            self.env_tbl.insert(key.to_string(), exp);
+        } else {
+            debug!("p.borrow_mut().update(key, exp)");
+            match self.parent {
+                Some(ref p) => p.borrow_mut().update(key, exp),
                 None => {}
             }
         }
     }
-    fn cleanup(&mut self) {
-        while self.env_tbl.len() >= 2 {
-            self.delete();
+    pub fn get_builtin_func(&self, key: &str) -> Option<Operation> {
+        match self.globals.borrow().builtin_tbl.get(key) {
+            Some(f) => Some(f.clone()),
+            None => None,
         }
-    }
-    pub fn get_builtin_func(&self, key: &str) -> Option<&Operation> {
-        return self.globals.builtin_tbl.get(key);
     }
     pub fn get_builtin_ext_func(
         &self,
         key: &str,
-    ) -> Option<&Rc<Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static>> {
-        return self.globals.builtin_tbl_ext.get(key);
+    ) -> Option<Rc<Fn(&[Expression], &mut Environment) -> ResultExpression + 'static>> {
+        match self.globals.borrow().builtin_tbl_ext.get(key) {
+            Some(f) => Some(f.clone()),
+            None => None,
+        }
     }
     pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
-        self.globals.builtin_tbl.insert(key, func);
+        self.globals.borrow_mut().builtin_tbl.insert(key, func);
     }
     pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
     where
-        F: Fn(&[Expression], &mut SimpleEnv) -> ResultExpression + 'static,
-        // F: ExtOperation + 'static, => type aliases cannot be used as traits
+        F: Fn(&[Expression], &mut Environment) -> ResultExpression + 'static,
     {
-        self.globals.builtin_tbl_ext.insert(key, Rc::new(c));
+        self.globals
+            .borrow_mut()
+            .builtin_tbl_ext
+            .insert(key, Rc::new(c));
     }
 }
-
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 const SAMPLE_INT: i64 = 10000000000000;
 //========================================================================
-fn set_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    fn search_symbol(env: &mut Environment, s: &String) -> Option<Expression> {
+        return env.borrow().find(s);
+    }
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    match &exp[1] {
-        Expression::Symbol(s) => {
-            if let Some(_) = env.find(s) {
-                let se = eval(&exp[2], env)?;
-                env.update(s, se);
-                return Ok(Expression::Symbol(s.to_string()));
-            } else {
-                return Err(create_error_value!("E1008", s));
-            }
+    if let Expression::Symbol(s) = &exp[1] {
+        if let Some(_) = search_symbol(env, s) {
+            let v = eval(&exp[2], env)?;
+            env.borrow_mut().update(s, v);
+        } else {
+            return Err(create_error_value!("E1008", s));
         }
-        _ => {
-            return Err(create_error!("E1004"));
-        }
+        return Ok(Expression::Symbol(s.to_string()));
+    } else {
+        return Err(create_error!("E1004"));
     }
 }
-fn time_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -605,12 +562,11 @@ fn time_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     println!("{}.{:06}", end.as_secs(), end.subsec_nanos() / 1_000_000);
     return result;
 }
-fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let mut param: HashMap<String, Expression> = HashMap::new();
-
+    let mut param = SimpleEnv::new(Some(env.clone()));
     let mut idx = 1;
     if let Expression::Symbol(_) = exp[idx] {
         idx += 1;
@@ -625,7 +581,7 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
                 }
                 if let Expression::Symbol(s) = &p[0] {
                     let v = eval(&p[1], env)?;
-                    param.insert(s.to_string(), v.clone());
+                    param.regist(s.to_string(), v.clone());
                     param_list.push(s.clone());
                 } else {
                     return Err(create_error!("E1004"));
@@ -642,19 +598,15 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     if let Expression::Symbol(s) = &exp[1] {
         let mut letloop = RsLetLoop::new(exp, s.to_string(), &param_list);
         letloop.set_tail_recurcieve();
-        param.insert(s.to_string(), Expression::LetLoop(Rc::new(letloop)));
+        param.regist(s.to_string(), Expression::LetLoop(Rc::new(letloop)));
     }
 
-    // execute let
-    let closure_env = param.clone();
-    env.create();
-    for (k, v) in param {
-        env.regist(k, v);
-    }
+    // @@@ env.create();
+    let mut new_env = Rc::new(RefCell::new(param));
     let mut results: Vec<Expression> = Vec::new();
     for e in &exp[idx as usize..] {
         loop {
-            let o = eval(e, env)?;
+            let o = eval(e, &mut new_env)?;
             if let Expression::Loop() = o {
                 // tail recurcieve
                 continue;
@@ -664,19 +616,12 @@ fn let_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             }
         }
     }
-    env.delete();
     if let Some(r) = results.pop() {
-        if let Expression::Function(mut rc) = r {
-            // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.get_mut
-            let f = Rc::make_mut(&mut rc);
-            f.add_closure_env(closure_env);
-            return Ok(Expression::Function(rc));
-        }
         return Ok(r);
     }
     return Err(create_error!("E9999"));
 }
-fn not(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -686,7 +631,7 @@ fn not(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Err(create_error!("E1001"));
 }
-fn or(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -702,7 +647,7 @@ fn or(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::Boolean(false));
 }
-fn and(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -718,7 +663,7 @@ fn and(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::Boolean(true));
 }
-fn expt(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn expt(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -744,7 +689,7 @@ fn expt(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
 }
 fn divide(
     exp: &[Expression],
-    env: &mut SimpleEnv,
+    env: &mut Environment,
     f: fn(x: &i64, y: &i64) -> i64,
 ) -> ResultExpression {
     if exp.len() != 3 {
@@ -761,7 +706,7 @@ fn divide(
         (_, _) => return Err(create_error!("E1002")),
     };
 }
-fn lambda(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
+fn lambda(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -778,15 +723,20 @@ fn lambda(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
     return Ok(Expression::Function(Rc::new(RsFunction::new(
         exp,
         String::from("lambda"),
+        env.clone(),
     ))));
 }
-fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     if let Expression::Symbol(v) = &exp[1] {
         let se = eval(&exp[2], env)?;
-        env.regist(v.to_string(), se);
+        {
+            debug!("define env.borrow_mut();");
+            let mut rc = env.borrow_mut();
+            rc.regist(v.to_string(), se);
+        }
         return Ok(Expression::Symbol(v.to_string()));
     }
     if let Expression::List(l) = &exp[1] {
@@ -806,9 +756,10 @@ fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
                 }
             }
             f[1] = Expression::List(param);
-            let mut func = RsFunction::new(&f, s.to_string());
+            let mut func = RsFunction::new(&f, s.to_string(), env.clone());
             func.set_tail_recurcieve();
-            env.regist(s.to_string(), Expression::Function(Rc::new(func)));
+            env.borrow_mut()
+                .regist(s.to_string(), Expression::Function(Rc::new(func)));
             return Ok(Expression::Symbol(s.to_string()));
         } else {
             return Err(create_error!("E1004"));
@@ -816,7 +767,7 @@ fn define(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     Err(create_error!("E1004"))
 }
-fn if_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -832,7 +783,7 @@ fn if_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Err(create_error!("E1001"));
 }
-fn list(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::new();
     for e in &exp[1 as usize..] {
         let o = eval(e, env)?;
@@ -840,7 +791,7 @@ fn list(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     Ok(Expression::List(list))
 }
-fn null_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn null_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -851,7 +802,7 @@ fn null_f(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Ok(Expression::Boolean(false));
     }
 }
-fn length(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn length(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -862,7 +813,7 @@ fn length(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1005"))
     }
 }
-fn car(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -879,7 +830,7 @@ fn car(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1005"))
     }
 }
-fn cdr(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -900,7 +851,7 @@ fn cdr(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1005"))
     }
 }
-fn cadr(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -915,7 +866,7 @@ fn cadr(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1005"))
     }
 }
-fn cons(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn cons(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -931,7 +882,7 @@ fn cons(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Ok(Expression::Pair(Box::new(car), Box::new(cdr)))
     }
 }
-fn append(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() <= 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -947,7 +898,7 @@ fn append(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Ok(Expression::List(v));
 }
-fn last(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn last(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -966,7 +917,7 @@ fn last(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     return Err(create_error!("E1005"));
 }
 
-fn reverse(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn reverse(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -978,7 +929,7 @@ fn reverse(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     Err(create_error!("E1005"))
 }
-fn iota(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() <= 1 || 4 <= exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1009,7 +960,7 @@ fn iota(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     Ok(Expression::List(l))
 }
-fn map(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn map(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1018,7 +969,7 @@ fn map(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             let mut result: Vec<Expression> = Vec::new();
             for e in l {
                 let func = Rc::make_mut(&mut rc);
-                result.push(func.execute_noeval(&[e.clone()].to_vec(), env)?);
+                result.push(func.execute_noeval(&[e.clone()].to_vec())?);
             }
             return Ok(Expression::List(result));
         } else {
@@ -1028,7 +979,7 @@ fn map(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1006"))
     }
 }
-fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn filter(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1037,7 +988,7 @@ fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             let mut result: Vec<Expression> = Vec::new();
             for e in &l {
                 let func = Rc::make_mut(&mut rc);
-                if let Expression::Boolean(b) = func.execute_noeval(&[e.clone()].to_vec(), env)? {
+                if let Expression::Boolean(b) = func.execute_noeval(&[e.clone()].to_vec())? {
                     if b {
                         result.push(e.clone());
                     }
@@ -1053,7 +1004,7 @@ fn filter(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1006"))
     }
 }
-fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1066,7 +1017,7 @@ fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
             // not carfully length,  safety
             for e in &l[1 as usize..] {
                 let func = Rc::make_mut(&mut rc);
-                result = func.execute_noeval(&[result.clone(), e.clone()].to_vec(), env)?;
+                result = func.execute_noeval(&[result.clone(), e.clone()].to_vec())?;
             }
             return Ok(result);
         } else {
@@ -1076,7 +1027,7 @@ fn reduce(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         Err(create_error!("E1006"))
     }
 }
-fn for_each(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn for_each(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1094,7 +1045,7 @@ fn for_each(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn rand_integer(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
+fn rand_integer(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     if 1 < exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1102,7 +1053,7 @@ fn rand_integer(exp: &[Expression], _env: &mut SimpleEnv) -> ResultExpression {
     let x: i64 = rng.gen();
     return Ok(Expression::Integer(x.abs() / SAMPLE_INT));
 }
-fn rand_list(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn rand_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 < exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1118,7 +1069,7 @@ fn rand_list(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Err(create_error!("E1002"));
     }
 }
-fn load_file(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn load_file(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1146,7 +1097,7 @@ fn load_file(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     }
     return Err(create_error!("E1015"));
 }
-fn display(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Ok(Expression::Nil());
     }
@@ -1157,13 +1108,13 @@ fn display(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
     return Ok(Expression::Nil());
 }
 
-fn delay(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn delay(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     Ok(Expression::Promise(Box::new(exp[1].clone()), env.clone()))
 }
-fn force(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
+fn force(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1174,7 +1125,7 @@ fn force(exp: &[Expression], env: &mut SimpleEnv) -> ResultExpression {
         return Ok(v);
     }
 }
-fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
+fn to_f64(exp: &[Expression], env: &mut Environment) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1188,7 +1139,7 @@ fn to_f64(exp: &[Expression], env: &mut SimpleEnv) -> Result<f64, RsError> {
 }
 fn calc(
     exp: &[Expression],
-    env: &mut SimpleEnv,
+    env: &mut Environment,
     f: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
     let mut result: Number = Number::Integer(0);
@@ -1219,7 +1170,7 @@ fn calc(
 }
 fn cmp(
     exp: &[Expression],
-    env: &mut SimpleEnv,
+    env: &mut Environment,
     f: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
@@ -1238,17 +1189,17 @@ fn cmp(
 }
 
 pub fn do_interactive() {
-    let mut env = SimpleEnv::new();
     let mut stream = BufReader::new(std::io::stdin());
+    let mut rc = Rc::new(RefCell::new(SimpleEnv::new(None)));
 
-    match repl(&mut stream, &mut env, false) {
+    match repl(&mut stream, &mut rc, false) {
         Err(e) => println!("{}", e),
         Ok(_) => {}
     }
 }
 fn repl(
     stream: &mut BufRead,
-    env: &mut SimpleEnv,
+    rc: &mut Environment,
     batch: bool,
 ) -> Result<(), Box<std::error::Error>> {
     let mut buffer = String::new();
@@ -1283,6 +1234,7 @@ fn repl(
         {
             let mut token = tokenize(&program.join(" "));
             let mut c: i32 = 1;
+
             loop {
                 let exp = match parse(&token, &mut c) {
                     Ok(v) => v,
@@ -1291,7 +1243,7 @@ fn repl(
                         break;
                     }
                 };
-                match eval(&exp, env) {
+                match eval(&exp, rc) {
                     Ok(n) => println!("{}", n.value_string()),
                     Err(e) => print_error!(e),
                 };
@@ -1306,8 +1258,6 @@ fn repl(
                 }
             }
         }
-        // for error_handle
-        env.cleanup();
         program.clear();
         prompt = PROMPT;
     }
@@ -1334,12 +1284,11 @@ fn count_parenthesis(program: String) -> bool {
     }
     return left <= right;
 }
-pub fn do_core_logic(program: &String, env: &mut SimpleEnv) -> ResultExpression {
+pub fn do_core_logic(program: &String, env: &mut Environment) -> ResultExpression {
     let token = tokenize(program);
 
     let mut c: i32 = 1;
     let exp = parse(&token, &mut c)?;
-
     return eval(&exp, env);
 }
 fn tokenize(program: &String) -> Vec<String> {
@@ -1475,23 +1424,24 @@ fn atom(token: &String) -> Expression {
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
         match $e {
-            Expression::Boolean(v) => return Ok(Expression::Boolean(*v)),
-            Expression::Char(v) => return Ok(Expression::Char(*v)),
+            Expression::Integer(_) => return Ok($e.clone()),
+            Expression::Boolean(_) => return Ok($e.clone()),
+            Expression::Char(_) => return Ok($e.clone()),
+            Expression::Float(_) => return Ok($e.clone()),
             Expression::String(_) => return Ok($e.clone()),
-            Expression::Integer(v) => return Ok(Expression::Integer(*v)),
-            Expression::Float(v) => return Ok(Expression::Float(*v)),
-            Expression::Nil() => return Ok(Expression::Nil()),
+            Expression::Nil() => return Ok($e.clone()),
             Expression::Pair(_, _) => return Ok($e.clone()),
             Expression::Promise(_, _) => return Ok($e.clone()),
-            Expression::Rational(v) => return Ok(Expression::Rational(*v)),
+            Expression::Rational(_) => return Ok($e.clone()),
             _ => {}
         }
     };
 }
-pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
+pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
     ret_clone_if_atom!(sexp);
     if let Expression::Symbol(val) = sexp {
-        match env.find(&val) {
+        debug!("eval() env.borrow().find(&val)");
+        match env.borrow().find(&val) {
             Some(v) => {
                 ret_clone_if_atom!(v);
                 match v {
@@ -1504,10 +1454,12 @@ pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             }
             None => {}
         }
-        if let Some(f) = env.get_builtin_func(val.as_str()) {
-            return Ok(Expression::BuildInFunction(*f));
+        debug!("env.borrow().get_builtin_func(val.as_str())");
+        if let Some(f) = env.borrow().get_builtin_func(val.as_str()) {
+            return Ok(Expression::BuildInFunction(f));
         }
-        if let Some(f) = env.get_builtin_ext_func(val.as_str()) {
+        debug!("env.borrow().get_builtin_ext_func(val.as_str())");
+        if let Some(f) = env.borrow().get_builtin_ext_func(val.as_str()) {
             return Ok(Expression::BuildInFunctionExt(f.clone()));
         }
         return Err(create_error_value!("E1008", val));
@@ -1523,10 +1475,7 @@ pub fn eval(sexp: &Expression, env: &mut SimpleEnv) -> ResultExpression {
             Expression::Function(mut rc) => {
                 let f = Rc::make_mut(&mut rc);
                 let result = f.execute(v, env);
-                if let Expression::Symbol(s) = &v[0] {
-                    // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
-                    env.update(s, Expression::Function(rc));
-                }
+                // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
                 return result;
             }
             Expression::TailRecursion(f) => return f.set_param(v, env),
