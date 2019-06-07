@@ -4,11 +4,11 @@ extern crate lazy_static;
 pub mod lisp;
 pub mod number;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 #[cfg(test)]
 fn do_lisp(program: &str) -> String {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
     let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
     return do_lisp_env(program, &mut env);
 }
@@ -37,10 +37,12 @@ macro_rules! assert_str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
     use std::env;
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
+    use std::rc::Rc;
 
     #[test]
     fn atom() {
@@ -792,6 +794,8 @@ mod tests {
 mod error_tests {
     #[allow(unused_imports)]
     use super::*;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     #[test]
     fn syntax_error() {
