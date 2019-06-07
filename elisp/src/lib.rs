@@ -222,8 +222,11 @@ mod tests {
     fn expt() {
         assert_str!(do_lisp("(expt 2 3)"), "8");
         assert_str!(do_lisp("(expt 2 (+ 1 2))"), "8");
-        assert_str!(do_lisp("(expt 2 -2)"), "0.25");
+        assert_str!(do_lisp("(expt 2 -2)"), "1/4");
         assert_str!(do_lisp("(expt 2 0)"), "1");
+        assert_str!(do_lisp("(expt 2.0 2.0)"), "4");
+        assert_str!(do_lisp("(expt 2.0 2)"), "4");
+        assert_str!(do_lisp("(expt 2 2.0)"), "4");
     }
     #[test]
     fn and() {
@@ -930,7 +933,9 @@ mod error_tests {
     fn expt() {
         assert_str!(do_lisp("(expt 10)"), "E1007");
         assert_str!(do_lisp("(expt a 2)"), "E1008");
-        assert_str!(do_lisp("(expt 10 #f)"), "E1002");
+        assert_str!(do_lisp("(expt 10 #f)"), "E1003");
+        assert_str!(do_lisp("(expt 10.5 #f)"), "E1003");
+        assert_str!(do_lisp("(expt #t 10)"), "E1003");
     }
     #[test]
     fn and() {
