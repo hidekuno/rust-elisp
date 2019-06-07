@@ -663,28 +663,33 @@ fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     return Ok(Expression::Boolean(true));
 }
+macro_rules! natural_log {
+    ($x: expr, $y: expr) => {
+        ($x.log((1.0 as f64).exp()) * $y).exp()
+    };
+}
 fn expt(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let mut vec: Vec<i64> = Vec::new();
-    for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        if let Expression::Integer(i) = o {
-            vec.push(i);
-        } else {
-            return Err(create_error!("E1002"));
-        }
-    }
-    let m = vec[1].abs();
-    let mut result: i64 = 1;
-    for _i in 0..m {
-        result *= vec[0];
-    }
-    if vec[1] < 0 {
-        return Ok(Expression::Float(1 as f64 / result as f64));
-    } else {
-        return Ok(Expression::Integer(result));
+    match eval(&exp[1], env)? {
+        Expression::Float(x) => match eval(&exp[2], env)? {
+            Expression::Float(y) => Ok(Expression::Float(natural_log!(x, y))),
+            Expression::Integer(y) => Ok(Expression::Float(natural_log!(x, (y as f64)))),
+            _ => Err(create_error!("E1003")),
+        },
+        Expression::Integer(x) => match eval(&exp[2], env)? {
+            Expression::Float(y) => Ok(Expression::Float(natural_log!((x as f64), y))),
+            Expression::Integer(y) => {
+                if y >= 0 {
+                    Ok(Expression::Integer(x.pow(y as u32)))
+                } else {
+                    Ok(Expression::Rational(Rat::new(1, x.pow(y.abs() as u32))))
+                }
+            }
+            _ => Err(create_error!("E1003")),
+        },
+        _ => Err(create_error!("E1003")),
     }
 }
 fn divide(
