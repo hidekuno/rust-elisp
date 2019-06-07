@@ -255,7 +255,7 @@ impl RsFunction {
         }
         return Ok(Expression::TailRecursion(Rc::new(self.clone())));
     }
-    fn execute(&mut self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
+    fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -267,7 +267,7 @@ impl RsFunction {
         }
         return self.execute_noeval(&vec);
     }
-    fn execute_noeval(&mut self, exp: &Vec<Expression>) -> ResultExpression {
+    fn execute_noeval(&self, exp: &Vec<Expression>) -> ResultExpression {
         if self.param.len() != exp.len() {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -964,12 +964,11 @@ fn map(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Function(mut rc) = eval(&exp[1], env)? {
+    if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[2], env)? {
             let mut result: Vec<Expression> = Vec::new();
             for e in l {
-                let func = Rc::make_mut(&mut rc);
-                result.push(func.execute_noeval(&[e.clone()].to_vec())?);
+                result.push(f.execute_noeval(&[e.clone()].to_vec())?);
             }
             return Ok(Expression::List(result));
         } else {
@@ -983,12 +982,11 @@ fn filter(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Function(mut rc) = eval(&exp[1], env)? {
+    if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[2], env)? {
             let mut result: Vec<Expression> = Vec::new();
             for e in &l {
-                let func = Rc::make_mut(&mut rc);
-                if let Expression::Boolean(b) = func.execute_noeval(&[e.clone()].to_vec())? {
+                if let Expression::Boolean(b) = f.execute_noeval(&[e.clone()].to_vec())? {
                     if b {
                         result.push(e.clone());
                     }
@@ -1008,7 +1006,7 @@ fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Function(mut rc) = eval(&exp[1], env)? {
+    if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[3], env)? {
             if l.len() == 0 {
                 return eval(&exp[2], env);
@@ -1016,8 +1014,7 @@ fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             let mut result = l[0].clone();
             // not carfully length,  safety
             for e in &l[1 as usize..] {
-                let func = Rc::make_mut(&mut rc);
-                result = func.execute_noeval(&[result.clone(), e.clone()].to_vec())?;
+                result = f.execute_noeval(&[result.clone(), e.clone()].to_vec())?;
             }
             return Ok(result);
         } else {
@@ -1031,11 +1028,10 @@ fn for_each(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Function(mut rc) = eval(&exp[1], env)? {
+    if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[2], env)? {
             for e in l {
-                let func = Rc::make_mut(&mut rc);
-                func.execute(&[Expression::Nil(), e.clone()].to_vec(), env)?;
+                f.execute(&[Expression::Nil(), e.clone()].to_vec(), env)?;
             }
         } else {
             return Err(create_error!("E1005"));
@@ -1472,12 +1468,7 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
         let e = eval(&v[0], env)?;
         match e {
             Expression::LetLoop(f) => return f.execute(v, env),
-            Expression::Function(mut rc) => {
-                let f = Rc::make_mut(&mut rc);
-                let result = f.execute(v, env);
-                // For ex. (define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))
-                return result;
-            }
+            Expression::Function(f) => return f.execute(v, env),
             Expression::TailRecursion(f) => return f.set_param(v, env),
             Expression::BuildInFunction(f) => return f(&v[..], env),
             Expression::BuildInFunctionExt(f) => return (*f)(&v[..], env),
