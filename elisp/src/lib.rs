@@ -1165,4 +1165,8 @@ mod error_tests {
         assert_str!(do_lisp("(force 1 2)"), "E1007");
         assert_str!(do_lisp("(force hoge)"), "E1008");
     }
+    #[test]
+    fn display() {
+        assert_str!(do_lisp("(display)"), "E1007");
+    }
 }
