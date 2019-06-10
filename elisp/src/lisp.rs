@@ -251,7 +251,7 @@ impl RsFunction {
             env.borrow_mut().update(&s, vec[idx].clone());
             idx += 1;
         }
-        return Ok(Expression::TailRecursion(Rc::new(self.clone())));
+        Ok(Expression::TailRecursion(Rc::new(self.clone())))
     }
     fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
@@ -286,18 +286,19 @@ impl RsFunction {
         let mut i = 0;
         for e in &self.body {
             loop {
-                let v = eval(e, &mut new_env)?;
-                if let Expression::TailRecursion(_) = v {
-                    continue;
+                match eval(e, &mut new_env)? {
+                    Expression::TailRecursion(_) => continue,
+                    v => {
+                        i += 1;
+                        if i == self.body.len() {
+                            return Ok(v);
+                        }
+                        break;
+                    }
                 }
-                i += 1;
-                if i == self.body.len() {
-                    return Ok(v);
-                }
-                break;
             }
         }
-        return Err(create_error!("E9999"));
+        Err(create_error!("E9999"))
     }
 }
 impl TailRecursion for RsFunction {
@@ -313,13 +314,13 @@ pub struct RsLetLoop {
     tail_recurcieve: bool,
 }
 impl RsLetLoop {
-    fn new(sexp: &[Expression], _name: String, _param: &Vec<String>) -> RsLetLoop {
+    fn new(sexp: &[Expression], name: String, param: &Vec<String>) -> RsLetLoop {
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[3..]);
         RsLetLoop {
-            param: _param.clone(),
+            param: param.clone(),
             body: vec,
-            name: _name,
+            name: name,
             tail_recurcieve: false,
         }
     }
@@ -337,10 +338,8 @@ impl RsLetLoop {
         for s in &self.param {
             if let Some(e) = iter.next() {
                 let v = eval(e, env)?;
-                {
-                    debug!("function execute(): env.borrow_mut();");
-                    env.borrow_mut().update(s, v);
-                }
+                debug!("function execute(): env.borrow_mut();");
+                env.borrow_mut().update(s, v);
             }
         }
         if self.tail_recurcieve == true {
@@ -537,9 +536,9 @@ fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         } else {
             return Err(create_error_value!("E1008", s));
         }
-        return Ok(Expression::Symbol(s.to_string()));
+        Ok(Expression::Symbol(s.to_string()))
     } else {
-        return Err(create_error!("E1004"));
+        Err(create_error!("E1004"))
     }
 }
 fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -548,11 +547,10 @@ fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
 
     let start = Instant::now();
-
     let result = eval(&exp[1], env);
     let end = start.elapsed();
 
-    println!("{}.{}", end.as_secs(), end.subsec_nanos() / 1_000_000);
+    println!("{}.{}(s)", end.as_secs(), end.subsec_nanos() / 1_000_000);
     return result;
 }
 fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -611,16 +609,16 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             }
         }
     }
-    return Err(create_error!("E9999"));
+    Err(create_error!("E9999"))
 }
 fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Boolean(b) = eval(&exp[1], env)? {
-        return Ok(Expression::Boolean(!b));
+    match eval(&exp[1], env)? {
+        Expression::Boolean(b) => Ok(Expression::Boolean(!b)),
+        _ => Err(create_error!("E1001")),
     }
-    return Err(create_error!("E1001"));
 }
 fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
@@ -635,7 +633,7 @@ fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             return Err(create_error!("E1001"));
         }
     }
-    return Ok(Expression::Boolean(false));
+    Ok(Expression::Boolean(false))
 }
 fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
@@ -650,7 +648,7 @@ fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             return Err(create_error!("E1001"));
         }
     }
-    return Ok(Expression::Boolean(true));
+    Ok(Expression::Boolean(true))
 }
 macro_rules! natural_log {
     ($x: expr, $y: expr) => {
@@ -693,12 +691,13 @@ fn divide(
     match (a, b) {
         (Expression::Integer(x), Expression::Integer(y)) => {
             if y == 0 {
-                return Err(create_error!("E1013"));
+                Err(create_error!("E1013"))
+            } else {
+                Ok(Expression::Integer(f(&x, &y)))
             }
-            return Ok(Expression::Integer(f(&x, &y)));
         }
-        (_, _) => return Err(create_error!("E1002")),
-    };
+        (_, _) => Err(create_error!("E1002")),
+    }
 }
 fn lambda(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
@@ -714,11 +713,11 @@ fn lambda(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     } else {
         return Err(create_error!("E1005"));
     }
-    return Ok(Expression::Function(Rc::new(RsFunction::new(
+    Ok(Expression::Function(Rc::new(RsFunction::new(
         exp,
         String::from("lambda"),
         env.clone(),
-    ))));
+    ))))
 }
 fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -726,10 +725,9 @@ fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     if let Expression::Symbol(v) = &exp[1] {
         let se = eval(&exp[2], env)?;
-        {
-            debug!("define env.borrow_mut();");
-            env.borrow_mut().regist(v.to_string(), se);
-        }
+        debug!("define env.borrow_mut();");
+        env.borrow_mut().regist(v.to_string(), se);
+
         return Ok(Expression::Symbol(v.to_string()));
     }
     if let Expression::List(l) = &exp[1] {
@@ -753,12 +751,13 @@ fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             func.set_tail_recurcieve();
             env.borrow_mut()
                 .regist(s.to_string(), Expression::Function(Rc::new(func)));
-            return Ok(Expression::Symbol(s.to_string()));
+            Ok(Expression::Symbol(s.to_string()))
         } else {
-            return Err(create_error!("E1004"));
+            Err(create_error!("E1004"))
         }
+    } else {
+        Err(create_error!("E1004"))
     }
-    Err(create_error!("E1004"))
 }
 fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
@@ -766,13 +765,15 @@ fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     if let Expression::Boolean(b) = eval(&exp[1], env)? {
         if b == true {
-            return eval(&exp[2], env);
+            eval(&exp[2], env)
         } else if 4 <= exp.len() {
-            return eval(&exp[3], env);
+            eval(&exp[3], env)
+        } else {
+            Ok(Expression::Nil())
         }
-        return Ok(Expression::Nil());
+    } else {
+        Err(create_error!("E1001"))
     }
-    return Err(create_error!("E1001"));
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
@@ -785,10 +786,9 @@ fn null_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::List(l) = eval(&exp[1], env)? {
-        return Ok(Expression::Boolean(l.len() == 0));
-    } else {
-        return Ok(Expression::Boolean(false));
+    match eval(&exp[1], env)? {
+        Expression::List(l) => Ok(Expression::Boolean(l.len() == 0)),
+        _ => Ok(Expression::Boolean(false)),
     }
 }
 fn length(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -805,38 +805,29 @@ fn car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let v = eval(&exp[1], env)?;
-
-    if let Expression::List(l) = v {
-        if l.len() <= 0 {
-            return Err(create_error!("E1011"));
+    match eval(&exp[1], env)? {
+        Expression::List(l) => {
+            if l.len() <= 0 {
+                return Err(create_error!("E1011"));
+            }
+            Ok(l[0].clone())
         }
-        return Ok(l[0].clone());
-    } else if let Expression::Pair(car, _cdr) = v {
-        return Ok((*car).clone());
-    } else {
-        Err(create_error!("E1005"))
+        Expression::Pair(car, _cdr) => Ok((*car).clone()),
+        _ => Err(create_error!("E1005")),
     }
 }
 fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let v = eval(&exp[1], env)?;
-
-    if let Expression::List(l) = v {
-        if l.len() <= 0 {
-            return Err(create_error!("E1011"));
-        }
-        if l.len() == 1 {
-            let list: Vec<Expression> = Vec::new();
-            return Ok(Expression::List(list));
-        }
-        return Ok(Expression::List(l[1 as usize..].to_vec()));
-    } else if let Expression::Pair(_car, cdr) = v {
-        return Ok((*cdr).clone());
-    } else {
-        Err(create_error!("E1005"))
+    match eval(&exp[1], env)? {
+        Expression::List(l) => match l.len() {
+            0 => Err(create_error!("E1011")),
+            1 => Ok(Expression::List(Vec::new())),
+            _ => Ok(Expression::List(l[1 as usize..].to_vec())),
+        },
+        Expression::Pair(_car, cdr) => Ok((*cdr).clone()),
+        _ => Err(create_error!("E1005")),
     }
 }
 fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -847,7 +838,7 @@ fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if l.len() <= 1 {
             return Err(create_error!("E1011"));
         }
-        return Ok(l[1].clone());
+        Ok(l[1].clone())
     } else {
         Err(create_error!("E1005"))
     }
@@ -879,20 +870,17 @@ fn append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             _ => return Err(create_error!("E1005")),
         }
     }
-    return Ok(Expression::List(v));
+    Ok(Expression::List(v))
 }
 fn last(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::List(l) => {
-            if 0 == l.len() {
-                Err(create_error!("E1011"))
-            } else {
-                Ok(l[l.len() - 1].clone())
-            }
-        }
+        Expression::List(l) => match l.len() {
+            0 => Err(create_error!("E1011")),
+            _ => Ok(l[l.len() - 1].clone()),
+        },
         Expression::Pair(car, _) => Ok(*car.clone()),
         _ => Err(create_error!("E1005")),
     }
@@ -905,7 +893,7 @@ fn reverse(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Expression::List(l) => {
             let mut v = l.clone();
             v.reverse();
-            return Ok(Expression::List(v));
+            Ok(Expression::List(v))
         }
         _ => Err(create_error!("E1005")),
     }
@@ -914,28 +902,22 @@ fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() <= 1 || 4 <= exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let mut i = 0;
-    let mut max = 0;
-    let mut it = exp.iter();
-    it.next();
+    let mut from = 0;
+    let mut to = 0;
 
-    if let Some(e) = it.next() {
-        if let Expression::Integer(e) = eval(e, env)? {
-            max = e;
-        } else {
-            return Err(create_error!("E1002"));
+    for e in &exp[1 as usize..] {
+        match eval(e, env)? {
+            Expression::Integer(i) => {
+                if exp.len() == 3 {
+                    from = i;
+                }
+                to += i;
+            }
+            _ => return Err(create_error!("E1002")),
         }
     }
-    if let Some(e) = it.next() {
-        if let Expression::Integer(e) = eval(e, env)? {
-            i = e;
-            max += e;
-        } else {
-            return Err(create_error!("E1002"));
-        }
-    }
-    let mut l = Vec::with_capacity(max as usize);
-    for v in i..max {
+    let mut l = Vec::with_capacity(to as usize);
+    for v in from..to {
         l.push(Expression::Integer(v));
     }
     Ok(Expression::List(l))
@@ -944,42 +926,43 @@ fn map(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Function(f) = eval(&exp[1], env)? {
-        if let Expression::List(l) = eval(&exp[2], env)? {
-            let mut result: Vec<Expression> = Vec::new();
-            for e in l {
-                result.push(f.execute_noeval(&[e.clone()].to_vec())?);
+    match eval(&exp[1], env)? {
+        Expression::Function(f) => match eval(&exp[2], env)? {
+            Expression::List(l) => {
+                let mut result: Vec<Expression> = Vec::new();
+                for e in l {
+                    result.push(f.execute_noeval(&[e.clone()].to_vec())?);
+                }
+                Ok(Expression::List(result))
             }
-            return Ok(Expression::List(result));
-        } else {
-            Err(create_error!("E1005"))
-        }
-    } else {
-        Err(create_error!("E1006"))
+            _ => Err(create_error!("E1005")),
+        },
+        _ => Err(create_error!("E1006")),
     }
 }
 fn filter(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    if let Expression::Function(f) = eval(&exp[1], env)? {
-        if let Expression::List(l) = eval(&exp[2], env)? {
-            let mut result: Vec<Expression> = Vec::new();
-            for e in &l {
-                if let Expression::Boolean(b) = f.execute_noeval(&[e.clone()].to_vec())? {
-                    if b {
-                        result.push(e.clone());
+    match eval(&exp[1], env)? {
+        Expression::Function(f) => match eval(&exp[2], env)? {
+            Expression::List(l) => {
+                let mut result: Vec<Expression> = Vec::new();
+                for e in &l {
+                    match f.execute_noeval(&[e.clone()].to_vec())? {
+                        Expression::Boolean(b) => {
+                            if b {
+                                result.push(e.clone());
+                            }
+                        }
+                        _ => return Err(create_error!("E1001")),
                     }
-                } else {
-                    return Err(create_error!("E1001"));
                 }
+                Ok(Expression::List(result))
             }
-            return Ok(Expression::List(result));
-        } else {
-            Err(create_error!("E1005"))
-        }
-    } else {
-        Err(create_error!("E1006"))
+            _ => Err(create_error!("E1005")),
+        },
+        _ => Err(create_error!("E1006")),
     }
 }
 fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -996,7 +979,7 @@ fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             for e in &l[1 as usize..] {
                 result = f.execute_noeval(&[result.clone(), e.clone()].to_vec())?;
             }
-            return Ok(result);
+            Ok(result)
         } else {
             Err(create_error!("E1005"))
         }
@@ -1011,15 +994,15 @@ fn for_each(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[2], env)? {
             for e in l {
-                f.execute(&[Expression::Nil(), e.clone()].to_vec(), env)?;
+                f.execute_noeval(&[e.clone()].to_vec())?;
             }
         } else {
             return Err(create_error!("E1005"));
         }
+        Ok(Expression::Nil())
     } else {
-        return Err(create_error!("E1006"));
+        Err(create_error!("E1006"))
     }
-    Ok(Expression::Nil())
 }
 fn rand_integer(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     if 1 < exp.len() {
@@ -1027,7 +1010,7 @@ fn rand_integer(exp: &[Expression], _env: &mut Environment) -> ResultExpression 
     }
     let mut rng = rand::thread_rng();
     let x: i64 = rng.gen();
-    return Ok(Expression::Integer(x.abs() / SAMPLE_INT));
+    Ok(Expression::Integer(x.abs() / SAMPLE_INT))
 }
 fn rand_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 < exp.len() {
@@ -1040,9 +1023,9 @@ fn rand_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             let x: i64 = rng.gen();
             vec.push(Expression::Integer(x.abs() / SAMPLE_INT));
         }
-        return Ok(Expression::List(vec));
+        Ok(Expression::List(vec))
     } else {
-        return Err(create_error!("E1002"));
+        Err(create_error!("E1002"))
     }
 }
 fn load_file(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -1071,17 +1054,17 @@ fn load_file(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             Ok(_) => return Ok(Expression::Nil()),
         }
     }
-    return Err(create_error!("E1015"));
+    Err(create_error!("E1015"))
 }
 fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
-        return Ok(Expression::Nil());
+        return Err(create_error_value!("E1007", exp.len()));
     }
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        print!("{} ", o.value_string());
+        let v = eval(e, env)?;
+        print!("{} ", v.value_string());
     }
-    return Ok(Expression::Nil());
+    Ok(Expression::Nil())
 }
 
 fn delay(exp: &[Expression], env: &mut Environment) -> ResultExpression {
@@ -1096,21 +1079,20 @@ fn force(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     let v = eval(&exp[1], env)?;
     if let Expression::Promise(p, mut pe) = v {
-        return eval(&(*p), &mut pe);
+        eval(&(*p), &mut pe)
     } else {
-        return Ok(v);
+        Ok(v)
     }
 }
 fn to_f64(exp: &[Expression], env: &mut Environment) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let v = eval(&exp[1], env)?;
-    match v {
-        Expression::Float(f) => return Ok(f),
-        Expression::Integer(i) => return Ok(i as f64),
-        Expression::Rational(r) => return Ok(r.div_float()),
-        _ => return Err(create_error!("E1003")),
+    match eval(&exp[1], env)? {
+        Expression::Float(f) => Ok(f),
+        Expression::Integer(i) => Ok(i as f64),
+        Expression::Rational(r) => Ok(r.div_float()),
+        _ => Err(create_error!("E1003")),
     }
 }
 fn calc(
@@ -1161,7 +1143,7 @@ fn cmp(
             _ => return Err(create_error!("E1003")),
         }
     }
-    return Ok(Expression::Boolean(f(&vec[0], &vec[1])));
+    Ok(Expression::Boolean(f(&vec[0], &vec[1])))
 }
 
 pub fn do_interactive() {
@@ -1358,8 +1340,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
         {
             return Err(create_error!("E0004"));
         }
-        let exp = atom(&token);
-        Ok(exp)
+        Ok(atom(&token))
     }
 }
 fn atom(token: &String) -> Expression {
@@ -1384,18 +1365,17 @@ fn atom(token: &String) -> Expression {
         let s = token.as_str()[1..token.len() - 1].to_string();
         return Expression::String(s);
     }
-    {
-        let mut v = Vec::new();
-        for e in token.split("/") {
-            if let Ok(n) = e.parse::<i64>() {
-                v.push(n);
-            }
-        }
-        if v.len() == 2 {
-            return Expression::Rational(Rat::new(v[0], v[1]));
+    let mut v = Vec::new();
+    for e in token.split("/") {
+        if let Ok(n) = e.parse::<i64>() {
+            v.push(n);
         }
     }
-    return Expression::Symbol(token.to_string());
+    if v.len() == 2 {
+        Expression::Rational(Rat::new(v[0], v[1]))
+    } else {
+        Expression::Symbol(token.to_string())
+    }
 }
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {
@@ -1420,40 +1400,38 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
         match env.borrow().find(&val) {
             Some(v) => {
                 ret_clone_if_atom!(v);
-                match v {
-                    Expression::Function(_) => return Ok(v.clone()),
-                    Expression::TailRecursion(_) => return Ok(v.clone()),
-                    Expression::LetLoop(_) => return Ok(v.clone()),
-                    Expression::List(_) => return Ok(v.clone()),
-                    _ => {}
+                return match v {
+                    Expression::Function(_) => Ok(v.clone()),
+                    Expression::TailRecursion(_) => Ok(v.clone()),
+                    Expression::LetLoop(_) => Ok(v.clone()),
+                    Expression::List(_) => Ok(v.clone()),
+                    _ => Err(create_error!("E9999")),
+                };
+            }
+            None => {
+                if let Some(f) = env.borrow().get_builtin_func(val.as_str()) {
+                    Ok(Expression::BuildInFunction(f))
+                } else if let Some(f) = env.borrow().get_builtin_ext_func(val.as_str()) {
+                    Ok(Expression::BuildInFunctionExt(f.clone()))
+                } else {
+                    Err(create_error_value!("E1008", val))
                 }
             }
-            None => {}
         }
-        debug!("env.borrow().get_builtin_func(val.as_str())");
-        if let Some(f) = env.borrow().get_builtin_func(val.as_str()) {
-            return Ok(Expression::BuildInFunction(f));
-        }
-        debug!("env.borrow().get_builtin_ext_func(val.as_str())");
-        if let Some(f) = env.borrow().get_builtin_ext_func(val.as_str()) {
-            return Ok(Expression::BuildInFunctionExt(f.clone()));
-        }
-        return Err(create_error_value!("E1008", val));
-    }
-    if let Expression::List(l) = sexp {
+    } else if let Expression::List(l) = sexp {
         if l.len() == 0 {
             return Ok(sexp.clone());
         }
         let v = &l;
-        let e = eval(&v[0], env)?;
-        match e {
-            Expression::LetLoop(f) => return f.execute(v, env),
-            Expression::Function(f) => return f.execute(v, env),
-            Expression::TailRecursion(f) => return f.set_param(v, env),
-            Expression::BuildInFunction(f) => return f(&v[..], env),
-            Expression::BuildInFunctionExt(f) => return (*f)(&v[..], env),
-            _ => return Err(create_error!("E1006")),
-        }
+        return match eval(&v[0], env)? {
+            Expression::LetLoop(f) => f.execute(v, env),
+            Expression::Function(f) => f.execute(v, env),
+            Expression::TailRecursion(f) => f.set_param(v, env),
+            Expression::BuildInFunction(f) => f(&v[..], env),
+            Expression::BuildInFunctionExt(f) => (*f)(&v[..], env),
+            _ => Err(create_error!("E1006")),
+        };
+    } else {
+        Err(create_error!("E1009"))
     }
-    Err(create_error!("E1009"))
 }
