@@ -243,8 +243,7 @@ impl RsFunction {
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
         for e in &exp[1 as usize..] {
-            let v = eval(e, env)?;
-            vec.push(v);
+            vec.push(eval(e, env)?);
         }
         // env set
         let mut idx = 0;
@@ -261,8 +260,7 @@ impl RsFunction {
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
         for e in &exp[1 as usize..] {
-            let v = eval(e, env)?;
-            vec.push(v);
+            vec.push(eval(e, env)?);
         }
         return self.execute_noeval(&vec);
     }
@@ -283,24 +281,21 @@ impl RsFunction {
                 Expression::TailRecursion(Rc::new(self.clone())),
             );
         }
-
         // execute!
-        let mut results: Vec<Expression> = Vec::new();
         let mut new_env = Rc::new(RefCell::new(env));
+        let mut i = 0;
         for e in &self.body {
             loop {
                 let v = eval(e, &mut new_env)?;
                 if let Expression::TailRecursion(_) = v {
                     continue;
-                } else {
-                    results.push(v);
-                    break;
                 }
+                i += 1;
+                if i == self.body.len() {
+                    return Ok(v);
+                }
+                break;
             }
-        }
-        // created function set clonsure
-        if let Some(r) = results.pop() {
-            return Ok(r);
         }
         return Err(create_error!("E9999"));
     }
@@ -351,13 +346,13 @@ impl RsLetLoop {
         if self.tail_recurcieve == true {
             return Ok(Expression::Loop());
         } else {
-            let mut results: Vec<Expression> = Vec::new();
+            let mut i = 0;
             for exp in &self.body {
-                let r = eval(&exp, env)?;
-                results.push(r);
-            }
-            if let Some(r) = results.pop() {
-                return Ok(r);
+                let v = eval(&exp, env)?;
+                i += 1;
+                if i == self.body.len() {
+                    return Ok(v);
+                }
             }
         }
         return Err(create_error!("E9999"));
@@ -578,8 +573,7 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
                     return Err(create_error_value!("E1007", p.len()));
                 }
                 if let Expression::Symbol(s) = &p[0] {
-                    let v = eval(&p[1], env)?;
-                    param.regist(s.to_string(), v.clone());
+                    param.regist(s.to_string(), eval(&p[1], env)?);
                     param_list.push(s.clone());
                 } else {
                     return Err(create_error!("E1004"));
@@ -601,21 +595,21 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
 
     // @@@ env.create();
     let mut new_env = Rc::new(RefCell::new(param));
-    let mut results: Vec<Expression> = Vec::new();
+    let mut i = 0;
     for e in &exp[idx as usize..] {
         loop {
-            let o = eval(e, &mut new_env)?;
-            if let Expression::Loop() = o {
+            let v = eval(e, &mut new_env)?;
+            if let Expression::Loop() = v {
                 // tail recurcieve
                 continue;
             } else {
-                results.push(o);
+                i += 1;
+                if i == (exp.len() - idx) {
+                    return Ok(v);
+                }
                 break;
             }
         }
-    }
-    if let Some(r) = results.pop() {
-        return Ok(r);
     }
     return Err(create_error!("E9999"));
 }
@@ -623,8 +617,7 @@ fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
-    if let Expression::Boolean(b) = o {
+    if let Expression::Boolean(b) = eval(&exp[1], env)? {
         return Ok(Expression::Boolean(!b));
     }
     return Err(create_error!("E1001"));
@@ -634,8 +627,7 @@ fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         return Err(create_error_value!("E1007", exp.len()));
     }
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        if let Expression::Boolean(b) = o {
+        if let Expression::Boolean(b) = eval(e, env)? {
             if b == true {
                 return Ok(Expression::Boolean(b));
             }
@@ -650,8 +642,7 @@ fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         return Err(create_error_value!("E1007", exp.len()));
     }
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        if let Expression::Boolean(b) = o {
+        if let Expression::Boolean(b) = eval(e, env)? {
             if b == false {
                 return Ok(Expression::Boolean(b));
             }
@@ -773,9 +764,7 @@ fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let se = eval(&exp[1], env)?;
-
-    if let Expression::Boolean(b) = se {
+    if let Expression::Boolean(b) = eval(&exp[1], env)? {
         if b == true {
             return eval(&exp[2], env);
         } else if 4 <= exp.len() {
@@ -786,10 +775,9 @@ fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     return Err(create_error!("E1001"));
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
-    let mut list: Vec<Expression> = Vec::new();
+    let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        list.push(o);
+        list.push(eval(e, env)?);
     }
     Ok(Expression::List(list))
 }
@@ -797,8 +785,7 @@ fn null_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
-    if let Expression::List(l) = o {
+    if let Expression::List(l) = eval(&exp[1], env)? {
         return Ok(Expression::Boolean(l.len() == 0));
     } else {
         return Ok(Expression::Boolean(false));
@@ -808,8 +795,7 @@ fn length(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
-    if let Expression::List(l) = o {
+    if let Expression::List(l) = eval(&exp[1], env)? {
         Ok(Expression::Integer(l.len() as i64))
     } else {
         Err(create_error!("E1005"))
@@ -819,14 +805,14 @@ fn car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
+    let v = eval(&exp[1], env)?;
 
-    if let Expression::List(l) = o {
+    if let Expression::List(l) = v {
         if l.len() <= 0 {
             return Err(create_error!("E1011"));
         }
         return Ok(l[0].clone());
-    } else if let Expression::Pair(car, _cdr) = o {
+    } else if let Expression::Pair(car, _cdr) = v {
         return Ok((*car).clone());
     } else {
         Err(create_error!("E1005"))
@@ -836,9 +822,9 @@ fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
+    let v = eval(&exp[1], env)?;
 
-    if let Expression::List(l) = o {
+    if let Expression::List(l) = v {
         if l.len() <= 0 {
             return Err(create_error!("E1011"));
         }
@@ -847,7 +833,7 @@ fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             return Ok(Expression::List(list));
         }
         return Ok(Expression::List(l[1 as usize..].to_vec()));
-    } else if let Expression::Pair(_car, cdr) = o {
+    } else if let Expression::Pair(_car, cdr) = v {
         return Ok((*cdr).clone());
     } else {
         Err(create_error!("E1005"))
@@ -857,9 +843,7 @@ fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
-
-    if let Expression::List(l) = o {
+    if let Expression::List(l) = eval(&exp[1], env)? {
         if l.len() <= 1 {
             return Err(create_error!("E1011"));
         }
@@ -889,13 +873,10 @@ fn append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         return Err(create_error_value!("E1007", exp.len()));
     }
     let mut v: Vec<Expression> = Vec::new();
-
     for e in &exp[1 as usize..] {
-        let o = eval(e, env)?;
-        if let Expression::List(mut l) = o {
-            v.append(&mut l);
-        } else {
-            return Err(create_error!("E1005"));
+        match eval(e, env)? {
+            Expression::List(mut l) => v.append(&mut l),
+            _ => return Err(create_error!("E1005")),
         }
     }
     return Ok(Expression::List(v));
@@ -904,32 +885,30 @@ fn last(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
-
-    if let Expression::List(l) = o {
-        if 0 == l.len() {
-            return Err(create_error!("E1011"));
+    match eval(&exp[1], env)? {
+        Expression::List(l) => {
+            if 0 == l.len() {
+                Err(create_error!("E1011"))
+            } else {
+                Ok(l[l.len() - 1].clone())
+            }
         }
-        return Ok(l[l.len() - 1].clone());
+        Expression::Pair(car, _) => Ok(*car.clone()),
+        _ => Err(create_error!("E1005")),
     }
-    if let Expression::Pair(car, _) = o {
-        return Ok(*car.clone());
-    }
-
-    return Err(create_error!("E1005"));
 }
-
 fn reverse(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let o = eval(&exp[1], env)?;
-    if let Expression::List(l) = o {
-        let mut v = l.clone();
-        v.reverse();
-        return Ok(Expression::List(v));
+    match eval(&exp[1], env)? {
+        Expression::List(l) => {
+            let mut v = l.clone();
+            v.reverse();
+            return Ok(Expression::List(v));
+        }
+        _ => Err(create_error!("E1005")),
     }
-    Err(create_error!("E1005"))
 }
 fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() <= 1 || 4 <= exp.len() {
@@ -937,26 +916,25 @@ fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     let mut i = 0;
     let mut max = 0;
-    let mut l = Vec::new();
     let mut it = exp.iter();
     it.next();
+
     if let Some(e) = it.next() {
-        let o = eval(e, env)?;
-        if let Expression::Integer(e) = o {
+        if let Expression::Integer(e) = eval(e, env)? {
             max = e;
         } else {
             return Err(create_error!("E1002"));
         }
     }
     if let Some(e) = it.next() {
-        let o = eval(e, env)?;
-        if let Expression::Integer(e) = o {
+        if let Expression::Integer(e) = eval(e, env)? {
             i = e;
-            max += i;
+            max += e;
         } else {
             return Err(create_error!("E1002"));
         }
     }
+    let mut l = Vec::with_capacity(max as usize);
     for v in i..max {
         l.push(Expression::Integer(v));
     }
