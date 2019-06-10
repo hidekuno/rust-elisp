@@ -248,9 +248,8 @@ impl RsFunction {
         }
         // env set
         let mut idx = 0;
-        let mut rc = env.borrow_mut();
         for s in &self.param {
-            rc.update(&s, vec[idx].clone());
+            env.borrow_mut().update(&s, vec[idx].clone());
             idx += 1;
         }
         return Ok(Expression::TailRecursion(Rc::new(self.clone())));
@@ -272,14 +271,14 @@ impl RsFunction {
             return Err(create_error_value!("E1007", exp.len()));
         }
         // @@@ env.create();
-        let mut rc = SimpleEnv::new(Some(self.closure_env.clone()));
+        let mut env = SimpleEnv::new(Some(self.closure_env.clone()));
         let mut idx = 0;
         for s in &self.param {
-            rc.regist(s.to_string(), exp[idx].clone());
+            env.regist(s.to_string(), exp[idx].clone());
             idx += 1;
         }
         if self.tail_recurcieve == true {
-            rc.regist(
+            env.regist(
                 self.name.to_string(),
                 Expression::TailRecursion(Rc::new(self.clone())),
             );
@@ -287,7 +286,7 @@ impl RsFunction {
 
         // execute!
         let mut results: Vec<Expression> = Vec::new();
-        let mut new_env = Rc::new(RefCell::new(rc));
+        let mut new_env = Rc::new(RefCell::new(env));
         for e in &self.body {
             loop {
                 let v = eval(e, &mut new_env)?;
@@ -344,9 +343,8 @@ impl RsLetLoop {
             if let Some(e) = iter.next() {
                 let v = eval(e, env)?;
                 {
-                    debug!("function execute(): let mut rc = env.borrow_mut();");
-                    let mut rc = env.borrow_mut();
-                    rc.update(s, v);
+                    debug!("function execute(): env.borrow_mut();");
+                    env.borrow_mut().update(s, v);
                 }
             }
         }
@@ -455,10 +453,10 @@ impl GlobalTbl {
 pub struct SimpleEnv {
     env_tbl: HashMap<String, Expression>,
     globals: Rc<RefCell<GlobalTbl>>,
-    parent: Option<Rc<RefCell<SimpleEnv>>>,
+    parent: Option<Environment>,
 }
 impl SimpleEnv {
-    pub fn new(parent: Option<Rc<RefCell<SimpleEnv>>>) -> SimpleEnv {
+    pub fn new(parent: Option<Environment>) -> SimpleEnv {
         if let Some(p) = parent {
             SimpleEnv {
                 env_tbl: HashMap::new(),
@@ -739,8 +737,7 @@ fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         let se = eval(&exp[2], env)?;
         {
             debug!("define env.borrow_mut();");
-            let mut rc = env.borrow_mut();
-            rc.regist(v.to_string(), se);
+            env.borrow_mut().regist(v.to_string(), se);
         }
         return Ok(Expression::Symbol(v.to_string()));
     }
@@ -1191,16 +1188,16 @@ fn cmp(
 
 pub fn do_interactive() {
     let mut stream = BufReader::new(std::io::stdin());
-    let mut rc = Rc::new(RefCell::new(SimpleEnv::new(None)));
+    let mut env = Rc::new(RefCell::new(SimpleEnv::new(None)));
 
-    match repl(&mut stream, &mut rc, false) {
+    match repl(&mut stream, &mut env, false) {
         Err(e) => println!("{}", e),
         Ok(_) => {}
     }
 }
 fn repl(
     stream: &mut BufRead,
-    rc: &mut Environment,
+    env: &mut Environment,
     batch: bool,
 ) -> Result<(), Box<std::error::Error>> {
     let mut buffer = String::new();
@@ -1244,7 +1241,7 @@ fn repl(
                         break;
                     }
                 };
-                match eval(&exp, rc) {
+                match eval(&exp, env) {
                     Ok(n) => println!("{}", n.value_string()),
                     Err(e) => print_error!(e),
                 };
