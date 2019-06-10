@@ -552,7 +552,7 @@ fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let result = eval(&exp[1], env);
     let end = start.elapsed();
 
-    println!("{}.{:06}", end.as_secs(), end.subsec_nanos() / 1_000_000);
+    println!("{}.{}", end.as_secs(), end.subsec_nanos() / 1_000_000);
     return result;
 }
 fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
