@@ -31,7 +31,7 @@ const EVAL_RESULT_ID: &str = "result";
 
 type ImageTable = Rc<RefCell<HashMap<String, ImageSurface>>>;
 
-fn scheme_gtk(rc: &mut Environment, image_table: &ImageTable) {
+fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
 
@@ -87,14 +87,14 @@ fn scheme_gtk(rc: &mut Environment, image_table: &ImageTable) {
     scroll.add(&text_view);
     scroll.set_size_request(DRAW_WIDTH, 160);
 
-    let rc_ = RefCell::new(rc.clone());
+    let env_ = RefCell::new(env.clone());
     let canvas_ = canvas.clone();
     let clone_bar = status_bar.clone();
     text_view.connect_key_press_event(move |w, key| {
         if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK)
             && key.get_keyval() == EVAL_KEYCODE
         {
-            execute_lisp(&mut rc_.borrow_mut(), &canvas_, w, &clone_bar);
+            execute_lisp(&mut env_.borrow_mut(), &canvas_, w, &clone_bar);
         }
         Inhibit(false)
     });
@@ -106,12 +106,12 @@ fn scheme_gtk(rc: &mut Environment, image_table: &ImageTable) {
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
 
-    let rc_ = RefCell::new(rc.clone());
+    let env_ = RefCell::new(env.clone());
     let canvas_weak = canvas.downgrade();
     let status_bar_weak = status_bar.downgrade();
     eval.connect_activate(move |_| {
         execute_lisp(
-            &mut rc_.borrow_mut(),
+            &mut env_.borrow_mut(),
             &canvas_weak.upgrade().unwrap(),
             &text_view,
             &status_bar_weak.upgrade().unwrap(),
@@ -145,7 +145,7 @@ fn scheme_gtk(rc: &mut Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     // Create Lisp Function
     //--------------------------------------------------------
-    build_lisp_function(rc, &canvas, image_table);
+    build_lisp_function(env, &canvas, image_table);
 
     //--------------------------------------------------------
     // Build Up finish
@@ -154,7 +154,7 @@ fn scheme_gtk(rc: &mut Environment, image_table: &ImageTable) {
     window.show_all();
 }
 fn execute_lisp(
-    rc: &mut Environment,
+    env: &mut Environment,
     canvas: &gtk::DrawingArea,
     text_view: &gtk::TextView,
     status_bar: &gtk::Statusbar,
@@ -171,7 +171,7 @@ fn execute_lisp(
     let e = text_buffer.get_end_iter();
     let exp = text_buffer.get_text(&s, &e, false).expect("die");
 
-    let result = match lisp::do_core_logic(&exp.to_string(), rc) {
+    let result = match lisp::do_core_logic(&exp.to_string(), env) {
         Ok(r) => r.value_string(),
         Err(e) => e.get_code(),
     };
@@ -181,99 +181,104 @@ fn execute_lisp(
     glib::source::source_remove(sid);
     canvas.queue_draw();
 }
-fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea, image_table: &ImageTable) {
-    let mut e = (*rc).borrow_mut();
+fn build_lisp_function(env: &Environment, canvas: &gtk::DrawingArea, image_table: &ImageTable) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
     let canvas_weak = canvas.downgrade();
-    e.add_builtin_closure("draw-clear", move |exp, _| {
-        if exp.len() != 1 {
-            return Err(create_error!("E1007"));
-        }
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.connect_draw(move |_, cr| {
-            cr.transform(Matrix {
-                xx: 1.0,
-                yx: 0.0,
-                xy: 0.0,
-                yy: 1.0,
-                x0: 0.0,
-                y0: 0.0,
-            });
-            cr.set_source_rgb(0.9, 0.9, 0.9);
-            cr.paint();
+    (*env)
+        .borrow_mut()
+        .add_builtin_closure("draw-clear", move |exp, _| {
+            if exp.len() != 1 {
+                return Err(create_error!("E1007"));
+            }
+            let canvas = canvas_weak.upgrade().unwrap();
+            canvas.connect_draw(move |_, cr| {
+                cr.transform(Matrix {
+                    xx: 1.0,
+                    yx: 0.0,
+                    xy: 0.0,
+                    yy: 1.0,
+                    x0: 0.0,
+                    y0: 0.0,
+                });
+                cr.set_source_rgb(0.9, 0.9, 0.9);
+                cr.paint();
 
-            Inhibit(false)
+                Inhibit(false)
+            });
+            Ok(Expression::Nil())
         });
-        Ok(Expression::Nil())
-    });
     //--------------------------------------------------------
     // DrawLine
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
     let canvas_weak = canvas.downgrade();
-    e.add_builtin_closure("draw-line", move |exp, env| {
-        const N: usize = 4;
-        if exp.len() != (N + 1) {
-            return Err(create_error!("E1007"));
-        }
-        let mut loc: [f64; N] = [0.0; N];
-        let mut iter = exp[1 as usize..].iter();
-        for i in 0..N {
-            if let Some(e) = iter.next() {
-                if let Expression::Float(f) = lisp::eval(e, env)? {
-                    loc[i] = f;
-                } else {
-                    return Err(create_error!("E1003"));
+    (*env)
+        .borrow_mut()
+        .add_builtin_closure("draw-line", move |exp, env| {
+            const N: usize = 4;
+            if exp.len() != (N + 1) {
+                return Err(create_error!("E1007"));
+            }
+            let mut loc: [f64; N] = [0.0; N];
+            let mut iter = exp[1 as usize..].iter();
+            for i in 0..N {
+                if let Some(e) = iter.next() {
+                    if let Expression::Float(f) = lisp::eval(e, env)? {
+                        loc[i] = f;
+                    } else {
+                        return Err(create_error!("E1003"));
+                    }
                 }
             }
-        }
-        let (x0, y0, x1, y1) = (loc[0], loc[1], loc[2], loc[3]);
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.connect_draw(move |_, cr| {
-            cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-            cr.set_source_rgb(0.0, 0.0, 0.0);
-            cr.set_line_width(0.001);
-            cr.move_to(x0, y0);
-            cr.line_to(x1, y1);
-            cr.stroke();
+            let (x0, y0, x1, y1) = (loc[0], loc[1], loc[2], loc[3]);
+            let canvas = canvas_weak.upgrade().unwrap();
+            canvas.connect_draw(move |_, cr| {
+                cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+                cr.set_source_rgb(0.0, 0.0, 0.0);
+                cr.set_line_width(0.001);
+                cr.move_to(x0, y0);
+                cr.line_to(x1, y1);
+                cr.stroke();
 
-            Inhibit(false)
+                Inhibit(false)
+            });
+            while gtk::events_pending() {
+                gtk::main_iteration_do(true);
+            }
+            Ok(Expression::Nil())
         });
-        while gtk::events_pending() {
-            gtk::main_iteration_do(true);
-        }
-        Ok(Expression::Nil())
-    });
     //--------------------------------------------------------
     // Create Image
     // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
     //--------------------------------------------------------
     let image_table_clone = image_table.clone();
-    e.add_builtin_closure("create-image-from-png", move |exp, env| {
-        if exp.len() != 3 {
-            return Err(create_error!("E1007"));
-        }
-        let symbol = match lisp::eval(&exp[1], env)? {
-            Expression::String(s) => s,
-            _ => return Err(create_error!("E1015")),
-        };
-        let filename = match lisp::eval(&exp[2], env)? {
-            Expression::String(s) => s,
-            _ => return Err(create_error!("E1015")),
-        };
-        let mut file = match File::open(filename) {
-            Ok(f) => f,
-            Err(e) => return Err(create_error_value!("E9999", e)),
-        };
-        let surface = match ImageSurface::create_from_png(&mut file) {
-            Ok(s) => s,
-            Err(e) => return Err(create_error_value!("E9999", e)),
-        };
-        (*image_table_clone).borrow_mut().insert(symbol, surface);
-        Ok(Expression::Nil())
-    });
+    (*env)
+        .borrow_mut()
+        .add_builtin_closure("create-image-from-png", move |exp, env| {
+            if exp.len() != 3 {
+                return Err(create_error!("E1007"));
+            }
+            let symbol = match lisp::eval(&exp[1], env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!("E1015")),
+            };
+            let filename = match lisp::eval(&exp[2], env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!("E1015")),
+            };
+            let mut file = match File::open(filename) {
+                Ok(f) => f,
+                Err(e) => return Err(create_error_value!("E9999", e)),
+            };
+            let surface = match ImageSurface::create_from_png(&mut file) {
+                Ok(s) => s,
+                Err(e) => return Err(create_error_value!("E9999", e)),
+            };
+            (*image_table_clone).borrow_mut().insert(symbol, surface);
+            Ok(Expression::Nil())
+        });
     //--------------------------------------------------------
     // Draw Image
     // ex. (draw-image "roger" (list -1.0 0.0 0.0 1.0 180.0 0.0))
@@ -281,66 +286,68 @@ fn build_lisp_function(rc: &Environment, canvas: &gtk::DrawingArea, image_table:
     //--------------------------------------------------------
     let canvas_weak = canvas.downgrade();
     let image_table_clone = image_table.clone();
-    e.add_builtin_closure("draw-image", move |exp, env| {
-        if exp.len() != 3 {
-            return Err(create_error!("E1007"));
-        }
-        let symbol = match lisp::eval(&exp[1], env)? {
-            Expression::String(s) => s,
-            _ => return Err(create_error!("E1015")),
-        };
-        let surface = match (*image_table_clone).borrow().get(&symbol) {
-            Some(v) => v.clone(),
-            None => return Err(create_error!("E1008")),
-        };
-
-        const N: usize = 6;
-        let mut ctm: [f64; N] = [0.0; N];
-        if let Expression::List(l) = lisp::eval(&exp[2], env)? {
-            if l.len() != 6 {
+    (*env)
+        .borrow_mut()
+        .add_builtin_closure("draw-image", move |exp, env| {
+            if exp.len() != 3 {
                 return Err(create_error!("E1007"));
             }
-            let mut iter = l.iter();
-            for i in 0..N {
-                if let Some(e) = iter.next() {
-                    if let Expression::Float(f) = lisp::eval(e, env)? {
-                        ctm[i] = f;
-                    } else {
-                        return Err(create_error!("E1003"));
+            let symbol = match lisp::eval(&exp[1], env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!("E1015")),
+            };
+            let surface = match (*image_table_clone).borrow().get(&symbol) {
+                Some(v) => v.clone(),
+                None => return Err(create_error!("E1008")),
+            };
+
+            const N: usize = 6;
+            let mut ctm: [f64; N] = [0.0; N];
+            if let Expression::List(l) = lisp::eval(&exp[2], env)? {
+                if l.len() != 6 {
+                    return Err(create_error!("E1007"));
+                }
+                let mut iter = l.iter();
+                for i in 0..N {
+                    if let Some(e) = iter.next() {
+                        if let Expression::Float(f) = lisp::eval(e, env)? {
+                            ctm[i] = f;
+                        } else {
+                            return Err(create_error!("E1003"));
+                        }
                     }
                 }
+            } else {
+                return Err(create_error!("E1005"));
             }
-        } else {
-            return Err(create_error!("E1005"));
-        }
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.connect_draw(move |_, cr| {
-            cr.scale(1.0, 1.0);
-            cr.move_to(0.0, 0.0);
-            let matrix = Matrix {
-                xx: ctm[0],
-                yx: ctm[1],
-                xy: ctm[2],
-                yy: ctm[3],
-                x0: ctm[4],
-                y0: ctm[5],
-            };
-            cr.transform(matrix);
-            cr.set_source_surface(&surface, 0.0, 0.0);
-            cr.paint();
-            Inhibit(false)
+            let canvas = canvas_weak.upgrade().unwrap();
+            canvas.connect_draw(move |_, cr| {
+                cr.scale(1.0, 1.0);
+                cr.move_to(0.0, 0.0);
+                let matrix = Matrix {
+                    xx: ctm[0],
+                    yx: ctm[1],
+                    xy: ctm[2],
+                    yy: ctm[3],
+                    x0: ctm[4],
+                    y0: ctm[5],
+                };
+                cr.transform(matrix);
+                cr.set_source_surface(&surface, 0.0, 0.0);
+                cr.paint();
+                Inhibit(false)
+            });
+            while gtk::events_pending() {
+                gtk::main_iteration_do(true);
+            }
+            Ok(Expression::Nil())
         });
-        while gtk::events_pending() {
-            gtk::main_iteration_do(true);
-        }
-        Ok(Expression::Nil())
-    });
 }
 fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch15-05-interior-mutability.html
-    let mut rc = Rc::new(RefCell::new(SimpleEnv::new(None)));
+    let mut env = Rc::new(RefCell::new(SimpleEnv::new(None)));
     let image_table = Rc::new(RefCell::new(HashMap::new()));
-    scheme_gtk(&mut rc, &image_table);
+    scheme_gtk(&mut env, &image_table);
 
     gtk::main();
 }
@@ -358,8 +365,8 @@ macro_rules! assert_str {
     };
 }
 #[cfg(test)]
-fn do_lisp_env(program: &str, rc: &mut Environment) -> String {
-    match lisp::do_core_logic(&String::from(program), rc) {
+fn do_lisp_env(program: &str, env: &mut Environment) -> String {
+    match lisp::do_core_logic(&String::from(program), env) {
         Ok(v) => {
             return v.value_string();
         }
@@ -377,36 +384,36 @@ fn test_error_check() {
             .unwrap()
             .as_secs()
     );
-    let mut rc = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
+    let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
     let image_table = Rc::new(RefCell::new(HashMap::new()));
-    scheme_gtk(&mut rc, &image_table);
+    scheme_gtk(&mut env, &image_table);
 
     // draw-clear check
-    assert_str!(do_lisp_env("(draw-clear 10)", &mut rc), "E1007");
+    assert_str!(do_lisp_env("(draw-clear 10)", &mut env), "E1007");
 
     // draw-line check
-    assert_str!(do_lisp_env("(draw-line)", &mut rc), "E1007");
-    assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &mut rc), "E1003");
-    assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &mut rc), "E1008");
+    assert_str!(do_lisp_env("(draw-line)", &mut env), "E1007");
+    assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &mut env), "E1003");
+    assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &mut env), "E1008");
 
     // create-image-from-png check
-    assert_str!(do_lisp_env("(create-image-from-png)", &mut rc), "E1007");
+    assert_str!(do_lisp_env("(create-image-from-png)", &mut env), "E1007");
     assert_str!(
-        do_lisp_env("(create-image-from-png \"sample\")", &mut rc),
+        do_lisp_env("(create-image-from-png \"sample\")", &mut env),
         "E1007"
     );
     assert_str!(
-        do_lisp_env("(create-image-from-png 10 \"/tmp/hoge.png\")", &mut rc),
+        do_lisp_env("(create-image-from-png 10 \"/tmp/hoge.png\")", &mut env),
         "E1015"
     );
     assert_str!(
-        do_lisp_env("(create-image-from-png \"sample\" 20)", &mut rc),
+        do_lisp_env("(create-image-from-png \"sample\" 20)", &mut env),
         "E1015"
     );
     assert_str!(
         do_lisp_env(
             format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
-            &mut rc
+            &mut env
         ),
         "E9999"
     );
@@ -414,7 +421,7 @@ fn test_error_check() {
     assert_str!(
         do_lisp_env(
             format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
-            &mut rc
+            &mut env
         ),
         "E9999"
     );
@@ -429,35 +436,35 @@ fn test_error_check() {
     file.flush().unwrap();
     do_lisp_env(
         format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
-        &mut rc,
+        &mut env,
     );
 
-    assert_str!(do_lisp_env("(draw-image)", &mut rc), "E1007");
-    assert_str!(do_lisp_env("(draw-image 10)", &mut rc), "E1007");
+    assert_str!(do_lisp_env("(draw-image)", &mut env), "E1007");
+    assert_str!(do_lisp_env("(draw-image 10)", &mut env), "E1007");
     assert_str!(
-        do_lisp_env("(draw-image \"sample\" (list 1 2 3) 10)", &mut rc),
+        do_lisp_env("(draw-image \"sample\" (list 1 2 3) 10)", &mut env),
         "E1007"
     );
     assert_str!(
-        do_lisp_env("(draw-image 10 (list 0.0 0.0 1.0 1.0))", &mut rc),
+        do_lisp_env("(draw-image 10 (list 0.0 0.0 1.0 1.0))", &mut env),
         "E1015"
     );
     assert_str!(
-        do_lisp_env("(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0))", &mut rc),
+        do_lisp_env("(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0))", &mut env),
         "E1008"
     );
     assert_str!(
-        do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0))", &mut rc),
+        do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0))", &mut env),
         "E1007"
     );
     assert_str!(
         do_lisp_env(
             "(draw-image \"sample\" (list 0.0 0.0 1.0 1.0 1.0 10))",
-            &mut rc
+            &mut env
         ),
         "E1003"
     );
-    assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &mut rc), "E1005");
+    assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &mut env), "E1005");
 
     std::fs::remove_file(png).unwrap();
 }
