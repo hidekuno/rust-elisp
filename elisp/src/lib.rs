@@ -247,6 +247,21 @@ mod tests {
         );
     }
     #[test]
+    fn eqv() {
+        assert_str!(do_lisp("(eqv? 1.1 1.1)"), "#t");
+        assert_str!(do_lisp("(eq? 1.1 1.1)"), "#t");
+        assert_str!(do_lisp("(eqv? 1.1 1.2)"), "#f");
+        assert_str!(do_lisp("(eqv? 10 (+ 2 8))"), "#t");
+        assert_str!(do_lisp("(eqv? 1 2)"), "#f");
+        assert_str!(do_lisp("(eqv? 5/3 5/3)"), "#t");
+        assert_str!(do_lisp("(eqv? 5/3 4/3)"), "#f");
+        assert_str!(do_lisp("(eqv? (+ 1 2) 9/3)"), "#t");
+        assert_str!(do_lisp("(eqv? 8/2 (+ 1 3))"), "#t");
+        assert_str!(do_lisp("(eqv? 1 1.0)"), "#f");
+        assert_str!(do_lisp("(eqv? 1/1 1.0)"), "#f");
+        assert_str!(do_lisp("(eqv? 1.0 1)"), "#f");
+    }
+    #[test]
     fn modulo() {
         assert_str!(do_lisp("(modulo 11 3)"), "2");
         assert_str!(do_lisp("(modulo 11 (+ 1 2))"), "2");
@@ -962,6 +977,12 @@ mod error_tests {
         assert_str!(do_lisp("(cond (b 10))"), "E1008");
         assert_str!(do_lisp("(cond ((= 10 10) b))"), "E1008");
         assert_str!(do_lisp("(cond ())"), "E1012");
+    }
+    #[test]
+    fn eqv() {
+        assert_str!(do_lisp("(eqv?)"), "E1007");
+        assert_str!(do_lisp("(eqv? 10 10 10)"), "E1007");
+        assert_str!(do_lisp("(eq? 10 10 10)"), "E1007");
     }
     #[test]
     fn modulo() {
