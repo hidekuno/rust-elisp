@@ -395,6 +395,8 @@ impl GlobalTbl {
         b.insert("time", time_f);
         b.insert("set!", set_f);
         b.insert("cond", cond);
+        b.insert("eq?", eqv);
+        b.insert("eqv?", eqv);
 
         b.insert("list", list);
         b.insert("null?", null_f);
@@ -814,6 +816,34 @@ fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         }
     }
     Ok(Expression::Nil())
+}
+fn eqv(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
+    if let (Expression::Float(x), Expression::Float(y)) = (&a, &b) {
+        return Ok(Expression::Boolean(*x == *y));
+    }
+    match a {
+        Expression::Integer(x) => match b {
+            Expression::Integer(y) => Ok(Expression::Boolean(x == y)),
+            Expression::Rational(y) => Ok(Expression::Boolean(
+                Number::Integer(x) == Number::Rational(y),
+            )),
+            _ => Ok(Expression::Boolean(false)),
+        },
+        Expression::Rational(x) => match b {
+            Expression::Integer(y) => Ok(Expression::Boolean(
+                Number::Rational(x) == Number::Integer(y),
+            )),
+            Expression::Rational(y) => Ok(Expression::Boolean(
+                Number::Rational(x) == Number::Rational(y),
+            )),
+            _ => Ok(Expression::Boolean(false)),
+        },
+        _ => Ok(Expression::Boolean(false)),
+    }
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
