@@ -207,6 +207,46 @@ mod tests {
         assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "b");
     }
     #[test]
+    fn cond() {
+        assert_str!(do_lisp("(cond ((= 10 10)))"), "#t");
+        assert_str!(do_lisp("(cond ((= 100 10)))"), "nil");
+        assert_str!(do_lisp("(cond (else 10))"), "10");
+
+        let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
+        do_lisp_env("(define a 10)", &mut env);
+        assert_str!(do_lisp_env("(cond (a 20))", &mut env), "20");
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"A\""
+        );
+        do_lisp_env("(define a 20)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"B\""
+        );
+        do_lisp_env("(define a 30)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"C\""
+        );
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else (* a 10)))",
+                &mut env
+            ),
+            "300"
+        );
+    }
+    #[test]
     fn modulo() {
         assert_str!(do_lisp("(modulo 11 3)"), "2");
         assert_str!(do_lisp("(modulo 11 (+ 1 2))"), "2");
@@ -914,6 +954,14 @@ mod error_tests {
         assert_str!(do_lisp("(if (<= 1 6) a #\\b)"), "E1008");
         assert_str!(do_lisp("(if (<= 9 6) #\\a b)"), "E1008");
         assert_str!(do_lisp("(if 9 #\\a b)"), "E1001");
+    }
+    #[test]
+    fn cond() {
+        assert_str!(do_lisp("(cond)"), "E1007");
+        assert_str!(do_lisp("(cond 10)"), "E1005");
+        assert_str!(do_lisp("(cond (b 10))"), "E1008");
+        assert_str!(do_lisp("(cond ((= 10 10) b))"), "E1008");
+        assert_str!(do_lisp("(cond ())"), "E1012");
     }
     #[test]
     fn modulo() {

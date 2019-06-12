@@ -192,8 +192,11 @@ pub trait TailRecursion {
                     continue;
                 }
                 if let Expression::Symbol(s) = &l[0] {
-                    if s.as_str() == "if" || s.as_str() == "let" {
-                        return self.parse_tail_recurcieve(&l[1..]);
+                    match s.as_str() {
+                        "if" | "let" | "cond" | "else" => {
+                            return self.parse_tail_recurcieve(&l[1..])
+                        }
+                        _ => {}
                     }
                     if *s == *self.myname() {
                         n = n + 1;
@@ -391,6 +394,7 @@ impl GlobalTbl {
         b.insert("let", let_f);
         b.insert("time", time_f);
         b.insert("set!", set_f);
+        b.insert("cond", cond);
 
         b.insert("list", list);
         b.insert("null?", null_f);
@@ -774,6 +778,42 @@ fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     } else {
         Err(create_error!("E1001"))
     }
+}
+fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    if exp.len() < 2 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    for e in &exp[1 as usize..] {
+        if let Expression::List(l) = e {
+            let mut iter = l.iter();
+
+            if let Some(e) = iter.next() {
+                if let Expression::Symbol(s) = e {
+                    if s.as_str() != "else" {
+                        eval(&e, env)?;
+                    }
+                } else {
+                    let v = eval(&e, env)?;
+                    if let Expression::Boolean(b) = v {
+                        if b == false {
+                            continue;
+                        }
+                        if l.len() == 1 {
+                            return Ok(v);
+                        }
+                    }
+                }
+            } else {
+                return Err(create_error!("E1012"));
+            }
+            if let Some(e) = iter.next() {
+                return eval(&e, env);
+            }
+        } else {
+            return Err(create_error!("E1005"));
+        }
+    }
+    Ok(Expression::Nil())
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
