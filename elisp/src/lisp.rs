@@ -45,6 +45,7 @@ lazy_static! {
         e.insert("E1014", "Not Found Program File");
         e.insert("E1015", "Not String");
         e.insert("E1016", "Not Program File");
+        e.insert("E1017", "Not Case Gramar");
         e.insert("E9999", "System Panic");
         e
     };
@@ -397,6 +398,7 @@ impl GlobalTbl {
         b.insert("cond", cond);
         b.insert("eq?", eqv);
         b.insert("eqv?", eqv);
+        b.insert("case", case);
 
         b.insert("list", list);
         b.insert("null?", null_f);
@@ -844,6 +846,58 @@ fn eqv(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         },
         _ => Ok(Expression::Boolean(false)),
     }
+}
+fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    macro_rules! go_retvalue {
+        ($l: expr, $env: expr) => {
+            let mut ret = Expression::Nil();
+            for e in $l {
+                ret = eval(e, $env)?;
+            }
+            return Ok(ret);
+        };
+    }
+    if exp.len() < 2 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let mut param: Vec<Expression> = Vec::new();
+    param.push(Expression::Nil());
+    param.push(eval(&exp[1], env)?);
+    param.push(Expression::Nil());
+
+    if 3 <= exp.len() {
+        for e in &exp[2 as usize..] {
+            if let Expression::List(l) = e {
+                if l.len() == 0 {
+                    continue;
+                }
+                match &l[0] {
+                    Expression::Symbol(s) => {
+                        if s.as_str() != "else" {
+                            return Err(create_error!("E1017"));
+                        }
+                        if 1 < l.len() {
+                            go_retvalue!(&l[1 as usize..], env);
+                        }
+                    }
+                    Expression::List(c) => {
+                        for e in c {
+                            param[2] = eval(&e, env)?;
+                            if let Expression::Boolean(b) = eqv(&param, env)? {
+                                if b == true {
+                                    go_retvalue!(&l[1 as usize..], env);
+                                }
+                            }
+                        }
+                    }
+                    _ => return Err(create_error!("E1017")),
+                }
+            } else {
+                return Err(create_error!("E1005"));
+            }
+        }
+    }
+    Ok(Expression::Nil())
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
