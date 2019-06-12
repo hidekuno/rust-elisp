@@ -803,7 +803,7 @@ mod error_tests {
     #[test]
     fn syntax_error() {
         assert_str!(do_lisp("("), "E0001");
-        assert_str!(do_lisp(")"), "E0002");
+        assert_str!(do_lisp(")"), "E0003");
         assert_str!(do_lisp("(list (+ 1 2) 3"), "E0002");
     }
     #[test]
