@@ -1333,7 +1333,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
         }
         Ok(Expression::List(list))
     } else if ")" == token {
-        Err(create_error!("E0002"))
+        Err(create_error!("E0003"))
     } else {
         // string check
         if (token == "\"") || (token.as_str().starts_with("\"") && !token.as_str().ends_with("\""))
