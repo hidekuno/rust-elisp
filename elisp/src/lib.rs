@@ -207,6 +207,122 @@ mod tests {
         assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "b");
     }
     #[test]
+    fn cond() {
+        assert_str!(do_lisp("(cond ((= 10 10)))"), "#t");
+        assert_str!(do_lisp("(cond ((= 100 10)))"), "nil");
+        assert_str!(do_lisp("(cond (else 10))"), "10");
+
+        let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
+        do_lisp_env("(define a 10)", &mut env);
+        assert_str!(do_lisp_env("(cond (a 20))", &mut env), "20");
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"A\""
+        );
+        do_lisp_env("(define a 20)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"B\""
+        );
+        do_lisp_env("(define a 30)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"C\""
+        );
+        assert_str!(
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else (* a 10)))",
+                &mut env
+            ),
+            "300"
+        );
+    }
+    #[test]
+    fn eqv() {
+        assert_str!(do_lisp("(eqv? 1.1 1.1)"), "#t");
+        assert_str!(do_lisp("(eq? 1.1 1.1)"), "#t");
+        assert_str!(do_lisp("(eqv? 1.1 1.2)"), "#f");
+        assert_str!(do_lisp("(eqv? 10 (+ 2 8))"), "#t");
+        assert_str!(do_lisp("(eqv? 1 2)"), "#f");
+        assert_str!(do_lisp("(eqv? 5/3 5/3)"), "#t");
+        assert_str!(do_lisp("(eqv? 5/3 4/3)"), "#f");
+        assert_str!(do_lisp("(eqv? (+ 1 2) 9/3)"), "#t");
+        assert_str!(do_lisp("(eqv? 8/2 (+ 1 3))"), "#t");
+        assert_str!(do_lisp("(eqv? 1 1.0)"), "#f");
+        assert_str!(do_lisp("(eqv? 1/1 1.0)"), "#f");
+        assert_str!(do_lisp("(eqv? 1.0 1)"), "#f");
+    }
+    #[test]
+    fn case() {
+        assert_str!(do_lisp("(case 10)"), "nil");
+        assert_str!(do_lisp("(case 10 ((1 2) \"A\"))"),"nil");
+        assert_str!(do_lisp("(case 10 (else 20))"),"20");
+        assert_str!(do_lisp("(case 10 (else))"), "nil");
+
+        let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            "\"A\""
+        );
+        do_lisp_env("(define a 1)", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            "\"B\""
+        );
+        do_lisp_env("(define a 200)", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            "\"A\""
+        );
+        do_lisp_env("(define a 400)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((100 200) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"B\""
+        );
+        do_lisp_env("(define b 100)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"B\""
+        );
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"A\""
+        );
+        do_lisp_env("(define a 1000)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((b 200) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"C\""
+        );
+        do_lisp_env("(define a 100) ", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &mut env),
+            "\"B\""
+        );
+    }
+    #[test]
     fn modulo() {
         assert_str!(do_lisp("(modulo 11 3)"), "2");
         assert_str!(do_lisp("(modulo 11 (+ 1 2))"), "2");
@@ -914,6 +1030,30 @@ mod error_tests {
         assert_str!(do_lisp("(if (<= 1 6) a #\\b)"), "E1008");
         assert_str!(do_lisp("(if (<= 9 6) #\\a b)"), "E1008");
         assert_str!(do_lisp("(if 9 #\\a b)"), "E1001");
+    }
+    #[test]
+    fn cond() {
+        assert_str!(do_lisp("(cond)"), "E1007");
+        assert_str!(do_lisp("(cond 10)"), "E1005");
+        assert_str!(do_lisp("(cond (b 10))"), "E1008");
+        assert_str!(do_lisp("(cond ((= 10 10) b))"), "E1008");
+        assert_str!(do_lisp("(cond ())"), "E1012");
+    }
+    #[test]
+    fn eqv() {
+        assert_str!(do_lisp("(eqv?)"), "E1007");
+        assert_str!(do_lisp("(eqv? 10 10 10)"), "E1007");
+        assert_str!(do_lisp("(eq? 10 10 10)"), "E1007");
+    }
+    #[test]
+    fn case() {
+        assert_str!(do_lisp("(case)"), "E1007");
+        assert_str!(do_lisp("(case 10 (hoge 20))"), "E1017");
+        assert_str!(do_lisp("(case 10 10)"), "E1005");
+        assert_str!(do_lisp("(case 10 (20))"), "E1017");
+        assert_str!(do_lisp("(case a)"), "E1008");
+        assert_str!(do_lisp("(case 10 ((10 20) a))"),"E1008");
+        assert_str!(do_lisp("(case 10 ((20 30) 1)(else a))"),"E1008");
     }
     #[test]
     fn modulo() {
