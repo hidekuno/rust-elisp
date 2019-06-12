@@ -262,6 +262,62 @@ mod tests {
         assert_str!(do_lisp("(eqv? 1.0 1)"), "#f");
     }
     #[test]
+    fn case() {
+        let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            "\"A\""
+        );
+        do_lisp_env("(define a 1)", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            "\"B\""
+        );
+        do_lisp_env("(define a 200)", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            "\"A\""
+        );
+        do_lisp_env("(define a 400)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((100 200) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"B\""
+        );
+        do_lisp_env("(define b 100)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"B\""
+        );
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"A\""
+        );
+        do_lisp_env("(define a 1000)", &mut env);
+        assert_str!(
+            do_lisp_env(
+                "(case a ((b 200) \"A\")((300 400) \"B\")(else \"C\"))",
+                &mut env
+            ),
+            "\"C\""
+        );
+        do_lisp_env("(define a 100) ", &mut env);
+        assert_str!(
+            do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &mut env),
+            "\"B\""
+        );
+    }
+    #[test]
     fn modulo() {
         assert_str!(do_lisp("(modulo 11 3)"), "2");
         assert_str!(do_lisp("(modulo 11 (+ 1 2))"), "2");
