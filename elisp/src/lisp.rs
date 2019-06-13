@@ -813,9 +813,7 @@ fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             } else {
                 return Err(create_error!("E1012"));
             }
-            if let Some(e) = iter.next() {
-                return eval(&e, env);
-            }
+            return begin(&l, env);
         } else {
             return Err(create_error!("E1005"));
         }

@@ -245,6 +245,15 @@ mod tests {
             ),
             "300"
         );
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(
+            do_lisp_env("(cond ((= a 10) 20)(else 30 40))", &mut env),
+            "40"
+        );
+        assert_str!(
+            do_lisp_env("(cond ((= a 100) 20 30)(else 40 50))", &mut env),
+            "30"
+        );
     }
     #[test]
     fn eqv() {
