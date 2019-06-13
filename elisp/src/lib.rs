@@ -264,8 +264,8 @@ mod tests {
     #[test]
     fn case() {
         assert_str!(do_lisp("(case 10)"), "nil");
-        assert_str!(do_lisp("(case 10 ((1 2) \"A\"))"),"nil");
-        assert_str!(do_lisp("(case 10 (else 20))"),"20");
+        assert_str!(do_lisp("(case 10 ((1 2) \"A\"))"), "nil");
+        assert_str!(do_lisp("(case 10 (else 20))"), "20");
         assert_str!(do_lisp("(case 10 (else))"), "nil");
 
         let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
@@ -908,6 +908,20 @@ mod tests {
         assert_str!(do_lisp("(>= 3/2 1.5)"), "#t");
         assert_str!(do_lisp("(>= 4/8 2/4)"), "#t");
     }
+    #[test]
+    fn display() {
+        let mut env = Rc::new(RefCell::new(lisp::SimpleEnv::new(None)));
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(do_lisp_env("(display a)", &mut env), "nil");
+    }
+    #[test]
+    fn newline() {
+        assert_str!(do_lisp("(newline)"), "nil");
+    }
+    #[test]
+    fn begin() {
+        assert_str!(do_lisp("(begin (list 1 2)(list 3 4)(list 5 6))"), "(5 6)");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1052,8 +1066,8 @@ mod error_tests {
         assert_str!(do_lisp("(case 10 10)"), "E1005");
         assert_str!(do_lisp("(case 10 (20))"), "E1017");
         assert_str!(do_lisp("(case a)"), "E1008");
-        assert_str!(do_lisp("(case 10 ((10 20) a))"),"E1008");
-        assert_str!(do_lisp("(case 10 ((20 30) 1)(else a))"),"E1008");
+        assert_str!(do_lisp("(case 10 ((10 20) a))"), "E1008");
+        assert_str!(do_lisp("(case 10 ((20 30) 1)(else a))"), "E1008");
     }
     #[test]
     fn modulo() {
@@ -1307,6 +1321,15 @@ mod error_tests {
     }
     #[test]
     fn display() {
+        assert_str!(do_lisp("(display)"), "E1007");
+        assert_str!(do_lisp("(display a)"), "E1008");
+    }
+    #[test]
+    fn newline() {
+        assert_str!(do_lisp("(newline 123)"), "E1007");
+    }
+    #[test]
+    fn begin() {
         assert_str!(do_lisp("(display)"), "E1007");
     }
 }
