@@ -442,6 +442,9 @@ impl GlobalTbl {
 
         b.insert("load-file", load_file);
         b.insert("display", display);
+        b.insert("newline", newline);
+        b.insert("begin", begin);
+
         b.insert("delay", delay);
         b.insert("force", force);
 
@@ -658,12 +661,12 @@ fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::Boolean(true))
 }
-macro_rules! natural_log {
-    ($x: expr, $y: expr) => {
-        ($x.log((1.0 as f64).exp()) * $y).exp()
-    };
-}
 fn expt(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    macro_rules! natural_log {
+        ($x: expr, $y: expr) => {
+            ($x.log((1.0 as f64).exp()) * $y).exp()
+        };
+    }
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -848,15 +851,6 @@ fn eqv(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
 }
 fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
-    macro_rules! go_retvalue {
-        ($l: expr, $env: expr) => {
-            let mut ret = Expression::Nil();
-            for e in $l {
-                ret = eval(e, $env)?;
-            }
-            return Ok(ret);
-        };
-    }
     if exp.len() < 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -877,7 +871,7 @@ fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
                             return Err(create_error!("E1017"));
                         }
                         if 1 < l.len() {
-                            go_retvalue!(&l[1 as usize..], env);
+                            return begin(&l, env);
                         }
                     }
                     Expression::List(c) => {
@@ -885,7 +879,7 @@ fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
                             param[2] = eval(&e, env)?;
                             if let Expression::Boolean(b) = eqv(&param, env)? {
                                 if b == true {
-                                    go_retvalue!(&l[1 as usize..], env);
+                                    return begin(&l, env);
                                 }
                             }
                         }
@@ -1189,6 +1183,24 @@ fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         print!("{} ", v.value_string());
     }
     Ok(Expression::Nil())
+}
+fn newline(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    print!("\n");
+    Ok(Expression::Nil())
+}
+
+fn begin(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    if exp.len() < 2 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let mut ret = Expression::Nil();
+    for e in &exp[1 as usize..] {
+        ret = eval(e, env)?;
+    }
+    return Ok(ret);
 }
 
 fn delay(exp: &[Expression], env: &mut Environment) -> ResultExpression {
