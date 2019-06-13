@@ -138,8 +138,27 @@ impl EvalResult for Expression {
         return match self {
             Expression::Integer(v) => v.to_string(),
             Expression::Float(v) => v.to_string(),
-            Expression::Char(v) => v.to_string(),
-            Expression::Boolean(v) => (if *v { "#t" } else { "#f" }).to_string(),
+            Expression::Char(v) => {
+                if v.is_control() || v.is_whitespace() {
+                    let c: u8 = *v as u8;
+                    if c == SPACE.0 {
+                        return SPACE.1.to_string();
+                    }
+                    if c == TAB.0 {
+                        return TAB.1.to_string();
+                    }
+                    if c == NEWLINE.0 {
+                        return NEWLINE.1.to_string();
+                    }
+                    if c == CARRIAGERETRUN.0 {
+                        return CARRIAGERETRUN.1.to_string();
+                    }
+                    return "#\\non-printable-char".to_string();
+                } else {
+                    return v.to_string();
+                }
+            }
+            Expression::Boolean(v) => (if *v { TRUE } else { FALSE }).to_string(),
             Expression::Symbol(v) => v.to_string(),
             Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => list_string(&v[..]),
@@ -543,6 +562,15 @@ impl SimpleEnv {
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
 const SAMPLE_INT: i64 = 10000000000000;
+
+struct ControlChar(u8, &'static str);
+const SPACE: ControlChar = ControlChar(0x20, "#\\space");
+const TAB: ControlChar = ControlChar(0x09, "#\\tab");
+const NEWLINE: ControlChar = ControlChar(0x0A, "#\\newline");
+const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
+
+const TRUE: &'static str = "#t";
+const FALSE: &'static str = "#f";
 //========================================================================
 fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     fn search_symbol(env: &mut Environment, s: &String) -> Option<Expression> {
@@ -1189,7 +1217,11 @@ fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     for e in &exp[1 as usize..] {
         let v = eval(e, env)?;
-        print!("{} ", v.value_string());
+        if let Expression::Char(c) = v {
+            print!("{} ", c);
+        } else {
+            print!("{} ", v.value_string());
+        }
     }
     Ok(Expression::Nil())
 }
@@ -1495,11 +1527,23 @@ fn atom(token: &String) -> Expression {
     if let Ok(n) = token.parse::<f64>() {
         return Expression::Float(n);
     }
-    if token.as_str() == "#t" {
+    if token.as_str() == TRUE {
         return Expression::Boolean(true);
     }
-    if token.as_str() == "#f" {
+    if token.as_str() == FALSE {
         return Expression::Boolean(false);
+    }
+    if token.as_str() == SPACE.1 {
+        return Expression::Char(char::from(SPACE.0));
+    }
+    if token.as_str() == TAB.1 {
+        return Expression::Char(char::from(TAB.0));
+    }
+    if token.as_str() == NEWLINE.1 {
+        return Expression::Char(char::from(NEWLINE.0));
+    }
+    if token.as_str() == CARRIAGERETRUN.1 {
+        return Expression::Char(char::from(CARRIAGERETRUN.0));
     }
     if (token.len() == 3) && (token.as_str().starts_with("#\\")) {
         let c = token.chars().collect::<Vec<char>>();
