@@ -186,7 +186,7 @@ pub trait TailRecursion {
     fn myname(&self) -> &String;
 
     fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
-        let mut n = 0;
+        let (mut n, mut c, mut tail) = (0, 0, false);
         for e in exp {
             if let Expression::List(l) = e {
                 if 0 == l.len() {
@@ -200,12 +200,23 @@ pub trait TailRecursion {
                         _ => {}
                     }
                     if *s == *self.myname() {
+                        if (exp.len() - 1) == c {
+                            debug!(
+                                "tail recursion {} {} {} {}",
+                                exp.len(),
+                                c,
+                                n,
+                                *self.myname()
+                            );
+                            tail = true;
+                        }
                         n = n + 1;
                     }
                 }
             }
+            c = c + 1;
         }
-        if n == 1 {
+        if n == 1 && tail {
             return true;
         }
         return false;
@@ -813,9 +824,7 @@ fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             } else {
                 return Err(create_error!("E1012"));
             }
-            if let Some(e) = iter.next() {
-                return eval(&e, env);
-            }
+            return begin(&l, env);
         } else {
             return Err(create_error!("E1005"));
         }
