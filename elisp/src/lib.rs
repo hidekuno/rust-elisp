@@ -53,6 +53,10 @@ mod tests {
         assert_str!(do_lisp("#f"), "#f");
         assert_str!(do_lisp("#\\a"), "a");
         assert_str!(do_lisp("\"abc\""), "\"abc\"");
+        assert_str!(do_lisp("#\\space"), "#\\space");
+        assert_str!(do_lisp("#\\tab"), "#\\tab");
+        assert_str!(do_lisp("#\\newline"), "#\\newline");
+        assert_str!(do_lisp("#\\return"), "#\\return");
     }
     #[test]
     fn atom_utf8() {
