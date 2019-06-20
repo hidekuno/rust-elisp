@@ -5,14 +5,12 @@
    hidekuno@gmail.com
 */
 use rand::Rng;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
-use std::rc::Rc;
 use std::time::Instant;
 use std::vec::Vec;
 
@@ -22,10 +20,10 @@ use log::{debug, error, info, warn};
 use crate::number::Number;
 use crate::number::Rat;
 
-//========================================================================
-pub type EnvTable = Rc<RefCell<SimpleEnv>>;
-pub type Environment = UnitEnvironment;
-//========================================================================
+use crate::env_thread::ExtOperationRc;
+use crate::env_thread::FunctionRc;
+use crate::env_thread::LetLoopRc;
+pub type Environment = crate::env_thread::Environment;
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -124,13 +122,13 @@ pub enum Expression {
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
     String(String),
-    Function(Rc<RsFunction>),
+    Function(FunctionRc),
     BuildInFunction(Operation),
-    BuildInFunctionExt(Rc<ExtOperation>),
-    LetLoop(Rc<RsLetLoop>),
+    BuildInFunctionExt(ExtOperationRc),
+    LetLoop(LetLoopRc),
     Loop(),
     Nil(),
-    TailRecursion(Rc<RsFunction>),
+    TailRecursion(FunctionRc),
     Promise(Box<Expression>, Environment),
     Rational(Rat),
 }
@@ -396,201 +394,6 @@ impl TailRecursion for RsLetLoop {
     }
 }
 
-#[derive(Clone)]
-pub struct UnitEnvironment {
-    core: Rc<RefCell<SimpleEnv>>,
-    globals: Rc<RefCell<GlobalTbl>>,
-}
-impl UnitEnvironment {
-    pub fn new() -> Self {
-        Environment {
-            core: Rc::new(RefCell::new(SimpleEnv::new(None))),
-            globals: Rc::new(RefCell::new(GlobalTbl::new())),
-        }
-    }
-    fn new_next(parent: &Environment) -> Self {
-        Environment {
-            core: Rc::new(RefCell::new(SimpleEnv::new(Some(parent.core.clone())))),
-            globals: parent.globals.clone(),
-        }
-    }
-    fn create_let_loop(letloop: RsLetLoop) -> Expression {
-        Expression::LetLoop(Rc::new(letloop))
-    }
-    fn create_func(func: RsFunction) -> Expression {
-        Expression::Function(Rc::new(func))
-    }
-    fn create_tail_recursion(func: RsFunction) -> Expression {
-        Expression::TailRecursion(Rc::new(func))
-    }
-    fn regist(&mut self, key: String, exp: Expression) {
-        self.core.borrow_mut().regist(key, exp);
-    }
-    fn find(&self, key: &String) -> Option<Expression> {
-        self.core.borrow().find(key)
-    }
-    fn update(&mut self, key: &String, exp: Expression) {
-        self.core.borrow_mut().update(key, exp);
-    }
-    fn get_builtin_func(&self, key: &str) -> Option<Operation> {
-        match self.globals.borrow().builtin_tbl.get(key) {
-            Some(f) => Some(f.clone()),
-            None => None,
-        }
-    }
-    fn get_builtin_ext_func(
-        &self,
-        key: &str,
-    ) -> Option<Rc<Fn(&[Expression], &mut Environment) -> ResultExpression + 'static>> {
-        match self.globals.borrow().builtin_tbl_ext.get(key) {
-            Some(f) => Some(f.clone()),
-            None => None,
-        }
-    }
-    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
-        self.globals.borrow_mut().builtin_tbl.insert(key, func);
-    }
-    pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
-    where
-        F: Fn(&[Expression], &mut Environment) -> ResultExpression + 'static,
-    {
-        self.globals
-            .borrow_mut()
-            .builtin_tbl_ext
-            .insert(key, Rc::new(c));
-    }
-}
-#[derive(Clone)]
-pub struct GlobalTbl {
-    builtin_tbl: HashMap<&'static str, Operation>,
-    builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
-}
-impl GlobalTbl {
-    pub fn new() -> Self {
-        let mut b: HashMap<&'static str, Operation> = HashMap::new();
-        b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
-        b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
-        b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
-        b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
-        b.insert("=", |exp, env| cmp(exp, env, |x, y| x == y));
-        b.insert("<", |exp, env| cmp(exp, env, |x, y| x < y));
-        b.insert("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
-        b.insert(">", |exp, env| cmp(exp, env, |x, y| x > y));
-        b.insert(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
-        b.insert("expt", expt);
-        b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
-        b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
-        b.insert("define", define);
-        b.insert("lambda", lambda);
-        b.insert("if", if_f);
-        b.insert("and", and);
-        b.insert("or", or);
-        b.insert("not", not);
-        b.insert("let", let_f);
-        b.insert("time", time_f);
-        b.insert("set!", set_f);
-        b.insert("cond", cond);
-        b.insert("eq?", eqv);
-        b.insert("eqv?", eqv);
-        b.insert("case", case);
-
-        b.insert("list", list);
-        b.insert("null?", null_f);
-        b.insert("length", length);
-        b.insert("car", car);
-        b.insert("cdr", cdr);
-        b.insert("cadr", cadr);
-        b.insert("cons", cons);
-        b.insert("append", append);
-        b.insert("last", last);
-        b.insert("reverse", reverse);
-        b.insert("iota", iota);
-        b.insert("map", map);
-        b.insert("filter", filter);
-        b.insert("reduce", reduce);
-        b.insert("for-each", for_each);
-
-        b.insert("sqrt", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
-        });
-        b.insert("sin", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.sin()))
-        });
-        b.insert("cos", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.cos()))
-        });
-        b.insert("tan", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.tan()))
-        });
-        b.insert("atan", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.atan()))
-        });
-        b.insert("exp", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.exp()))
-        });
-        b.insert("log", |exp, env| {
-            Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
-        });
-        b.insert("rand-integer", rand_integer);
-        b.insert("rand-list", rand_list);
-
-        b.insert("load-file", load_file);
-        b.insert("display", display);
-        b.insert("newline", newline);
-        b.insert("begin", begin);
-
-        b.insert("delay", delay);
-        b.insert("force", force);
-
-        GlobalTbl {
-            builtin_tbl: b,
-            builtin_tbl_ext: HashMap::new(),
-        }
-    }
-}
-#[derive(Clone)]
-pub struct SimpleEnv {
-    env_tbl: HashMap<String, Expression>,
-    parent: Option<EnvTable>,
-}
-impl SimpleEnv {
-    pub fn new(parent: Option<EnvTable>) -> Self {
-        if let Some(p) = parent {
-            SimpleEnv {
-                env_tbl: HashMap::new(),
-                parent: Some(p.clone()),
-            }
-        } else {
-            SimpleEnv {
-                env_tbl: HashMap::new(),
-                parent: parent,
-            }
-        }
-    }
-    pub fn regist(&mut self, key: String, exp: Expression) {
-        self.env_tbl.insert(key, exp);
-    }
-    pub fn find(&self, key: &String) -> Option<Expression> {
-        match self.env_tbl.get(key) {
-            Some(v) => Some(v.clone()),
-            None => match self.parent {
-                // p.borrow().find(key), cannot return value referencing temporary value
-                Some(ref p) => p.borrow().find(key),
-                None => None,
-            },
-        }
-    }
-    pub fn update(&mut self, key: &String, exp: Expression) {
-        if self.env_tbl.contains_key(key) {
-            self.env_tbl.insert(key.to_string(), exp);
-        } else {
-            match self.parent {
-                Some(ref p) => p.borrow_mut().update(key, exp),
-                None => {}
-            }
-        }
-    }
-}
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
@@ -1652,4 +1455,79 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
     } else {
         Err(create_error!("E1009"))
     }
+}
+pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
+    b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
+    b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
+    b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
+    b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
+    b.insert("=", |exp, env| cmp(exp, env, |x, y| x == y));
+    b.insert("<", |exp, env| cmp(exp, env, |x, y| x < y));
+    b.insert("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
+    b.insert(">", |exp, env| cmp(exp, env, |x, y| x > y));
+    b.insert(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
+    b.insert("expt", expt);
+    b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
+    b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
+    b.insert("define", define);
+    b.insert("lambda", lambda);
+    b.insert("if", if_f);
+    b.insert("and", and);
+    b.insert("or", or);
+    b.insert("not", not);
+    b.insert("let", let_f);
+    b.insert("time", time_f);
+    b.insert("set!", set_f);
+    b.insert("cond", cond);
+    b.insert("eq?", eqv);
+    b.insert("eqv?", eqv);
+    b.insert("case", case);
+
+    b.insert("list", list);
+    b.insert("null?", null_f);
+    b.insert("length", length);
+    b.insert("car", car);
+    b.insert("cdr", cdr);
+    b.insert("cadr", cadr);
+    b.insert("cons", cons);
+    b.insert("append", append);
+    b.insert("last", last);
+    b.insert("reverse", reverse);
+    b.insert("iota", iota);
+    b.insert("map", map);
+    b.insert("filter", filter);
+    b.insert("reduce", reduce);
+    b.insert("for-each", for_each);
+
+    b.insert("sqrt", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
+    });
+    b.insert("sin", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.sin()))
+    });
+    b.insert("cos", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.cos()))
+    });
+    b.insert("tan", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.tan()))
+    });
+    b.insert("atan", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.atan()))
+    });
+    b.insert("exp", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.exp()))
+    });
+    b.insert("log", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
+    });
+    b.insert("rand-integer", rand_integer);
+    b.insert("rand-list", rand_list);
+
+    b.insert("load-file", load_file);
+    b.insert("display", display);
+    b.insert("newline", newline);
+    b.insert("begin", begin);
+
+    b.insert("delay", delay);
+    b.insert("force", force);
 }
