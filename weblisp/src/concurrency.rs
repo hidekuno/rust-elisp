@@ -1,3 +1,9 @@
+/*
+   Rust study program.
+   This is prototype program mini scheme subset what porting from go-scheme.
+
+   hidekuno@gmail.com
+*/
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;

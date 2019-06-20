@@ -20,10 +20,16 @@ use log::{debug, error, info, warn};
 use crate::number::Number;
 use crate::number::Rat;
 
-use crate::env_thread::ExtOperationRc;
-use crate::env_thread::FunctionRc;
-use crate::env_thread::LetLoopRc;
+#[cfg(feature = "thread")]
+use crate::env_thread::{ExtOperationRc, FunctionRc, LetLoopRc};
+#[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
+
+#[cfg(not(feature = "thread"))]
+use crate::env_single::{ExtOperationRc, FunctionRc, LetLoopRc};
+#[cfg(not(feature = "thread"))]
+pub type Environment = crate::env_single::Environment;
+
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
