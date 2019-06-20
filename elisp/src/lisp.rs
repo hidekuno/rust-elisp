@@ -251,7 +251,7 @@ pub struct RsFunction {
     tail_recurcieve: bool,
 }
 impl RsFunction {
-    fn new(sexp: &[Expression], name: String, closure_env: Environment) -> RsFunction {
+    fn new(sexp: &[Expression], name: String, closure_env: Environment) -> Self {
         let mut param: Vec<String> = Vec::new();
 
         if let Expression::List(val) = &sexp[1] {
@@ -348,7 +348,7 @@ pub struct RsLetLoop {
     tail_recurcieve: bool,
 }
 impl RsLetLoop {
-    fn new(sexp: &[Expression], name: String, param: &Vec<String>) -> RsLetLoop {
+    fn new(sexp: &[Expression], name: String, param: &Vec<String>) -> Self {
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[3..]);
         RsLetLoop {
@@ -372,7 +372,6 @@ impl RsLetLoop {
         for s in &self.param {
             if let Some(e) = iter.next() {
                 let v = eval(e, env)?;
-                debug!("function execute(): env.borrow_mut();");
                 env.update(s, v);
             }
         }
@@ -467,7 +466,7 @@ pub struct GlobalTbl {
     builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
 }
 impl GlobalTbl {
-    pub fn new() -> GlobalTbl {
+    pub fn new() -> Self {
         let mut b: HashMap<&'static str, Operation> = HashMap::new();
         b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
         b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
@@ -585,7 +584,6 @@ impl SimpleEnv {
         if self.env_tbl.contains_key(key) {
             self.env_tbl.insert(key.to_string(), exp);
         } else {
-            debug!("p.borrow_mut().update(key, exp)");
             match self.parent {
                 Some(ref p) => p.borrow_mut().update(key, exp),
                 None => {}
@@ -809,7 +807,6 @@ fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     if let Expression::Symbol(v) = &exp[1] {
         let se = eval(&exp[2], env)?;
-        debug!("define env.borrow_mut();");
         env.regist(v.to_string(), se);
 
         return Ok(Expression::Symbol(v.to_string()));
