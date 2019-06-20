@@ -166,7 +166,7 @@ impl Expression {
             Expression::Boolean(v) => (if *v { TRUE } else { FALSE }).to_string(),
             Expression::Symbol(v) => v.to_string(),
             Expression::String(v) => format!("\"{}\"", v),
-            Expression::List(v) => list_string(&v[..]),
+            Expression::List(v) => Expression::list_string(&v[..]),
             Expression::Pair(car, cdr) => {
                 String::from(format!("({} . {})", car.value_string(), cdr.value_string()))
             }
@@ -181,30 +181,30 @@ impl Expression {
             Expression::Rational(v) => v.to_string(),
         };
     }
-}
-fn list_string(exp: &[Expression]) -> String {
-    let mut s = String::from("(");
+    fn list_string(exp: &[Expression]) -> String {
+        let mut s = String::from("(");
 
-    let mut c = 1;
-    let mut el = false;
-    for e in exp {
-        if let Expression::List(l) = e {
-            s.push_str(list_string(&l[..]).as_str());
-            el = true;
-        } else {
-            if el {
-                s.push_str(" ");
+        let mut c = 1;
+        let mut el = false;
+        for e in exp {
+            if let Expression::List(l) = e {
+                s.push_str(Expression::list_string(&l[..]).as_str());
+                el = true;
+            } else {
+                if el {
+                    s.push_str(" ");
+                }
+                s.push_str(e.value_string().as_str());
+                if c != exp.len() {
+                    s.push_str(" ");
+                }
+                el = false;
             }
-            s.push_str(e.value_string().as_str());
-            if c != exp.len() {
-                s.push_str(" ");
-            }
-            el = false;
+            c += 1;
         }
-        c += 1;
+        s.push_str(")");
+        return s;
     }
-    s.push_str(")");
-    return s;
 }
 pub trait TailRecursion {
     fn myname(&self) -> &String;
@@ -414,6 +414,81 @@ const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
 const TRUE: &'static str = "#t";
 const FALSE: &'static str = "#f";
 //========================================================================
+pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
+    b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
+    b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
+    b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
+    b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
+    b.insert("=", |exp, env| cmp(exp, env, |x, y| x == y));
+    b.insert("<", |exp, env| cmp(exp, env, |x, y| x < y));
+    b.insert("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
+    b.insert(">", |exp, env| cmp(exp, env, |x, y| x > y));
+    b.insert(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
+    b.insert("expt", expt);
+    b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
+    b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
+    b.insert("define", define);
+    b.insert("lambda", lambda);
+    b.insert("if", if_f);
+    b.insert("and", and);
+    b.insert("or", or);
+    b.insert("not", not);
+    b.insert("let", let_f);
+    b.insert("time", time_f);
+    b.insert("set!", set_f);
+    b.insert("cond", cond);
+    b.insert("eq?", eqv);
+    b.insert("eqv?", eqv);
+    b.insert("case", case);
+
+    b.insert("list", list);
+    b.insert("null?", null_f);
+    b.insert("length", length);
+    b.insert("car", car);
+    b.insert("cdr", cdr);
+    b.insert("cadr", cadr);
+    b.insert("cons", cons);
+    b.insert("append", append);
+    b.insert("last", last);
+    b.insert("reverse", reverse);
+    b.insert("iota", iota);
+    b.insert("map", map);
+    b.insert("filter", filter);
+    b.insert("reduce", reduce);
+    b.insert("for-each", for_each);
+
+    b.insert("sqrt", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
+    });
+    b.insert("sin", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.sin()))
+    });
+    b.insert("cos", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.cos()))
+    });
+    b.insert("tan", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.tan()))
+    });
+    b.insert("atan", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.atan()))
+    });
+    b.insert("exp", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.exp()))
+    });
+    b.insert("log", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
+    });
+    b.insert("rand-integer", rand_integer);
+    b.insert("rand-list", rand_list);
+
+    b.insert("load-file", load_file);
+    b.insert("display", display);
+    b.insert("newline", newline);
+    b.insert("begin", begin);
+
+    b.insert("delay", delay);
+    b.insert("force", force);
+}
 fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     fn search_symbol(env: &mut Environment, s: &String) -> Option<Expression> {
         return env.find(s);
@@ -1461,79 +1536,4 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
     } else {
         Err(create_error!("E1009"))
     }
-}
-pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
-    b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
-    b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
-    b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
-    b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
-    b.insert("=", |exp, env| cmp(exp, env, |x, y| x == y));
-    b.insert("<", |exp, env| cmp(exp, env, |x, y| x < y));
-    b.insert("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
-    b.insert(">", |exp, env| cmp(exp, env, |x, y| x > y));
-    b.insert(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
-    b.insert("expt", expt);
-    b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
-    b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
-    b.insert("define", define);
-    b.insert("lambda", lambda);
-    b.insert("if", if_f);
-    b.insert("and", and);
-    b.insert("or", or);
-    b.insert("not", not);
-    b.insert("let", let_f);
-    b.insert("time", time_f);
-    b.insert("set!", set_f);
-    b.insert("cond", cond);
-    b.insert("eq?", eqv);
-    b.insert("eqv?", eqv);
-    b.insert("case", case);
-
-    b.insert("list", list);
-    b.insert("null?", null_f);
-    b.insert("length", length);
-    b.insert("car", car);
-    b.insert("cdr", cdr);
-    b.insert("cadr", cadr);
-    b.insert("cons", cons);
-    b.insert("append", append);
-    b.insert("last", last);
-    b.insert("reverse", reverse);
-    b.insert("iota", iota);
-    b.insert("map", map);
-    b.insert("filter", filter);
-    b.insert("reduce", reduce);
-    b.insert("for-each", for_each);
-
-    b.insert("sqrt", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
-    });
-    b.insert("sin", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.sin()))
-    });
-    b.insert("cos", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.cos()))
-    });
-    b.insert("tan", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.tan()))
-    });
-    b.insert("atan", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.atan()))
-    });
-    b.insert("exp", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.exp()))
-    });
-    b.insert("log", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
-    });
-    b.insert("rand-integer", rand_integer);
-    b.insert("rand-list", rand_list);
-
-    b.insert("load-file", load_file);
-    b.insert("display", display);
-    b.insert("newline", newline);
-    b.insert("begin", begin);
-
-    b.insert("delay", delay);
-    b.insert("force", force);
 }
