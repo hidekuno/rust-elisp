@@ -1,8 +1,20 @@
+/*
+   Rust study program.
+   This is prototype program mini scheme subset what porting from go-scheme.
+
+   hidekuno@gmail.com
+*/
 // cargo test --lib
 #[macro_use]
 extern crate lazy_static;
 pub mod lisp;
 pub mod number;
+
+#[cfg(not(feature = "thread"))]
+pub mod env_single;
+
+#[cfg(feature = "thread")]
+pub mod env_thread;
 
 #[cfg(test)]
 fn do_lisp(program: &str) -> String {
