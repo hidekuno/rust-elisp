@@ -7,6 +7,7 @@
 // cargo test --lib
 #[macro_use]
 extern crate lazy_static;
+pub mod buildin;
 pub mod lisp;
 pub mod number;
 
