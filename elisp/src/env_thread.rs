@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::lisp::create_function;
+use crate::buildin::create_function;
 use crate::lisp::Expression;
 use crate::lisp::ResultExpression;
 use crate::lisp::RsFunction;
@@ -90,7 +90,6 @@ impl Environment {
 }
 unsafe impl Send for Environment {}
 
-#[derive(Clone)]
 pub struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
     builtin_tbl_ext: HashMap<&'static str, Arc<ExtOperation>>,
@@ -105,7 +104,6 @@ impl GlobalTbl {
         }
     }
 }
-#[derive(Clone)]
 pub struct SimpleEnv {
     env_tbl: HashMap<String, Expression>,
     parent: Option<EnvTable>,
