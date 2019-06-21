@@ -87,7 +87,6 @@ impl Environment {
             .insert(key, Rc::new(c));
     }
 }
-#[derive(Clone)]
 pub struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
     builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
@@ -102,7 +101,6 @@ impl GlobalTbl {
         }
     }
 }
-#[derive(Clone)]
 pub struct SimpleEnv {
     env_tbl: HashMap<String, Expression>,
     parent: Option<EnvTable>,
