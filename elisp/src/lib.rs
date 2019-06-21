@@ -342,6 +342,17 @@ mod tests {
         );
     }
     #[test]
+    fn apply() {
+        assert_str!(do_lisp("(apply + (list 1 2 3))"), "6");
+        assert_str!(do_lisp("(apply - (list 5 3 2))"), "0");
+        assert_str!(do_lisp("(apply (lambda (a b) (+ a b)) (list 1 2))"), "3");
+        assert_str!(do_lisp("(apply + (iota 10))"), "45");
+
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define (hoge x y)(* x y))", &mut env);
+        assert_str!(do_lisp_env("(apply hoge (list 3 4))", &mut env), "12");
+    }
+    #[test]
     fn modulo() {
         assert_str!(do_lisp("(modulo 11 3)"), "2");
         assert_str!(do_lisp("(modulo 11 (+ 1 2))"), "2");
@@ -1085,6 +1096,14 @@ mod error_tests {
         assert_str!(do_lisp("(case a)"), "E1008");
         assert_str!(do_lisp("(case 10 ((10 20) a))"), "E1008");
         assert_str!(do_lisp("(case 10 ((20 30) 1)(else a))"), "E1008");
+    }
+    #[test]
+    fn apply() {
+        assert_str!(do_lisp("(apply)"), "E1007");
+        assert_str!(do_lisp("(apply -)"), "E1007");
+        assert_str!(do_lisp("(apply + (list 1 2)(lis 3 4))"), "E1007");
+        assert_str!(do_lisp("(apply + 10)"), "E1005");
+        assert_str!(do_lisp("(apply hoge (list 1 2))"), "E1008");
     }
     #[test]
     fn modulo() {
