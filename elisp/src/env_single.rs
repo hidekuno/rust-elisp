@@ -86,10 +86,17 @@ impl Environment {
             .builtin_tbl_ext
             .insert(key, Rc::new(c));
     }
+    pub fn set_tail_recursion(&mut self, b: bool) {
+        self.globals.borrow_mut().tail_recursion = b;
+    }
+    pub fn is_tail_recursion(&self) -> bool {
+        self.globals.borrow_mut().tail_recursion
+    }
 }
-pub struct GlobalTbl {
+struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
     builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
+    tail_recursion: bool,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
@@ -98,6 +105,7 @@ impl GlobalTbl {
         GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: HashMap::new(),
+            tail_recursion: true,
         }
     }
 }

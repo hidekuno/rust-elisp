@@ -309,7 +309,7 @@ impl RsFunction {
             env.regist(s.to_string(), exp[idx].clone());
             idx += 1;
         }
-        if self.tail_recurcieve == true {
+        if self.tail_recurcieve == true && env.is_tail_recursion() == true {
             env.regist(
                 self.name.to_string(),
                 Environment::create_tail_recursion(self.clone()),
@@ -398,6 +398,8 @@ impl TailRecursion for RsLetLoop {
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
+const TAIL_OFF: &str = "(tail-recursion-off)";
+const TAIL_ON: &str = "(tail-recursion-on)";
 
 struct ControlChar(u8, &'static str);
 const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -440,6 +442,12 @@ pub fn repl(
         if buffer.trim() == QUIT {
             println!("Bye");
             break;
+        } else if buffer.trim() == TAIL_ON {
+            env.set_tail_recursion(true);
+            continue;
+        } else if buffer.trim() == TAIL_OFF {
+            env.set_tail_recursion(false);
+            continue;
         } else if buffer.trim() == "" {
             continue;
         } else if buffer.as_bytes()[0] as char == ';' {
