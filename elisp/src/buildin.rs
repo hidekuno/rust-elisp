@@ -59,6 +59,7 @@ pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
     b.insert("eq?", eqv);
     b.insert("eqv?", eqv);
     b.insert("case", case);
+    b.insert("apply", apply);
 
     b.insert("list", list);
     b.insert("null?", null_f);
@@ -463,6 +464,21 @@ fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         }
     }
     Ok(Expression::Nil())
+}
+fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    if let Expression::List(l) = eval(&exp[2], env)? {
+        let mut se: Vec<Expression> = Vec::new();
+        se.push(exp[1].clone());
+        for e in &l {
+            se.push(e.clone());
+        }
+        eval(&Expression::List(se), env)
+    } else {
+        Err(create_error_value!("E1005", exp.len()))
+    }
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
