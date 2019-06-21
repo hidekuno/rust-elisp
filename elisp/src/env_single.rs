@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::lisp::create_function;
+use crate::buildin::create_function;
 use crate::lisp::Expression;
 use crate::lisp::ResultExpression;
 use crate::lisp::RsFunction;
