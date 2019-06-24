@@ -789,6 +789,7 @@ mod tests {
                        "(define stream-cdr (lambda (l)(force (cdr l))))",
                        "(define make-generator (lambda (generator inits)(cons (car inits)(delay (make-generator generator (generator inits))))))",
                        "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
+                       "(define fact/cps (lambda (n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a)))))))",
         ];
 
         let mut env = lisp::Environment::new();
@@ -851,6 +852,11 @@ mod tests {
                 &mut env
             ),
             "(0 1 1 2 3 5 8 13 21 34)"
+        );
+        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &mut env), "120");
+        assert_str!(
+            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &mut env),
+            "240"
         );
     }
     #[test]
