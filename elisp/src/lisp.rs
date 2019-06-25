@@ -682,10 +682,12 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
             Some(v) => {
                 ret_clone_if_atom!(v);
                 return match v {
-                    Expression::Function(_) => Ok(v.clone()),
-                    Expression::TailRecursion(_) => Ok(v.clone()),
-                    Expression::LetLoop(_) => Ok(v.clone()),
-                    Expression::List(_) => Ok(v.clone()),
+                    Expression::Function(_) => Ok(v),
+                    Expression::TailRecursion(_) => Ok(v),
+                    Expression::LetLoop(_) => Ok(v),
+                    Expression::List(_) => Ok(v),
+                    Expression::BuildInFunction(_) => Ok(v),
+                    Expression::BuildInFunctionExt(_) => Ok(v),
                     _ => Err(create_error!("E9999")),
                 };
             }
@@ -693,7 +695,7 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
                 if let Some(f) = env.get_builtin_func(val.as_str()) {
                     Ok(Expression::BuildInFunction(f))
                 } else if let Some(f) = env.get_builtin_ext_func(val.as_str()) {
-                    Ok(Expression::BuildInFunctionExt(f.clone()))
+                    Ok(Expression::BuildInFunctionExt(f))
                 } else {
                     Err(create_error_value!("E1008", val))
                 }
