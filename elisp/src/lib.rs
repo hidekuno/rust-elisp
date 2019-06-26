@@ -198,6 +198,9 @@ mod tests {
         do_lisp_env("(define a 100)", &mut env);
         do_lisp_env("(define b a)", &mut env);
         assert_str!(do_lisp_env("b", &mut env), "100");
+
+        do_lisp_env("(define plus +)", &mut env);
+        assert_str!(do_lisp_env("(plus 10 20)", &mut env), "30");
     }
     #[test]
     fn lambda() {
@@ -351,6 +354,15 @@ mod tests {
         let mut env = lisp::Environment::new();
         do_lisp_env("(define (hoge x y)(* x y))", &mut env);
         assert_str!(do_lisp_env("(apply hoge (list 3 4))", &mut env), "12");
+    }
+    #[test]
+    fn identity() {
+        assert_str!(do_lisp("(identity (+ 1 2 3))"), "6");
+        assert_str!(do_lisp("(identity ((lambda (a b) (+ a b)) 1 2))"), "3");
+
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        assert_str!(do_lisp_env("(identity a)", &mut env), "100");
     }
     #[test]
     fn modulo() {
@@ -771,6 +783,7 @@ mod tests {
     #[test]
     fn sample_program() {
         let program = ["(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
+                       "(define (effect/gcm n m) (if (= 0 (modulo n m)) m (effect/gcm m (modulo n m))))",
                        "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
                        "(define (lcm n m) (/(* n m)(gcm n m)))",
                        "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
@@ -789,6 +802,7 @@ mod tests {
                        "(define stream-cdr (lambda (l)(force (cdr l))))",
                        "(define make-generator (lambda (generator inits)(cons (car inits)(delay (make-generator generator (generator inits))))))",
                        "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
+                       "(define fact/cps (lambda (n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a)))))))",
         ];
 
         let mut env = lisp::Environment::new();
@@ -796,6 +810,7 @@ mod tests {
             do_lisp_env(p, &mut env);
         }
         assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
+        assert_str!(do_lisp_env("(effect/gcm 36 15)", &mut env), "3");
         assert_str!(do_lisp_env("(lcm 36 27)", &mut env), "108");
         assert_str!(do_lisp_env("(bad-gcm 36 27)", &mut env), "9");
         assert_str!(
@@ -851,6 +866,11 @@ mod tests {
                 &mut env
             ),
             "(0 1 1 2 3 5 8 13 21 34)"
+        );
+        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &mut env), "120");
+        assert_str!(
+            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &mut env),
+            "240"
         );
     }
     #[test]
@@ -1104,6 +1124,12 @@ mod error_tests {
         assert_str!(do_lisp("(apply + (list 1 2)(lis 3 4))"), "E1007");
         assert_str!(do_lisp("(apply + 10)"), "E1005");
         assert_str!(do_lisp("(apply hoge (list 1 2))"), "E1008");
+    }
+    #[test]
+    fn identity() {
+        assert_str!(do_lisp("(identity)"), "E1007");
+        assert_str!(do_lisp("(identity 10 20)"), "E1007");
+        assert_str!(do_lisp("(identity a)"), "E1008");
     }
     #[test]
     fn modulo() {

@@ -128,6 +128,7 @@ pub enum Expression {
     BuildInFunctionExt(ExtOperationRc),
     LetLoop(LetLoopRc),
     Loop(),
+    TailLoop(),
     Nil(),
     TailRecursion(FunctionRc),
     Promise(Box<Expression>, Environment),
@@ -170,7 +171,8 @@ impl Expression {
             Expression::BuildInFunctionExt(_) => String::from("BuildIn Function Ext"),
             Expression::LetLoop(_) => String::from("LetLoop"),
             Expression::Nil() => String::from("nil"),
-            Expression::Loop() => String::from("loop"),
+            Expression::Loop() => String::from("let loop"),
+            Expression::TailLoop() => String::from("tail loop"),
             Expression::TailRecursion(_) => String::from("Tail Recursion"),
             Expression::Promise(_, _) => String::from("Promise"),
             Expression::Rational(v) => v.to_string(),
@@ -285,7 +287,7 @@ impl RsFunction {
             env.update(&s, vec[idx].clone());
             idx += 1;
         }
-        Ok(Environment::create_tail_recursion(self.clone()))
+        Ok(Expression::TailLoop())
     }
     pub fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
@@ -309,7 +311,7 @@ impl RsFunction {
             env.regist(s.to_string(), exp[idx].clone());
             idx += 1;
         }
-        if self.tail_recurcieve == true {
+        if self.tail_recurcieve == true && env.is_tail_recursion() == true {
             env.regist(
                 self.name.to_string(),
                 Environment::create_tail_recursion(self.clone()),
@@ -320,7 +322,9 @@ impl RsFunction {
         for e in &self.body {
             loop {
                 match eval(e, &mut env)? {
-                    Expression::TailRecursion(_) => continue,
+                    Expression::TailLoop() => {
+                        continue;
+                    }
                     v => {
                         i += 1;
                         if i == self.body.len() {
@@ -398,6 +402,8 @@ impl TailRecursion for RsLetLoop {
 //========================================================================
 const PROMPT: &str = "<rust.elisp> ";
 const QUIT: &str = "(quit)";
+const TAIL_OFF: &str = "(tail-recursion-off)";
+const TAIL_ON: &str = "(tail-recursion-on)";
 
 struct ControlChar(u8, &'static str);
 const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -440,6 +446,12 @@ pub fn repl(
         if buffer.trim() == QUIT {
             println!("Bye");
             break;
+        } else if buffer.trim() == TAIL_ON {
+            env.set_tail_recursion(true);
+            continue;
+        } else if buffer.trim() == TAIL_OFF {
+            env.set_tail_recursion(false);
+            continue;
         } else if buffer.trim() == "" {
             continue;
         } else if buffer.as_bytes()[0] as char == ';' {
@@ -674,10 +686,12 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
             Some(v) => {
                 ret_clone_if_atom!(v);
                 return match v {
-                    Expression::Function(_) => Ok(v.clone()),
-                    Expression::TailRecursion(_) => Ok(v.clone()),
-                    Expression::LetLoop(_) => Ok(v.clone()),
-                    Expression::List(_) => Ok(v.clone()),
+                    Expression::Function(_) => Ok(v),
+                    Expression::TailRecursion(_) => Ok(v),
+                    Expression::LetLoop(_) => Ok(v),
+                    Expression::List(_) => Ok(v),
+                    Expression::BuildInFunction(_) => Ok(v),
+                    Expression::BuildInFunctionExt(_) => Ok(v),
                     _ => Err(create_error!("E9999")),
                 };
             }
@@ -685,7 +699,7 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
                 if let Some(f) = env.get_builtin_func(val.as_str()) {
                     Ok(Expression::BuildInFunction(f))
                 } else if let Some(f) = env.get_builtin_ext_func(val.as_str()) {
-                    Ok(Expression::BuildInFunctionExt(f.clone()))
+                    Ok(Expression::BuildInFunctionExt(f))
                 } else {
                     Err(create_error_value!("E1008", val))
                 }
