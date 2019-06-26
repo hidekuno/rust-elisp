@@ -781,29 +781,50 @@ mod tests {
         assert_str!(do_lisp_env("(force p)", &mut env), "5");
     }
     #[test]
+    fn cps() {
+        let program = [
+            "(define fact-cps (lambda (n cont)(if (= n 0)(cont 1)(fact-cps (- n 1) (lambda (a) (cont (* n a)))))))",
+            "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
+        ];
+        let mut env = lisp::Environment::new();
+        for p in &program {
+            do_lisp_env(p, &mut env);
+        }
+        assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) a))", &mut env), "24");
+        assert_str!(
+            do_lisp_env("(fact-cps 4 (lambda (a) (* 2 a)))", &mut env),
+            "48"
+        );
+        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &mut env), "120");
+        assert_str!(
+            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &mut env),
+            "240"
+        );
+    }
+    #[test]
     fn sample_program() {
-        let program = ["(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
-                       "(define (effect/gcm n m) (if (= 0 (modulo n m)) m (effect/gcm m (modulo n m))))",
-                       "(define (fact-iter n m)(if (= n 1)m(fact-iter (- n 1)(* n m))))",
-                       "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
-                       "(define (lcm n m) (/(* n m)(gcm n m)))",
-                       "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
-                       "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
-                       "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
-                       "(define delete (lambda (x l) (filter (lambda (n) (not (= x n))) l)))",
-                       "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(list)(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
-                       "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
-                       "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
-                       "(define take (lambda (l n)(if (>= 0 n) (list)(cons (car l)(take (cdr l)(- n 1))))))",
-                       "(define drop (lambda (l n)(if (>= 0 n) l (drop (cdr l)(- n 1)))))",
-                       "(define merge (lambda (a b)(if (or (null? a)(null? b)) (append a b) (if (< (car a)(car b))(cons (car a)(merge (cdr a) b))(cons (car b) (merge a (cdr b)))))))",
-                       "(define msort (lambda (l)(let ((n (length l)))(if (>= 1 n ) l (if (= n 2) (if (< (car l)(cadr l)) l (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid)))))))))",
-                       "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
-                       "(define stream-car (lambda (l)(car l)))",
-                       "(define stream-cdr (lambda (l)(force (cdr l))))",
-                       "(define make-generator (lambda (generator inits)(cons (car inits)(delay (make-generator generator (generator inits))))))",
-                       "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
-                       "(define fact/cps (lambda (n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a)))))))",
+        let program = [
+            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
+            "(define (effect/gcm n m) (if (= 0 (modulo n m)) m (effect/gcm m (modulo n m))))",
+            "(define (fact-iter n m)(if (= n 1)m(fact-iter (- n 1)(* n m))))",
+            "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
+            "(define (lcm n m) (/(* n m)(gcm n m)))",
+            "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
+            "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
+            "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
+            "(define delete (lambda (x l) (filter (lambda (n) (not (= x n))) l)))",
+            "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(list)(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
+            "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
+            "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
+            "(define take (lambda (l n)(if (>= 0 n) (list)(cons (car l)(take (cdr l)(- n 1))))))",
+            "(define drop (lambda (l n)(if (>= 0 n) l (drop (cdr l)(- n 1)))))",
+            "(define merge (lambda (a b)(if (or (null? a)(null? b)) (append a b) (if (< (car a)(car b))(cons (car a)(merge (cdr a) b))(cons (car b) (merge a (cdr b)))))))",
+            "(define msort (lambda (l)(let ((n (length l)))(if (>= 1 n ) l (if (= n 2) (if (< (car l)(cadr l)) l (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid)))))))))",
+            "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
+            "(define stream-car (lambda (l)(car l)))",
+            "(define stream-cdr (lambda (l)(force (cdr l))))",
+            "(define make-generator (lambda (generator inits)(cons (car inits)(delay (make-generator generator (generator inits))))))",
+            "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
         ];
 
         let mut env = lisp::Environment::new();
@@ -868,11 +889,6 @@ mod tests {
                 &mut env
             ),
             "(0 1 1 2 3 5 8 13 21 34)"
-        );
-        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &mut env), "120");
-        assert_str!(
-            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &mut env),
-            "240"
         );
     }
     #[test]
