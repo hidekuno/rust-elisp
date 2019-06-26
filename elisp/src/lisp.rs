@@ -128,6 +128,7 @@ pub enum Expression {
     BuildInFunctionExt(ExtOperationRc),
     LetLoop(LetLoopRc),
     Loop(),
+    TailLoop(),
     Nil(),
     TailRecursion(FunctionRc),
     Promise(Box<Expression>, Environment),
@@ -170,7 +171,8 @@ impl Expression {
             Expression::BuildInFunctionExt(_) => String::from("BuildIn Function Ext"),
             Expression::LetLoop(_) => String::from("LetLoop"),
             Expression::Nil() => String::from("nil"),
-            Expression::Loop() => String::from("loop"),
+            Expression::Loop() => String::from("let loop"),
+            Expression::TailLoop() => String::from("tail loop"),
             Expression::TailRecursion(_) => String::from("Tail Recursion"),
             Expression::Promise(_, _) => String::from("Promise"),
             Expression::Rational(v) => v.to_string(),
@@ -285,7 +287,7 @@ impl RsFunction {
             env.update(&s, vec[idx].clone());
             idx += 1;
         }
-        Ok(Environment::create_tail_recursion(self.clone()))
+        Ok(Expression::TailLoop())
     }
     pub fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
@@ -320,7 +322,9 @@ impl RsFunction {
         for e in &self.body {
             loop {
                 match eval(e, &mut env)? {
-                    Expression::TailRecursion(_) => continue,
+                    Expression::TailLoop() => {
+                        continue;
+                    }
                     v => {
                         i += 1;
                         if i == self.body.len() {

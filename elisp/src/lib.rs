@@ -783,6 +783,7 @@ mod tests {
     #[test]
     fn sample_program() {
         let program = ["(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
+                       "(define (effect/gcm n m) (if (= 0 (modulo n m)) m (effect/gcm m (modulo n m))))",
                        "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
                        "(define (lcm n m) (/(* n m)(gcm n m)))",
                        "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
@@ -809,6 +810,7 @@ mod tests {
             do_lisp_env(p, &mut env);
         }
         assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
+        assert_str!(do_lisp_env("(effect/gcm 36 15)", &mut env), "3");
         assert_str!(do_lisp_env("(lcm 36 27)", &mut env), "108");
         assert_str!(do_lisp_env("(bad-gcm 36 27)", &mut env), "9");
         assert_str!(
