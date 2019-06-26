@@ -60,6 +60,7 @@ pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
     b.insert("eqv?", eqv);
     b.insert("case", case);
     b.insert("apply", apply);
+    b.insert("identity", identity);
 
     b.insert("list", list);
     b.insert("null?", null_f);
@@ -479,6 +480,12 @@ fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     } else {
         Err(create_error_value!("E1005", exp.len()))
     }
+}
+pub fn identity(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    eval(&exp[1], env)
 }
 fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
