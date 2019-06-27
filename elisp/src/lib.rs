@@ -1412,4 +1412,27 @@ mod error_tests {
     fn begin() {
         assert_str!(do_lisp("(display)"), "E1007");
     }
+    #[test]
+    fn cps() {
+        let program = [
+            "(define (fact/cps-ng n cont)(if (= n 0)(cont 1)(fact/cps-ng (- n 1) (lambda (a b) (cont (* n a))))))",
+            "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
+        ];
+        let mut env = lisp::Environment::new();
+        for p in &program {
+            do_lisp_env(p, &mut env);
+        }
+        assert_str!(
+            do_lisp_env("(fact/cps-ng 3 (lambda (a) (* 2 a)))", &mut env),
+            "E1007"
+        );
+        assert_str!(
+            do_lisp_env("(fact/cps 5 (lambda (a b) a))", &mut env),
+            "E1007"
+        );
+        assert_str!(
+            do_lisp_env("(fact/cps 5 (lambda (a) (+ ng a)))", &mut env),
+            "E1008"
+        );
+    }
 }

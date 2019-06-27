@@ -275,6 +275,9 @@ impl RsCPS {
         self.list.push_front((exp, h));
     }
     pub fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
+        if exp.len() != 2 {
+            return Err(create_error_value!("E1007", exp.len()));
+        }
         env.regist(self.name.clone(), Expression::BuildInFunction(identity));
         let mut vec = Vec::new();
         vec.push(Expression::Nil());
