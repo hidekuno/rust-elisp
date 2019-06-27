@@ -180,7 +180,7 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         letloop.set_tail_recurcieve();
         param.regist(s.to_string(), Environment::create_let_loop(letloop));
     }
-    let mut i = 0;
+    let mut ret = Expression::Nil();
     for e in &exp[idx as usize..] {
         loop {
             let v = eval(e, &mut param)?;
@@ -188,15 +188,12 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
                 // tail recurcieve
                 continue;
             } else {
-                i += 1;
-                if i == (exp.len() - idx) {
-                    return Ok(v);
-                }
+                ret = v;
                 break;
             }
         }
     }
-    Err(create_error!("E9999"))
+    Ok(ret)
 }
 fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {

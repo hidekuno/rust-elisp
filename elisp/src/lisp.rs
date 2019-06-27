@@ -393,7 +393,7 @@ impl RsFunction {
             );
         }
         // execute!
-        let mut i = 0;
+        let mut ret = Expression::Nil();
         for e in &self.body {
             loop {
                 match eval(e, &mut env)? {
@@ -401,16 +401,13 @@ impl RsFunction {
                         continue;
                     }
                     v => {
-                        i += 1;
-                        if i == self.body.len() {
-                            return Ok(v);
-                        }
-                        break;
+                        ret = v;
                     }
                 }
+                break;
             }
         }
-        Err(create_error!("E9999"))
+        Ok(ret)
     }
 }
 impl TailRecursion for RsFunction {
@@ -455,17 +452,13 @@ impl RsLetLoop {
         }
         if self.tail_recurcieve == true {
             return Ok(Expression::Loop());
-        } else {
-            let mut i = 0;
-            for exp in &self.body {
-                let v = eval(&exp, env)?;
-                i += 1;
-                if i == self.body.len() {
-                    return Ok(v);
-                }
-            }
         }
-        return Err(create_error!("E9999"));
+
+        let mut ret = Expression::Nil();
+        for exp in &self.body {
+            ret = eval(&exp, env)?;
+        }
+        Ok(ret)
     }
 }
 impl TailRecursion for RsLetLoop {
