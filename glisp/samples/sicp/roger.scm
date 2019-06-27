@@ -12,4 +12,4 @@
                    (/ (ycor-vect (edge2-frame f)) 180.0)
                    (xcor-vect (origin-frame f))
                    (ycor-vect (origin-frame f)))))))
-;;((square-limit roger 1) gframe)
+;;((square-limit roger 4) gframe)
