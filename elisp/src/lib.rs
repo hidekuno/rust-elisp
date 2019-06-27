@@ -408,11 +408,11 @@ mod tests {
     #[test]
     fn let_f() {
         assert_str!(do_lisp("(let ((a 10)(b 20)) (+ a b))"), "30");
+        // stack overflow
         assert_str!(
             do_lisp("(let loop ((i 0)) (if (<= 10 i) i (+ 10 (loop (+ i 1)))))"),
             "110"
         );
-        // stack overflow
         assert_str!(
             do_lisp("(let loop ((i 0)) (if (<= 10000 i) i (loop (+ i 1))))"),
             "10000"
@@ -990,6 +990,18 @@ mod tests {
     fn begin() {
         assert_str!(do_lisp("(begin (list 1 2)(list 3 4)(list 5 6))"), "(5 6)");
     }
+    #[test]
+    fn sequence() {
+        assert_str!(
+            do_lisp("(let ((i 0)) (define i 100) (set! i (+ i 1)) i)"),
+            "101"
+        );
+        assert_str!(
+            do_lisp("((lambda (a) (define i 100) (set! i (+ i a)) i)10)"),
+            "110"
+        );
+    }
+
 }
 #[cfg(test)]
 mod error_tests {
@@ -1432,6 +1444,17 @@ mod error_tests {
         );
         assert_str!(
             do_lisp_env("(fact/cps 5 (lambda (a) (+ ng a)))", &mut env),
+            "E1008"
+        );
+    }
+    #[test]
+    fn sequence() {
+        assert_str!(
+            do_lisp("(let ((i 0)) (define i 100) (set! i (+ i b)) i)"),
+            "E1008"
+        );
+        assert_str!(
+            do_lisp("((lambda (a) (define i 100) (set! i (+ i b)) i)10)"),
             "E1008"
         );
     }
