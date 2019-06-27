@@ -22,9 +22,11 @@ use std::rc::Rc;
 
 const DRAW_WIDTH: i32 = 720;
 const DRAW_HEIGHT: i32 = 560;
-const MONTHON_DELAY: i32 = 700;
 const EVAL_KEYCODE: u32 = 101;
 const EVAL_RESULT_ID: &str = "result";
+
+#[cfg(feature = "animation")]
+const MOTION_DELAY: i32 = 700;
 
 type ImageTable = Rc<RefCell<HashMap<String, ImageSurface>>>;
 
@@ -158,12 +160,15 @@ fn execute_lisp(
 ) {
     let text_buffer = text_view.get_buffer().expect("Couldn't get window");
 
+    #[cfg(feature = "animation")]
     let canvas_weak = canvas.downgrade();
-    let sid = gtk::timeout_add(MONTHON_DELAY as u32, move || {
+    #[cfg(feature = "animation")]
+    let sid = gtk::timeout_add(MOTION_DELAY as u32, move || {
         let canvas = canvas_weak.upgrade().unwrap();
         canvas.queue_draw();
         gtk::Continue(true)
     });
+
     let s = text_buffer.get_start_iter();
     let e = text_buffer.get_end_iter();
     let exp = text_buffer.get_text(&s, &e, false).expect("die");
@@ -175,8 +180,20 @@ fn execute_lisp(
 
     println!("{}", result);
     status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
+
+    #[cfg(feature = "animation")]
     glib::source::source_remove(sid);
+
     canvas.queue_draw();
+}
+
+#[allow(unused_macros)]
+macro_rules! force_event_loop {
+    ($e: expr) => {
+        while gtk::events_pending() {
+            gtk::main_iteration_do($e);
+        }
+    };
 }
 fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_table: &ImageTable) {
     //--------------------------------------------------------
@@ -237,9 +254,9 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
 
             Inhibit(false)
         });
-        while gtk::events_pending() {
-            gtk::main_iteration_do(true);
-        }
+        #[cfg(feature = "animation")]
+        force_event_loop!(true);
+
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -326,9 +343,10 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
             cr.paint();
             Inhibit(false)
         });
-        while gtk::events_pending() {
-            gtk::main_iteration_do(true);
-        }
+
+        #[cfg(feature = "animation")]
+        force_event_loop!(true);
+
         Ok(Expression::Nil())
     });
 }
