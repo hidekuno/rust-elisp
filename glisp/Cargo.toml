@@ -10,3 +10,6 @@ gtk = { git = "https://github.com/gtk-rs/gtk.git" }
 gdk = { git = "https://github.com/gtk-rs/gdk.git" }
 glib = { git = "https://github.com/gtk-rs/glib.git" }
 cairo-rs = { git = "https://github.com/gtk-rs/cairo.git" , features = ["png"] }
+
+[features]
+animation = []
