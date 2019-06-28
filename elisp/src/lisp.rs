@@ -421,7 +421,7 @@ impl TailRecursion for RsFunction {
 }
 
 //========================================================================
-const PROMPT: &str = "<rust.elisp> ";
+const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
