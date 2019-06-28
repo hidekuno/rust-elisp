@@ -13,14 +13,13 @@ use crate::buildin::create_function;
 use crate::lisp::Expression;
 use crate::lisp::ResultExpression;
 use crate::lisp::RsFunction;
-use crate::lisp::RsLetLoop;
+
 //========================================================================
 type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
 type ExtOperation = Fn(&[Expression], &mut Environment) -> ResultExpression;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<RsFunction>;
-pub type LetLoopRc = Arc<RsLetLoop>;
 pub type ExtOperationRc = Arc<ExtOperation>;
 //========================================================================
 #[derive(Clone)]
@@ -40,9 +39,6 @@ impl Environment {
             core: Arc::new(Mutex::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
         }
-    }
-    pub fn create_let_loop(letloop: RsLetLoop) -> Expression {
-        Expression::LetLoop(Arc::new(letloop))
     }
     pub fn create_func(func: RsFunction) -> Expression {
         Expression::Function(Arc::new(func))
