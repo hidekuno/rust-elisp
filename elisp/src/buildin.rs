@@ -20,7 +20,7 @@ use crate::create_error_value;
 
 use crate::lisp::{eval, repl};
 use crate::lisp::{Expression, Operation, ResultExpression};
-use crate::lisp::{RsError, RsFunction, RsLetLoop};
+use crate::lisp::{RsError, RsFunction};
 
 use crate::number::Number;
 use crate::number::Rat;
@@ -111,14 +111,11 @@ pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
     b.insert("force", force);
 }
 fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
-    fn search_symbol(env: &mut Environment, s: &String) -> Option<Expression> {
-        return env.find(s);
-    }
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     if let Expression::Symbol(s) = &exp[1] {
-        if let Some(_) = search_symbol(env, s) {
+        if let Some(_) = env.find(s) {
             let v = eval(&exp[2], env)?;
             env.update(s, v);
         } else {
@@ -145,15 +142,15 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
-
     // @@@ env.create();
     let mut param = Environment::new_next(env);
+    let mut tail = false;
     let mut idx = 1;
     if let Expression::Symbol(_) = exp[idx] {
         idx += 1;
     }
     // Parameter Setup
-    let mut param_list = Vec::new();
+    let mut param_list: Vec<Expression> = Vec::new();
     if let Expression::List(l) = &exp[idx] {
         for plist in l {
             if let Expression::List(p) = plist {
@@ -162,7 +159,10 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
                 }
                 if let Expression::Symbol(s) = &p[0] {
                     param.regist(s.to_string(), eval(&p[1], env)?);
-                    param_list.push(s.clone());
+                    // case named let
+                    if idx == 2 {
+                        param_list.push(Expression::Symbol(s.clone()));
+                    }
                 } else {
                     return Err(create_error!("E1004"));
                 }
@@ -176,21 +176,30 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     // Setup label name let
     if let Expression::Symbol(s) = &exp[1] {
-        let mut letloop = RsLetLoop::new(exp, s.to_string(), &param_list);
-        letloop.set_tail_recurcieve();
-        param.regist(s.to_string(), Environment::create_let_loop(letloop));
+        let mut vec = Vec::new();
+        vec.push(Expression::String(s.to_string()));
+        vec.push(Expression::List(param_list));
+        vec.extend_from_slice(&exp[idx as usize..]);
+        let mut f = RsFunction::new(&vec[..], s.to_string(), param.clone());
+        f.set_tail_recurcieve();
+        if f.get_tail_recurcieve() == true {
+            param.regist(s.to_string(), Environment::create_tail_recursion(f));
+            tail = true;
+        } else {
+            param.regist(s.to_string(), Environment::create_func(f));
+        }
     }
     let mut ret = Expression::Nil();
     for e in &exp[idx as usize..] {
         loop {
             let v = eval(e, &mut param)?;
-            if let Expression::Loop() = v {
-                // tail recurcieve
-                continue;
-            } else {
-                ret = v;
-                break;
+            if tail {
+                if let Expression::TailLoop() = v {
+                    continue;
+                }
             }
+            ret = v;
+            break;
         }
     }
     Ok(ret)

@@ -408,11 +408,15 @@ mod tests {
     #[test]
     fn let_f() {
         assert_str!(do_lisp("(let ((a 10)(b 20)) (+ a b))"), "30");
-        // stack overflow
+        assert_str!(
+            do_lisp("(let loop ((i 0)(j 0)) (if (<= 10 i) (+ i j) (loop (+ i 1)(+ j 2))))"),
+            "30"
+        );
         assert_str!(
             do_lisp("(let loop ((i 0)) (if (<= 10 i) i (+ 10 (loop (+ i 1)))))"),
             "110"
         );
+        // stack overflow check
         assert_str!(
             do_lisp("(let loop ((i 0)) (if (<= 10000 i) i (loop (+ i 1))))"),
             "10000"
