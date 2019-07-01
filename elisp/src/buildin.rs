@@ -182,7 +182,7 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         vec.extend_from_slice(&exp[idx as usize..]);
         let mut f = RsFunction::new(&vec[..], s.to_string(), param.clone());
         f.set_tail_recurcieve();
-        if f.get_tail_recurcieve() == true {
+        if f.get_tail_recurcieve() == true && env.is_tail_recursion() == true {
             param.regist(s.to_string(), Environment::create_tail_recursion(f));
             tail = true;
         } else {
