@@ -332,16 +332,14 @@ impl RsFunction {
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
-
-        let mut idx = 0;
-        for e in &exp[1 as usize..] {
+        for (i, e) in exp[1 as usize..].iter().enumerate() {
             let v = eval(e, env)?;
             match v {
                 Expression::Function(_) => {
-                    if let Some(e) = env.find(&self.param[idx]) {
+                    if let Some(e) = env.find(&self.param[i]) {
                         match e {
                             Expression::Function(f) => {
-                                let mut cps = RsCPS::new(&self.param[idx], self.param.clone());
+                                let mut cps = RsCPS::new(&self.param[i], self.param.clone());
                                 cps.add(Expression::Function(f), env);
                                 cps.add(v, env);
                                 vec.push(Expression::CPS(cps));
@@ -356,13 +354,10 @@ impl RsFunction {
                 }
                 v => vec.push(v),
             }
-            idx += 1;
         }
         // env set
-        let mut idx = 0;
-        for s in &self.param {
-            env.update(&s, vec[idx].clone());
-            idx += 1;
+        for (i, s) in self.param.iter().enumerate() {
+            env.update(&s, vec[i].clone());
         }
         Ok(Expression::TailLoop())
     }
@@ -383,10 +378,8 @@ impl RsFunction {
         }
         // @@@ env.create();
         let mut env = Environment::new_next(&self.closure_env);
-        let mut idx = 0;
-        for s in &self.param {
-            env.regist(s.to_string(), exp[idx].clone());
-            idx += 1;
+        for (i, s) in self.param.iter().enumerate() {
+            env.regist(s.to_string(), exp[i].clone());
         }
         if self.tail_recurcieve == true && env.is_tail_recursion() == true {
             env.regist(
