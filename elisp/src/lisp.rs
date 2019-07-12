@@ -203,46 +203,6 @@ impl Expression {
         return s;
     }
 }
-pub trait TailRecursion {
-    fn myname(&self) -> &String;
-
-    fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
-        let (mut n, mut c, mut tail) = (0, 0, false);
-        for e in exp {
-            if let Expression::List(l) = e {
-                if 0 == l.len() {
-                    continue;
-                }
-                if let Expression::Symbol(s) = &l[0] {
-                    match s.as_str() {
-                        "if" | "let" | "cond" | "else" => {
-                            return self.parse_tail_recurcieve(&l[1..])
-                        }
-                        _ => {}
-                    }
-                    if *s == *self.myname() {
-                        if (exp.len() - 1) == c {
-                            debug!(
-                                "tail recursion {} {} {} {}",
-                                exp.len(),
-                                c,
-                                n,
-                                *self.myname()
-                            );
-                            tail = true;
-                        }
-                        n = n + 1;
-                    }
-                }
-            }
-            c = c + 1;
-        }
-        if n == 1 && tail {
-            return true;
-        }
-        return false;
-    }
-}
 #[derive(Clone)]
 pub struct RsCPS {
     name: String,
@@ -406,13 +366,37 @@ impl RsFunction {
         }
         Ok(ret)
     }
-}
-impl TailRecursion for RsFunction {
-    fn myname(&self) -> &String {
-        &self.name
+    fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
+        let (mut n, mut c, mut tail) = (0, 0, false);
+        for e in exp {
+            if let Expression::List(l) = e {
+                if 0 == l.len() {
+                    continue;
+                }
+                if let Expression::Symbol(s) = &l[0] {
+                    match s.as_str() {
+                        "if" | "let" | "cond" | "else" => {
+                            return self.parse_tail_recurcieve(&l[1..])
+                        }
+                        _ => {}
+                    }
+                    if *s == self.name {
+                        if (exp.len() - 1) == c {
+                            debug!("tail recursion {} {} {} {}", exp.len(), c, n, self.name);
+                            tail = true;
+                        }
+                        n = n + 1;
+                    }
+                }
+            }
+            c = c + 1;
+        }
+        if n == 1 && tail {
+            return true;
+        }
+        return false;
     }
 }
-
 //========================================================================
 const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::buildin::create_function;
+use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::Expression;
 use crate::lisp::ResultExpression;
 use crate::lisp::RsFunction;
@@ -91,7 +91,11 @@ impl Environment {
     }
 }
 unsafe impl Send for Environment {}
-
+impl BuildInTable for HashMap<&'static str, Operation> {
+    fn regist(&mut self, symbol: &'static str, func: Operation) {
+        self.insert(symbol, func);
+    }
+}
 struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
     builtin_tbl_ext: HashMap<&'static str, Arc<ExtOperation>>,
@@ -100,7 +104,7 @@ struct GlobalTbl {
 impl GlobalTbl {
     fn new() -> Self {
         let mut b: HashMap<&'static str, Operation> = HashMap::new();
-        create_function(&mut b);
+        create_function::<HashMap<&'static str, Operation>>(&mut b);
         GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: HashMap::new(),
