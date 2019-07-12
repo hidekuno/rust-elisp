@@ -5,7 +5,7 @@
    hidekuno@gmail.com
 */
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::buildin::create_function;
@@ -89,35 +89,35 @@ impl Environment {
     }
 }
 struct GlobalTbl {
-    builtin_tbl: HashMap<&'static str, Operation>,
-    builtin_tbl_ext: HashMap<&'static str, Rc<ExtOperation>>,
+    builtin_tbl: BTreeMap<&'static str, Operation>,
+    builtin_tbl_ext: BTreeMap<&'static str, Rc<ExtOperation>>,
     tail_recursion: bool,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
-        let mut b: HashMap<&'static str, Operation> = HashMap::new();
+        let mut b: BTreeMap<&'static str, Operation> = BTreeMap::new();
         create_function(&mut b);
         GlobalTbl {
             builtin_tbl: b,
-            builtin_tbl_ext: HashMap::new(),
+            builtin_tbl_ext: BTreeMap::new(),
             tail_recursion: true,
         }
     }
 }
 pub struct SimpleEnv {
-    env_tbl: HashMap<String, Expression>,
+    env_tbl: BTreeMap<String, Expression>,
     parent: Option<EnvTable>,
 }
 impl SimpleEnv {
     pub fn new(parent: Option<EnvTable>) -> Self {
         if let Some(p) = parent {
             SimpleEnv {
-                env_tbl: HashMap::new(),
+                env_tbl: BTreeMap::new(),
                 parent: Some(p.clone()),
             }
         } else {
             SimpleEnv {
-                env_tbl: HashMap::new(),
+                env_tbl: BTreeMap::new(),
                 parent: parent,
             }
         }

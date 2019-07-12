@@ -8,7 +8,7 @@
 use log::{debug, error, info, warn};
 
 use rand::Rng;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -33,7 +33,7 @@ use crate::env_single::Environment;
 //========================================================================
 const SAMPLE_INT: i64 = 10000000000000;
 //========================================================================
-pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
+pub fn create_function(b: &mut BTreeMap<&'static str, Operation>) {
     b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
     b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
     b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
