@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::buildin::create_function;
+use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::Expression;
 use crate::lisp::ResultExpression;
 use crate::lisp::RsFunction;
@@ -86,6 +86,11 @@ impl Environment {
     }
     pub fn is_tail_recursion(&self) -> bool {
         self.globals.borrow_mut().tail_recursion
+    }
+}
+impl BuildInTable for BTreeMap<&'static str, Operation> {
+    fn regist(&mut self, symbol: &'static str, func: Operation) {
+        self.insert(symbol, func);
     }
 }
 struct GlobalTbl {
