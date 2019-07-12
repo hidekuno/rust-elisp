@@ -8,7 +8,6 @@
 use log::{debug, error, info, warn};
 
 use rand::Rng;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -33,82 +32,89 @@ use crate::env_single::Environment;
 //========================================================================
 const SAMPLE_INT: i64 = 10000000000000;
 //========================================================================
-pub fn create_function(b: &mut HashMap<&'static str, Operation>) {
-    b.insert("+", |exp, env| calc(exp, env, |x, y| x + y));
-    b.insert("-", |exp, env| calc(exp, env, |x, y| x - y));
-    b.insert("*", |exp, env| calc(exp, env, |x, y| x * y));
-    b.insert("/", |exp, env| calc(exp, env, |x, y| x / y));
-    b.insert("=", |exp, env| cmp(exp, env, |x, y| x == y));
-    b.insert("<", |exp, env| cmp(exp, env, |x, y| x < y));
-    b.insert("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
-    b.insert(">", |exp, env| cmp(exp, env, |x, y| x > y));
-    b.insert(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
-    b.insert("expt", expt);
-    b.insert("modulo", |exp, env| divide(exp, env, |x, y| x % y));
-    b.insert("quotient", |exp, env| divide(exp, env, |x, y| x / y));
-    b.insert("define", define);
-    b.insert("lambda", lambda);
-    b.insert("if", if_f);
-    b.insert("and", and);
-    b.insert("or", or);
-    b.insert("not", not);
-    b.insert("let", let_f);
-    b.insert("time", time_f);
-    b.insert("set!", set_f);
-    b.insert("cond", cond);
-    b.insert("eq?", eqv);
-    b.insert("eqv?", eqv);
-    b.insert("case", case);
-    b.insert("apply", apply);
-    b.insert("identity", identity);
+pub trait BuildInTable {
+    fn regist(&mut self, symbol: &'static str, func: Operation);
+}
 
-    b.insert("list", list);
-    b.insert("null?", null_f);
-    b.insert("length", length);
-    b.insert("car", car);
-    b.insert("cdr", cdr);
-    b.insert("cadr", cadr);
-    b.insert("cons", cons);
-    b.insert("append", append);
-    b.insert("last", last);
-    b.insert("reverse", reverse);
-    b.insert("iota", iota);
-    b.insert("map", map);
-    b.insert("filter", filter);
-    b.insert("reduce", reduce);
-    b.insert("for-each", for_each);
+pub fn create_function<T>(b: &mut T)
+where
+    T: BuildInTable,
+{
+    b.regist("+", |exp, env| calc(exp, env, |x, y| x + y));
+    b.regist("-", |exp, env| calc(exp, env, |x, y| x - y));
+    b.regist("*", |exp, env| calc(exp, env, |x, y| x * y));
+    b.regist("/", |exp, env| calc(exp, env, |x, y| x / y));
+    b.regist("=", |exp, env| cmp(exp, env, |x, y| x == y));
+    b.regist("<", |exp, env| cmp(exp, env, |x, y| x < y));
+    b.regist("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
+    b.regist(">", |exp, env| cmp(exp, env, |x, y| x > y));
+    b.regist(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
+    b.regist("expt", expt);
+    b.regist("modulo", |exp, env| divide(exp, env, |x, y| x % y));
+    b.regist("quotient", |exp, env| divide(exp, env, |x, y| x / y));
+    b.regist("define", define);
+    b.regist("lambda", lambda);
+    b.regist("if", if_f);
+    b.regist("and", and);
+    b.regist("or", or);
+    b.regist("not", not);
+    b.regist("let", let_f);
+    b.regist("time", time_f);
+    b.regist("set!", set_f);
+    b.regist("cond", cond);
+    b.regist("eq?", eqv);
+    b.regist("eqv?", eqv);
+    b.regist("case", case);
+    b.regist("apply", apply);
+    b.regist("identity", identity);
 
-    b.insert("sqrt", |exp, env| {
+    b.regist("list", list);
+    b.regist("null?", null_f);
+    b.regist("length", length);
+    b.regist("car", car);
+    b.regist("cdr", cdr);
+    b.regist("cadr", cadr);
+    b.regist("cons", cons);
+    b.regist("append", append);
+    b.regist("last", last);
+    b.regist("reverse", reverse);
+    b.regist("iota", iota);
+    b.regist("map", map);
+    b.regist("filter", filter);
+    b.regist("reduce", reduce);
+    b.regist("for-each", for_each);
+
+    b.regist("sqrt", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
     });
-    b.insert("sin", |exp, env| {
+    b.regist("sin", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.sin()))
     });
-    b.insert("cos", |exp, env| {
+    b.regist("cos", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.cos()))
     });
-    b.insert("tan", |exp, env| {
+    b.regist("tan", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.tan()))
     });
-    b.insert("atan", |exp, env| {
+    b.regist("atan", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.atan()))
     });
-    b.insert("exp", |exp, env| {
+    b.regist("exp", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.exp()))
     });
-    b.insert("log", |exp, env| {
+    b.regist("log", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
     });
-    b.insert("rand-integer", rand_integer);
-    b.insert("rand-list", rand_list);
+    b.regist("rand-integer", rand_integer);
+    b.regist("rand-list", rand_list);
 
-    b.insert("load-file", load_file);
-    b.insert("display", display);
-    b.insert("newline", newline);
-    b.insert("begin", begin);
+    b.regist("load-file", load_file);
+    b.regist("display", display);
+    b.regist("newline", newline);
+    b.regist("begin", begin);
 
-    b.insert("delay", delay);
-    b.insert("force", force);
+    b.regist("delay", delay);
+    b.regist("force", force);
 }
 fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
