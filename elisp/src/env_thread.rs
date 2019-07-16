@@ -11,12 +11,13 @@ use std::sync::Mutex;
 
 use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::Expression;
+use crate::lisp::FnBox;
 use crate::lisp::ResultExpression;
 use crate::lisp::RsFunction;
 
 //========================================================================
 type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
-type ExtOperation = Fn(&[Expression], &mut Environment) -> ResultExpression;
+type ExtOperation = Box<FnBox + Sync + Send + 'static>;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<RsFunction>;
@@ -61,10 +62,7 @@ impl Environment {
             None => None,
         }
     }
-    pub fn get_builtin_ext_func(
-        &self,
-        key: &str,
-    ) -> Option<Arc<Fn(&[Expression], &mut Environment) -> ResultExpression + 'static>> {
+    pub fn get_builtin_ext_func(&self, key: &str) -> Option<ExtOperationRc> {
         match self.globals.lock().unwrap().builtin_tbl_ext.get(key) {
             Some(f) => Some(f.clone()),
             None => None,
@@ -75,13 +73,13 @@ impl Environment {
     }
     pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
     where
-        F: Fn(&[Expression], &mut Environment) -> ResultExpression + 'static,
+        F: Fn(&[Expression], &mut Environment) -> ResultExpression + Sync + Send + 'static,
     {
         self.globals
             .lock()
             .unwrap()
             .builtin_tbl_ext
-            .insert(key, Arc::new(c));
+            .insert(key, Arc::new(Box::new(c)));
     }
     pub fn set_tail_recursion(&mut self, b: bool) {
         self.globals.lock().unwrap().tail_recursion = b;
@@ -90,7 +88,6 @@ impl Environment {
         self.globals.lock().unwrap().tail_recursion
     }
 }
-unsafe impl Send for Environment {}
 impl BuildInTable for HashMap<&'static str, Operation> {
     fn regist(&mut self, symbol: &'static str, func: Operation) {
         self.insert(symbol, func);
@@ -98,7 +95,7 @@ impl BuildInTable for HashMap<&'static str, Operation> {
 }
 struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
-    builtin_tbl_ext: HashMap<&'static str, Arc<ExtOperation>>,
+    builtin_tbl_ext: HashMap<&'static str, ExtOperationRc>,
     tail_recursion: bool,
 }
 impl GlobalTbl {
