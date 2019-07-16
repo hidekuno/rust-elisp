@@ -95,7 +95,7 @@ impl BuildInTable for BTreeMap<&'static str, Operation> {
 }
 struct GlobalTbl {
     builtin_tbl: BTreeMap<&'static str, Operation>,
-    builtin_tbl_ext: BTreeMap<&'static str, Rc<ExtOperation>>,
+    builtin_tbl_ext: BTreeMap<&'static str, ExtOperationRc>,
     tail_recursion: bool,
 }
 impl GlobalTbl {
