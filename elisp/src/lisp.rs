@@ -291,7 +291,11 @@ impl RsFunction {
         }
     }
     pub fn set_tail_recurcieve(&mut self) {
-        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice());
+        let mut vec = self.body.clone();
+        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice(), &mut vec);
+        if self.tail_recurcieve == true {
+            self.body = vec;
+        }
     }
     pub fn get_tail_recurcieve(&self) -> bool {
         return self.tail_recurcieve;
@@ -351,12 +355,6 @@ impl RsFunction {
         for (i, s) in self.param.iter().enumerate() {
             env.regist(s.to_string(), exp[i].clone());
         }
-        if self.tail_recurcieve == true && env.is_tail_recursion() == true {
-            env.regist(
-                self.name.to_string(),
-                Environment::create_tail_recursion(self.clone()),
-            );
-        }
         // execute!
         let mut ret = Expression::Nil();
         for e in &self.body {
@@ -376,9 +374,10 @@ impl RsFunction {
         }
         Ok(ret)
     }
-    fn parse_tail_recurcieve(&self, exp: &[Expression]) -> bool {
-        let (mut n, mut c, mut tail) = (0, 0, false);
-        for e in exp {
+    fn parse_tail_recurcieve(&self, exp: &[Expression], body: &mut Vec<Expression>) -> bool {
+        let (mut n, mut tail) = (0, false);
+
+        for (i, e) in exp.iter().enumerate() {
             if let Expression::List(l) = e {
                 if 0 == l.len() {
                     continue;
@@ -386,20 +385,23 @@ impl RsFunction {
                 if let Expression::Symbol(s) = &l[0] {
                     match s.as_str() {
                         "if" | "let" | "cond" | "else" => {
-                            return self.parse_tail_recurcieve(&l[1..])
+                            if let Expression::List(ref mut v) = body[0] {
+                                return self.parse_tail_recurcieve(&l[1..], v);
+                            }
                         }
                         _ => {}
                     }
                     if *s == self.name {
-                        if (exp.len() - 1) == c {
-                            debug!("tail recursion {} {} {} {}", exp.len(), c, n, self.name);
+                        if (exp.len() - 1) == i {
+                            if let Expression::List(ref mut v) = body[i + 1] {
+                                v[0] = Environment::create_tail_recursion(self.clone());
+                            }
                             tail = true;
                         }
                         n = n + 1;
                     }
                 }
             }
-            c = c + 1;
         }
         if n == 1 && tail {
             return true;
@@ -716,6 +718,9 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
     } else if let Expression::List(v) = sexp {
         if v.len() == 0 {
             return Ok(sexp.clone());
+        }
+        if let Expression::TailRecursion(f) = &v[0] {
+            return f.set_param(v, env);
         }
         return match eval(&v[0], env)? {
             Expression::Function(f) => f.execute(v, env),
