@@ -10,13 +10,9 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::buildin::{create_function, BuildInTable};
-use crate::lisp::Expression;
-use crate::lisp::FnBox;
-use crate::lisp::ResultExpression;
-use crate::lisp::RsFunction;
+use crate::lisp::{Expression, FnBox, Operation, ResultExpression, RsFunction};
 
 //========================================================================
-type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
 type ExtOperation = Box<FnBox + Sync + Send + 'static>;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------

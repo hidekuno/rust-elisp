@@ -9,12 +9,8 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::buildin::{create_function, BuildInTable};
-use crate::lisp::Expression;
-use crate::lisp::ResultExpression;
-use crate::lisp::RsFunction;
-
+use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
 //========================================================================
-type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
 type ExtOperation = Fn(&[Expression], &mut Environment) -> ResultExpression;
 type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
