@@ -150,13 +150,18 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     // @@@ env.create();
     let mut param = Environment::new_next(env);
-    let mut tail = false;
     let mut idx = 1;
-    if let Expression::Symbol(_) = exp[idx] {
+    let mut name = String::from("lambda");
+
+    if let Expression::Symbol(s) = &exp[idx] {
+        name = s.to_string();
         idx += 1;
     }
     // Parameter Setup
     let mut param_list: Vec<Expression> = Vec::new();
+    let mut param_value_list: Vec<Expression> = Vec::new();
+    param_value_list.push(Expression::String(String::from("dummy")));
+
     if let Expression::List(l) = &exp[idx] {
         for plist in l {
             if let Expression::List(p) = plist {
@@ -164,11 +169,8 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
                     return Err(create_error_value!("E1007", p.len()));
                 }
                 if let Expression::Symbol(s) = &p[0] {
-                    param.regist(s.to_string(), eval(&p[1], env)?);
-                    // case named let
-                    if idx == 2 {
-                        param_list.push(Expression::Symbol(s.clone()));
-                    }
+                    param_list.push(Expression::Symbol(s.clone()));
+                    param_value_list.push(p[1].clone());
                 } else {
                     return Err(create_error!("E1004"));
                 }
@@ -180,35 +182,28 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     } else {
         return Err(create_error!("E1005"));
     }
+
+    // Setup Function
+    let mut vec = Vec::new();
+    vec.push(Expression::String(name.to_string()));
+    vec.push(Expression::List(param_list));
+    vec.extend_from_slice(&exp[idx as usize..]);
+    let mut f = RsFunction::new(&vec[..], name.to_string(), param.clone());
+
     // Setup label name let
     if let Expression::Symbol(s) = &exp[1] {
-        let mut vec = Vec::new();
-        vec.push(Expression::String(s.to_string()));
-        vec.push(Expression::List(param_list));
-        vec.extend_from_slice(&exp[idx as usize..]);
-        let mut f = RsFunction::new(&vec[..], s.to_string(), param.clone());
-        f.set_tail_recurcieve();
-        if f.get_tail_recurcieve() == true && env.is_tail_recursion() == true {
-            param.regist(s.to_string(), Environment::create_tail_recursion(f));
-            tail = true;
-        } else {
-            param.regist(s.to_string(), Environment::create_func(f));
-        }
-    }
-    let mut ret = Expression::Nil();
-    for e in &exp[idx as usize..] {
-        loop {
-            let v = eval(e, &mut param)?;
-            if tail {
-                if let Expression::TailLoop() = v {
-                    continue;
-                }
+        if env.is_tail_recursion() == true {
+            f.set_tail_recurcieve();
+            if f.get_tail_recurcieve() == false {
+                param.regist(s.to_string(), Environment::create_func(f.clone()));
             }
-            ret = v;
-            break;
+        } else {
+            param.regist(s.to_string(), Environment::create_func(f.clone()));
         }
+        f.execute(&param_value_list, &mut param)
+    } else {
+        f.execute(&param_value_list, &mut param)
     }
-    Ok(ret)
 }
 fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -346,7 +341,9 @@ fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
             }
             f[1] = Expression::List(param);
             let mut func = RsFunction::new(&f, s.to_string(), env.clone());
-            func.set_tail_recurcieve();
+            if env.is_tail_recursion() == true {
+                func.set_tail_recurcieve();
+            }
             env.regist(s.to_string(), Environment::create_func(func));
 
             Ok(Expression::Symbol(s.to_string()))
