@@ -27,6 +27,17 @@ use crate::env_single::{ExtOperationRc, FunctionRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
+pub trait FnBox {
+    fn call_box(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression;
+}
+impl<F> FnBox for F
+where
+    F: Fn(&[Expression], &mut Environment) -> ResultExpression,
+{
+    fn call_box(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
+        (*self)(exp, env)
+    }
+}
 //========================================================================
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
@@ -113,7 +124,6 @@ macro_rules! print_error {
 //========================================================================
 pub type ResultExpression = Result<Expression, RsError>;
 pub type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
-pub type ExtOperation = Fn(&[Expression], &mut Environment) -> ResultExpression;
 //========================================================================
 #[derive(Clone)]
 pub enum Expression {
@@ -711,7 +721,13 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
             Expression::Function(f) => f.execute(v, env),
             Expression::TailRecursion(f) => f.set_param(v, env),
             Expression::BuildInFunction(f) => f(&v[..], env),
+
+            #[cfg(not(feature = "thread"))]
             Expression::BuildInFunctionExt(f) => f(&v[..], env),
+
+            #[cfg(feature = "thread")]
+            Expression::BuildInFunctionExt(f) => f.call_box(&v[..], env),
+
             Expression::CPS(f) => f.execute(v, env),
             _ => Err(create_error!("E1006")),
         };
