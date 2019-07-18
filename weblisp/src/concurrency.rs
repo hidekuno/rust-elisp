@@ -9,21 +9,12 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
-trait FnBox {
-    fn call_box(self: Box<Self>);
-}
-impl<F: FnOnce()> FnBox for F {
-    fn call_box(self: Box<F>) {
-        (*self)();
-    }
-}
-
 enum Message {
     NewJob(Job),
     Terminate,
 }
 
-type Job = Box<FnBox + Send + 'static>;
+type Job = Box<FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -78,7 +69,7 @@ impl Worker {
             match message {
                 Message::NewJob(job) => {
                     println!("workder {} get a job; executing.", id);
-                    job.call_box();
+                    job();
                 }
                 Message::Terminate => {
                     println!("workder {} get a job; terminate.", id);
