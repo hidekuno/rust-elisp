@@ -5,15 +5,15 @@ extern crate gtk;
 
 extern crate elisp;
 
-use cairo::ImageSurface;
-use cairo::Matrix;
 use elisp::create_error;
 use elisp::create_error_value;
 use elisp::lisp;
-use gtk::prelude::*;
 use lisp::Environment;
 use lisp::Expression;
 use lisp::RsError;
+
+use cairo::{Context, Format, ImageSurface, Matrix};
+use gtk::prelude::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -24,12 +24,22 @@ const DRAW_WIDTH: i32 = 720;
 const DRAW_HEIGHT: i32 = 560;
 const EVAL_KEYCODE: u32 = 101;
 const EVAL_RESULT_ID: &str = "result";
+const DEFALUT_CANVAS: &str = "canvas";
 
 #[cfg(feature = "animation")]
 const MOTION_DELAY: i32 = 700;
 
-type ImageTable = Rc<RefCell<HashMap<String, ImageSurface>>>;
+type ImageTable = Rc<RefCell<HashMap<String, Rc<ImageSurface>>>>;
 
+#[allow(unused_macros)]
+macro_rules! get_default_surface {
+    ($tbl: expr) => {
+        $tbl.borrow()
+            .get(&DEFALUT_CANVAS.to_string())
+            .unwrap()
+            .clone();
+    };
+}
 fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
@@ -59,22 +69,11 @@ fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     let canvas = gtk::DrawingArea::new();
     canvas.set_size_request(DRAW_WIDTH, DRAW_HEIGHT);
-    canvas.connect_draw(|_, cr| {
-        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-        cr.set_font_size(0.25);
 
-        cr.move_to(0.04, 0.50);
-        cr.show_text("Rust");
-
-        cr.move_to(0.27, 0.69);
-        cr.text_path("eLisp");
-
-        cr.set_source_rgb(0.5, 0.5, 1.0);
-        cr.fill_preserve();
-        cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.set_line_width(0.01);
-        cr.stroke();
-
+    let surface = get_default_surface!(image_table);
+    canvas.connect_draw(move |_, cr| {
+        cr.set_source_surface(&*surface, 0.0, 0.0);
+        cr.paint();
         Inhibit(false)
     });
     //--------------------------------------------------------
@@ -87,13 +86,18 @@ fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     scroll.set_size_request(DRAW_WIDTH, 160);
 
     let env_ = RefCell::new(env.clone());
-    let canvas_ = canvas.clone();
-    let clone_bar = status_bar.clone();
+    let canvas_weak = canvas.downgrade();
+    let status_bar_weak = status_bar.downgrade();
     text_view.connect_key_press_event(move |w, key| {
         if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK)
             && key.get_keyval() == EVAL_KEYCODE
         {
-            execute_lisp(&mut env_.borrow_mut(), &canvas_, w, &clone_bar);
+            execute_lisp(
+                &mut env_.borrow_mut(),
+                &canvas_weak.upgrade().unwrap(),
+                w,
+                &status_bar_weak.upgrade().unwrap(),
+            );
         }
         Inhibit(false)
     });
@@ -144,7 +148,7 @@ fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     // Create Lisp Function
     //--------------------------------------------------------
-    build_lisp_function(env, &canvas, image_table);
+    build_lisp_function(env, image_table);
 
     //--------------------------------------------------------
     // Build Up finish
@@ -195,37 +199,34 @@ macro_rules! force_event_loop {
         }
     };
 }
-fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_table: &ImageTable) {
+fn build_lisp_function(env: &mut Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
-    let canvas_weak = canvas.downgrade();
+    let surface = get_default_surface!(image_table);
     env.add_builtin_closure("draw-clear", move |exp, _| {
         if exp.len() != 1 {
             return Err(create_error!("E1007"));
         }
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.connect_draw(move |_, cr| {
-            cr.transform(Matrix {
-                xx: 1.0,
-                yx: 0.0,
-                xy: 0.0,
-                yy: 1.0,
-                x0: 0.0,
-                y0: 0.0,
-            });
-            cr.set_source_rgb(0.9, 0.9, 0.9);
-            cr.paint();
-
-            Inhibit(false)
+        let cr = Context::new(&*surface);
+        cr.transform(Matrix {
+            xx: 1.0,
+            yx: 0.0,
+            xy: 0.0,
+            yy: 1.0,
+            x0: 0.0,
+            y0: 0.0,
         });
+        cr.set_source_rgb(0.9, 0.9, 0.9);
+        cr.paint();
+
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
     // DrawLine
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
-    let canvas_weak = canvas.downgrade();
+    let surface = get_default_surface!(image_table);
     env.add_builtin_closure("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
@@ -243,17 +244,15 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
             }
         }
         let (x0, y0, x1, y1) = (loc[0], loc[1], loc[2], loc[3]);
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.connect_draw(move |_, cr| {
-            cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-            cr.set_source_rgb(0.0, 0.0, 0.0);
-            cr.set_line_width(0.001);
-            cr.move_to(x0, y0);
-            cr.line_to(x1, y1);
-            cr.stroke();
 
-            Inhibit(false)
-        });
+        let cr = Context::new(&*surface);
+        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+        cr.set_source_rgb(0.0, 0.0, 0.0);
+        cr.set_line_width(0.001);
+        cr.move_to(x0, y0);
+        cr.line_to(x1, y1);
+        cr.stroke();
+
         #[cfg(feature = "animation")]
         force_event_loop!(true);
 
@@ -284,7 +283,9 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
             Ok(s) => s,
             Err(e) => return Err(create_error_value!("E9999", e)),
         };
-        (*image_table_clone).borrow_mut().insert(symbol, surface);
+        (*image_table_clone)
+            .borrow_mut()
+            .insert(symbol, Rc::new(surface));
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -292,7 +293,7 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
     // ex. (draw-image "roger" (list -1.0 0.0 0.0 1.0 180.0 0.0))
     // ex. (draw-image "roger" (list 1.0 0.0 0.0 1.0 0.0 0.0))
     //--------------------------------------------------------
-    let canvas_weak = canvas.downgrade();
+    let surface = get_default_surface!(image_table);
     let image_table_clone = image_table.clone();
     env.add_builtin_closure("draw-image", move |exp, env| {
         if exp.len() != 3 {
@@ -302,7 +303,7 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
             Expression::String(s) => s,
             _ => return Err(create_error!("E1015")),
         };
-        let surface = match (*image_table_clone).borrow().get(&symbol) {
+        let img = match (*image_table_clone).borrow().get(&symbol) {
             Some(v) => v.clone(),
             None => return Err(create_error!("E1008")),
         };
@@ -326,23 +327,20 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
         } else {
             return Err(create_error!("E1005"));
         }
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.connect_draw(move |_, cr| {
-            cr.scale(1.0, 1.0);
-            cr.move_to(0.0, 0.0);
-            let matrix = Matrix {
-                xx: ctm[0],
-                yx: ctm[1],
-                xy: ctm[2],
-                yy: ctm[3],
-                x0: ctm[4],
-                y0: ctm[5],
-            };
-            cr.transform(matrix);
-            cr.set_source_surface(&surface, 0.0, 0.0);
-            cr.paint();
-            Inhibit(false)
-        });
+        let cr = Context::new(&*surface);
+        cr.scale(1.0, 1.0);
+        cr.move_to(0.0, 0.0);
+        let matrix = Matrix {
+            xx: ctm[0],
+            yx: ctm[1],
+            xy: ctm[2],
+            yy: ctm[3],
+            x0: ctm[4],
+            y0: ctm[5],
+        };
+        cr.transform(matrix);
+        cr.set_source_surface(&*img, 0.0, 0.0);
+        cr.paint();
 
         #[cfg(feature = "animation")]
         force_event_loop!(true);
@@ -350,10 +348,36 @@ fn build_lisp_function(env: &mut Environment, canvas: &gtk::DrawingArea, image_t
         Ok(Expression::Nil())
     });
 }
+fn init_image_table(image_table: &ImageTable) {
+    let surface = ImageSurface::create(Format::ARgb32, DRAW_WIDTH, DRAW_HEIGHT)
+        .expect("Can't create surface");
+
+    let cr = Context::new(&surface);
+    cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+    cr.set_font_size(0.25);
+
+    cr.move_to(0.04, 0.50);
+    cr.show_text("Rust");
+
+    cr.move_to(0.27, 0.69);
+    cr.text_path("eLisp");
+
+    cr.set_source_rgb(0.5, 0.5, 1.0);
+    cr.fill_preserve();
+    cr.set_source_rgb(0.0, 0.0, 0.0);
+    cr.set_line_width(0.01);
+    cr.stroke();
+
+    image_table
+        .borrow_mut()
+        .insert(DEFALUT_CANVAS.to_string(), Rc::new(surface));
+}
 fn main() {
     // https://doc.rust-jp.rs/book/second-edition/ch15-05-interior-mutability.html
     let mut env = Environment::new();
     let image_table = Rc::new(RefCell::new(HashMap::new()));
+
+    init_image_table(&image_table);
     scheme_gtk(&mut env, &image_table);
 
     gtk::main();
@@ -393,6 +417,7 @@ fn test_error_check() {
     );
     let mut env = Environment::new();
     let image_table = Rc::new(RefCell::new(HashMap::new()));
+    init_image_table(&image_table);
     scheme_gtk(&mut env, &image_table);
 
     // draw-clear check
