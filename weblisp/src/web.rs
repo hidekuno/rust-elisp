@@ -31,6 +31,15 @@ macro_rules! http_output {
         $s.write(CRLF.as_bytes()).unwrap();
     };
 }
+macro_rules! error_500 {
+    () => {
+        (
+            RESPONSE_500,
+            String::from("Internal Server Error\n"),
+            MIME_PLAIN.1,
+        )
+    };
+}
 pub struct Request {
     method: String,
     resource: String,
@@ -125,13 +134,7 @@ fn urldecode(s: &str) -> String {
 fn textfile<'a>(filename: &str, mime: &'a str) -> (&'a str, String, &'a str) {
     let mut path = match env::current_dir() {
         Ok(f) => f,
-        Err(_) => {
-            return (
-                RESPONSE_500,
-                String::from("Internal Server Error\n"),
-                MIME_PLAIN.1,
-            )
-        }
+        Err(_) => return error_500!(),
     };
     for s in filename.split('/') {
         if s == "" {
@@ -144,31 +147,21 @@ fn textfile<'a>(filename: &str, mime: &'a str) -> (&'a str, String, &'a str) {
     }
     let mut file = match File::open(path) {
         Ok(file) => file,
-        Err(_) => {
-            return (
-                RESPONSE_500,
-                String::from("Internal Server Error\n"),
-                MIME_PLAIN.1,
-            )
-        }
+        Err(_) => return error_500!(),
     };
     let meta = match file.metadata() {
         Ok(meta) => meta,
-        Err(_) => {
-            return (
-                RESPONSE_500,
-                String::from("Internal Server Error\n"),
-                MIME_PLAIN.1,
-            )
-        }
+        Err(_) => return error_500!(),
     };
     if true == meta.is_dir() {
         return textfile(&(filename.to_owned() + "/index.html"), mime);
     }
 
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    return (RESPONSE_200, contents, mime);
+    return match file.read_to_string(&mut contents) {
+        Ok(_) => (RESPONSE_200, contents, mime),
+        Err(_) => error_500!(),
+    };
 }
 fn write_response_header(stream: &mut TcpStream, mime: &str) {
     let date = Utc::now()
