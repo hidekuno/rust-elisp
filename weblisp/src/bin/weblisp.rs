@@ -12,6 +12,7 @@ use elisp::lisp;
 use weblisp::concurrency;
 use weblisp::web;
 
+use std::env;
 use std::io::ErrorKind;
 use std::net::TcpListener;
 use std::thread;
@@ -21,20 +22,13 @@ const MAX_TRANSACTION: usize = 1000;
 const MAX_CONCURRENCY: usize = 4;
 const BIND_ADDRESS: &'static str = "127.0.0.1:9000";
 
-fn main() {
-    let listenner = match TcpListener::bind(BIND_ADDRESS) {
-        Ok(v) => v,
-        Err(e) => panic!(format!("{:?}", e)),
-    };
+pub fn run_web_service(count: usize) -> Result<(), Box<std::error::Error>> {
+    let listenner = TcpListener::bind(BIND_ADDRESS)?;
+    listenner.set_nonblocking(false)?;
+
     let pool = ThreadPool::new(MAX_CONCURRENCY);
-
-    match listenner.set_nonblocking(false) {
-        Ok(()) => {}
-        Err(e) => panic!(format!("{:?}", e)),
-    }
-
     let env = lisp::Environment::new();
-    for stream in listenner.incoming().take(MAX_TRANSACTION) {
+    for stream in listenner.incoming().take(count) {
         match stream {
             Ok(stream) => {
                 let env = env.clone();
@@ -50,5 +44,24 @@ fn main() {
                 thread::sleep(Duration::from_secs(1));
             }
         }
+    }
+    Ok(())
+}
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    let t = if args.len() < 2 {
+        MAX_TRANSACTION
+    } else {
+        if let Ok(n) = args[1].parse::<usize>() {
+            n
+        } else {
+            println!("bad paramemter: {}", args[1]);
+            return;
+        }
+    };
+    match run_web_service(t) {
+        Ok(_) => {}
+        Err(e) => println!("{:?}", e),
     }
 }
