@@ -21,7 +21,8 @@ const PROTOCOL: &'static str = "HTTP/1.1";
 const CRLF: &'static str = "\r\n";
 
 const RESPONSE_200: &'static str = "200 OK";
-const RESPONSE_404: &'static str = "404 NOT FOUND";
+const RESPONSE_404: &'static str = "404 Not Found";
+const RESPONSE_405: &'static str = "405 Method Not Allowed";
 const RESPONSE_500: &'static str = "500 Internal Server Error";
 
 struct MimeType(&'static str, &'static str);
@@ -30,6 +31,13 @@ const MIME_HTML: MimeType = MimeType("html", "text/html");
 const MIME_PNG: MimeType = MimeType("png", "image/png");
 const DEFALUT_MIME: &'static str = "application/octet-stream";
 
+const LISP: &'static str = "/lisp?expr=";
+
+macro_rules! print_error {
+    ($f: expr, $e: expr) => {
+        println!("{} fault: {:?}", $f, $e)
+    };
+}
 macro_rules! http_write {
     ($s: expr, $v: expr) => {
         $s.write($v.as_bytes())?;
@@ -40,7 +48,16 @@ macro_rules! error_404 {
     () => {
         (
             RESPONSE_404,
-            Contents::String(String::from("Not Found") + CRLF),
+            Contents::String(String::from(&RESPONSE_404[4..]) + CRLF),
+            MIME_PLAIN.1,
+        )
+    };
+}
+macro_rules! error_405 {
+    () => {
+        (
+            RESPONSE_405,
+            Contents::String(String::from(&RESPONSE_405[4..]) + CRLF),
             MIME_PLAIN.1,
         )
     };
@@ -49,7 +66,7 @@ macro_rules! error_500 {
     () => {
         (
             RESPONSE_500,
-            Contents::String(String::from("Internal Server Error") + CRLF),
+            Contents::String(String::from(&RESPONSE_500[4..]) + CRLF),
             MIME_PLAIN.1,
         )
     };
@@ -60,7 +77,7 @@ pub struct Request {
     protocol: String,
 }
 impl Request {
-    pub fn get_metod(&self) -> &String {
+    pub fn get_method(&self) -> &String {
         &self.method
     }
     pub fn get_resource(&self) -> &String {
@@ -79,11 +96,11 @@ impl Contents {
         match self {
             Contents::String(v) => match stream.write(v.as_bytes()) {
                 Ok(_) => {}
-                Err(e) => println!("{:?}", e),
+                Err(e) => print_error!("write", e),
             },
             Contents::File(v) => match io::copy(v, stream) {
                 Ok(_) => {}
-                Err(e) => println!("{:?}", e),
+                Err(e) => print_error!("copy", e),
             },
         }
     }
@@ -105,13 +122,13 @@ pub fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
     match stream.read(&mut buffer) {
         Ok(_) => {}
         Err(e) => {
-            println!("recv fault: {:?}", e);
+            print_error!("read", e);
             return;
         }
     }
     match core_proc(stream, env, &buffer) {
         Ok(_) => {}
-        Err(ref e) => println!("{:?}", e),
+        Err(e) => print_error!("core proc", e),
     }
 }
 fn core_proc(
@@ -141,12 +158,13 @@ fn core_proc(
 }
 fn dispatch(buffer: &[u8], mut env: lisp::Environment) -> (&'static str, Contents, &'static str) {
     let r = parse_request(buffer);
-    let lisp = "/lisp?expr=";
-
-    return if r.resource == "/" {
+    if r.get_method() != "GET" {
+        return error_405!();
+    }
+    return if r.get_resource() == "/" {
         static_contents("index.html")
-    } else if r.resource.starts_with(lisp) {
-        let (_, expr) = r.resource.split_at(lisp.len());
+    } else if r.get_resource().starts_with(LISP) {
+        let (_, expr) = r.get_resource().split_at(LISP.len());
 
         let mut result = match lisp::do_core_logic(&expr.to_string(), &mut env) {
             Ok(r) => r.value_string(),
@@ -175,25 +193,41 @@ fn parse_request(buffer: &[u8]) -> Request {
     }
 }
 fn urldecode(s: &str) -> String {
-    let mut r = s.to_string();
+    enum PercentState {
+        Init,
+        First,
+        Second,
+    }
+    let mut r = String::new();
+    let mut e: [u8; 2] = [0; 2];
+    let mut state = PercentState::Init;
 
-    for i in 0x20 as u8..0x30 {
-        r = r.replace(
-            format!("%{:X}", i).as_str(),
-            std::str::from_utf8(&[i]).unwrap(),
-        );
-    }
-    for i in 0x5B as u8..0x60 {
-        r = r.replace(
-            format!("%{:X}", i).as_str(),
-            std::str::from_utf8(&[i]).unwrap(),
-        );
-    }
-    for i in 0x7B as u8..0x7E {
-        r = r.replace(
-            format!("%{:X}", i).as_str(),
-            std::str::from_utf8(&[i]).unwrap(),
-        );
+    for b in s.bytes() {
+        let c = b as char;
+        match state {
+            PercentState::Init => match c {
+                '%' => state = PercentState::First,
+                _ => r.push(c),
+            },
+            PercentState::First => {
+                // not support multi byte
+                match b {
+                    0x30...0x37 => {
+                        e[0] = b;
+                        state = PercentState::Second;
+                    }
+                    _ => state = PercentState::Init,
+                }
+            }
+            PercentState::Second => {
+                e[1] = b;
+                state = PercentState::Init;
+                match u8::from_str_radix(std::str::from_utf8(&e).unwrap(), 16) {
+                    Ok(v) => r.push(v as char),
+                    Err(e) => print_error!("u8::from_str_radix hex", e),
+                }
+            }
+        }
     }
     r
 }
@@ -225,11 +259,15 @@ fn static_contents<'a>(filename: &str) -> (&'a str, Contents, &'a str) {
     (RESPONSE_200, Contents::File(file), get_mime(filename))
 }
 fn get_mime(filename: &str) -> &'static str {
-    return if filename.ends_with(format!(".{}", MIME_HTML.0).as_str()) {
+    let ext = match filename.rfind('.') {
+        Some(i) => &filename[i + 1..],
+        None => "",
+    };
+    return if ext == MIME_HTML.0 {
         MIME_HTML.1
-    } else if filename.ends_with(format!(".{}", MIME_PLAIN.0).as_str()) {
+    } else if ext == MIME_PLAIN.0 {
         MIME_PLAIN.1
-    } else if filename.ends_with(format!(".{}", MIME_PNG.0).as_str()) {
+    } else if ext == MIME_PNG.0 {
         MIME_PNG.1
     } else {
         DEFALUT_MIME
