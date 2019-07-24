@@ -38,7 +38,7 @@ pub fn run_web_service(count: usize) -> Result<(), Box<std::error::Error>> {
             }
             Err(ref e) => {
                 if e.kind() != ErrorKind::WouldBlock {
-                    println!("{:?}", e);
+                    println!("take fault: {:?}", e);
                     break;
                 }
                 thread::sleep(Duration::from_secs(1));
@@ -62,6 +62,6 @@ fn main() {
     };
     match run_web_service(t) {
         Ok(_) => {}
-        Err(e) => println!("{:?}", e),
+        Err(e) => println!("main fault: {:?}", e),
     }
 }
