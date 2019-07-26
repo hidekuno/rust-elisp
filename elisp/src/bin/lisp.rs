@@ -9,10 +9,12 @@ use elisp::lisp;
 
 extern crate env_logger;
 use std::env;
+use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-fn main() -> Result<(), Box<std::error::Error>> {
+use elisp::print_error;
+fn main() -> Result<(), Box<Error>> {
     let args: Vec<String> = env::args().collect();
     env_logger::init();
 
@@ -25,7 +27,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             &mut env,
         ) {
             Ok(r) => println!("{}", r.to_string()),
-            Err(e) => println!("{}", e.get_code()),
+            Err(e) => print_error!(e),
         }
     } else {
         let filename = &args[1];
@@ -38,7 +40,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         }
         match lisp::do_core_logic(&program.join(" "), &mut env) {
             Ok(r) => println!("{}", r.to_string()),
-            Err(e) => println!("{}", e.get_code()),
+            Err(e) => print_error!(e),
         }
     }
     Ok(())
