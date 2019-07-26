@@ -200,10 +200,8 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         } else {
             param.regist(s.to_string(), Environment::create_func(f.clone()));
         }
-        f.execute(&param_value_list, &mut param)
-    } else {
-        f.execute(&param_value_list, &mut param)
     }
+    f.execute(&param_value_list, &mut param)
 }
 fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -482,9 +480,7 @@ fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if let Expression::List(l) = eval(&exp[2], env)? {
         let mut se: Vec<Expression> = Vec::new();
         se.push(exp[1].clone());
-        for e in &l {
-            se.push(e.clone());
-        }
+        se.extend_from_slice(&l);
         eval(&Expression::List(se), env)
     } else {
         Err(create_error_value!("E1005", exp.len()))
