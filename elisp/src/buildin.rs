@@ -782,7 +782,7 @@ fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if let Expression::Char(c) = v {
             print!("{} ", c);
         } else {
-            print!("{} ", v.value_string());
+            print!("{} ", v.to_string());
         }
     }
     Ok(Expression::Nil())

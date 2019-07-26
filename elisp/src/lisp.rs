@@ -9,6 +9,7 @@ use std::collections::LinkedList;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::string::ToString;
 use std::vec::Vec;
 
 #[allow(unused_imports)]
@@ -134,7 +135,33 @@ pub enum Expression {
     CPS(RsCPS),
 }
 impl Expression {
-    pub fn value_string(&self) -> String {
+    fn list_string(exp: &[Expression]) -> String {
+        let mut s = String::from("(");
+
+        let mut c = 1;
+        let mut el = false;
+        for e in exp {
+            if let Expression::List(l) = e {
+                s.push_str(Expression::list_string(&l[..]).as_str());
+                el = true;
+            } else {
+                if el {
+                    s.push_str(" ");
+                }
+                s.push_str(e.to_string().as_str());
+                if c != exp.len() {
+                    s.push_str(" ");
+                }
+                el = false;
+            }
+            c += 1;
+        }
+        s.push_str(")");
+        return s;
+    }
+}
+impl ToString for Expression {
+    fn to_string(&self) -> String {
         return match self {
             Expression::Integer(v) => v.to_string(),
             Expression::Float(v) => v.to_string(),
@@ -163,7 +190,7 @@ impl Expression {
             Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => Expression::list_string(&v[..]),
             Expression::Pair(car, cdr) => {
-                String::from(format!("({} . {})", car.value_string(), cdr.value_string()))
+                String::from(format!("({} . {})", car.to_string(), cdr.to_string()))
             }
             Expression::Function(_) => String::from("Function"),
             Expression::BuildInFunction(_) => String::from("BuildIn Function"),
@@ -175,30 +202,6 @@ impl Expression {
             Expression::Rational(v) => v.to_string(),
             Expression::CPS(_) => String::from("CPS"),
         };
-    }
-    fn list_string(exp: &[Expression]) -> String {
-        let mut s = String::from("(");
-
-        let mut c = 1;
-        let mut el = false;
-        for e in exp {
-            if let Expression::List(l) = e {
-                s.push_str(Expression::list_string(&l[..]).as_str());
-                el = true;
-            } else {
-                if el {
-                    s.push_str(" ");
-                }
-                s.push_str(e.value_string().as_str());
-                if c != exp.len() {
-                    s.push_str(" ");
-                }
-                el = false;
-            }
-            c += 1;
-        }
-        s.push_str(")");
-        return s;
     }
 }
 #[derive(Clone)]
@@ -242,7 +245,7 @@ impl RsCPS {
                     env.regist(k.clone(), v.clone());
                 }
                 let e = f.execute(&vec, env)?;
-                debug!("@@@ CPS execute {} {}", self.name, e.value_string());
+                debug!("@@@ CPS execute {} {}", self.name, e.to_string());
                 vec[1] = e;
             }
         }
@@ -474,7 +477,7 @@ pub fn repl(
                     }
                 };
                 match eval(&exp, env) {
-                    Ok(n) => println!("{}", n.value_string()),
+                    Ok(n) => println!("{}", n.to_string()),
                     Err(e) => print_error!(e),
                 };
                 debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
