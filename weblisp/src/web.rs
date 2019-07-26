@@ -167,7 +167,7 @@ fn dispatch(buffer: &[u8], mut env: lisp::Environment) -> (&'static str, Content
         let (_, expr) = r.get_resource().split_at(LISP.len());
 
         let mut result = match lisp::do_core_logic(&expr.to_string(), &mut env) {
-            Ok(r) => r.value_string(),
+            Ok(r) => r.to_string(),
             Err(e) => e.get_code(),
         };
         result.push_str(CRLF);
