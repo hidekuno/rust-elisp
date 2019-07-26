@@ -873,14 +873,15 @@ fn cmp(
     if 3 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let mut vec: Vec<Number> = Vec::new();
-    for e in &exp[1 as usize..] {
-        match eval(e, env)? {
-            Expression::Float(f) => vec.push(Number::Float(f)),
-            Expression::Integer(i) => vec.push(Number::Integer(i)),
-            Expression::Rational(r) => vec.push(Number::Rational(r)),
+    let mut v: [Number; 2] = [Number::Integer(0); 2];
+
+    for (i, e) in exp[1 as usize..].iter().enumerate() {
+        v[i] = match eval(e, env)? {
+            Expression::Float(f) => Number::Float(f),
+            Expression::Integer(i) => Number::Integer(i),
+            Expression::Rational(r) => Number::Rational(r),
             _ => return Err(create_error!("E1003")),
         }
     }
-    Ok(Expression::Boolean(f(&vec[0], &vec[1])))
+    Ok(Expression::Boolean(f(&v[0], &v[1])))
 }
