@@ -347,6 +347,7 @@ mod tests {
     #[test]
     fn apply() {
         assert_str!(do_lisp("(apply + (list 1 2 3))"), "6");
+        assert_str!(do_lisp("(apply + (list (+ 1 1) 2 3))"), "7");
         assert_str!(do_lisp("(apply - (list 5 3 2))"), "0");
         assert_str!(do_lisp("(apply (lambda (a b) (+ a b)) (list 1 2))"), "3");
         assert_str!(do_lisp("(apply + (iota 10))"), "45");

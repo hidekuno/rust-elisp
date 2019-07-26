@@ -200,10 +200,8 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         } else {
             param.regist(s.to_string(), Environment::create_func(f.clone()));
         }
-        f.execute(&param_value_list, &mut param)
-    } else {
-        f.execute(&param_value_list, &mut param)
     }
+    f.execute(&param_value_list, &mut param)
 }
 fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -482,9 +480,7 @@ fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if let Expression::List(l) = eval(&exp[2], env)? {
         let mut se: Vec<Expression> = Vec::new();
         se.push(exp[1].clone());
-        for e in &l {
-            se.push(e.clone());
-        }
+        se.extend_from_slice(&l);
         eval(&Expression::List(se), env)
     } else {
         Err(create_error_value!("E1005", exp.len()))
@@ -877,14 +873,15 @@ fn cmp(
     if 3 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let mut vec: Vec<Number> = Vec::new();
-    for e in &exp[1 as usize..] {
-        match eval(e, env)? {
-            Expression::Float(f) => vec.push(Number::Float(f)),
-            Expression::Integer(i) => vec.push(Number::Integer(i)),
-            Expression::Rational(r) => vec.push(Number::Rational(r)),
+    let mut v: [Number; 2] = [Number::Integer(0); 2];
+
+    for (i, e) in exp[1 as usize..].iter().enumerate() {
+        v[i] = match eval(e, env)? {
+            Expression::Float(f) => Number::Float(f),
+            Expression::Integer(i) => Number::Integer(i),
+            Expression::Rational(r) => Number::Rational(r),
             _ => return Err(create_error!("E1003")),
         }
     }
-    Ok(Expression::Boolean(f(&vec[0], &vec[1])))
+    Ok(Expression::Boolean(f(&v[0], &v[1])))
 }
