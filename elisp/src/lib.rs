@@ -26,7 +26,7 @@ fn do_lisp(program: &str) -> String {
 fn do_lisp_env(program: &str, env: &mut lisp::Environment) -> String {
     match lisp::do_core_logic(&String::from(program), env) {
         Ok(v) => {
-            return v.value_string();
+            return v.to_string();
         }
         Err(e) => {
             return String::from(e.get_code());
