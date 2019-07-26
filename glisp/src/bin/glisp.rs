@@ -179,7 +179,7 @@ fn execute_lisp(
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
         Ok(r) => r.to_string(),
-        Err(e) => e.get_code(),
+        Err(e) => e.get_msg(),
     };
 
     println!("{}", result);

@@ -66,6 +66,24 @@ impl RsError {
     pub fn get_code(&self) -> String {
         String::from(self.code)
     }
+    pub fn get_msg(&self) -> String {
+        if let Some(s) = &self.value {
+            format!(
+                "{}: {} ({}:{})",
+                ERRMSG_TBL.get(self.code).unwrap(),
+                s,
+                self.file,
+                self.line
+            )
+        } else {
+            format!(
+                "{} ({}:{})",
+                ERRMSG_TBL.get(self.code).unwrap(),
+                self.file,
+                self.line
+            )
+        }
+    }
 }
 #[macro_export]
 macro_rules! create_error {
@@ -92,22 +110,7 @@ macro_rules! create_error_value {
 #[macro_export]
 macro_rules! print_error {
     ($e: expr) => {
-        if let Some(s) = $e.value {
-            println!(
-                "{}: {} ({}:{})",
-                ERRMSG_TBL.get($e.code).unwrap(),
-                s,
-                $e.file,
-                $e.line
-            )
-        } else {
-            println!(
-                "{} ({}:{})",
-                ERRMSG_TBL.get($e.code).unwrap(),
-                $e.file,
-                $e.line
-            )
-        }
+        println!("{}", $e.get_msg())
     };
 }
 //========================================================================

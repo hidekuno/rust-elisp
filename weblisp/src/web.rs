@@ -168,7 +168,7 @@ fn dispatch(buffer: &[u8], mut env: lisp::Environment) -> (&'static str, Content
 
         let mut result = match lisp::do_core_logic(&expr.to_string(), &mut env) {
             Ok(r) => r.to_string(),
-            Err(e) => e.get_code(),
+            Err(e) => e.get_msg(),
         };
         result.push_str(CRLF);
         (RESPONSE_200, Contents::String(result), MIME_PLAIN.1)
