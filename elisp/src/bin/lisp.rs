@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             &String::from("(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))"),
             &mut env,
         ) {
-            Ok(r) => println!("{}", r.value_string()),
+            Ok(r) => println!("{}", r.to_string()),
             Err(e) => println!("{}", e.get_code()),
         }
     } else {
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             program.push(l);
         }
         match lisp::do_core_logic(&program.join(" "), &mut env) {
-            Ok(r) => println!("{}", r.value_string()),
+            Ok(r) => println!("{}", r.to_string()),
             Err(e) => println!("{}", e.get_code()),
         }
     }

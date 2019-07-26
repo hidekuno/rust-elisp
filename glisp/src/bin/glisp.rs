@@ -178,7 +178,7 @@ fn execute_lisp(
     let exp = text_buffer.get_text(&s, &e, false).expect("die");
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
-        Ok(r) => r.value_string(),
+        Ok(r) => r.to_string(),
         Err(e) => e.get_code(),
     };
 
@@ -399,7 +399,7 @@ macro_rules! assert_str {
 fn do_lisp_env(program: &str, env: &mut Environment) -> String {
     match lisp::do_core_logic(&String::from(program), env) {
         Ok(v) => {
-            return v.value_string();
+            return v.to_string();
         }
         Err(e) => {
             return String::from(e.get_code());
