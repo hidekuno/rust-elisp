@@ -228,7 +228,7 @@ impl RsCPS {
         }
         self.list.push_front((exp, h));
     }
-    pub fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
+    pub fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if exp.len() != 2 {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -288,7 +288,7 @@ impl RsFunction {
     pub fn get_tail_recurcieve(&self) -> bool {
         return self.tail_recurcieve;
     }
-    pub fn set_param(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
+    pub fn set_param(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -323,7 +323,7 @@ impl RsFunction {
         }
         Ok(Expression::TailLoop())
     }
-    pub fn execute(&self, exp: &Vec<Expression>, env: &mut Environment) -> ResultExpression {
+    pub fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -334,7 +334,7 @@ impl RsFunction {
         }
         return self.execute_noeval(&vec);
     }
-    pub fn execute_noeval(&self, exp: &Vec<Expression>) -> ResultExpression {
+    pub fn execute_noeval(&self, exp: &[Expression]) -> ResultExpression {
         if self.param.len() != exp.len() {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -708,13 +708,13 @@ pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
             return Ok(sexp.clone());
         }
         if let Expression::TailRecursion(f) = &v[0] {
-            return f.set_param(v, env);
+            return f.set_param(&v[..], env);
         }
         return match eval(&v[0], env)? {
-            Expression::Function(f) => f.execute(v, env),
+            Expression::Function(f) => f.execute(&v[..], env),
             Expression::BuildInFunction(f) => f(&v[..], env),
             Expression::BuildInFunctionExt(f) => f(&v[..], env),
-            Expression::CPS(f) => f.execute(v, env),
+            Expression::CPS(f) => f.execute(&v[..], env),
             _ => Err(create_error!("E1006")),
         };
     } else {
