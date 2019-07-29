@@ -115,6 +115,8 @@ where
 
     b.regist("delay", delay);
     b.regist("force", force);
+
+    b.regist("format", format_f);
 }
 fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -822,6 +824,32 @@ fn force(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     } else {
         Ok(v)
     }
+}
+fn format_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let s = if let Expression::String(s) = eval(&exp[1], env)? {
+        s
+    } else {
+        return Err(create_error!("E1015"));
+    };
+    let i = if let Expression::Integer(i) = eval(&exp[2], env)? {
+        i
+    } else {
+        return Err(create_error!("E1002"));
+    };
+    let s = match s.as_str() {
+        "~X" => format!("{:X}", i),
+        "~x" => format!("{:x}", i),
+        n => match n.to_lowercase().as_str() {
+            "~d" => format!("{:?}", i),
+            "~o" => format!("{:o}", i),
+            "~b" => format!("{:b}", i),
+            _ => return Err(create_error!("E1018")),
+        },
+    };
+    Ok(Expression::String(s))
 }
 fn to_f64(exp: &[Expression], env: &mut Environment) -> Result<f64, RsError> {
     if exp.len() != 2 {
