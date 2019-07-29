@@ -1006,7 +1006,22 @@ mod tests {
             "110"
         );
     }
+    #[test]
+    fn format_f() {
+        assert_str!(do_lisp("(format \"~D\" 10)"), "\"10\"");
+        assert_str!(do_lisp("(format \"~d\" 10)"), "\"10\"");
+        assert_str!(do_lisp("(format \"~X\" 10)"), "\"A\"");
+        assert_str!(do_lisp("(format \"~x\" 10)"), "\"a\"");
+        assert_str!(do_lisp("(format \"~O\" 10)"), "\"12\"");
+        assert_str!(do_lisp("(format \"~o\" 10)"), "\"12\"");
+        assert_str!(do_lisp("(format \"~B\" 10)"), "\"1010\"");
+        assert_str!(do_lisp("(format \"~b\" 10)"), "\"1010\"");
 
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a \"~D\")", &mut env);
+        do_lisp_env("(define b 100)", &mut env);
+        assert_str!(do_lisp_env("(format a b)", &mut env), "\"100\"");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1462,5 +1477,14 @@ mod error_tests {
             do_lisp("((lambda (a) (define i 100) (set! i (+ i b)) i)10)"),
             "E1008"
         );
+    }
+    #[test]
+    fn format_f() {
+        assert_str!(do_lisp("(format)"), "E1007");
+        assert_str!(do_lisp("(format \"~B\")"), "E1007");
+        assert_str!(do_lisp("(format \"~B\" 10 12)"), "E1007");
+        assert_str!(do_lisp("(format 10 12)"), "E1015");
+        assert_str!(do_lisp("(format \"~A\" #f)"), "E1002");
+        assert_str!(do_lisp("(format \"~A\" 10)"), "E1018");
     }
 }
