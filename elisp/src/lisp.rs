@@ -52,6 +52,7 @@ lazy_static! {
         e.insert("E1015", "Not String");
         e.insert("E1016", "Not Program File");
         e.insert("E1017", "Not Case Gramar");
+        e.insert("E1018", "Not Format Gramar");
         e.insert("E9999", "System Panic");
         e
     };
