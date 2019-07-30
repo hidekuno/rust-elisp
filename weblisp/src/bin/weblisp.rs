@@ -68,267 +68,307 @@ fn main() {
     }
 }
 #[cfg(test)]
-const TEST_COUNT: usize = 10;
+mod tests {
+    use super::*;
 
-#[cfg(test)]
-fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<Error>> {
-    use std::io::prelude::*;
-    use std::net::TcpStream;
+    const TEST_COUNT: usize = 12;
 
-    let mut stream = TcpStream::connect(BIND_ADDRESS)?;
-    stream.write(msg.as_bytes())?;
-    stream.flush()?;
+    fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<Error>> {
+        use std::io::prelude::*;
+        use std::net::TcpStream;
 
-    let mut buffer = Vec::new();
-    stream.read_to_end(&mut buffer)?;
+        let mut stream = TcpStream::connect(BIND_ADDRESS)?;
+        stream.write(msg.as_bytes())?;
+        stream.flush()?;
 
-    let mut v = Vec::new();
-    for e in &buffer {
-        match &e {
-            0x00...0x7F => v.push(e.clone()),
-            _ => {}
+        let mut buffer = Vec::new();
+        stream.read_to_end(&mut buffer)?;
+
+        let mut v = Vec::new();
+        for e in &buffer {
+            match &e {
+                0x00...0x7F => v.push(e.clone()),
+                0xE5 => v.push(e.clone()), //山(0xE5B1B1)
+                0xB1 => v.push(e.clone()), //山(0xE5B1B1)
+                _ => {}
+            }
         }
-    }
-    for l in std::str::from_utf8(&v).unwrap().lines() {
-        vec.push(String::from(l));
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-fn test_skelton(msg: &[&str]) -> Vec<String> {
-    let mut vec = Vec::new();
-    thread::sleep(Duration::from_millis(10));
-    for m in msg {
-        match web_test_client(m, &mut vec) {
-            Ok(_) => {}
-            Err(e) => println!("test3 fault: {:?}", e),
+        for l in std::str::from_utf8(&v)?.lines() {
+            vec.push(String::from(l));
         }
+        Ok(())
     }
-    vec
-}
 
-#[cfg(test)]
-macro_rules! assert_str {
-    ($a: expr,
+    fn test_skelton(msg: &[&str]) -> Vec<String> {
+        let mut vec = Vec::new();
+        thread::sleep(Duration::from_millis(10));
+        for m in msg {
+            match web_test_client(m, &mut vec) {
+                Ok(_) => {}
+                Err(e) => println!("test fault: {:?}", e),
+            }
+        }
+        vec
+    }
+    macro_rules! assert_str {
+        ($a: expr,
      $b: expr) => {
-        assert!(Some(&String::from($a)) == $b)
-    };
-}
+            assert!(Some(&String::from($a)) == $b)
+        };
+    }
 
-#[test]
-fn test_case_00() {
-    use std::path::Path;
-    let path = match env::current_dir() {
-        Ok(p) => p,
-        Err(_) => panic!("current_dir() panic!!"),
-    };
-    if !path.ends_with("samples") {
-        let root = Path::new("samples");
-        match env::set_current_dir(&root) {
-            Ok(_) => {}
-            Err(e) => println!("test1 fault: {:?} {:?}", e, path),
+    #[test]
+    fn test_case_00() {
+        use std::path::Path;
+        let path = match env::current_dir() {
+            Ok(p) => p,
+            Err(_) => panic!("current_dir() panic!!"),
+        };
+        if !path.ends_with("samples") {
+            let root = Path::new("samples");
+            match env::set_current_dir(&root) {
+                Ok(_) => {}
+                Err(e) => println!("test1 fault: {:?} {:?}", e, path),
+            }
         }
+        thread::sleep(Duration::from_millis(10));
+        thread::spawn(|| match run_web_service(TEST_COUNT) {
+            Ok(_) => {}
+            Err(e) => println!("test2 fault: {:?}", e),
+        });
     }
-    thread::sleep(Duration::from_millis(10));
-    thread::spawn(|| match run_web_service(TEST_COUNT) {
-        Ok(_) => {}
-        Err(e) => println!("test2 fault: {:?}", e),
-    });
-}
-#[test]
-fn test_case_01_index() {
-    let s = vec!["GET / HTTP/1.1"];
+    #[test]
+    fn test_case_01_index() {
+        let s = vec!["GET / HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!(
+            "<html><head><title>test</title></head><body>TEST</body></html>",
+            iter.next()
+        );
     }
-    assert_str!("Content-type: text/html", iter.next());
-    assert_str!("Content-length: 63", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!(
-        "<html><head><title>test</title></head><body>TEST</body></html>",
-        iter.next()
-    );
-}
-#[test]
-fn test_case_02_txt() {
-    let s = vec!["GET /index.txt HTTP/1.1"];
+    #[test]
+    fn test_case_02_txt() {
+        let s = vec!["GET /index.txt HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("TEST", iter.next());
     }
-    assert_str!("Content-type: text/plain", iter.next());
-    assert_str!("Content-length: 5", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!("TEST", iter.next());
-}
-#[test]
-fn test_case_03_dir() {
-    let s = vec!["GET /examples/ HTTP/1.1"];
+    #[test]
+    fn test_case_03_dir() {
+        let s = vec!["GET /examples/ HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 80", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!(
+            "<html><head><title>default</title></head><body>default index page</body></html>",
+            iter.next()
+        );
     }
-    assert_str!("Content-type: text/html", iter.next());
-    assert_str!("Content-length: 80", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!(
-        "<html><head><title>default</title></head><body>default index page</body></html>",
-        iter.next()
-    );
-}
-#[test]
-fn test_case_04_subdir() {
-    let s = vec!["GET /examples/hoge.html HTTP/1.1"];
+    #[test]
+    fn test_case_04_subdir() {
+        let s = vec!["GET /examples/hoge.html HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!(
+            "<html><head><title>hoge</title></head><body>HOGE</body></html>",
+            iter.next()
+        );
     }
-    assert_str!("Content-type: text/html", iter.next());
-    assert_str!("Content-length: 63", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!(
-        "<html><head><title>hoge</title></head><body>HOGE</body></html>",
-        iter.next()
-    );
-}
-#[test]
-fn test_case_05_png() {
-    let s = vec!["GET /index.png HTTP/1.1"];
+    #[test]
+    fn test_case_05_png() {
+        let s = vec!["GET /index.png HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: image/png", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
     }
-    assert_str!("Content-type: image/png", iter.next());
-    assert_str!("Content-length: 5", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-}
-#[test]
-fn test_case_06_lisp() {
-    let s = vec!["GET /lisp?expr=%28define%20a%20100%29 HTTP/1.1"];
+    #[test]
+    fn test_case_06_lisp() {
+        let s = vec!["GET /lisp?expr=%28define%20a%20100%29 HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 3", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("a", iter.next());
     }
-    assert_str!("Content-type: text/plain", iter.next());
-    assert_str!("Content-length: 3", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!("a", iter.next());
-}
-#[test]
-fn test_case_07_lisp() {
-    let s = vec!["GET /lisp?expr=%28%2B%20a%2080%29 HTTP/1.1"];
+    #[test]
+    fn test_case_07_lisp() {
+        let s = vec!["GET /lisp?expr=%28%2B%20a%2080%29 HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("180", iter.next());
     }
-    assert_str!("Content-type: text/plain", iter.next());
-    assert_str!("Content-length: 5", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!("180", iter.next());
-}
-#[test]
-fn test_case_08_octet_stream() {
-    let s = vec!["GET /index.dat HTTP/1.1"];
+    #[test]
+    fn test_case_08_octet_stream() {
+        let s = vec!["GET /index.dat HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 200 OK", iter.next());
+        assert_str!("HTTP/1.1 200 OK", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: application/octet-stream", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("TEST", iter.next());
     }
-    assert_str!("Content-type: application/octet-stream", iter.next());
-    assert_str!("Content-length: 5", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!("TEST", iter.next());
-}
-#[test]
-fn test_case_09_404() {
-    let s = vec!["GET /hoge.html HTTP/1.1"];
+    #[test]
+    fn test_case_09_404() {
+        let s = vec!["GET /hoge.html HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 404 Not Found", iter.next());
+        assert_str!("HTTP/1.1 404 Not Found", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 11", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("Not Found", iter.next());
     }
-    assert_str!("Content-type: text/plain", iter.next());
-    assert_str!("Content-length: 11", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!("Not Found", iter.next());
-}
-#[test]
-fn test_case_10_405() {
-    let s = vec!["POST /index.html HTTP/1.1"];
+    #[test]
+    fn test_case_10_405() {
+        let s = vec!["POST /index.html HTTP/1.1"];
 
-    let iter = test_skelton(&s);
-    let mut iter = iter.iter();
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
 
-    assert_str!("HTTP/1.1 405 Method Not Allowed", iter.next());
+        assert_str!("HTTP/1.1 405 Method Not Allowed", iter.next());
 
-    if let Some(e) = iter.next() {
-        assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 20", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("Method Not Allowed", iter.next());
     }
-    assert_str!("Content-type: text/plain", iter.next());
-    assert_str!("Content-length: 20", iter.next());
-    assert_str!("Server: Rust eLisp", iter.next());
-    assert_str!("Connection: closed", iter.next());
-    iter.next();
-    assert_str!("Method Not Allowed", iter.next());
+    #[test]
+    fn test_case_11_lisp() {
+        let s = vec!["GET /lisp?expr=%28define%20%E5%B1%B1%20100%29 HTTP/1.1"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("山", iter.next());
+    }
+    #[test]
+    fn test_case_12_lisp() {
+        let s = vec!["GET /lisp?expr=%E5%B1%B1 HTTP/1.1"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        iter.next();
+        assert_str!("100", iter.next());
+    }
 }
