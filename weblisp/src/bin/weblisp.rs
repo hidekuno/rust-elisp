@@ -71,7 +71,7 @@ fn main() {
 mod tests {
     use super::*;
 
-    const TEST_COUNT: usize = 12;
+    const TEST_COUNT: usize = 14;
 
     fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<Error>> {
         use std::io::prelude::*;
@@ -148,10 +148,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/html", iter.next());
-        assert_str!("Content-length: 63", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
         iter.next();
         assert_str!(
             "<html><head><title>test</title></head><body>TEST</body></html>",
@@ -170,10 +170,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 5", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
         iter.next();
         assert_str!("TEST", iter.next());
     }
@@ -189,10 +189,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/html", iter.next());
-        assert_str!("Content-length: 80", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 80", iter.next());
         iter.next();
         assert_str!(
             "<html><head><title>default</title></head><body>default index page</body></html>",
@@ -211,10 +211,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/html", iter.next());
-        assert_str!("Content-length: 63", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
         iter.next();
         assert_str!(
             "<html><head><title>hoge</title></head><body>HOGE</body></html>",
@@ -233,10 +233,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: image/png", iter.next());
-        assert_str!("Content-length: 5", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: image/png", iter.next());
+        assert_str!("Content-length: 5", iter.next());
     }
     #[test]
     fn test_case_06_lisp() {
@@ -250,10 +250,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 3", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 3", iter.next());
         iter.next();
         assert_str!("a", iter.next());
     }
@@ -269,10 +269,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 5", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
         iter.next();
         assert_str!("180", iter.next());
     }
@@ -288,10 +288,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: application/octet-stream", iter.next());
-        assert_str!("Content-length: 5", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: application/octet-stream", iter.next());
+        assert_str!("Content-length: 5", iter.next());
         iter.next();
         assert_str!("TEST", iter.next());
     }
@@ -307,10 +307,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 11", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 11", iter.next());
         iter.next();
         assert_str!("Not Found", iter.next());
     }
@@ -326,10 +326,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 20", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 20", iter.next());
         iter.next();
         assert_str!("Method Not Allowed", iter.next());
     }
@@ -345,10 +345,10 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 5", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
         iter.next();
         assert_str!("山", iter.next());
     }
@@ -364,11 +364,43 @@ mod tests {
         if let Some(e) = iter.next() {
             assert_str!("Date: ", Some(&String::from(&e[0..6])))
         }
-        assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 5", iter.next());
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
         iter.next();
         assert_str!("100", iter.next());
+    }
+    #[test]
+    fn test_case_13_cgi() {
+        let s = vec!["GET /examples/index.cgi?hogehoge=hoge HTTP/1.1"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+    }
+    #[test]
+    fn test_case_14_cgi_error() {
+        let s = vec!["GET /../samples/examples/index.cgi?hogehoge=hoge HTTP/1.1"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 404 Not Found", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
     }
 }

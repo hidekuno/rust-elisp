@@ -17,6 +17,8 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::net::TcpStream;
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
 const PROTOCOL: &'static str = "HTTP/1.1";
@@ -71,7 +73,7 @@ macro_rules! http_error {
         (
             $c,
             Contents::String(String::from(&$c[4..]) + CRLF),
-            MIME_PLAIN.1,
+            Some(MIME_PLAIN.1),
         )
     };
 }
@@ -98,6 +100,7 @@ impl Request {
 enum Contents {
     String(String),
     File(File),
+    Cgi(Child),
 }
 impl Contents {
     fn http_write(&mut self, stream: &mut TcpStream) {
@@ -110,6 +113,13 @@ impl Contents {
                 Ok(_) => {}
                 Err(e) => print_error!("copy", e),
             },
+            Contents::Cgi(cgi) => {
+                let out = cgi.stdout.as_mut().unwrap();
+                match io::copy(out, stream) {
+                    Ok(_) => {}
+                    Err(e) => print_error!("copy", e),
+                }
+            }
         }
     }
     fn len(&self) -> usize {
@@ -119,6 +129,8 @@ impl Contents {
                 Ok(v) => v.len() as usize,
                 Err(_) => 0 as usize,
             },
+            // unknown size
+            Contents::Cgi(_) => 0,
         }
     }
 }
@@ -155,19 +167,24 @@ fn core_proc(
         .format("Date: %a, %d %h %Y %H:%M:%S GMT")
         .to_string();
     http_write!(stream, date);
-    http_write!(stream, format!("Content-type: {}", mime));
-    http_write!(stream, format!("Content-length: {}", contents.len()));
     let header: [&'static str; 2] = ["Server: Rust eLisp", "Connection: closed"];
     for h in &header {
         http_write!(stream, h);
     }
 
-    stream.write(CRLF.as_bytes())?;
+    if let Some(v) = mime {
+        http_write!(stream, format!("Content-type: {}", v));
+        http_write!(stream, format!("Content-length: {}", contents.len()));
+        stream.write(CRLF.as_bytes())?;
+    }
     contents.http_write(&mut stream);
     stream.flush()?;
     Ok(())
 }
-fn dispatch(buffer: &[u8], mut env: lisp::Environment) -> (&'static str, Contents, &'static str) {
+fn dispatch(
+    buffer: &[u8],
+    mut env: lisp::Environment,
+) -> (&'static str, Contents, Option<&'static str>) {
     let r = match parse_request(buffer) {
         Ok(r) => r,
         Err(_) => return http_error!(RESPONSE_400),
@@ -185,7 +202,7 @@ fn dispatch(buffer: &[u8], mut env: lisp::Environment) -> (&'static str, Content
             Err(e) => e.get_msg(),
         };
         result.push_str(CRLF);
-        (RESPONSE_200, Contents::String(result), MIME_PLAIN.1)
+        (RESPONSE_200, Contents::String(result), Some(MIME_PLAIN.1))
     } else if r.get_resource().ends_with(CGI_EXT) {
         do_cgi(&r)
     } else {
@@ -248,8 +265,6 @@ fn urldecode(s: &str) -> Result<String, Box<Error>> {
             PercentState::First => {
                 en[0] = b;
                 state = PercentState::Second;
-
-                // not support multi byte
                 mode = match b {
                     0x30...0x37 => ByteMode::ASCII,
                     _ => ByteMode::Jpn,
@@ -265,8 +280,9 @@ fn urldecode(s: &str) -> Result<String, Box<Error>> {
                     }
                     ByteMode::Jpn => {
                         ja[ja_cnt] = u8::from_str_radix(std::str::from_utf8(&en)?, 16)?;
-
                         ja_cnt += 1;
+
+                        // not full support utf8
                         if ja_cnt == 3 {
                             mode = ByteMode::ASCII;
                             ja_cnt = 0;
@@ -279,17 +295,26 @@ fn urldecode(s: &str) -> Result<String, Box<Error>> {
     }
     Ok(r)
 }
-fn static_contents<'a>(filename: &str) -> (&'a str, Contents, &'a str) {
-    let mut path = match env::current_dir() {
-        Ok(f) => f,
-        Err(_) => return http_error!(RESPONSE_500),
-    };
+fn set_path_security(path: &mut PathBuf, filename: &str) {
     for s in filename.split('/') {
         if s == "" {
             continue;
         }
+        if s == "." {
+            continue;
+        }
+        if s == ".." {
+            continue;
+        }
         path.push(s);
     }
+}
+fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
+    let mut path = match env::current_dir() {
+        Ok(f) => f,
+        Err(_) => return http_error!(RESPONSE_500),
+    };
+    set_path_security(&mut path, filename);
     if false == path.as_path().exists() {
         return http_error!(RESPONSE_404);
     }
@@ -304,7 +329,7 @@ fn static_contents<'a>(filename: &str) -> (&'a str, Contents, &'a str) {
     if true == meta.is_dir() {
         return static_contents(&(filename.to_owned() + "/index.html"));
     }
-    (RESPONSE_200, Contents::File(file), get_mime(filename))
+    (RESPONSE_200, Contents::File(file), Some(get_mime(filename)))
 }
 fn get_mime(filename: &str) -> &'static str {
     let ext = match filename.rfind('.') {
@@ -321,6 +346,23 @@ fn get_mime(filename: &str) -> &'static str {
         DEFALUT_MIME
     };
 }
-fn do_cgi(r: &Request) -> (&'static str, Contents, &'static str) {
-    http_error!(RESPONSE_400)
+fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
+    let mut path = match env::current_dir() {
+        Ok(f) => f,
+        Err(_) => return http_error!(RESPONSE_500),
+    };
+    set_path_security(&mut path, r.get_resource());
+
+    if false == path.as_path().exists() {
+        return http_error!(RESPONSE_404);
+    }
+    let cgi = match Command::new(path)
+        .arg(r.get_parameter())
+        .stdout(Stdio::piped())
+        .spawn()
+    {
+        Ok(v) => v,
+        Err(_) => return http_error!(RESPONSE_500),
+    };
+    (RESPONSE_200, Contents::Cgi(cgi), None)
 }
