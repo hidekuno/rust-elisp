@@ -40,7 +40,7 @@ pub fn run_web_service(count: usize) -> Result<(), Box<Error>> {
             }
             Err(ref e) => {
                 if e.kind() != ErrorKind::WouldBlock {
-                    println!("take fault: {:?}", e);
+                    eprintln!("take fault: {:?}", e);
                     break;
                 }
                 thread::sleep(Duration::from_secs(1));
@@ -58,20 +58,19 @@ fn main() {
         if let Ok(n) = args[1].parse::<usize>() {
             n
         } else {
-            println!("bad paramemter: {}", args[1]);
+            eprintln!("bad paramemter: {}", args[1]);
             return;
         }
     };
-    match run_web_service(t) {
-        Ok(_) => {}
-        Err(e) => println!("main fault: {:?}", e),
+    if let Err(e) = run_web_service(t) {
+        eprintln!("main fault: {:?}", e);
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const TEST_COUNT: usize = 14;
+    const TEST_COUNT: usize = 15;
 
     fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<Error>> {
         use std::io::prelude::*;
@@ -103,16 +102,15 @@ mod tests {
         let mut vec = Vec::new();
         thread::sleep(Duration::from_millis(10));
         for m in msg {
-            match web_test_client(m, &mut vec) {
-                Ok(_) => {}
-                Err(e) => println!("test fault: {:?}", e),
+            if let Err(e) = web_test_client(m, &mut vec) {
+                eprintln!("test fault: {:?}", e);
             }
         }
         vec
     }
     macro_rules! assert_str {
         ($a: expr,
-     $b: expr) => {
+         $b: expr) => {
             assert!(Some(&String::from($a)) == $b)
         };
     }
@@ -126,15 +124,15 @@ mod tests {
         };
         if !path.ends_with("samples") {
             let root = Path::new("samples");
-            match env::set_current_dir(&root) {
-                Ok(_) => {}
-                Err(e) => println!("test1 fault: {:?} {:?}", e, path),
+            if let Err(e) = env::set_current_dir(&root) {
+                eprintln!("test1 fault: {:?} {:?}", e, path);
             }
         }
         thread::sleep(Duration::from_millis(10));
-        thread::spawn(|| match run_web_service(TEST_COUNT) {
-            Ok(_) => {}
-            Err(e) => println!("test2 fault: {:?}", e),
+        thread::spawn(|| {
+            if let Err(e) = run_web_service(TEST_COUNT) {
+                eprintln!("test2 fault: {:?}", e);
+            }
         });
     }
     #[test]
@@ -402,5 +400,24 @@ mod tests {
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
         assert_str!("Content-type: text/plain", iter.next());
+    }
+    #[test]
+    fn test_case_15_cgi_error() {
+        let s = vec!["GET /examples/ng.cgi?hogehoge=hoge HTTP/1.1"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 500 Internal Server Error", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        iter.next();
+        iter.next();
+        assert_str!("Internal Server Error", iter.next());
     }
 }
