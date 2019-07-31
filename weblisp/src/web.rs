@@ -40,6 +40,8 @@ const CGI_EXT: &'static str = ".cgi";
 const LISP: &'static str = "/lisp";
 const LISP_PARAMNAME: &'static str = "expr=";
 
+const READ_TIMEOUT: u64 = 60;
+
 #[derive(Debug)]
 struct UriParseError {
     pub code: &'static str,
@@ -59,7 +61,7 @@ impl Error for UriParseError {
 }
 macro_rules! print_error {
     ($f: expr, $e: expr) => {
-        println!("{} fault: {:?}", $f, $e)
+        eprintln!("{} fault: {:?}", $f, $e)
     };
 }
 macro_rules! http_write {
@@ -73,6 +75,21 @@ macro_rules! http_error {
         (
             $c,
             Contents::String(String::from(&$c[4..]) + CRLF),
+            Some(MIME_PLAIN.1),
+        )
+    };
+}
+macro_rules! http_value_error {
+    ($c: expr, $err: expr) => {
+        (
+            $c,
+            Contents::String(format!(
+                "{}\r\n{}[{}:{}]\r\n",
+                String::from(&$c[4..]),
+                $err,
+                file!(),
+                line!()
+            )),
             Some(MIME_PLAIN.1),
         )
     };
@@ -97,27 +114,38 @@ impl Request {
         &self.parameter
     }
 }
+pub struct WebFile {
+    file: File,
+    length: u64,
+}
 enum Contents {
     String(String),
-    File(File),
+    File(WebFile),
     Cgi(Child),
 }
 impl Contents {
     fn http_write(&mut self, stream: &mut TcpStream) {
         match self {
-            Contents::String(v) => match stream.write(v.as_bytes()) {
-                Ok(_) => {}
-                Err(e) => print_error!("write", e),
-            },
-            Contents::File(v) => match io::copy(v, stream) {
-                Ok(_) => {}
-                Err(e) => print_error!("copy", e),
-            },
+            Contents::String(v) => {
+                if let Err(e) = stream.write(v.as_bytes()) {
+                    print_error!("write", e);
+                }
+            }
+            Contents::File(v) => {
+                if let Err(e) = io::copy(&mut v.file, stream) {
+                    print_error!("copy", e);
+                }
+            }
             Contents::Cgi(cgi) => {
-                let out = cgi.stdout.as_mut().unwrap();
-                match io::copy(out, stream) {
-                    Ok(_) => {}
-                    Err(e) => print_error!("copy", e),
+                let out = match cgi.stdout.as_mut() {
+                    Some(out) => out,
+                    None => {
+                        eprintln!("as_mut err");
+                        return;
+                    }
+                };
+                if let Err(e) = io::copy(out, stream) {
+                    print_error!("copy", e);
                 }
             }
         }
@@ -125,10 +153,7 @@ impl Contents {
     fn len(&self) -> usize {
         match self {
             Contents::String(v) => v.len(),
-            Contents::File(v) => match v.metadata() {
-                Ok(v) => v.len() as usize,
-                Err(_) => 0 as usize,
-            },
+            Contents::File(v) => v.length as usize,
             // unknown size
             Contents::Cgi(_) => 0,
         }
@@ -136,22 +161,20 @@ impl Contents {
 }
 pub fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
     stream
-        .set_read_timeout(Some(Duration::from_millis(100)))
+        .set_read_timeout(Some(Duration::from_secs(READ_TIMEOUT)))
         .unwrap();
 
     let mut buffer = [0; 1024];
+
     // read() is Not Good.(because it's not detected EOF)
     // I try read_to_end() and read_exact(), But it was NG
-    match stream.read(&mut buffer) {
-        Ok(_) => {}
-        Err(e) => {
-            print_error!("read", e);
-            return;
-        }
+    if let Err(e) = stream.read(&mut buffer) {
+        print_error!("read", e);
+        return;
     }
-    match core_proc(stream, env, &buffer) {
-        Ok(_) => {}
-        Err(e) => print_error!("core proc", e),
+
+    if let Err(e) = core_proc(stream, env, &buffer) {
+        print_error!("core proc", e);
     }
 }
 fn core_proc(
@@ -187,7 +210,7 @@ fn dispatch(
 ) -> (&'static str, Contents, Option<&'static str>) {
     let r = match parse_request(buffer) {
         Ok(r) => r,
-        Err(_) => return http_error!(RESPONSE_400),
+        Err(e) => return http_value_error!(RESPONSE_400, e),
     };
     if r.get_method() != "GET" {
         return http_error!(RESPONSE_405);
@@ -211,11 +234,14 @@ fn dispatch(
 }
 fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
     let mut lines = std::str::from_utf8(buffer)?.lines();
-    let mut requst: [&str; 128] = [""; 128];
+    let mut requst: [&str; 8] = [""; 8];
 
     if let Some(r) = lines.next() {
         println!("{}", r);
         for (i, s) in r.split_whitespace().into_iter().enumerate() {
+            if i >= 3 {
+                return Err(Box::new(UriParseError { code: "E2001" }));
+            }
             requst[i] = s;
         }
     } else {
@@ -312,7 +338,7 @@ fn set_path_security(path: &mut PathBuf, filename: &str) {
 fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
     let mut path = match env::current_dir() {
         Ok(f) => f,
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => return http_value_error!(RESPONSE_500, e),
     };
     set_path_security(&mut path, filename);
     if false == path.as_path().exists() {
@@ -320,16 +346,23 @@ fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
     }
     let file = match File::open(path) {
         Ok(file) => file,
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => return http_value_error!(RESPONSE_500, e),
     };
     let meta = match file.metadata() {
         Ok(meta) => meta,
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => return http_value_error!(RESPONSE_500, e),
     };
     if true == meta.is_dir() {
         return static_contents(&(filename.to_owned() + "/index.html"));
     }
-    (RESPONSE_200, Contents::File(file), Some(get_mime(filename)))
+    (
+        RESPONSE_200,
+        Contents::File(WebFile {
+            file: file,
+            length: meta.len(),
+        }),
+        Some(get_mime(filename)),
+    )
 }
 fn get_mime(filename: &str) -> &'static str {
     let ext = match filename.rfind('.') {
@@ -349,7 +382,7 @@ fn get_mime(filename: &str) -> &'static str {
 fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
     let mut path = match env::current_dir() {
         Ok(f) => f,
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => return http_value_error!(RESPONSE_500, e),
     };
     set_path_security(&mut path, r.get_resource());
 
@@ -362,7 +395,7 @@ fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
         .spawn()
     {
         Ok(v) => v,
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => return http_value_error!(RESPONSE_500, e),
     };
     (RESPONSE_200, Contents::Cgi(cgi), None)
 }
