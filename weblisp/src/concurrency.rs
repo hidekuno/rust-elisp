@@ -38,13 +38,17 @@ impl ThreadPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.send(Message::NewJob(job)).unwrap();
+        if let Err(e) = self.sender.send(Message::NewJob(job)) {
+            eprintln!("send execute() err {}", e);
+        }
     }
 }
 impl Drop for ThreadPool {
     fn drop(&mut self) {
         for _ in &self.workers {
-            self.sender.send(Message::Terminate).unwrap();
+            if let Err(e) = self.sender.send(Message::Terminate) {
+                eprintln!("send terminate() err {}", e);
+            }
         }
         println!("shutdown all workers");
 
@@ -52,7 +56,9 @@ impl Drop for ThreadPool {
             println!("shutdown worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
-                thread.join().unwrap();
+                if let Err(e) = thread.join() {
+                    eprintln!("join() err {:?}", e);
+                }
             }
         }
     }
@@ -65,7 +71,14 @@ pub struct Worker {
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv().unwrap();
+            let message = match receiver.lock().unwrap().recv() {
+                Ok(message) => message,
+                Err(e) => {
+                    eprintln!("recv() err{}", e);
+                    continue;
+                }
+            };
+
             match message {
                 Message::NewJob(job) => {
                     println!("workder {} job; start.", id);
