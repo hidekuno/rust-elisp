@@ -325,8 +325,8 @@ impl RsFunction {
             }
         }
         // env set
-        for (i, s) in self.param.iter().enumerate() {
-            env.update(&s, vec[i].clone());
+        for (i, e) in vec.into_iter().enumerate() {
+            env.update(&self.param[i], e);
         }
         Ok(Expression::TailLoop())
     }
