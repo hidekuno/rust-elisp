@@ -19,7 +19,7 @@ pub type ExtOperationRc = Rc<ExtOperation>;
 
 #[derive(Clone)]
 pub struct Environment {
-    core: Rc<RefCell<SimpleEnv>>,
+    core: EnvTable,
     globals: Rc<RefCell<GlobalTbl>>,
 }
 impl Environment {
