@@ -22,7 +22,7 @@ pub type ExtOperationRc = Arc<ExtOperation>;
 //========================================================================
 #[derive(Clone)]
 pub struct Environment {
-    core: Arc<Mutex<SimpleEnv>>,
+    core: EnvTable,
     globals: Arc<Mutex<GlobalTbl>>,
 }
 impl Environment {
