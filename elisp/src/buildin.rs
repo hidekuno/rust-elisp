@@ -30,15 +30,14 @@ use crate::env_thread::Environment;
 #[cfg(not(feature = "thread"))]
 use crate::env_single::Environment;
 //========================================================================
-const SAMPLE_INT: i64 = 10000000000000;
+const SAMPLE_INT: i64 = 10_000_000_000_000;
 //========================================================================
 pub trait BuildInTable {
     fn regist(&mut self, symbol: &'static str, func: Operation);
 }
-
 pub fn create_function<T>(b: &mut T)
 where
-    T: BuildInTable,
+    T: BuildInTable + ?Sized,
 {
     b.regist("+", |exp, env| calc(exp, env, |x, y| x + y));
     b.regist("-", |exp, env| calc(exp, env, |x, y| x - y));
@@ -912,4 +911,35 @@ fn cmp(
         }
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+    use std::collections::HashMap;
+
+    fn create_function_dyn_dispatch(b: &mut BuildInTable) {
+        create_function(b);
+    }
+
+    #[cfg(not(feature = "thread"))]
+    impl BuildInTable for HashMap<&'static str, Operation> {
+        fn regist(&mut self, symbol: &'static str, func: Operation) {
+            self.insert(symbol, func);
+        }
+    }
+
+    #[cfg(feature = "thread")]
+    impl BuildInTable for BTreeMap<&'static str, Operation> {
+        fn regist(&mut self, symbol: &'static str, func: Operation) {
+            self.insert(symbol, func);
+        }
+    }
+    #[test]
+    fn test_dyn_dispatch() {
+        let mut b = BTreeMap::new();
+        let mut h = HashMap::new();
+        create_function_dyn_dispatch(&mut b);
+        create_function_dyn_dispatch(&mut h);
+    }
 }
