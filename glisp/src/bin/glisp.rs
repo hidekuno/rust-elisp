@@ -27,7 +27,7 @@ const EVAL_RESULT_ID: &str = "result";
 const DEFALUT_CANVAS: &str = "canvas";
 
 #[cfg(feature = "animation")]
-const MOTION_DELAY: i32 = 700;
+const MOTION_DELAY: i32 = 70;
 
 type ImageTable = Rc<RefCell<HashMap<String, Rc<ImageSurface>>>>;
 
