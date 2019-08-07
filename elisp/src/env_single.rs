@@ -11,7 +11,7 @@ use std::rc::Rc;
 use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
 //========================================================================
-type ExtOperation = Fn(&[Expression], &mut Environment) -> ResultExpression;
+type ExtOperation = Fn(&[Expression], &Environment) -> ResultExpression;
 type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Rc<RsFunction>;
@@ -41,13 +41,13 @@ impl Environment {
     pub fn create_tail_recursion(func: RsFunction) -> Expression {
         Expression::TailRecursion(Rc::new(func))
     }
-    pub fn regist(&mut self, key: String, exp: Expression) {
+    pub fn regist(&self, key: String, exp: Expression) {
         self.core.borrow_mut().regist(key, exp);
     }
     pub fn find(&self, key: &String) -> Option<Expression> {
         self.core.borrow().find(key)
     }
-    pub fn update(&mut self, key: &String, exp: Expression) {
+    pub fn update(&self, key: &String, exp: Expression) {
         self.core.borrow_mut().update(key, exp);
     }
     pub fn get_builtin_func(&self, key: &str) -> Option<Operation> {
@@ -59,25 +59,25 @@ impl Environment {
     pub fn get_builtin_ext_func(
         &self,
         key: &str,
-    ) -> Option<Rc<Fn(&[Expression], &mut Environment) -> ResultExpression + 'static>> {
+    ) -> Option<Rc<Fn(&[Expression], &Environment) -> ResultExpression + 'static>> {
         match self.globals.borrow().builtin_tbl_ext.get(key) {
             Some(f) => Some(f.clone()),
             None => None,
         }
     }
-    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
+    pub fn add_builtin_func(&self, key: &'static str, func: Operation) {
         self.globals.borrow_mut().builtin_tbl.insert(key, func);
     }
-    pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
+    pub fn add_builtin_closure<F>(&self, key: &'static str, c: F)
     where
-        F: Fn(&[Expression], &mut Environment) -> ResultExpression + 'static,
+        F: Fn(&[Expression], &Environment) -> ResultExpression + 'static,
     {
         self.globals
             .borrow_mut()
             .builtin_tbl_ext
             .insert(key, Rc::new(c));
     }
-    pub fn set_tail_recursion(&mut self, b: bool) {
+    pub fn set_tail_recursion(&self, b: bool) {
         self.globals.borrow_mut().tail_recursion = b;
     }
     pub fn is_tail_recursion(&self) -> bool {

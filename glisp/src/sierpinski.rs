@@ -17,7 +17,7 @@ impl Sierpinski {
             draw_line: Box::new(draw_line),
         }
     }
-    fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, x2: f64, y2: f64, c: i64) {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, x2: f64, y2: f64, c: i64) {
         if c > 1 {
             let xx0 = (x0 + x1) / 2.0;
             let yy0 = (y0 + y1) / 2.0;

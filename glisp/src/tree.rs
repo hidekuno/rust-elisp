@@ -21,7 +21,7 @@ impl Tree {
             draw_line: Box::new(draw_line),
         }
     }
-    fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
         let alpha = 0.6;
 
         (self.draw_line)(x0, y0, x1, y1);

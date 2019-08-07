@@ -19,11 +19,11 @@ pub mod env_thread;
 
 #[cfg(test)]
 fn do_lisp(program: &str) -> String {
-    let mut env = lisp::Environment::new();
-    return do_lisp_env(program, &mut env);
+    let env = lisp::Environment::new();
+    return do_lisp_env(program, &env);
 }
 #[cfg(test)]
-fn do_lisp_env(program: &str, env: &mut lisp::Environment) -> String {
+fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
     match lisp::do_core_logic(&String::from(program), env) {
         Ok(v) => {
             return v.to_string();
@@ -69,9 +69,9 @@ mod tests {
         assert_str!(do_lisp("\"山田太郎\""), "\"山田太郎\"");
         assert_str!(do_lisp("\"山田(太郎\""), "\"山田(太郎\"");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define 山 200)", &mut env);
-        assert_str!(do_lisp_env("山", &mut env), "200");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define 山 200)", &env);
+        assert_str!(do_lisp_env("山", &env), "200");
     }
     #[test]
     fn plus() {
@@ -180,37 +180,37 @@ mod tests {
     }
     #[test]
     fn define() {
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
-        assert_str!(do_lisp_env("a", &mut env), "100");
-        do_lisp_env("(define a 10.5)", &mut env);
-        assert_str!(do_lisp_env("a", &mut env), "10.5");
-        do_lisp_env("(define a #t)", &mut env);
-        assert_str!(do_lisp_env("a", &mut env), "#t");
-        do_lisp_env("(define a #\\A)", &mut env);
-        assert_str!(do_lisp_env("a", &mut env), "A");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        assert_str!(do_lisp_env("a", &env), "100");
+        do_lisp_env("(define a 10.5)", &env);
+        assert_str!(do_lisp_env("a", &env), "10.5");
+        do_lisp_env("(define a #t)", &env);
+        assert_str!(do_lisp_env("a", &env), "#t");
+        do_lisp_env("(define a #\\A)", &env);
+        assert_str!(do_lisp_env("a", &env), "A");
 
-        do_lisp_env("(define (fuga a b)(* a b))", &mut env);
-        assert_str!(do_lisp_env("(fuga 6 8)", &mut env), "48");
-        do_lisp_env("(define (hoge a b) a)", &mut env);
-        assert_str!(do_lisp_env("(hoge 6 8)", &mut env), "6");
+        do_lisp_env("(define (fuga a b)(* a b))", &env);
+        assert_str!(do_lisp_env("(fuga 6 8)", &env), "48");
+        do_lisp_env("(define (hoge a b) a)", &env);
+        assert_str!(do_lisp_env("(hoge 6 8)", &env), "6");
 
-        do_lisp_env("(define a 100)", &mut env);
-        do_lisp_env("(define b a)", &mut env);
-        assert_str!(do_lisp_env("b", &mut env), "100");
+        do_lisp_env("(define a 100)", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_str!(do_lisp_env("b", &env), "100");
 
-        do_lisp_env("(define plus +)", &mut env);
-        assert_str!(do_lisp_env("(plus 10 20)", &mut env), "30");
+        do_lisp_env("(define plus +)", &env);
+        assert_str!(do_lisp_env("(plus 10 20)", &env), "30");
     }
     #[test]
     fn lambda() {
         assert_str!(do_lisp("((lambda (a b)(+ a b)) 1 2)"), "3");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &mut env);
-        assert_str!(do_lisp_env("(hoge 6 8)", &mut env), "14");
-        do_lisp_env("(define hoge (lambda (a b) b))", &mut env);
-        assert_str!(do_lisp_env("(hoge 6 8)", &mut env), "8");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &env);
+        assert_str!(do_lisp_env("(hoge 6 8)", &env), "14");
+        do_lisp_env("(define hoge (lambda (a b) b))", &env);
+        assert_str!(do_lisp_env("(hoge 6 8)", &env), "8");
     }
     #[test]
     fn if_f() {
@@ -225,46 +225,34 @@ mod tests {
         assert_str!(do_lisp("(cond ((= 100 10)))"), "nil");
         assert_str!(do_lisp("(cond (else 10))"), "10");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 10)", &mut env);
-        assert_str!(do_lisp_env("(cond (a 20))", &mut env), "20");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 10)", &env);
+        assert_str!(do_lisp_env("(cond (a 20))", &env), "20");
         assert_str!(
-            do_lisp_env(
-                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
-                &mut env
-            ),
+            do_lisp_env("(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))", &env),
             "\"A\""
         );
-        do_lisp_env("(define a 20)", &mut env);
+        do_lisp_env("(define a 20)", &env);
         assert_str!(
-            do_lisp_env(
-                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
-                &mut env
-            ),
+            do_lisp_env("(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))", &env),
             "\"B\""
         );
-        do_lisp_env("(define a 30)", &mut env);
+        do_lisp_env("(define a 30)", &env);
         assert_str!(
-            do_lisp_env(
-                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
-                &mut env
-            ),
+            do_lisp_env("(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))", &env),
             "\"C\""
         );
         assert_str!(
             do_lisp_env(
                 "(cond ((= a 10) \"A\")((= a 20) \"B\")(else (* a 10)))",
-                &mut env
+                &env
             ),
             "300"
         );
-        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define a 100)", &env);
+        assert_str!(do_lisp_env("(cond ((= a 10) 20)(else 30 40))", &env), "40");
         assert_str!(
-            do_lisp_env("(cond ((= a 10) 20)(else 30 40))", &mut env),
-            "40"
-        );
-        assert_str!(
-            do_lisp_env("(cond ((= a 100) 20 30)(else 40 50))", &mut env),
+            do_lisp_env("(cond ((= a 100) 20 30)(else 40 50))", &env),
             "30"
         );
     }
@@ -290,57 +278,57 @@ mod tests {
         assert_str!(do_lisp("(case 10 (else 20))"), "20");
         assert_str!(do_lisp("(case 10 (else))"), "nil");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
         assert_str!(
-            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &env),
             "\"A\""
         );
-        do_lisp_env("(define a 1)", &mut env);
+        do_lisp_env("(define a 1)", &env);
         assert_str!(
-            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &env),
             "\"B\""
         );
-        do_lisp_env("(define a 200)", &mut env);
+        do_lisp_env("(define a 200)", &env);
         assert_str!(
-            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &env),
             "\"A\""
         );
-        do_lisp_env("(define a 400)", &mut env);
+        do_lisp_env("(define a 400)", &env);
         assert_str!(
             do_lisp_env(
                 "(case a ((100 200) \"A\")((300 400) \"B\")(else \"C\"))",
-                &mut env
+                &env
             ),
             "\"B\""
         );
-        do_lisp_env("(define b 100)", &mut env);
+        do_lisp_env("(define b 100)", &env);
         assert_str!(
             do_lisp_env(
                 "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
-                &mut env
+                &env
             ),
             "\"B\""
         );
-        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define a 100)", &env);
         assert_str!(
             do_lisp_env(
                 "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
-                &mut env
+                &env
             ),
             "\"A\""
         );
-        do_lisp_env("(define a 1000)", &mut env);
+        do_lisp_env("(define a 1000)", &env);
         assert_str!(
             do_lisp_env(
                 "(case a ((b 200) \"A\")((300 400) \"B\")(else \"C\"))",
-                &mut env
+                &env
             ),
             "\"C\""
         );
-        do_lisp_env("(define a 100) ", &mut env);
+        do_lisp_env("(define a 100) ", &env);
         assert_str!(
-            do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &mut env),
+            do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &env),
             "\"B\""
         );
     }
@@ -352,18 +340,18 @@ mod tests {
         assert_str!(do_lisp("(apply (lambda (a b) (+ a b)) (list 1 2))"), "3");
         assert_str!(do_lisp("(apply + (iota 10))"), "45");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define (hoge x y)(* x y))", &mut env);
-        assert_str!(do_lisp_env("(apply hoge (list 3 4))", &mut env), "12");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define (hoge x y)(* x y))", &env);
+        assert_str!(do_lisp_env("(apply hoge (list 3 4))", &env), "12");
     }
     #[test]
     fn identity() {
         assert_str!(do_lisp("(identity (+ 1 2 3))"), "6");
         assert_str!(do_lisp("(identity ((lambda (a b) (+ a b)) 1 2))"), "3");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
-        assert_str!(do_lisp_env("(identity a)", &mut env), "100");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        assert_str!(do_lisp_env("(identity a)", &env), "100");
     }
     #[test]
     fn modulo() {
@@ -425,60 +413,60 @@ mod tests {
     }
     #[test]
     fn set_f() {
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define c 0)", &mut env);
-        do_lisp_env("(set! c 10)", &mut env);
-        assert_str!(do_lisp_env("c", &mut env), "10");
-        do_lisp_env("(set! c (+ c 1))", &mut env);
-        assert_str!(do_lisp_env("c", &mut env), "11");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define c 0)", &env);
+        do_lisp_env("(set! c 10)", &env);
+        assert_str!(do_lisp_env("c", &env), "10");
+        do_lisp_env("(set! c (+ c 1))", &env);
+        assert_str!(do_lisp_env("c", &env), "11");
     }
     #[test]
     fn closure() {
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
         do_lisp_env(
             "(define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))",
-            &mut env,
+            &env,
         );
-        do_lisp_env("(define a (counter))", &mut env);
-        do_lisp_env("(define b (counter))", &mut env);
+        do_lisp_env("(define a (counter))", &env);
+        do_lisp_env("(define b (counter))", &env);
         for _i in 0..10 {
-            do_lisp_env("(a)", &mut env);
+            do_lisp_env("(a)", &env);
         }
         for _i in 0..5 {
-            do_lisp_env("(b)", &mut env);
+            do_lisp_env("(b)", &env);
         }
-        assert_str!(do_lisp_env("(a)", &mut env), "11");
-        assert_str!(do_lisp_env("(b)", &mut env), "6");
+        assert_str!(do_lisp_env("(a)", &env), "11");
+        assert_str!(do_lisp_env("(b)", &env), "6");
 
         do_lisp_env(
             "(define (scounter step) (let ((c 0)) (lambda () (set! c (+ step c)) c)))",
-            &mut env,
+            &env,
         );
-        do_lisp_env("(define x (scounter 10))", &mut env);
-        do_lisp_env("(define y (scounter 100))", &mut env);
+        do_lisp_env("(define x (scounter 10))", &env);
+        do_lisp_env("(define y (scounter 100))", &env);
         for _i in 0..2 {
-            do_lisp_env("(x)", &mut env);
-            do_lisp_env("(y)", &mut env);
+            do_lisp_env("(x)", &env);
+            do_lisp_env("(y)", &env);
         }
-        assert_str!(do_lisp_env("(x)", &mut env), "30");
-        assert_str!(do_lisp_env("(y)", &mut env), "300");
+        assert_str!(do_lisp_env("(x)", &env), "30");
+        assert_str!(do_lisp_env("(y)", &env), "300");
     }
     #[test]
     fn closure_nest() {
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
 
-        do_lisp_env("(define (testf x) (lambda () (* x 10)))", &mut env);
-        do_lisp_env("(define (foo x) (testf (* 2 x)))", &mut env);
-        assert_str!(do_lisp_env("((foo 2))", &mut env), "40");
+        do_lisp_env("(define (testf x) (lambda () (* x 10)))", &env);
+        do_lisp_env("(define (foo x) (testf (* 2 x)))", &env);
+        assert_str!(do_lisp_env("((foo 2))", &env), "40");
 
         do_lisp_env(
             "(define (counter x) (let ((c 0)) (lambda () (set! c (+ x c)) c)))",
-            &mut env,
+            &env,
         );
-        do_lisp_env("(define (make-counter c) (counter c))", &mut env);
-        do_lisp_env("(define c (make-counter 10))", &mut env);
-        assert_str!(do_lisp_env("(c)", &mut env), "10");
-        assert_str!(do_lisp_env("(c)", &mut env), "20");
+        do_lisp_env("(define (make-counter c) (counter c))", &env);
+        do_lisp_env("(define c (make-counter 10))", &env);
+        assert_str!(do_lisp_env("(c)", &env), "10");
+        assert_str!(do_lisp_env("(c)", &env), "20");
     }
     #[test]
     fn list() {
@@ -490,10 +478,10 @@ mod tests {
             do_lisp("(list (list (list 1))(list 2)(list 3))"),
             "(((1))(2)(3))"
         );
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 10)", &mut env);
-        do_lisp_env("(define b 20)", &mut env);
-        assert_str!(do_lisp_env("(list a b)", &mut env), "(10 20)");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 10)", &env);
+        do_lisp_env("(define b 20)", &env);
+        assert_str!(do_lisp_env("(list a b)", &env), "(10 20)");
     }
     #[test]
     fn null_f() {
@@ -582,24 +570,24 @@ mod tests {
             do_lisp("(map (lambda (n) (car n)) (list (list (list 1))(list 2)(list 3)))"),
             "((1) 2 3)"
         );
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
-        do_lisp_env("(define b 200)", &mut env);
-        do_lisp_env("(define c 300)", &mut env);
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        do_lisp_env("(define b 200)", &env);
+        do_lisp_env("(define c 300)", &env);
         do_lisp_env(
             "(define d (list (list (list 1))(list (list 2))(list (list 3))))",
-            &mut env,
+            &env,
         );
 
         assert_str!(
             do_lisp_env(
                 "(map (lambda (n)(map (lambda (m)(/ m 10)) n))(list (list 10 20 30)(list a b c)))",
-                &mut env
+                &env
             ),
             "((1 2 3)(10 20 30))"
         );
         assert_str!(
-            do_lisp_env("(map (lambda (n) (car n)) d)", &mut env),
+            do_lisp_env("(map (lambda (n) (car n)) d)", &env),
             "((1)(2)(3))"
         );
     }
@@ -614,19 +602,16 @@ mod tests {
             "(1 3 5 7 9)"
         );
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
-        do_lisp_env("(define b 200)", &mut env);
-        do_lisp_env("(define c 300)", &mut env);
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        do_lisp_env("(define b 200)", &env);
+        do_lisp_env("(define c 300)", &env);
         assert_str!(
-            do_lisp_env("(filter (lambda (n) (= n 100)) (list a b c))", &mut env),
+            do_lisp_env("(filter (lambda (n) (= n 100)) (list a b c))", &env),
             "(100)"
         );
         assert_str!(
-            do_lisp_env(
-                "(filter (lambda (n) (not (= n 100))) (list a b c))",
-                &mut env
-            ),
+            do_lisp_env("(filter (lambda (n) (not (= n 100))) (list a b c))", &env),
             "(200 300)"
         );
     }
@@ -641,30 +626,30 @@ mod tests {
             do_lisp("(reduce (lambda (a b) (+ a b))(* 10 10)(list))"),
             "100"
         );
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
-        do_lisp_env("(define b 200)", &mut env);
-        do_lisp_env("(define c 300)", &mut env);
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        do_lisp_env("(define b 200)", &env);
+        do_lisp_env("(define c 300)", &env);
         assert_str!(
-            do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &mut env),
+            do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &env),
             "600"
         );
     }
     #[test]
     fn for_each() {
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define c 0)", &mut env);
-        do_lisp_env("(for-each (lambda (n) (set! c (+ c n)))(iota 5))", &mut env);
-        assert_str!(do_lisp_env("c", &mut env), "10");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define c 0)", &env);
+        do_lisp_env("(for-each (lambda (n) (set! c (+ c n)))(iota 5))", &env);
+        assert_str!(do_lisp_env("c", &env), "10");
     }
     #[test]
     fn sqrt() {
         assert_str!(do_lisp("(sqrt 9)"), "3");
         assert_str!(do_lisp("(sqrt 25.0)"), "5");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 16)", &mut env);
-        assert_str!(do_lisp_env("(sqrt a)", &mut env), "4");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 16)", &env);
+        assert_str!(do_lisp_env("(sqrt a)", &env), "4");
     }
     #[test]
     fn sin() {
@@ -680,9 +665,9 @@ mod tests {
             do_lisp("(sin (/(* 60 (* 4 (atan 1))) 180))"),
             "0.8660254037844386"
         );
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* 30 (* 4 (atan 1))) 180))", &mut env);
-        assert_str!(do_lisp_env("(sin a)", &mut env), "0.49999999999999994");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* 30 (* 4 (atan 1))) 180))", &env);
+        assert_str!(do_lisp_env("(sin a)", &env), "0.49999999999999994");
     }
     #[test]
     fn cos() {
@@ -698,9 +683,9 @@ mod tests {
             do_lisp("(cos (/(* 59.725 (* 4 (atan 1))) 180))"),
             "0.5041508484218754"
         );
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* 60 (* 4 (atan 1))) 180))", &mut env);
-        assert_str!(do_lisp_env("(cos a)", &mut env), "0.5000000000000001");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* 60 (* 4 (atan 1))) 180))", &env);
+        assert_str!(do_lisp_env("(cos a)", &env), "0.5000000000000001");
     }
     #[test]
     fn tan() {
@@ -712,18 +697,18 @@ mod tests {
             do_lisp("(tan (/(* 45.5 (* 4 (atan 1))) 180))"),
             "1.0176073929721252"
         );
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* 45 (* 4 (atan 1))) 180))", &mut env);
-        assert_str!(do_lisp_env("(tan a)", &mut env), "0.9999999999999999");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* 45 (* 4 (atan 1))) 180))", &env);
+        assert_str!(do_lisp_env("(tan a)", &env), "0.9999999999999999");
     }
     #[test]
     fn atan() {
         assert_str!(do_lisp("(* 4 (atan 1))"), "3.141592653589793");
         assert_str!(do_lisp("(* 4 (atan 1.0))"), "3.141592653589793");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 1)", &mut env);
-        assert_str!(do_lisp_env("(* 4 (atan a))", &mut env), "3.141592653589793");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 1)", &env);
+        assert_str!(do_lisp_env("(* 4 (atan a))", &env), "3.141592653589793");
     }
     #[test]
     fn exp() {
@@ -731,9 +716,9 @@ mod tests {
         assert_str!(do_lisp("(exp 1.025)"), "2.7870954605658507");
         assert_str!(do_lisp("(exp 2)"), "7.38905609893065");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 3)", &mut env);
-        assert_str!(do_lisp_env("(exp a)", &mut env), "20.085536923187668");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 3)", &env);
+        assert_str!(do_lisp_env("(exp a)", &env), "20.085536923187668");
     }
     #[test]
     fn log() {
@@ -742,10 +727,10 @@ mod tests {
         assert_str!(do_lisp("(exp (/(log 8) 3))"), "2");
         assert_str!(do_lisp("(exp (* (log 2) 3))"), "7.999999999999998");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 9)", &mut env);
-        do_lisp_env("(define b 3)", &mut env);
-        assert_str!(do_lisp_env("(/(log a)(log b))", &mut env), "2");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 9)", &env);
+        do_lisp_env("(define b 3)", &env);
+        assert_str!(do_lisp_env("(/(log a)(log b))", &env), "2");
     }
     #[test]
     #[allow(unused_must_use)]
@@ -764,16 +749,13 @@ mod tests {
         writeln!(file, "(define d 100)").unwrap();
         file.flush().unwrap();
 
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
         let f = test_file.as_path().to_str().expect("die");
-        do_lisp_env(
-            format!("(load-file \"{}\")", f.to_string()).as_str(),
-            &mut env,
-        );
-        assert_str!(do_lisp_env("foo", &mut env), "100");
-        assert_str!(do_lisp_env("hoge", &mut env), "200");
-        assert_str!(do_lisp_env("fuga", &mut env), "300");
-        assert_str!(do_lisp_env("(+ a b c)", &mut env), "600");
+        do_lisp_env(format!("(load-file \"{}\")", f.to_string()).as_str(), &env);
+        assert_str!(do_lisp_env("foo", &env), "100");
+        assert_str!(do_lisp_env("hoge", &env), "200");
+        assert_str!(do_lisp_env("fuga", &env), "300");
+        assert_str!(do_lisp_env("(+ a b c)", &env), "600");
     }
     #[test]
     fn delay_force() {
@@ -781,9 +763,9 @@ mod tests {
         assert_str!(do_lisp("(force (delay (+ 1 1)))"), "2");
         assert_str!(do_lisp("(force  (+ 1 2))"), "3");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define p (delay (+ 2 3)))", &mut env);
-        assert_str!(do_lisp_env("(force p)", &mut env), "5");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define p (delay (+ 2 3)))", &env);
+        assert_str!(do_lisp_env("(force p)", &env), "5");
     }
     #[test]
     fn cps() {
@@ -791,18 +773,15 @@ mod tests {
             "(define fact-cps (lambda (n cont)(if (= n 0)(cont 1)(fact-cps (- n 1) (lambda (a) (cont (* n a)))))))",
             "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
         ];
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
         for p in &program {
-            do_lisp_env(p, &mut env);
+            do_lisp_env(p, &env);
         }
-        assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) a))", &mut env), "24");
+        assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) a))", &env), "24");
+        assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) (* 2 a)))", &env), "48");
+        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &env), "120");
         assert_str!(
-            do_lisp_env("(fact-cps 4 (lambda (a) (* 2 a)))", &mut env),
-            "48"
-        );
-        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &mut env), "120");
-        assert_str!(
-            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &mut env),
+            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &env),
             "240"
         );
     }
@@ -832,66 +811,60 @@ mod tests {
             "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
         ];
 
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
         for p in &program {
-            do_lisp_env(p, &mut env);
+            do_lisp_env(p, &env);
         }
-        assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "9");
-        assert_str!(do_lisp_env("(effect/gcm 36 15)", &mut env), "3");
-        assert_str!(do_lisp_env("(fact-iter 4 1)", &mut env), "24");
-        assert_str!(do_lisp_env("(lcm 36 27)", &mut env), "108");
-        assert_str!(do_lisp_env("(bad-gcm 36 27)", &mut env), "9");
+        assert_str!(do_lisp_env("(gcm 36 27)", &env), "9");
+        assert_str!(do_lisp_env("(effect/gcm 36 15)", &env), "3");
+        assert_str!(do_lisp_env("(fact-iter 4 1)", &env), "24");
+        assert_str!(do_lisp_env("(lcm 36 27)", &env), "108");
+        assert_str!(do_lisp_env("(bad-gcm 36 27)", &env), "9");
         assert_str!(
-            do_lisp_env("(prime (iota 30 2))", &mut env),
+            do_lisp_env("(prime (iota 30 2))", &env),
             "(2 3 5 7 11 13 17 19 23 29 31)"
         );
         assert_str!(
-            do_lisp_env("(perm (list 1 2 3) 2)", &mut env),
+            do_lisp_env("(perm (list 1 2 3) 2)", &env),
             "((1 2)(1 3)(2 1)(2 3)(3 1)(3 2))"
         );
         assert_str!(
-            do_lisp_env("(comb (list 1 2 3) 2)", &mut env),
+            do_lisp_env("(comb (list 1 2 3) 2)", &env),
             "((1 2)(1 3)(2 3))"
         );
         assert_str!(
-            do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &mut env),
+            do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &env),
             "(1 2 3 4 5 6 7 8 9 10)"
         );
+        assert_str!(do_lisp_env("(take (list 2 4 6 8 10) 3)", &env), "(2 4 6)");
+        assert_str!(do_lisp_env("(drop (list 2 4 6 8 10) 3)", &env), "(8 10)");
         assert_str!(
-            do_lisp_env("(take (list 2 4 6 8 10) 3)", &mut env),
-            "(2 4 6)"
-        );
-        assert_str!(
-            do_lisp_env("(drop (list 2 4 6 8 10) 3)", &mut env),
-            "(8 10)"
-        );
-        assert_str!(
-            do_lisp_env("(qsort test-list (lambda (a b)(< a b)))", &mut env),
+            do_lisp_env("(qsort test-list (lambda (a b)(< a b)))", &env),
             "(0 2 3 6 7 8 9 14 19 27 36)"
         );
         assert_str!(
-            do_lisp_env("(qsort test-list (lambda (a b)(> a b)))", &mut env),
+            do_lisp_env("(qsort test-list (lambda (a b)(> a b)))", &env),
             "(36 27 19 14 9 8 7 6 3 2 0)"
         );
         assert_str!(
-            do_lisp_env("(bsort test-list)", &mut env),
+            do_lisp_env("(bsort test-list)", &env),
             "(0 2 3 6 7 8 9 14 19 27 36)"
         );
         assert_str!(
-            do_lisp_env("(msort test-list)", &mut env),
+            do_lisp_env("(msort test-list)", &env),
             "(0 2 3 6 7 8 9 14 19 27 36)"
         );
         assert_str!(
             do_lisp_env(
                 "(inf-list (lambda (n) (list (+ 1 (car n)))) (list 0) 10)",
-                &mut env
+                &env
             ),
             "(0 1 2 3 4 5 6 7 8 9)"
         );
         assert_str!(
             do_lisp_env(
                 "(inf-list (lambda (n) (list (cadr n)(+ (cadr n) (car n)))) (list 0 1) 10)",
-                &mut env
+                &env
             ),
             "(0 1 1 2 3 5 8 13 21 34)"
         );
@@ -983,9 +956,9 @@ mod tests {
     }
     #[test]
     fn display() {
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &mut env);
-        assert_str!(do_lisp_env("(display a)", &mut env), "nil");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        assert_str!(do_lisp_env("(display a)", &env), "nil");
     }
     #[test]
     fn newline() {
@@ -1017,10 +990,10 @@ mod tests {
         assert_str!(do_lisp("(format \"~B\" 10)"), "\"1010\"");
         assert_str!(do_lisp("(format \"~b\" 10)"), "\"1010\"");
 
-        let mut env = lisp::Environment::new();
-        do_lisp_env("(define a \"~D\")", &mut env);
-        do_lisp_env("(define b 100)", &mut env);
-        assert_str!(do_lisp_env("(format a b)", &mut env), "\"100\"");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a \"~D\")", &env);
+        do_lisp_env("(define b 100)", &env);
+        assert_str!(do_lisp_env("(format a b)", &env), "\"100\"");
     }
 }
 #[cfg(test)]
@@ -1101,40 +1074,31 @@ mod error_tests {
     }
     #[test]
     fn define() {
-        let mut env = lisp::Environment::new();
-        assert_str!(do_lisp_env("(define)", &mut env), "E1007");
-        assert_str!(do_lisp_env("(define a)", &mut env), "E1007");
-        assert_str!(do_lisp_env("(define 1 10)", &mut env), "E1004");
-        assert_str!(
-            do_lisp_env("(define (hoge a 1) (+ 100 a))", &mut env),
-            "E1004"
-        );
-        assert_str!(
-            do_lisp_env("(define (hoge 1 a) (+ 100 a))", &mut env),
-            "E1004"
-        );
-        assert_str!(
-            do_lisp_env("(define (100 a b) (+ 100 a))", &mut env),
-            "E1004"
-        );
-        assert_str!(do_lisp_env("(define () (+ 100 a))", &mut env), "E1007");
+        let env = lisp::Environment::new();
+        assert_str!(do_lisp_env("(define)", &env), "E1007");
+        assert_str!(do_lisp_env("(define a)", &env), "E1007");
+        assert_str!(do_lisp_env("(define 1 10)", &env), "E1004");
+        assert_str!(do_lisp_env("(define (hoge a 1) (+ 100 a))", &env), "E1004");
+        assert_str!(do_lisp_env("(define (hoge 1 a) (+ 100 a))", &env), "E1004");
+        assert_str!(do_lisp_env("(define (100 a b) (+ 100 a))", &env), "E1004");
+        assert_str!(do_lisp_env("(define () (+ 100 a))", &env), "E1007");
 
-        assert_str!(do_lisp_env("(define a ga)", &mut env), "E1008");
+        assert_str!(do_lisp_env("(define a ga)", &env), "E1008");
     }
     #[test]
     fn lambda() {
-        let mut env = lisp::Environment::new();
-        assert_str!(do_lisp_env("(lambda)", &mut env), "E1007");
-        assert_str!(do_lisp_env("(lambda (a b))", &mut env), "E1007");
-        assert_str!(do_lisp_env("(lambda  a (+ a b))", &mut env), "E1005");
-        assert_str!(do_lisp_env("(lambda (a 1) (+ a 10))", &mut env), "E1004");
-        assert_str!(do_lisp_env("((list 1) 10)", &mut env), "E1006");
+        let env = lisp::Environment::new();
+        assert_str!(do_lisp_env("(lambda)", &env), "E1007");
+        assert_str!(do_lisp_env("(lambda (a b))", &env), "E1007");
+        assert_str!(do_lisp_env("(lambda  a (+ a b))", &env), "E1005");
+        assert_str!(do_lisp_env("(lambda (a 1) (+ a 10))", &env), "E1004");
+        assert_str!(do_lisp_env("((list 1) 10)", &env), "E1006");
 
-        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &mut env);
-        assert_str!(do_lisp_env("(hoge 10 ga)", &mut env), "E1008");
+        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &env);
+        assert_str!(do_lisp_env("(hoge 10 ga)", &env), "E1008");
 
-        do_lisp_env("(define hoge (lambda (a b) (+ ga b)))", &mut env);
-        assert_str!(do_lisp_env("(hoge 10 20)", &mut env), "E1008");
+        do_lisp_env("(define hoge (lambda (a b) (+ ga b)))", &env);
+        assert_str!(do_lisp_env("(hoge 10 20)", &env), "E1008");
     }
     #[test]
     fn if_f() {
@@ -1236,10 +1200,10 @@ mod error_tests {
     }
     #[test]
     fn set_f() {
-        let mut env = lisp::Environment::new();
-        assert_str!(do_lisp_env("(set! c)", &mut env), "E1007");
-        assert_str!(do_lisp_env("(set! 10 10)", &mut env), "E1004");
-        assert_str!(do_lisp_env("(set! c 10)", &mut env), "E1008");
+        let env = lisp::Environment::new();
+        assert_str!(do_lisp_env("(set! c)", &env), "E1007");
+        assert_str!(do_lisp_env("(set! 10 10)", &env), "E1004");
+        assert_str!(do_lisp_env("(set! c 10)", &env), "E1008");
     }
     #[test]
     fn list() {
@@ -1406,12 +1370,12 @@ mod error_tests {
 
     #[test]
     fn sample_program() {
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
         do_lisp_env(
             "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm f mod))))",
-            &mut env,
+            &env,
         );
-        assert_str!(do_lisp_env("(gcm 36 27)", &mut env), "E1008");
+        assert_str!(do_lisp_env("(gcm 36 27)", &env), "E1008");
     }
     #[test]
     fn load_file() {
@@ -1450,20 +1414,17 @@ mod error_tests {
             "(define (fact/cps-ng n cont)(if (= n 0)(cont 1)(fact/cps-ng (- n 1) (lambda (a b) (cont (* n a))))))",
             "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
         ];
-        let mut env = lisp::Environment::new();
+        let env = lisp::Environment::new();
         for p in &program {
-            do_lisp_env(p, &mut env);
+            do_lisp_env(p, &env);
         }
         assert_str!(
-            do_lisp_env("(fact/cps-ng 3 (lambda (a) (* 2 a)))", &mut env),
+            do_lisp_env("(fact/cps-ng 3 (lambda (a) (* 2 a)))", &env),
             "E1007"
         );
+        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a b) a))", &env), "E1007");
         assert_str!(
-            do_lisp_env("(fact/cps 5 (lambda (a b) a))", &mut env),
-            "E1007"
-        );
-        assert_str!(
-            do_lisp_env("(fact/cps 5 (lambda (a) (+ ng a)))", &mut env),
+            do_lisp_env("(fact/cps 5 (lambda (a) (+ ng a)))", &env),
             "E1008"
         );
     }

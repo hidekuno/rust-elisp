@@ -11,10 +11,9 @@ use std::sync::Mutex;
 
 use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
-
 //========================================================================
 type ExtOperation =
-    Box<Fn(&[Expression], &mut Environment) -> ResultExpression + Sync + Send + 'static>;
+    Box<Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static>;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<RsFunction>;
@@ -44,13 +43,13 @@ impl Environment {
     pub fn create_tail_recursion(func: RsFunction) -> Expression {
         Expression::TailRecursion(Arc::new(func))
     }
-    pub fn regist(&mut self, key: String, exp: Expression) {
+    pub fn regist(&self, key: String, exp: Expression) {
         self.core.lock().unwrap().regist(key, exp);
     }
     pub fn find(&self, key: &String) -> Option<Expression> {
         self.core.lock().unwrap().find(key)
     }
-    pub fn update(&mut self, key: &String, exp: Expression) {
+    pub fn update(&self, key: &String, exp: Expression) {
         self.core.lock().unwrap().update(key, exp);
     }
     pub fn get_builtin_func(&self, key: &str) -> Option<Operation> {
@@ -65,12 +64,12 @@ impl Environment {
             None => None,
         }
     }
-    pub fn add_builtin_func(&mut self, key: &'static str, func: Operation) {
+    pub fn add_builtin_func(&self, key: &'static str, func: Operation) {
         self.globals.lock().unwrap().builtin_tbl.insert(key, func);
     }
-    pub fn add_builtin_closure<F>(&mut self, key: &'static str, c: F)
+    pub fn add_builtin_closure<F>(&self, key: &'static str, c: F)
     where
-        F: Fn(&[Expression], &mut Environment) -> ResultExpression + Sync + Send + 'static,
+        F: Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static,
     {
         self.globals
             .lock()
@@ -78,7 +77,7 @@ impl Environment {
             .builtin_tbl_ext
             .insert(key, Arc::new(Box::new(c)));
     }
-    pub fn set_tail_recursion(&mut self, b: bool) {
+    pub fn set_tail_recursion(&self, b: bool) {
         self.globals.lock().unwrap().tail_recursion = b;
     }
     pub fn is_tail_recursion(&self) -> bool {
