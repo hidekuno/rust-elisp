@@ -18,7 +18,7 @@ impl Koch {
             sin60: ((std::f64::consts::PI * 60.0) / 180.0).sin(),
             cos60: ((std::f64::consts::PI * 60.0) / 180.0).cos(),
             scale: c,
-            draw_line: Box::new(draw_line),
+            draw_line: draw_line,
         }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
