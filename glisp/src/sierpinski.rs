@@ -14,7 +14,7 @@ impl Sierpinski {
     pub fn new(c: i64, draw_line: DrawLine) -> Sierpinski {
         Sierpinski {
             scale: c,
-            draw_line: Box::new(draw_line),
+            draw_line: draw_line,
         }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, x2: f64, y2: f64, c: i64) {
