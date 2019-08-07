@@ -9,10 +9,6 @@ ENV HOME /root
 WORKDIR $HOME
 RUN git clone https://github.com/hidekuno/rust-elisp
 
-WORKDIR $HOME/rust-elisp/elisp
-RUN cargo build --release --lib 
-RUN cargo build --release --bin lisp
-
 WORKDIR $HOME/rust-elisp/glisp
 RUN cargo build --release --bin glisp
 RUN sed -i "s/home.kunohi/root/" samples/sicp/roger.scm
