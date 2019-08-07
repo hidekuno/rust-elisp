@@ -2,6 +2,8 @@
    Rust study program.
    This is prototype program mini scheme subset what porting from go-scheme.
 
+   ex) cargo test --lib -- --test-threads=1
+
    hidekuno@gmail.com
 */
 pub mod concurrency;

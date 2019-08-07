@@ -32,7 +32,7 @@ mod tests {
         };
     }
 
-    fn do_lisp_env(program: &str, env: &mut Environment) -> String {
+    fn do_lisp_env(program: &str, env: &Environment) -> String {
         match lisp::do_core_logic(&String::from(program), env) {
             Ok(v) => v.to_string(),
             Err(e) => String::from(e.get_code()),
@@ -47,37 +47,37 @@ mod tests {
                 .unwrap()
                 .as_secs()
         );
-        let mut env = Environment::new();
+        let env = Environment::new();
         let image_table = Rc::new(RefCell::new(HashMap::new()));
         init_image_table(&image_table);
-        scheme_gtk(&mut env, &image_table);
+        scheme_gtk(&env, &image_table);
 
         // draw-clear check
-        assert_str!(do_lisp_env("(draw-clear 10)", &mut env), "E1007");
+        assert_str!(do_lisp_env("(draw-clear 10)", &env), "E1007");
 
         // draw-line check
-        assert_str!(do_lisp_env("(draw-line)", &mut env), "E1007");
-        assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &mut env), "E1003");
-        assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &mut env), "E1008");
+        assert_str!(do_lisp_env("(draw-line)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
+        assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
 
         // create-image-from-png check
-        assert_str!(do_lisp_env("(create-image-from-png)", &mut env), "E1007");
+        assert_str!(do_lisp_env("(create-image-from-png)", &env), "E1007");
         assert_str!(
-            do_lisp_env("(create-image-from-png \"sample\")", &mut env),
+            do_lisp_env("(create-image-from-png \"sample\")", &env),
             "E1007"
         );
         assert_str!(
-            do_lisp_env("(create-image-from-png 10 \"/tmp/hoge.png\")", &mut env),
+            do_lisp_env("(create-image-from-png 10 \"/tmp/hoge.png\")", &env),
             "E1015"
         );
         assert_str!(
-            do_lisp_env("(create-image-from-png \"sample\" 20)", &mut env),
+            do_lisp_env("(create-image-from-png \"sample\" 20)", &env),
             "E1015"
         );
         assert_str!(
             do_lisp_env(
                 format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
-                &mut env
+                &env
             ),
             "E9999"
         );
@@ -85,7 +85,7 @@ mod tests {
         assert_str!(
             do_lisp_env(
                 format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
-                &mut env
+                &env
             ),
             "E9999"
         );
@@ -100,35 +100,35 @@ mod tests {
         file.flush().unwrap();
         do_lisp_env(
             format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
-            &mut env,
+            &env,
         );
 
-        assert_str!(do_lisp_env("(draw-image)", &mut env), "E1007");
-        assert_str!(do_lisp_env("(draw-image 10)", &mut env), "E1007");
+        assert_str!(do_lisp_env("(draw-image)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-image 10)", &env), "E1007");
         assert_str!(
-            do_lisp_env("(draw-image \"sample\" (list 1 2 3) 10)", &mut env),
+            do_lisp_env("(draw-image \"sample\" (list 1 2 3) 10)", &env),
             "E1007"
         );
         assert_str!(
-            do_lisp_env("(draw-image 10 (list 0.0 0.0 1.0 1.0))", &mut env),
+            do_lisp_env("(draw-image 10 (list 0.0 0.0 1.0 1.0))", &env),
             "E1015"
         );
         assert_str!(
-            do_lisp_env("(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0))", &mut env),
+            do_lisp_env("(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0))", &env),
             "E1008"
         );
         assert_str!(
-            do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0))", &mut env),
+            do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0))", &env),
             "E1007"
         );
         assert_str!(
             do_lisp_env(
                 "(draw-image \"sample\" (list 0.0 0.0 1.0 1.0 1.0 10))",
-                &mut env
+                &env
             ),
             "E1003"
         );
-        assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &mut env), "E1005");
+        assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &env), "E1005");
 
         std::fs::remove_file(png).unwrap();
     }

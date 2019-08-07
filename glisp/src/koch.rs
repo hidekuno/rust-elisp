@@ -21,7 +21,7 @@ impl Koch {
             draw_line: Box::new(draw_line),
         }
     }
-    fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
         if c > 1 {
             let xa = (x0 * 2.0 + x1) / 3.0;
             let ya = (y0 * 2.0 + y1) / 3.0;
