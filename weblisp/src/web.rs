@@ -186,11 +186,14 @@ fn core_proc(
     println!("{}", status_line);
     http_write!(stream, format!("{} {}", PROTOCOL, status_line));
 
-    let date = Utc::now()
-        .format("Date: %a, %d %h %Y %H:%M:%S GMT")
-        .to_string();
-    http_write!(stream, date);
-    let header: [&'static str; 2] = ["Server: Rust eLisp", "Connection: closed"];
+    let header: [&str; 3] = [
+        &Utc::now()
+            .format("Date: %a, %d %h %Y %H:%M:%S GMT")
+            .to_string()
+            .into_boxed_str(),
+        "Server: Rust eLisp",
+        "Connection: closed",
+    ];
     for h in &header {
         http_write!(stream, h);
     }
@@ -206,7 +209,7 @@ fn core_proc(
 }
 fn dispatch(
     buffer: &[u8],
-    mut env: lisp::Environment,
+    env: lisp::Environment,
 ) -> (&'static str, Contents, Option<&'static str>) {
     let r = match parse_request(buffer) {
         Ok(r) => r,
@@ -220,7 +223,7 @@ fn dispatch(
     } else if r.get_resource().starts_with(LISP) {
         let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
 
-        let mut result = match lisp::do_core_logic(&expr.to_string(), &mut env) {
+        let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
             Ok(r) => r.to_string(),
             Err(e) => e.get_msg(),
         };
