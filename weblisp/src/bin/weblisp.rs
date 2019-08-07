@@ -3,7 +3,6 @@
    This is prototype program mini scheme subset what porting from go-scheme.
 
    hidekuno@gmail.com
-   ex) cargo test --lib -- --test-threads=1
 */
 extern crate weblisp;
 
