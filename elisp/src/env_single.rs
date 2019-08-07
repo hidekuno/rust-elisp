@@ -65,10 +65,7 @@ impl Environment {
             None => None,
         }
     }
-    pub fn add_builtin_func(&self, key: &'static str, func: Operation) {
-        self.globals.borrow_mut().builtin_tbl.insert(key, func);
-    }
-    pub fn add_builtin_closure<F>(&self, key: &'static str, c: F)
+    pub fn add_builtin_ext_func<F>(&self, key: &'static str, c: F)
     where
         F: Fn(&[Expression], &Environment) -> ResultExpression + 'static,
     {

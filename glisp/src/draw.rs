@@ -214,7 +214,7 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // Draw Clear
     //--------------------------------------------------------
     let surface = get_default_surface!(image_table);
-    env.add_builtin_closure("draw-clear", move |exp, _| {
+    env.add_builtin_ext_func("draw-clear", move |exp, _| {
         if exp.len() != 1 {
             return Err(create_error!("E1007"));
         }
@@ -237,7 +237,7 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
     let surface = get_default_surface!(image_table);
-    env.add_builtin_closure("draw-line", move |exp, env| {
+    env.add_builtin_ext_func("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
             return Err(create_error!("E1007"));
@@ -273,7 +273,7 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
     //--------------------------------------------------------
     let image_table_clone = image_table.clone();
-    env.add_builtin_closure("create-image-from-png", move |exp, env| {
+    env.add_builtin_ext_func("create-image-from-png", move |exp, env| {
         if exp.len() != 3 {
             return Err(create_error!("E1007"));
         }
@@ -305,7 +305,7 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     let surface = get_default_surface!(image_table);
     let image_table_clone = image_table.clone();
-    env.add_builtin_closure("draw-image", move |exp, env| {
+    env.add_builtin_ext_func("draw-image", move |exp, env| {
         if exp.len() != 3 {
             return Err(create_error!("E1007"));
         }
@@ -363,7 +363,7 @@ fn build_demo_function(env: &Environment, image_table: &ImageTable) {
         ($drawable: ty, $func: expr, $env: expr, $image_table: expr) => {
             let surface = get_default_surface!($image_table);
 
-            $env.add_builtin_closure($func, move |exp, env| {
+            $env.add_builtin_ext_func($func, move |exp, env| {
                 if exp.len() != 2 {
                     return Err(create_error!("E1007"));
                 }
