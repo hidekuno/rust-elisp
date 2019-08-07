@@ -1,7 +1,7 @@
 ---
 rustelisp:
   build: .
-  dockerfile: docker/Dockerfile
+  dockerfile: Dockerfile
   stdin_open: true
   environment:
     - "TZ=Japan"
