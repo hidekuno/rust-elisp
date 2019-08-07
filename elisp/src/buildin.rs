@@ -117,7 +117,7 @@ where
 
     b.regist("format", format_f);
 }
-fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -133,7 +133,7 @@ fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1004"))
     }
 }
-fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -145,7 +145,7 @@ fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     println!("{}.{:03}(s)", end.as_secs(), end.subsec_nanos() / 1_000_000);
     return result;
 }
-fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -204,7 +204,7 @@ fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     f.execute(&param_value_list, &mut param)
 }
-fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn not(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -213,7 +213,7 @@ fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1001")),
     }
 }
-fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -228,7 +228,7 @@ fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::Boolean(false))
 }
-fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -243,7 +243,7 @@ fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::Boolean(true))
 }
-fn expt(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
     macro_rules! natural_log {
         ($x: expr, $y: expr) => {
             ($x.log((1.0 as f64).exp()) * $y).exp()
@@ -274,7 +274,7 @@ fn expt(exp: &[Expression], env: &mut Environment) -> ResultExpression {
 }
 fn divide(
     exp: &[Expression],
-    env: &mut Environment,
+    env: &Environment,
     f: fn(x: &i64, y: &i64) -> i64,
 ) -> ResultExpression {
     if exp.len() != 3 {
@@ -292,7 +292,7 @@ fn divide(
         (_, _) => Err(create_error!("E1002")),
     }
 }
-fn lambda(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -312,7 +312,7 @@ fn lambda(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         env.clone(),
     )))
 }
-fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -353,7 +353,7 @@ fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1004"))
     }
 }
-fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -369,7 +369,7 @@ fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1001"))
     }
 }
-fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -403,7 +403,7 @@ fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn eqv(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -431,7 +431,7 @@ fn eqv(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Ok(Expression::Boolean(false)),
     }
 }
-fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -474,7 +474,7 @@ fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -487,20 +487,20 @@ fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error_value!("E1005", exp.len()))
     }
 }
-pub fn identity(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     eval(&exp[1], env)
 }
-fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
     for e in &exp[1 as usize..] {
         list.push(eval(e, env)?);
     }
     Ok(Expression::List(list))
 }
-fn null_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -509,7 +509,7 @@ fn null_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Ok(Expression::Boolean(false)),
     }
 }
-fn length(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn length(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -519,7 +519,7 @@ fn length(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1005"))
     }
 }
-fn car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -534,7 +534,7 @@ fn car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1005")),
     }
 }
-fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -548,7 +548,7 @@ fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1005")),
     }
 }
-fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn cadr(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -561,7 +561,7 @@ fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1005"))
     }
 }
-fn cons(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -577,7 +577,7 @@ fn cons(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Ok(Expression::Pair(Box::new(car), Box::new(cdr)))
     }
 }
-fn append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() <= 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -590,7 +590,7 @@ fn append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::List(v))
 }
-fn last(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -603,7 +603,7 @@ fn last(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1005")),
     }
 }
-fn reverse(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -616,7 +616,7 @@ fn reverse(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1005")),
     }
 }
-fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() <= 1 || 4 <= exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -640,7 +640,7 @@ fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::List(l))
 }
-fn map(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -658,7 +658,7 @@ fn map(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1006")),
     }
 }
-fn filter(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -683,7 +683,7 @@ fn filter(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         _ => Err(create_error!("E1006")),
     }
 }
-fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -705,7 +705,7 @@ fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1006"))
     }
 }
-fn for_each(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -722,7 +722,7 @@ fn for_each(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1006"))
     }
 }
-fn rand_integer(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
+fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if 1 < exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -730,7 +730,7 @@ fn rand_integer(exp: &[Expression], _env: &mut Environment) -> ResultExpression 
     let x: i64 = rng.gen();
     Ok(Expression::Integer(x.abs() / SAMPLE_INT))
 }
-fn rand_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 < exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -746,7 +746,7 @@ fn rand_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
         Err(create_error!("E1002"))
     }
 }
-fn load_file(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -774,7 +774,7 @@ fn load_file(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Err(create_error!("E1015"))
 }
-fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -788,7 +788,7 @@ fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn newline(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
+fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 1 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -796,7 +796,7 @@ fn newline(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     Ok(Expression::Nil())
 }
 
-fn begin(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn begin(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -807,24 +807,24 @@ fn begin(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     return Ok(ret);
 }
 
-fn delay(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     Ok(Expression::Promise(Box::new(exp[1].clone()), env.clone()))
 }
-fn force(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     let v = eval(&exp[1], env)?;
-    if let Expression::Promise(p, mut pe) = v {
-        eval(&(*p), &mut pe)
+    if let Expression::Promise(p, pe) = v {
+        eval(&(*p), &pe)
     } else {
         Ok(v)
     }
 }
-fn format_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
+fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -850,7 +850,7 @@ fn format_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     };
     Ok(Expression::String(s))
 }
-fn to_f64(exp: &[Expression], env: &mut Environment) -> Result<f64, RsError> {
+fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, RsError> {
     if exp.len() != 2 {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -863,7 +863,7 @@ fn to_f64(exp: &[Expression], env: &mut Environment) -> Result<f64, RsError> {
 }
 fn calc(
     exp: &[Expression],
-    env: &mut Environment,
+    env: &Environment,
     f: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
     let mut result: Number = Number::Integer(0);
@@ -894,7 +894,7 @@ fn calc(
 }
 fn cmp(
     exp: &[Expression],
-    env: &mut Environment,
+    env: &Environment,
     f: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {

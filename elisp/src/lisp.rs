@@ -116,7 +116,7 @@ macro_rules! print_error {
 }
 //========================================================================
 pub type ResultExpression = Result<Expression, RsError>;
-pub type Operation = fn(&[Expression], &mut Environment) -> ResultExpression;
+pub type Operation = fn(&[Expression], &Environment) -> ResultExpression;
 //========================================================================
 #[derive(Clone)]
 pub enum Expression {
@@ -235,7 +235,7 @@ impl RsCPS {
         }
         self.list.push_front((exp, h));
     }
-    pub fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         if exp.len() != 2 {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -295,7 +295,7 @@ impl RsFunction {
     pub fn get_tail_recurcieve(&self) -> bool {
         return self.tail_recurcieve;
     }
-    pub fn set_param(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    pub fn set_param(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -330,7 +330,7 @@ impl RsFunction {
         }
         Ok(Expression::TailLoop())
     }
-    pub fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
+    pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!("E1007", exp.len()));
         }
@@ -346,7 +346,7 @@ impl RsFunction {
             return Err(create_error_value!("E1007", exp.len()));
         }
         // @@@ env.create();
-        let mut env = Environment::new_next(&self.closure_env);
+        let env = Environment::new_next(&self.closure_env);
         for (i, s) in self.param.iter().enumerate() {
             env.regist(s.to_string(), exp[i].clone());
         }
@@ -354,7 +354,7 @@ impl RsFunction {
         let mut ret = Expression::Nil();
         for e in &self.body {
             loop {
-                match eval(e, &mut env)? {
+                match eval(e, &env)? {
                     Expression::TailLoop() => {
                         if self.tail_recurcieve {
                             continue;
@@ -421,16 +421,16 @@ const FALSE: &'static str = "#f";
 //========================================================================
 pub fn do_interactive() {
     let mut stream = BufReader::new(std::io::stdin());
-    let mut env = Environment::new();
+    let env = Environment::new();
 
-    match repl(&mut stream, &mut env, false) {
+    match repl(&mut stream, &env, false) {
         Err(e) => println!("{}", e),
         Ok(_) => {}
     }
 }
 pub fn repl(
     stream: &mut BufRead,
-    env: &mut Environment,
+    env: &Environment,
     batch: bool,
 ) -> Result<(), Box<std::error::Error>> {
     let mut buffer = String::new();
@@ -520,7 +520,7 @@ fn count_parenthesis(program: String) -> bool {
     }
     return left <= right;
 }
-pub fn do_core_logic(program: &String, env: &mut Environment) -> ResultExpression {
+pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
     let token = tokenize(program);
 
     let mut c: i32 = 1;
@@ -683,7 +683,7 @@ macro_rules! ret_clone_if_atom {
         }
     };
 }
-pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
+pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     ret_clone_if_atom!(sexp);
 
     if let Expression::Symbol(val) = sexp {

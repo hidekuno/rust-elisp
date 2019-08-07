@@ -50,7 +50,7 @@ macro_rules! get_default_surface {
             .clone();
     };
 }
-pub fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
+pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
 
@@ -95,7 +95,7 @@ pub fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     scroll.add(&text_view);
     scroll.set_size_request(DRAW_WIDTH, 160);
 
-    let env_ = RefCell::new(env.clone());
+    let env_ = env.clone();
     let canvas_weak = canvas.downgrade();
     let status_bar_weak = status_bar.downgrade();
     text_view.connect_key_press_event(move |w, key| {
@@ -103,7 +103,7 @@ pub fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
             && key.get_keyval() == EVAL_KEYCODE
         {
             execute_lisp(
-                &mut env_.borrow_mut(),
+                &env_,
                 &canvas_weak.upgrade().unwrap(),
                 w,
                 &status_bar_weak.upgrade().unwrap(),
@@ -119,12 +119,12 @@ pub fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
 
-    let env_ = RefCell::new(env.clone());
+    let env_ = env.clone();
     let canvas_weak = canvas.downgrade();
     let status_bar_weak = status_bar.downgrade();
     eval.connect_activate(move |_| {
         execute_lisp(
-            &mut env_.borrow_mut(),
+            &env_,
             &canvas_weak.upgrade().unwrap(),
             &text_view,
             &status_bar_weak.upgrade().unwrap(),
@@ -167,7 +167,7 @@ pub fn scheme_gtk(env: &mut Environment, image_table: &ImageTable) {
     window.show_all();
 }
 fn execute_lisp(
-    env: &mut Environment,
+    env: &Environment,
     canvas: &gtk::DrawingArea,
     text_view: &gtk::TextView,
     status_bar: &gtk::Statusbar,
@@ -209,7 +209,7 @@ macro_rules! force_event_loop {
         }
     };
 }
-fn build_lisp_function(env: &mut Environment, image_table: &ImageTable) {
+fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
@@ -358,7 +358,7 @@ fn build_lisp_function(env: &mut Environment, image_table: &ImageTable) {
         Ok(Expression::Nil())
     });
 }
-fn build_demo_function(env: &mut Environment, image_table: &ImageTable) {
+fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     macro_rules! make_demo_closure {
         ($drawable: ty, $func: expr, $env: expr, $image_table: expr) => {
             let surface = get_default_surface!($image_table);
