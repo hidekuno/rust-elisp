@@ -395,7 +395,9 @@ fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     make_demo_closure!(Tree, "tree", env, image_table);
     make_demo_closure!(Sierpinski, "sierpinski", env, image_table);
 }
-pub fn init_image_table(image_table: &ImageTable) {
+pub fn create_image_table() -> ImageTable {
+    let mut image_table = HashMap::new();
+
     let surface = ImageSurface::create(Format::ARgb32, DRAW_WIDTH, DRAW_HEIGHT)
         .expect("Can't create surface");
 
@@ -415,7 +417,7 @@ pub fn init_image_table(image_table: &ImageTable) {
     cr.set_line_width(0.01);
     cr.stroke();
 
-    image_table
-        .borrow_mut()
-        .insert(DEFALUT_CANVAS.to_string(), Rc::new(surface));
+    image_table.insert(DEFALUT_CANVAS.to_string(), Rc::new(surface));
+
+    Rc::new(RefCell::new(image_table))
 }
