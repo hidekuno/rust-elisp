@@ -11,9 +11,10 @@ extern crate gtk;
 
 extern crate elisp;
 
-use crate::koch::Koch;
-use crate::sierpinski::Sierpinski;
-use crate::tree::Tree;
+use super::fractal::koch::Koch;
+use super::fractal::sierpinski::Sierpinski;
+use super::fractal::tree::Tree;
+
 use elisp::create_error;
 use elisp::create_error_value;
 use elisp::lisp;
