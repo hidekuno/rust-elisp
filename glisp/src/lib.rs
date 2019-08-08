@@ -13,16 +13,12 @@ pub mod tree;
 mod tests {
     use super::*;
     extern crate elisp;
-    use draw::init_image_table;
-    use draw::scheme_gtk;
+    use draw::{create_image_table, scheme_gtk};
     use elisp::lisp;
     use elisp::lisp::Environment;
 
-    use std::cell::RefCell;
-    use std::collections::HashMap;
     use std::fs::File;
     use std::io::Write;
-    use std::rc::Rc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     macro_rules! assert_str {
@@ -48,8 +44,7 @@ mod tests {
                 .as_secs()
         );
         let env = Environment::new();
-        let image_table = Rc::new(RefCell::new(HashMap::new()));
-        init_image_table(&image_table);
+        let image_table = create_image_table();
         scheme_gtk(&env, &image_table);
 
         // draw-clear check
