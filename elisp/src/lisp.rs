@@ -714,6 +714,13 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
         if v.len() == 0 {
             return Ok(sexp.clone());
         }
+        if let Expression::Symbol(s) = &v[0] {
+            if let Some(f) = env.get_builtin_func(s.as_str()) {
+                return f(&v[..], env);
+            } else if let Some(f) = env.get_builtin_ext_func(s.as_str()) {
+                return f(&v[..], env);
+            }
+        }
         if let Expression::TailRecursion(f) = &v[0] {
             return f.set_param(&v[..], env);
         }
