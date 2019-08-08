@@ -5,9 +5,7 @@
    hidekuno@gmail.com
 */
 pub mod draw;
-pub mod koch;
-pub mod sierpinski;
-pub mod tree;
+pub mod fractal;
 
 #[cfg(test)]
 mod tests {
