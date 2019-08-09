@@ -715,21 +715,17 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
         if v.len() == 0 {
             return Ok(sexp.clone());
         }
-        if let Expression::BuildInFunction(_, f) = &v[0] {
-            return f(&v[..], env);
-        }
-        if let Expression::BuildInFunctionExt(f) = &v[0] {
-            return f(&v[..], env);
-        }
-        if let Expression::TailRecursion(f) = &v[0] {
-            return f.set_param(&v[..], env);
-        }
-        return match eval(&v[0], env)? {
-            Expression::Function(f) => f.execute(&v[..], env),
+        return match &v[0] {
             Expression::BuildInFunction(_, f) => f(&v[..], env),
             Expression::BuildInFunctionExt(f) => f(&v[..], env),
-            Expression::CPS(f) => f.execute(&v[..], env),
-            _ => Err(create_error!("E1006")),
+            Expression::TailRecursion(f) => f.set_param(&v[..], env),
+            _ => match eval(&v[0], env)? {
+                Expression::Function(f) => f.execute(&v[..], env),
+                Expression::BuildInFunction(_, f) => f(&v[..], env),
+                Expression::BuildInFunctionExt(f) => f(&v[..], env),
+                Expression::CPS(f) => f.execute(&v[..], env),
+                _ => Err(create_error!("E1006")),
+            },
         };
     } else if let Expression::BuildInFunction(_, _) = sexp {
         Ok(sexp.clone())

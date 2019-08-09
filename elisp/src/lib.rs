@@ -63,6 +63,7 @@ mod tests {
         assert_str!(do_lisp("#\\tab"), "#\\tab");
         assert_str!(do_lisp("#\\newline"), "#\\newline");
         assert_str!(do_lisp("#\\return"), "#\\return");
+        assert_str!(do_lisp("+"), "BuildIn Function");
     }
     #[test]
     fn atom_utf8() {
