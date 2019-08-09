@@ -63,6 +63,7 @@ mod tests {
         assert_str!(do_lisp("#\\tab"), "#\\tab");
         assert_str!(do_lisp("#\\newline"), "#\\newline");
         assert_str!(do_lisp("#\\return"), "#\\return");
+        assert_str!(do_lisp("+"), "BuildIn Function");
     }
     #[test]
     fn atom_utf8() {
@@ -405,11 +406,29 @@ mod tests {
             do_lisp("(let loop ((i 0)) (if (<= 10 i) i (+ 10 (loop (+ i 1)))))"),
             "110"
         );
+    }
+    #[test]
+    fn tail_recurcieve_1() {
         // stack overflow check
         assert_str!(
             do_lisp("(let loop ((i 0)) (if (<= 10000 i) i (loop (+ i 1))))"),
             "10000"
         );
+    }
+    #[test]
+    fn tail_recurcieve_2() {
+        // stack overflow check
+        assert_str!(
+            do_lisp("(let loop ((i 0)) (cond ((<= 10000 i) i) (else (loop (+ i 1)))))"),
+            "10000"
+        );
+    }
+    #[test]
+    fn tail_recurcieve_3() {
+        // stack overflow check
+        let env = lisp::Environment::new();
+        do_lisp_env("(define (hoge i) (if (<= 10000 i) i (hoge (+ i 1))))", &env);
+        assert_str!(do_lisp_env("(hoge 0)", &env), "10000");
     }
     #[test]
     fn set_f() {
