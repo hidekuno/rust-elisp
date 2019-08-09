@@ -129,7 +129,7 @@ pub enum Expression {
     Symbol(String),
     String(String),
     Function(FunctionRc),
-    BuildInFunction(Operation),
+    BuildInFunction(String, Operation),
     BuildInFunctionExt(ExtOperationRc),
     TailLoop(),
     Nil(),
@@ -197,7 +197,7 @@ impl ToString for Expression {
                 String::from(format!("({} . {})", car.to_string(), cdr.to_string()))
             }
             Expression::Function(_) => String::from("Function"),
-            Expression::BuildInFunction(_) => String::from("BuildIn Function"),
+            Expression::BuildInFunction(_, _) => String::from("BuildIn Function"),
             Expression::BuildInFunctionExt(_) => String::from("BuildIn Function Ext"),
             Expression::Nil() => String::from("nil"),
             Expression::TailLoop() => String::from("tail loop"),
@@ -239,7 +239,10 @@ impl RsCPS {
         if exp.len() != 2 {
             return Err(create_error_value!("E1007", exp.len()));
         }
-        env.regist(self.name.clone(), Expression::BuildInFunction(identity));
+        env.regist(
+            self.name.clone(),
+            Expression::BuildInFunction(String::from("identity"), identity),
+        );
         let mut vec = Vec::new();
         vec.push(Expression::Nil());
         vec.push(exp[1].clone());
@@ -377,7 +380,7 @@ impl RsFunction {
                 if 0 == l.len() {
                     continue;
                 }
-                if let Expression::Symbol(s) = &l[0] {
+                if let Expression::BuildInFunction(s, _) = &l[0] {
                     match s.as_str() {
                         "if" | "let" | "cond" | "else" => {
                             if let Expression::List(ref mut v) = body[0] {
@@ -386,6 +389,8 @@ impl RsFunction {
                         }
                         _ => {}
                     }
+                }
+                if let Expression::Symbol(s) = &l[0] {
                     if *s == self.name {
                         if (exp.len() - 1) == i {
                             if let Expression::List(ref mut v) = body[i + 1] {
@@ -473,7 +478,7 @@ pub fn repl(
             let mut c: i32 = 1;
 
             loop {
-                let exp = match parse(&token, &mut c) {
+                let exp = match parse(&token, &mut c, env) {
                     Ok(v) => v,
                     Err(e) => {
                         print_error!(e);
@@ -524,7 +529,7 @@ pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
     let token = tokenize(program);
 
     let mut c: i32 = 1;
-    let exp = parse(&token, &mut c)?;
+    let exp = parse(&token, &mut c, env)?;
     return eval(&exp, env);
 }
 fn tokenize(program: &String) -> Vec<String> {
@@ -582,7 +587,7 @@ fn tokenize(program: &String) -> Vec<String> {
     }
     return token;
 }
-fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
+fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.len() == 0 {
         return Err(create_error!("E0001"));
     }
@@ -601,7 +606,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
                 break;
             }
             let mut c: i32 = 1;
-            let o = parse(&tokens[*count as usize..].to_vec(), &mut c)?;
+            let o = parse(&tokens[*count as usize..].to_vec(), &mut c, env)?;
             list.push(o);
 
             *count += c;
@@ -618,10 +623,10 @@ fn parse(tokens: &Vec<String>, count: &mut i32) -> ResultExpression {
         {
             return Err(create_error!("E0004"));
         }
-        Ok(atom(&token))
+        Ok(atom(&token, env))
     }
 }
-fn atom(token: &String) -> Expression {
+fn atom(token: &String, env: &Environment) -> Expression {
     if let Ok(n) = token.parse::<i64>() {
         return Expression::Integer(n);
     }
@@ -663,6 +668,10 @@ fn atom(token: &String) -> Expression {
     }
     if v.len() == 2 {
         Expression::Rational(Rat::new(v[0], v[1]))
+    } else if let Some(f) = env.get_builtin_func(token.as_str()) {
+        Expression::BuildInFunction(token.clone(), f)
+    } else if let Some(f) = env.get_builtin_ext_func(token.as_str()) {
+        Expression::BuildInFunctionExt(f)
     } else {
         Expression::Symbol(token.to_string())
     }
@@ -694,43 +703,38 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                     Expression::Function(_) => Ok(v),
                     Expression::TailRecursion(_) => Ok(v),
                     Expression::List(_) => Ok(v),
-                    Expression::BuildInFunction(_) => Ok(v),
+                    Expression::BuildInFunction(_, _) => Ok(v),
                     Expression::BuildInFunctionExt(_) => Ok(v),
                     Expression::CPS(_) => Ok(v),
                     _ => Err(create_error!("E9999")),
                 };
             }
-            None => {
-                if let Some(f) = env.get_builtin_func(val.as_str()) {
-                    Ok(Expression::BuildInFunction(f))
-                } else if let Some(f) = env.get_builtin_ext_func(val.as_str()) {
-                    Ok(Expression::BuildInFunctionExt(f))
-                } else {
-                    Err(create_error_value!("E1008", val))
-                }
-            }
+            None => Err(create_error_value!("E1008", val)),
         }
     } else if let Expression::List(v) = sexp {
         if v.len() == 0 {
             return Ok(sexp.clone());
         }
-        if let Expression::Symbol(s) = &v[0] {
-            if let Some(f) = env.get_builtin_func(s.as_str()) {
-                return f(&v[..], env);
-            } else if let Some(f) = env.get_builtin_ext_func(s.as_str()) {
-                return f(&v[..], env);
-            }
+        if let Expression::BuildInFunction(_, f) = &v[0] {
+            return f(&v[..], env);
+        }
+        if let Expression::BuildInFunctionExt(f) = &v[0] {
+            return f(&v[..], env);
         }
         if let Expression::TailRecursion(f) = &v[0] {
             return f.set_param(&v[..], env);
         }
         return match eval(&v[0], env)? {
             Expression::Function(f) => f.execute(&v[..], env),
-            Expression::BuildInFunction(f) => f(&v[..], env),
+            Expression::BuildInFunction(_, f) => f(&v[..], env),
             Expression::BuildInFunctionExt(f) => f(&v[..], env),
             Expression::CPS(f) => f.execute(&v[..], env),
             _ => Err(create_error!("E1006")),
         };
+    } else if let Expression::BuildInFunction(_, _) = sexp {
+        Ok(sexp.clone())
+    } else if let Expression::BuildInFunctionExt(_) = sexp {
+        Ok(sexp.clone())
     } else {
         Err(create_error!("E1009"))
     }
