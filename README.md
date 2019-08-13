@@ -11,8 +11,8 @@ RustによるLisp(subset版)の実装
 
 - SICPの図形言語プログラムが動作するところまで確認した。
 
-![image](https://user-images.githubusercontent.com/22115777/57493176-d8702a80-72fe-11e9-86d2-bc3e563e4c40.png)
-![image](https://user-images.githubusercontent.com/22115777/57909858-dc7fe780-78be-11e9-9509-3ea7cac4cba9.png)
+<img src="https://user-images.githubusercontent.com/22115777/57493176-d8702a80-72fe-11e9-86d2-bc3e563e4c40.png" width=50%>
+<img src="https://user-images.githubusercontent.com/22115777/57909858-dc7fe780-78be-11e9-9509-3ea7cac4cba9.png" width=50%>
 
 ## 開発環境
 | Item   | Ver. |備考|
