@@ -32,9 +32,12 @@ use std::rc::Rc;
 
 const DRAW_WIDTH: i32 = 720;
 const DRAW_HEIGHT: i32 = 560;
-const EVAL_KEYCODE: u32 = 101;
+
 const EVAL_RESULT_ID: &str = "result";
 const DEFALUT_CANVAS: &str = "canvas";
+
+const EVAL_KEYCODE: u32 = 101;
+const CLEAR_KEYCODE: u32 = 108;
 
 #[cfg(feature = "animation")]
 const MOTION_DELAY: i32 = 70;
@@ -99,16 +102,17 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let env_ = env.clone();
     let canvas_weak = canvas.downgrade();
     let status_bar_weak = status_bar.downgrade();
+    let surface = get_default_surface!(image_table);
     text_view.connect_key_press_event(move |w, key| {
-        if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK)
-            && key.get_keyval() == EVAL_KEYCODE
-        {
-            execute_lisp(
-                &env_,
-                &canvas_weak.upgrade().unwrap(),
-                w,
-                &status_bar_weak.upgrade().unwrap(),
-            );
+        if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
+            let canvas = canvas_weak.upgrade().unwrap();
+            match key.get_keyval() {
+                EVAL_KEYCODE => {
+                    execute_lisp(&env_, &canvas, w, &status_bar_weak.upgrade().unwrap())
+                }
+                CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
+                _ => {}
+            }
         }
         Inhibit(false)
     });
@@ -147,6 +151,19 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
 
     file.set_submenu(Some(&menu));
     menu_bar.append(&file);
+
+    let edit = gtk::MenuItem::new_with_mnemonic("_Edit");
+    let menu = gtk::Menu::new();
+
+    let clear = gtk::MenuItem::new_with_mnemonic("_Clear");
+    let surface = get_default_surface!(image_table);
+    let canvas_weak = canvas.downgrade();
+    clear.connect_activate(move |_| {
+        clear_canvas(&Context::new(&*surface), &canvas_weak.upgrade().unwrap());
+    });
+    menu.append(&clear);
+    edit.set_submenu(Some(&menu));
+    menu_bar.append(&edit);
 
     //--------------------------------------------------------
     // Application Setup
@@ -201,7 +218,6 @@ fn execute_lisp(
 
     canvas.queue_draw();
 }
-
 #[allow(unused_macros)]
 macro_rules! force_event_loop {
     ($e: expr) => {
@@ -209,6 +225,22 @@ macro_rules! force_event_loop {
             gtk::main_iteration_do($e);
         }
     };
+}
+fn clear_canvas(cr: &Context, canvas: &gtk::DrawingArea) {
+    draw_clear(cr);
+    canvas.queue_draw();
+}
+fn draw_clear(cr: &Context) {
+    cr.transform(Matrix {
+        xx: 1.0,
+        yx: 0.0,
+        xy: 0.0,
+        yy: 1.0,
+        x0: 0.0,
+        y0: 0.0,
+    });
+    cr.set_source_rgb(0.9, 0.9, 0.9);
+    cr.paint();
 }
 fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
@@ -219,18 +251,7 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         if exp.len() != 1 {
             return Err(create_error!("E1007"));
         }
-        let cr = Context::new(&*surface);
-        cr.transform(Matrix {
-            xx: 1.0,
-            yx: 0.0,
-            xy: 0.0,
-            yy: 1.0,
-            x0: 0.0,
-            y0: 0.0,
-        });
-        cr.set_source_rgb(0.9, 0.9, 0.9);
-        cr.paint();
-
+        draw_clear(&Context::new(&*surface));
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -392,9 +413,9 @@ fn build_demo_function(env: &Environment, image_table: &ImageTable) {
             });
         };
     }
-    make_demo_closure!(Koch, "koch", env, image_table);
-    make_demo_closure!(Tree, "tree", env, image_table);
-    make_demo_closure!(Sierpinski, "sierpinski", env, image_table);
+    make_demo_closure!(Koch, "draw-koch", env, image_table);
+    make_demo_closure!(Tree, "draw-tree", env, image_table);
+    make_demo_closure!(Sierpinski, "draw-sierpinski", env, image_table);
 }
 pub fn create_image_table() -> ImageTable {
     let mut image_table = HashMap::new();
