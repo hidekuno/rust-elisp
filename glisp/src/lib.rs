@@ -124,5 +124,15 @@ mod tests {
         assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &env), "E1005");
 
         std::fs::remove_file(png).unwrap();
+
+        assert_str!(do_lisp_env("(draw-koch)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-koch 10 20)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-koch 10.5)", &env), "E1002");
+        assert_str!(do_lisp_env("(draw-tree)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-tree 10 20)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-tree 10.5)", &env), "E1002");
+        assert_str!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-sierpinski 10 20)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-sierpinski 10.5)", &env), "E1002");
     }
 }
