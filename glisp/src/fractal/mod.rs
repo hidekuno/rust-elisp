@@ -4,6 +4,7 @@
 
    hidekuno@gmail.com
 */
+pub mod dragon;
 pub mod koch;
 pub mod sierpinski;
 pub mod tree;
