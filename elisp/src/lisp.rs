@@ -193,18 +193,16 @@ impl ToString for Expression {
             Expression::Symbol(v) => v.to_string(),
             Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => Expression::list_string(&v[..]),
-            Expression::Pair(car, cdr) => {
-                String::from(format!("({} . {})", car.to_string(), cdr.to_string()))
-            }
-            Expression::Function(_) => String::from("Function"),
-            Expression::BuildInFunction(_, _) => String::from("BuildIn Function"),
-            Expression::BuildInFunctionExt(_) => String::from("BuildIn Function Ext"),
-            Expression::Nil() => String::from("nil"),
-            Expression::TailLoop() => String::from("tail loop"),
-            Expression::TailRecursion(_) => String::from("Tail Recursion"),
-            Expression::Promise(_, _) => String::from("Promise"),
+            Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
+            Expression::Function(_) => "Function".into(),
+            Expression::BuildInFunction(_, _) => "BuildIn Function".into(),
+            Expression::BuildInFunctionExt(_) => "BuildIn Function Ext".into(),
+            Expression::Nil() => "nil".into(),
+            Expression::TailLoop() => "tail loop".into(),
+            Expression::TailRecursion(_) => "Tail Recursion".into(),
+            Expression::Promise(_, _) => "Promise".into(),
             Expression::Rational(v) => v.to_string(),
-            Expression::CPS(_) => String::from("CPS"),
+            Expression::CPS(_) => "CPS".into(),
         };
     }
 }
@@ -587,7 +585,7 @@ fn tokenize(program: &String) -> Vec<String> {
             } else {
                 symbol_name.push(c);
                 if s.len() - c.len_utf8() == i {
-                    token.push(String::from(symbol_name.as_str()));
+                    token.push(symbol_name.to_string());
                 } else {
                     match vc[i + c.len_utf8()] as char {
                         '(' | ')' | ' ' => {
@@ -638,8 +636,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpr
         Err(create_error!("E0003"))
     } else {
         // string check
-        if (token == "\"") || (token.as_str().starts_with("\"") && !token.as_str().ends_with("\""))
-        {
+        if (token == "\"") || (token.starts_with("\"") && !token.ends_with("\"")) {
             return Err(create_error!("E0004"));
         }
         Ok(atom(&token, env))
@@ -652,31 +649,30 @@ fn atom(token: &String, env: &Environment) -> Expression {
     if let Ok(n) = token.parse::<f64>() {
         return Expression::Float(n);
     }
-    if token.as_str() == TRUE {
+    if token == TRUE {
         return Expression::Boolean(true);
     }
-    if token.as_str() == FALSE {
+    if token == FALSE {
         return Expression::Boolean(false);
     }
-    if token.as_str() == SPACE.1 {
+    if token == SPACE.1 {
         return Expression::Char(char::from(SPACE.0));
     }
-    if token.as_str() == TAB.1 {
+    if token == TAB.1 {
         return Expression::Char(char::from(TAB.0));
     }
-    if token.as_str() == NEWLINE.1 {
+    if token == NEWLINE.1 {
         return Expression::Char(char::from(NEWLINE.0));
     }
-    if token.as_str() == CARRIAGERETRUN.1 {
+    if token == CARRIAGERETRUN.1 {
         return Expression::Char(char::from(CARRIAGERETRUN.0));
     }
-    if (token.len() == 3) && (token.as_str().starts_with("#\\")) {
+    if (token.len() == 3) && (token.starts_with("#\\")) {
         let c = token.chars().collect::<Vec<char>>();
         return Expression::Char(c[2]);
     }
-    if (token.len() >= 2) && (token.as_str().starts_with("\"")) && (token.as_str().ends_with("\""))
-    {
-        let s = token.as_str()[1..token.len() - 1].to_string();
+    if (token.len() >= 2) && (token.starts_with("\"")) && (token.ends_with("\"")) {
+        let s = token[1..token.len() - 1].to_string();
         return Expression::String(s);
     }
     let mut v = Vec::new();

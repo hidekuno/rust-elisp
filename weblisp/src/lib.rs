@@ -94,7 +94,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -116,7 +116,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -135,7 +135,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -157,7 +157,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -179,7 +179,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -196,7 +196,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -215,7 +215,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -234,7 +234,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -253,7 +253,7 @@ mod tests {
         assert_str!("HTTP/1.1 404 Not Found", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -272,7 +272,7 @@ mod tests {
         assert_str!("HTTP/1.1 405 Method Not Allowed", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -291,7 +291,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -310,7 +310,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -329,7 +329,7 @@ mod tests {
         assert_str!("HTTP/1.1 200 OK", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -345,7 +345,7 @@ mod tests {
         assert_str!("HTTP/1.1 404 Not Found", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
@@ -361,7 +361,7 @@ mod tests {
         assert_str!("HTTP/1.1 500 Internal Server Error", iter.next());
 
         if let Some(e) = iter.next() {
-            assert_str!("Date: ", Some(&String::from(&e[0..6])))
+            assert_str!("Date: ", Some(&e[0..6].into()))
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());

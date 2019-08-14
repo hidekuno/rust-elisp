@@ -27,9 +27,9 @@ mod tests {
     }
 
     fn do_lisp_env(program: &str, env: &Environment) -> String {
-        match lisp::do_core_logic(&String::from(program), env) {
+        match lisp::do_core_logic(&program.into(), env) {
             Ok(v) => v.to_string(),
-            Err(e) => String::from(e.get_code()),
+            Err(e) => e.get_code(),
         }
     }
     #[test]
