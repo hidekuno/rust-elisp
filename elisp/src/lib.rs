@@ -24,13 +24,9 @@ fn do_lisp(program: &str) -> String {
 }
 #[cfg(test)]
 fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
-    match lisp::do_core_logic(&String::from(program), env) {
-        Ok(v) => {
-            return v.to_string();
-        }
-        Err(e) => {
-            return String::from(e.get_code());
-        }
+    match lisp::do_core_logic(&program.into(), env) {
+        Ok(v) => v.to_string(),
+        Err(e) => e.get_code(),
     }
 }
 
@@ -770,7 +766,7 @@ mod tests {
 
         let env = lisp::Environment::new();
         let f = test_file.as_path().to_str().expect("die");
-        do_lisp_env(format!("(load-file \"{}\")", f.to_string()).as_str(), &env);
+        do_lisp_env(format!("(load-file \"{}\")", f).as_str(), &env);
         assert_str!(do_lisp_env("foo", &env), "100");
         assert_str!(do_lisp_env("hoge", &env), "200");
         assert_str!(do_lisp_env("fuga", &env), "300");
@@ -812,6 +808,7 @@ mod tests {
             "(define (fact-iter n m)(if (= n 1)m(fact-iter (- n 1)(* n m))))",
             "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
             "(define (lcm n m) (/(* n m)(gcm n m)))",
+            "(define hanoi (lambda (from to work n) (if (>= 0 n) (list) (append (hanoi from work to (- n 1)) (list (list (cons from to) n)) (hanoi work to from (- n 1))))))",
             "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
             "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
             "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
@@ -839,6 +836,10 @@ mod tests {
         assert_str!(do_lisp_env("(fact-iter 4 1)", &env), "24");
         assert_str!(do_lisp_env("(lcm 36 27)", &env), "108");
         assert_str!(do_lisp_env("(bad-gcm 36 27)", &env), "9");
+        assert_str!(
+            do_lisp_env("(hanoi #\\a #\\b #\\c 3)", &env),
+            "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
+        );
         assert_str!(
             do_lisp_env("(prime (iota 30 2))", &env),
             "(2 3 5 7 11 13 17 19 23 29 31)"
