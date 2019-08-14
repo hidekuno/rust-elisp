@@ -11,6 +11,7 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
+use std::string::ToString;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -29,13 +30,6 @@ impl Rat {
             denom: d / l,
         }
     }
-    pub fn to_string(&self) -> String {
-        if self.denom == 1 {
-            self.numer.to_string()
-        } else {
-            format!("{}/{}", self.numer, self.denom)
-        }
-    }
     pub fn div_float(&self) -> f64 {
         self.numer as f64 / self.denom as f64
     }
@@ -44,6 +38,15 @@ fn gcm(n: i64, m: i64) -> i64 {
     match n % m {
         0 => m.wrapping_abs(),
         l => gcm(m, l),
+    }
+}
+impl ToString for Rat {
+    fn to_string(&self) -> String {
+        if self.denom == 1 {
+            self.numer.to_string()
+        } else {
+            format!("{}/{}", self.numer, self.denom)
+        }
     }
 }
 impl Add for Rat {

@@ -379,7 +379,7 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
 
             if let Some(e) = iter.next() {
                 if let Expression::Symbol(s) = e {
-                    if s.as_str() != "else" {
+                    if s != "else" {
                         eval(&e, env)?;
                     }
                 } else {
@@ -448,7 +448,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                 }
                 match &l[0] {
                     Expression::Symbol(s) => {
-                        if s.as_str() != "else" {
+                        if s != "else" {
                             return Err(create_error!("E1017"));
                         }
                         if 1 < l.len() {
