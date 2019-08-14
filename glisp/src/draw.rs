@@ -11,6 +11,7 @@ extern crate gtk;
 
 extern crate elisp;
 
+use super::fractal::dragon::Dragon;
 use super::fractal::koch::Koch;
 use super::fractal::sierpinski::Sierpinski;
 use super::fractal::tree::Tree;
@@ -416,6 +417,7 @@ fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     make_demo_closure!(Koch, "draw-koch", env, image_table);
     make_demo_closure!(Tree, "draw-tree", env, image_table);
     make_demo_closure!(Sierpinski, "draw-sierpinski", env, image_table);
+    make_demo_closure!(Dragon, "draw-dragon", env, image_table);
 }
 pub fn create_image_table() -> ImageTable {
     let mut image_table = HashMap::new();
