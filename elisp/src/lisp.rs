@@ -432,7 +432,7 @@ const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
-const FORCE_STOP: &str = "(force-stop)";
+const FORCE_STOP: &str = "force-stop";
 
 struct ControlChar(u8, &'static str);
 const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -506,7 +506,12 @@ pub fn repl(
                 };
                 match eval(&exp, env) {
                     Ok(n) => println!("{}", n.to_string()),
-                    Err(e) => print_error!(e),
+                    Err(e) => {
+                        if "E9000" == e.get_code() {
+                            env.set_force_stop(false);
+                        }
+                        print_error!(e);
+                    }
                 };
                 debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
                 if c == token.len() as i32 {
@@ -545,14 +550,16 @@ fn count_parenthesis(program: String) -> bool {
     return left <= right;
 }
 pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
-    if program == FORCE_STOP {
-        env.set_force_stop();
-        return Ok(Expression::Nil());
-    }
     let token = tokenize(program);
-
     let mut c: i32 = 1;
+
     let exp = parse(&token, &mut c, env)?;
+    if let Expression::Symbol(s) = &exp {
+        if s == FORCE_STOP {
+            env.set_force_stop(true);
+            return Ok(Expression::Nil());
+        }
+    }
     return eval(&exp, env);
 }
 fn tokenize(program: &String) -> Vec<String> {
