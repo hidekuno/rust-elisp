@@ -53,6 +53,7 @@ lazy_static! {
         e.insert("E1016", "Not Program File");
         e.insert("E1017", "Not Case Gramar");
         e.insert("E1018", "Not Format Gramar");
+        e.insert("E9000", "Forced stop");
         e.insert("E9999", "System Panic");
         e
     };
@@ -431,6 +432,7 @@ const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
+const FORCE_STOP: &str = "force-stop";
 
 struct ControlChar(u8, &'static str);
 const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -504,7 +506,12 @@ pub fn repl(
                 };
                 match eval(&exp, env) {
                     Ok(n) => println!("{}", n.to_string()),
-                    Err(e) => print_error!(e),
+                    Err(e) => {
+                        if "E9000" == e.get_code() {
+                            env.set_force_stop(false);
+                        }
+                        print_error!(e);
+                    }
                 };
                 debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
                 if c == token.len() as i32 {
@@ -544,9 +551,15 @@ fn count_parenthesis(program: String) -> bool {
 }
 pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
     let token = tokenize(program);
-
     let mut c: i32 = 1;
+
     let exp = parse(&token, &mut c, env)?;
+    if let Expression::Symbol(s) = &exp {
+        if s == FORCE_STOP {
+            env.set_force_stop(true);
+            return Ok(Expression::Nil());
+        }
+    }
     return eval(&exp, env);
 }
 fn tokenize(program: &String) -> Vec<String> {
@@ -708,8 +721,10 @@ macro_rules! ret_clone_if_atom {
     };
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
+    if env.get_force_stop() {
+        return Err(create_error!("E9000"));
+    }
     ret_clone_if_atom!(sexp);
-
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
             Some(v) => {

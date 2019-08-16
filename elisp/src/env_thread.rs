@@ -80,6 +80,12 @@ impl Environment {
     pub fn is_tail_recursion(&self) -> bool {
         self.globals.lock().unwrap().tail_recursion
     }
+    pub fn set_force_stop(&self, b: bool) {
+        self.globals.lock().unwrap().force_stop = b;
+    }
+    pub fn get_force_stop(&self) -> bool {
+        self.globals.lock().unwrap().force_stop
+    }
 }
 impl BuildInTable for HashMap<&'static str, Operation> {
     fn regist(&mut self, symbol: &'static str, func: Operation) {
@@ -90,6 +96,7 @@ struct GlobalTbl {
     builtin_tbl: HashMap<&'static str, Operation>,
     builtin_tbl_ext: HashMap<&'static str, ExtOperationRc>,
     tail_recursion: bool,
+    force_stop: bool,
 }
 impl GlobalTbl {
     fn new() -> Self {
@@ -99,6 +106,7 @@ impl GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: HashMap::new(),
             tail_recursion: true,
+            force_stop: false,
         }
     }
 }
