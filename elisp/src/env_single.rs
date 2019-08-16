@@ -80,6 +80,12 @@ impl Environment {
     pub fn is_tail_recursion(&self) -> bool {
         self.globals.borrow_mut().tail_recursion
     }
+    pub fn set_force_stop(&self, b: bool) {
+        self.globals.borrow_mut().force_stop = b;
+    }
+    pub fn get_force_stop(&self) -> bool {
+        self.globals.borrow_mut().force_stop
+    }
 }
 impl BuildInTable for BTreeMap<&'static str, Operation> {
     fn regist(&mut self, symbol: &'static str, func: Operation) {
@@ -90,6 +96,7 @@ struct GlobalTbl {
     builtin_tbl: BTreeMap<&'static str, Operation>,
     builtin_tbl_ext: BTreeMap<&'static str, ExtOperationRc>,
     tail_recursion: bool,
+    force_stop: bool,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
@@ -99,6 +106,7 @@ impl GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: BTreeMap::new(),
             tail_recursion: true,
+            force_stop: false,
         }
     }
 }

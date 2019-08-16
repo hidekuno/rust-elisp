@@ -75,13 +75,13 @@ mod tests {
         if !path.ends_with("samples") {
             let root = Path::new("samples");
             if let Err(e) = env::set_current_dir(&root) {
-                eprintln!("test1 fault: {:?} {:?}", e, path);
+                eprintln!("test_case_00 fault: {:?} {:?}", e, path);
             }
         }
         thread::sleep(Duration::from_millis(10));
         thread::spawn(|| {
             if let Err(e) = run_web_service(TEST_COUNT) {
-                eprintln!("test2 fault: {:?}", e);
+                eprintln!("test_case_00 fault: {:?}", e);
             }
         });
     }
@@ -369,5 +369,42 @@ mod tests {
         iter.next();
         iter.next();
         assert_str!("Internal Server Error", iter.next());
+    }
+    #[test]
+    fn test_case_16() {
+        thread::sleep(Duration::from_millis(30));
+        thread::spawn(|| {
+            if let Err(e) = run_web_service(1024) {
+                eprintln!("test_case_16 fault: {:?}", e);
+            }
+        });
+    }
+    #[test]
+    fn test_case_17_stop() {
+        let t = thread::spawn(|| {
+            let s = vec!["GET /lisp?expr=%28let%20loop%20%28%28i%200%29%29%20%28if%20%28%3C%3D%20100000000%20i%29%20i%20%28loop%20%28%2B%20i%201%29%29%29%29 HTTP/1.1"];
+            test_skelton(&s);
+        });
+
+        let s = vec!["GET /lisp?expr=force-stop HTTP/1.1"];
+        test_skelton(&s);
+
+        if let Err(e) = t.join() {
+            eprintln!("test_case_17 fault: {:?}", e);
+        }
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        iter.next();
+        assert_str!("nil", iter.next());
     }
 }
