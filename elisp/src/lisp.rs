@@ -53,6 +53,7 @@ lazy_static! {
         e.insert("E1016", "Not Program File");
         e.insert("E1017", "Not Case Gramar");
         e.insert("E1018", "Not Format Gramar");
+        e.insert("E9000", "Forced stop");
         e.insert("E9999", "System Panic");
         e
     };
@@ -431,6 +432,7 @@ const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
+const FORCE_STOP: &str = "(force-stop)";
 
 struct ControlChar(u8, &'static str);
 const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -543,6 +545,10 @@ fn count_parenthesis(program: String) -> bool {
     return left <= right;
 }
 pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
+    if program == FORCE_STOP {
+        env.set_force_stop();
+        return Ok(Expression::Nil());
+    }
     let token = tokenize(program);
 
     let mut c: i32 = 1;
@@ -708,8 +714,10 @@ macro_rules! ret_clone_if_atom {
     };
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
+    if env.get_force_stop() {
+        return Err(create_error!("E9000"));
+    }
     ret_clone_if_atom!(sexp);
-
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
             Some(v) => {
