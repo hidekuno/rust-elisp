@@ -122,9 +122,8 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let menu_bar = gtk::MenuBar::new();
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
-    let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
-
-    {
+    menu.append(&{
+        let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
         let env = env.clone();
         let canvas = canvas.downgrade();
         let status_bar = status_bar.downgrade();
@@ -136,40 +135,36 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
                 &status_bar.upgrade().unwrap(),
             );
         });
-    }
-    menu.append(&eval);
-
-    let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
-    // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
-    {
-        let window = window.downgrade();
+        eval
+    });
+    menu.append(&{
+        let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
         quit.connect_activate(move |_| {
-            // https://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
-            if let Some(window) = window.upgrade() {
-                window.destroy();
-            }
             env.set_force_stop();
             gtk::main_quit();
         });
-    }
-    menu.append(&quit);
+        quit
+    });
 
     file.set_submenu(Some(&menu));
     menu_bar.append(&file);
 
     let edit = gtk::MenuItem::new_with_mnemonic("_Edit");
     let menu = gtk::Menu::new();
+    menu.append(&{
+        let clear = gtk::MenuItem::new_with_mnemonic("_Clear");
+        let surface = get_default_surface!(image_table);
 
-    let clear = gtk::MenuItem::new_with_mnemonic("_Clear");
-    let surface = get_default_surface!(image_table);
-    {
+        // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
         let canvas = canvas.downgrade();
         clear.connect_activate(move |_| {
-            clear_canvas(&Context::new(&*surface), &canvas.upgrade().unwrap());
+            // https://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
+            let canvas = canvas.upgrade().unwrap();
+            clear_canvas(&Context::new(&*surface), &canvas);
         });
-    }
-    menu.append(&clear);
+        clear
+    });
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
 
@@ -216,12 +211,7 @@ fn execute_lisp(
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
         Ok(r) => r.to_string(),
-        Err(e) => {
-            if e.get_code() == "E9000" {
-                return;
-            }
-            e.get_msg()
-        }
+        Err(e) => e.get_msg(),
     };
     println!("{}", result);
     status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
