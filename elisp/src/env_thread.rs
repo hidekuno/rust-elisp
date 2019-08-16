@@ -80,8 +80,8 @@ impl Environment {
     pub fn is_tail_recursion(&self) -> bool {
         self.globals.lock().unwrap().tail_recursion
     }
-    pub fn set_force_stop(&self) {
-        self.globals.lock().unwrap().force_stop = true;
+    pub fn set_force_stop(&self, b: bool) {
+        self.globals.lock().unwrap().force_stop = b;
     }
     pub fn get_force_stop(&self) -> bool {
         self.globals.lock().unwrap().force_stop

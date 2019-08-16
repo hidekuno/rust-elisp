@@ -141,7 +141,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
         quit.connect_activate(move |_| {
-            env.set_force_stop();
+            env.set_force_stop(true);
             gtk::main_quit();
         });
         quit
@@ -211,7 +211,12 @@ fn execute_lisp(
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
         Ok(r) => r.to_string(),
-        Err(e) => e.get_msg(),
+        Err(e) => {
+            if "E9000" == e.get_code() {
+                env.set_force_stop(false);
+            }
+            e.get_msg()
+        }
     };
     println!("{}", result);
     status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
