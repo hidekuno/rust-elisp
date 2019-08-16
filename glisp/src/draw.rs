@@ -99,24 +99,23 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
     scroll.add(&text_view);
     scroll.set_size_request(DRAW_WIDTH, 160);
-
-    let env_ = env.clone();
-    let canvas_weak = canvas.downgrade();
-    let status_bar_weak = status_bar.downgrade();
-    let surface = get_default_surface!(image_table);
-    text_view.connect_key_press_event(move |w, key| {
-        if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
-            let canvas = canvas_weak.upgrade().unwrap();
-            match key.get_keyval() {
-                EVAL_KEYCODE => {
-                    execute_lisp(&env_, &canvas, w, &status_bar_weak.upgrade().unwrap())
+    {
+        let env = env.clone();
+        let canvas = canvas.downgrade();
+        let status_bar = status_bar.downgrade();
+        let surface = get_default_surface!(image_table);
+        text_view.connect_key_press_event(move |w, key| {
+            if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
+                let canvas = canvas.upgrade().unwrap();
+                match key.get_keyval() {
+                    EVAL_KEYCODE => execute_lisp(&env, &canvas, w, &status_bar.upgrade().unwrap()),
+                    CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
+                    _ => {}
                 }
-                CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
-                _ => {}
             }
-        }
-        Inhibit(false)
-    });
+            Inhibit(false)
+        });
+    }
     //--------------------------------------------------------
     // GtkMenuBar
     //--------------------------------------------------------
@@ -125,31 +124,35 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
 
-    let env_ = env.clone();
-    let canvas_weak = canvas.downgrade();
-    let status_bar_weak = status_bar.downgrade();
-    eval.connect_activate(move |_| {
-        execute_lisp(
-            &env_,
-            &canvas_weak.upgrade().unwrap(),
-            &text_view,
-            &status_bar_weak.upgrade().unwrap(),
-        );
-    });
+    {
+        let env = env.clone();
+        let canvas = canvas.downgrade();
+        let status_bar = status_bar.downgrade();
+        eval.connect_activate(move |_| {
+            execute_lisp(
+                &env,
+                &canvas.upgrade().unwrap(),
+                &text_view,
+                &status_bar.upgrade().unwrap(),
+            );
+        });
+    }
     menu.append(&eval);
 
     let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
     // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
-    let window_weak = window.downgrade();
-    let env_ = env.clone();
-    quit.connect_activate(move |_| {
-        // https://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
-        if let Some(window) = window_weak.upgrade() {
-            window.destroy();
-        }
-        env_.set_force_stop();
-        gtk::main_quit();
-    });
+    {
+        let window = window.downgrade();
+        let env = env.clone();
+        quit.connect_activate(move |_| {
+            // https://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
+            if let Some(window) = window.upgrade() {
+                window.destroy();
+            }
+            env.set_force_stop();
+            gtk::main_quit();
+        });
+    }
     menu.append(&quit);
 
     file.set_submenu(Some(&menu));
@@ -160,10 +163,12 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
 
     let clear = gtk::MenuItem::new_with_mnemonic("_Clear");
     let surface = get_default_surface!(image_table);
-    let canvas_weak = canvas.downgrade();
-    clear.connect_activate(move |_| {
-        clear_canvas(&Context::new(&*surface), &canvas_weak.upgrade().unwrap());
-    });
+    {
+        let canvas = canvas.downgrade();
+        clear.connect_activate(move |_| {
+            clear_canvas(&Context::new(&*surface), &canvas.upgrade().unwrap());
+        });
+    }
     menu.append(&clear);
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
@@ -197,9 +202,9 @@ fn execute_lisp(
 
     #[cfg(feature = "animation")]
     let sid = {
-        let canvas_weak = canvas.downgrade();
+        let canvas = canvas.downgrade();
         gtk::timeout_add(MOTION_DELAY as u32, move || {
-            let canvas = canvas_weak.upgrade().unwrap();
+            let canvas = canvas.upgrade().unwrap();
             canvas.queue_draw();
             gtk::Continue(true)
         })
@@ -226,11 +231,11 @@ fn execute_lisp(
 
     canvas.queue_draw();
 }
-#[allow(unused_macros)]
+#[cfg(feature = "animation")]
 macro_rules! force_event_loop {
-    ($e: expr) => {
+    () => {
         while gtk::events_pending() {
-            gtk::main_iteration_do($e);
+            gtk::main_iteration_do(true);
         }
     };
 }
@@ -294,7 +299,7 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         cr.stroke();
 
         #[cfg(feature = "animation")]
-        force_event_loop!(true);
+        force_event_loop!();
 
         Ok(Expression::Nil())
     });
@@ -381,9 +386,8 @@ fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         cr.transform(matrix);
         cr.set_source_surface(&*img, 0.0, 0.0);
         cr.paint();
-
         #[cfg(feature = "animation")]
-        force_event_loop!(true);
+        force_event_loop!();
 
         Ok(Expression::Nil())
     });
@@ -413,7 +417,7 @@ fn build_demo_function(env: &Environment, image_table: &ImageTable) {
                         cr.line_to(x1, y1);
                         cr.stroke();
                         #[cfg(feature = "animation")]
-                        force_event_loop!(true);
+                        force_event_loop!();
                     }),
                 );
                 fractal.do_demo();
