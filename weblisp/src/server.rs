@@ -39,8 +39,12 @@ pub fn run_web_service(count: usize) -> Result<(), Box<Error>> {
                     eprintln!("take fault: {:?}", e);
                     break;
                 }
+                // listenner.set_nonblocking(true)
                 thread::sleep(Duration::from_secs(1));
             }
+        }
+        if env.get_force_stop() {
+            break;
         }
     }
     Ok(())

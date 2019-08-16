@@ -141,11 +141,13 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
     // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
     let window_weak = window.downgrade();
+    let env_ = env.clone();
     quit.connect_activate(move |_| {
         // https://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
         if let Some(window) = window_weak.upgrade() {
             window.destroy();
         }
+        env_.set_force_stop();
         gtk::main_quit();
     });
     menu.append(&quit);
@@ -194,13 +196,14 @@ fn execute_lisp(
     let text_buffer = text_view.get_buffer().expect("Couldn't get window");
 
     #[cfg(feature = "animation")]
-    let canvas_weak = canvas.downgrade();
-    #[cfg(feature = "animation")]
-    let sid = gtk::timeout_add(MOTION_DELAY as u32, move || {
-        let canvas = canvas_weak.upgrade().unwrap();
-        canvas.queue_draw();
-        gtk::Continue(true)
-    });
+    let sid = {
+        let canvas_weak = canvas.downgrade();
+        gtk::timeout_add(MOTION_DELAY as u32, move || {
+            let canvas = canvas_weak.upgrade().unwrap();
+            canvas.queue_draw();
+            gtk::Continue(true)
+        })
+    };
 
     let s = text_buffer.get_start_iter();
     let e = text_buffer.get_end_iter();
@@ -208,9 +211,13 @@ fn execute_lisp(
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
         Ok(r) => r.to_string(),
-        Err(e) => e.get_msg(),
+        Err(e) => {
+            if e.get_code() == "E9000" {
+                return;
+            }
+            e.get_msg()
+        }
     };
-
     println!("{}", result);
     status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
 
