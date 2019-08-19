@@ -134,5 +134,8 @@ mod tests {
         assert_str!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-sierpinski 10 20)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-sierpinski 10.5)", &env), "E1002");
+        assert_str!(do_lisp_env("(draw-dragon)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-dragon 10 20)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-dragon 10.5)", &env), "E1002");
     }
 }
