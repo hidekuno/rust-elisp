@@ -29,7 +29,6 @@ fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
         Err(e) => e.get_code(),
     }
 }
-
 #[cfg(test)]
 macro_rules! assert_str {
     ($a: expr,
@@ -37,7 +36,6 @@ macro_rules! assert_str {
         assert!($a == $b.to_string())
     };
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1015,6 +1013,25 @@ mod tests {
         do_lisp_env("(define b 100)", &env);
         assert_str!(do_lisp_env("(format a b)", &env), "\"100\"");
     }
+    #[test]
+    fn force_stop() {
+        let env = lisp::Environment::new();
+        assert!(env.is_force_stop() == false);
+        do_lisp_env("( force-stop )", &env);
+        assert!(env.is_force_stop() == true);
+        assert_str!(do_lisp_env("a", &env), "E9000");
+        env.set_force_stop(false);
+        assert_str!(do_lisp_env("100", &env), "100");
+    }
+    #[test]
+    fn set_tail_recursion() {
+        let env = lisp::Environment::new();
+        assert!(env.is_tail_recursion() == true);
+        do_lisp_env("(  tail-recursion-off )", &env);
+        assert!(env.is_tail_recursion() == false);
+        do_lisp_env("(  tail-recursion-on )", &env);
+        assert!(env.is_tail_recursion() == true);
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1467,5 +1484,14 @@ mod error_tests {
         assert_str!(do_lisp("(format 10 12)"), "E1015");
         assert_str!(do_lisp("(format \"~A\" #f)"), "E1002");
         assert_str!(do_lisp("(format \"~A\" 10)"), "E1018");
+    }
+    #[test]
+    fn force_stop() {
+        assert_str!(do_lisp("(force-stop 10)"), "E1008");
+    }
+    #[test]
+    fn set_tail_recursion() {
+        assert_str!(do_lisp("(tail-recursion-off 20)"), "E1008");
+        assert_str!(do_lisp("(tail-recursion-on 30)"), "E1008");
     }
 }

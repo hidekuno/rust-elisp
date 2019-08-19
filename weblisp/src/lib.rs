@@ -385,8 +385,7 @@ mod tests {
             let s = vec!["GET /lisp?expr=%28let%20loop%20%28%28i%200%29%29%20%28if%20%28%3C%3D%20100000000%20i%29%20i%20%28loop%20%28%2B%20i%201%29%29%29%29 HTTP/1.1"];
             test_skelton(&s);
         });
-
-        let s = vec!["GET /lisp?expr=force-stop HTTP/1.1"];
+        let s = vec!["GET /lisp?expr=%28force-stop%29 HTTP/1.1"];
         test_skelton(&s);
 
         if let Err(e) = t.join() {
