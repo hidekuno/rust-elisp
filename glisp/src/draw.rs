@@ -38,7 +38,8 @@ const EVAL_RESULT_ID: &str = "result";
 const DEFALUT_CANVAS: &str = "canvas";
 
 const EVAL_KEYCODE: u32 = 101;
-const CLEAR_KEYCODE: u32 = 108;
+const TEXT_CLEAR_KEYCODE: u32 = 107;
+const DRAW_CLEAR_KEYCODE: u32 = 108;
 
 #[cfg(feature = "animation")]
 const MOTION_DELAY: i32 = 70;
@@ -104,12 +105,15 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         let canvas = canvas.downgrade();
         let status_bar = status_bar.downgrade();
         let surface = get_default_surface!(image_table);
+        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+
         text_view.connect_key_press_event(move |w, key| {
             if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
                 let canvas = canvas.upgrade().unwrap();
                 match key.get_keyval() {
                     EVAL_KEYCODE => execute_lisp(&env, &canvas, w, &status_bar.upgrade().unwrap()),
-                    CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
+                    DRAW_CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
+                    TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
                     _ => {}
                 }
             }
