@@ -127,21 +127,6 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     menu.append(&{
-        let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
-        let env = env.clone();
-        let canvas = canvas.downgrade();
-        let status_bar = status_bar.downgrade();
-        eval.connect_activate(move |_| {
-            execute_lisp(
-                &env,
-                &canvas.upgrade().unwrap(),
-                &text_view,
-                &status_bar.upgrade().unwrap(),
-            );
-        });
-        eval
-    });
-    menu.append(&{
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
         quit.connect_activate(move |_| {
@@ -156,6 +141,21 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
 
     let edit = gtk::MenuItem::new_with_mnemonic("_Edit");
     let menu = gtk::Menu::new();
+    menu.append(&{
+        let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
+        let env = env.clone();
+        let canvas = canvas.downgrade();
+        let status_bar = status_bar.downgrade();
+        eval.connect_activate(move |_| {
+            execute_lisp(
+                &env,
+                &canvas.upgrade().unwrap(),
+                &text_view,
+                &status_bar.upgrade().unwrap(),
+            );
+        });
+        eval
+    });
     menu.append(&{
         let clear = gtk::MenuItem::new_with_mnemonic("_Clear");
         let surface = get_default_surface!(image_table);
