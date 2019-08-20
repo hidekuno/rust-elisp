@@ -16,6 +16,9 @@ use std::net::TcpListener;
 use std::thread;
 use std::time::Duration;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
+
 pub const MAX_TRANSACTION: usize = 1000;
 pub const BIND_ADDRESS: &'static str = "127.0.0.1:9000";
 const MAX_CONCURRENCY: usize = 4;
@@ -36,7 +39,7 @@ pub fn run_web_service(count: usize) -> Result<(), Box<Error>> {
             }
             Err(ref e) => {
                 if e.kind() != ErrorKind::WouldBlock {
-                    eprintln!("take fault: {:?}", e);
+                    error!("take fault: {:?}", e);
                     break;
                 }
                 // listenner.set_nonblocking(true)
