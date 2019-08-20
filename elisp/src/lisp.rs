@@ -647,57 +647,53 @@ fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpr
         if (token == "\"") || (token.starts_with("\"") && !token.ends_with("\"")) {
             return Err(create_error!("E0004"));
         }
-        Ok(atom(&token, env))
+        atom(&token, env)
     }
 }
-fn atom(token: &String, env: &Environment) -> Expression {
-    if let Ok(n) = token.parse::<i64>() {
-        return Expression::Integer(n);
-    }
-    if let Ok(n) = token.parse::<f64>() {
-        return Expression::Float(n);
-    }
-    if token == TRUE {
-        return Expression::Boolean(true);
-    }
-    if token == FALSE {
-        return Expression::Boolean(false);
-    }
-    if token == SPACE.1 {
-        return Expression::Char(char::from(SPACE.0));
-    }
-    if token == TAB.1 {
-        return Expression::Char(char::from(TAB.0));
-    }
-    if token == NEWLINE.1 {
-        return Expression::Char(char::from(NEWLINE.0));
-    }
-    if token == CARRIAGERETRUN.1 {
-        return Expression::Char(char::from(CARRIAGERETRUN.0));
-    }
-    if (token.len() == 3) && (token.starts_with("#\\")) {
+fn atom(token: &String, env: &Environment) -> ResultExpression {
+    let v = if let Ok(n) = token.parse::<i64>() {
+        Expression::Integer(n)
+    } else if let Ok(n) = token.parse::<f64>() {
+        Expression::Float(n)
+    } else if token == TRUE {
+        Expression::Boolean(true)
+    } else if token == FALSE {
+        Expression::Boolean(false)
+    } else if token == SPACE.1 {
+        Expression::Char(char::from(SPACE.0))
+    } else if token == TAB.1 {
+        Expression::Char(char::from(TAB.0))
+    } else if token == NEWLINE.1 {
+        Expression::Char(char::from(NEWLINE.0))
+    } else if token == CARRIAGERETRUN.1 {
+        Expression::Char(char::from(CARRIAGERETRUN.0))
+    } else if (token.len() == 3) && (token.starts_with("#\\")) {
         let c = token.chars().collect::<Vec<char>>();
-        return Expression::Char(c[2]);
-    }
-    if (token.len() >= 2) && (token.starts_with("\"")) && (token.ends_with("\"")) {
+        Expression::Char(c[2])
+    } else if (token.len() >= 2) && (token.starts_with("\"")) && (token.ends_with("\"")) {
         let s = token[1..token.len() - 1].to_string();
-        return Expression::String(s);
-    }
-    let mut v = Vec::new();
-    for e in token.split("/") {
-        if let Ok(n) = e.parse::<i64>() {
-            v.push(n);
-        }
-    }
-    if v.len() == 2 {
-        Expression::Rational(Rat::new(v[0], v[1]))
+        Expression::String(s)
     } else if let Some(f) = env.get_builtin_func(token.as_str()) {
         Expression::BuildInFunction(token.clone(), f)
     } else if let Some(f) = env.get_builtin_ext_func(token.as_str()) {
         Expression::BuildInFunctionExt(f)
     } else {
-        Expression::Symbol(token.to_string())
-    }
+        let mut v = Vec::new();
+        for e in token.split("/") {
+            if let Ok(n) = e.parse::<i64>() {
+                v.push(n);
+            }
+        }
+        if v.len() == 2 {
+            if v[1] == 0 {
+                return Err(create_error!("E1013"));
+            }
+            Expression::Rational(Rat::new(v[0], v[1]))
+        } else {
+            Expression::Symbol(token.to_string())
+        }
+    };
+    Ok(v)
 }
 macro_rules! ret_clone_if_atom {
     ($e: expr) => {

@@ -1049,6 +1049,7 @@ mod error_tests {
         assert_str!(do_lisp("\""), "E0004");
         assert_str!(do_lisp("\"a"), "E0004");
         assert_str!(do_lisp("a\""), "E0004");
+        assert_str!(do_lisp("3/0"), "E1013");
     }
     #[test]
     fn atom_utf8() {
