@@ -10,9 +10,11 @@ use server::run_web_service;
 use weblisp::server;
 
 use std::env;
+extern crate env_logger;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    env_logger::init();
 
     let t = if args.len() < 2 {
         server::MAX_TRANSACTION
