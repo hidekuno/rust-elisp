@@ -90,7 +90,7 @@ impl Worker {
                     break;
                 }
             }
-            info!("workder {} job; finish.", id);
+            debug!("workder {} job; finish.", id);
         });
         Worker {
             id,
