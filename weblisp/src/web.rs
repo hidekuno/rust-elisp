@@ -167,7 +167,7 @@ pub fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
         .set_read_timeout(Some(Duration::from_secs(READ_TIMEOUT)))
         .unwrap();
 
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; 2048];
 
     // read() is Not Good.(because it's not detected EOF)
     // I try read_to_end() and read_exact(), But it was NG
@@ -224,8 +224,10 @@ fn dispatch(
     return if r.get_resource() == "/" {
         static_contents("index.html")
     } else if r.get_resource().starts_with(LISP) {
+        if r.get_parameter().len() < LISP_PARAMNAME.len() {
+            return http_error!(RESPONSE_400);
+        }
         let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
-
         let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
             Ok(r) => r.to_string(),
             Err(e) => e.get_msg(),
