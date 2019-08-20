@@ -432,7 +432,7 @@ const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
-const FORCE_STOP: &str = "force-stop";
+const FORCE_STOP: &str = "(force-stop)";
 
 struct ControlChar(u8, &'static str);
 const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -442,6 +442,8 @@ const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
 
 const TRUE: &'static str = "#t";
 const FALSE: &'static str = "#f";
+
+const BACKSLASH: u8 = 0x5c;
 //========================================================================
 pub fn do_interactive() {
     let mut stream = BufReader::new(std::io::stdin());
@@ -475,12 +477,6 @@ pub fn repl(
         if buffer.trim() == QUIT {
             println!("Bye");
             break;
-        } else if buffer.trim() == TAIL_ON {
-            env.set_tail_recursion(true);
-            continue;
-        } else if buffer.trim() == TAIL_OFF {
-            env.set_tail_recursion(false);
-            continue;
         } else if buffer.trim() == "" {
             continue;
         } else if buffer.as_bytes()[0] as char == ';' {
@@ -492,36 +488,13 @@ pub fn repl(
             continue;
         }
         debug!("{}", program.iter().cloned().collect::<String>());
-        {
-            let mut token = tokenize(&program.join(" "));
-            let mut c: i32 = 1;
-
-            loop {
-                let exp = match parse(&token, &mut c, env) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        print_error!(e);
-                        break;
-                    }
-                };
-                match eval(&exp, env) {
-                    Ok(n) => println!("{}", n.to_string()),
-                    Err(e) => {
-                        if "E9000" == e.get_code() {
-                            env.set_force_stop(false);
-                        }
-                        print_error!(e);
-                    }
-                };
-                debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
-                if c == token.len() as i32 {
-                    break;
-                } else {
-                    for _ in 0..c as usize {
-                        token.remove(0);
-                    }
-                    c = 1;
+        match do_core_logic(&program.join(" "), env) {
+            Ok(n) => println!("{}", n.to_string()),
+            Err(e) => {
+                if "E9000" == e.get_code() {
+                    env.set_force_stop(false);
                 }
+                print_error!(e);
             }
         }
         program.clear();
@@ -550,17 +523,38 @@ fn count_parenthesis(program: String) -> bool {
     return left <= right;
 }
 pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
-    let token = tokenize(program);
+    let mut token = tokenize(program);
     let mut c: i32 = 1;
+    let mut ret = Expression::Nil();
 
-    let exp = parse(&token, &mut c, env)?;
-    if let Expression::Symbol(s) = &exp {
-        if s == FORCE_STOP {
-            env.set_force_stop(true);
-            return Ok(Expression::Nil());
+    loop {
+        let exp = parse(&token, &mut c, env)?;
+
+        match exp.to_string().as_str() {
+            TAIL_ON => {
+                env.set_tail_recursion(true);
+            }
+            TAIL_OFF => {
+                env.set_tail_recursion(false);
+            }
+            FORCE_STOP => {
+                env.set_force_stop(true);
+            }
+            _ => {
+                ret = eval(&exp, env)?;
+            }
+        }
+        debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
+        if c == token.len() as i32 {
+            break;
+        } else {
+            for _ in 0..c as usize {
+                token.remove(0);
+            }
+            c = 1;
         }
     }
-    return eval(&exp, env);
+    return Ok(ret);
 }
 fn tokenize(program: &String) -> Vec<String> {
     let mut token: Vec<String> = Vec::new();
@@ -579,7 +573,8 @@ fn tokenize(program: &String) -> Vec<String> {
     for c in s.as_str().chars() {
         if string_mode {
             if c == '"' {
-                if vc[i - 1] != 0x5c {
+                // "abc \""
+                if vc[i - 1] != BACKSLASH {
                     let ls = s.get(from..(i + 1)).unwrap();
                     token.push(ls.to_string());
                     string_mode = false;
@@ -721,7 +716,7 @@ macro_rules! ret_clone_if_atom {
     };
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
-    if env.get_force_stop() {
+    if env.is_force_stop() {
         return Err(create_error!("E9000"));
     }
     ret_clone_if_atom!(sexp);

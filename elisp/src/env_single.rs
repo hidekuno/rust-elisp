@@ -83,7 +83,7 @@ impl Environment {
     pub fn set_force_stop(&self, b: bool) {
         self.globals.borrow_mut().force_stop = b;
     }
-    pub fn get_force_stop(&self) -> bool {
+    pub fn is_force_stop(&self) -> bool {
         self.globals.borrow_mut().force_stop
     }
 }
