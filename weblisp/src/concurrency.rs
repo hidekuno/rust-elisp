@@ -9,6 +9,9 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
+
 enum Message {
     NewJob(Job),
     Terminate,
@@ -39,7 +42,7 @@ impl ThreadPool {
     {
         let job = Box::new(f);
         if let Err(e) = self.sender.send(Message::NewJob(job)) {
-            eprintln!("send execute() err {}", e);
+            error!("send execute() err {}", e);
         }
     }
 }
@@ -47,17 +50,15 @@ impl Drop for ThreadPool {
     fn drop(&mut self) {
         for _ in &self.workers {
             if let Err(e) = self.sender.send(Message::Terminate) {
-                eprintln!("send terminate() err {}", e);
+                error!("send terminate() err {}", e);
             }
         }
-        println!("shutdown all workers");
-
         for worker in &mut self.workers {
-            println!("shutdown worker {}", worker.id);
+            info!("shutdown worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
                 if let Err(e) = thread.join() {
-                    eprintln!("join() err {:?}", e);
+                    error!("join() err {:?}", e);
                 }
             }
         }
@@ -74,22 +75,22 @@ impl Worker {
             let message = match receiver.lock().unwrap().recv() {
                 Ok(message) => message,
                 Err(e) => {
-                    eprintln!("recv() err{}", e);
+                    error!("recv() err{}", e);
                     continue;
                 }
             };
 
             match message {
                 Message::NewJob(job) => {
-                    println!("workder {} job; start.", id);
+                    debug!("workder {} job; start.", id);
                     job();
                 }
                 Message::Terminate => {
-                    println!("workder {} get a job; terminate.", id);
+                    debug!("workder {} get a job; terminate.", id);
                     break;
                 }
             }
-            println!("workder {} job; finish.", id);
+            info!("workder {} job; finish.", id);
         });
         Worker {
             id,

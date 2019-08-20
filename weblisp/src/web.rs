@@ -21,6 +21,9 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, warn};
+
 const PROTOCOL: &'static str = "HTTP/1.1";
 const CRLF: &'static str = "\r\n";
 
@@ -61,7 +64,7 @@ impl Error for UriParseError {
 }
 macro_rules! print_error {
     ($f: expr, $e: expr) => {
-        eprintln!("{} fault: {:?}", $f, $e)
+        error!("{} fault: {:?}", $f, $e)
     };
 }
 macro_rules! http_write {
@@ -140,7 +143,7 @@ impl Contents {
                 let out = match cgi.stdout.as_mut() {
                     Some(out) => out,
                     None => {
-                        eprintln!("as_mut err");
+                        error!("as_mut err");
                         return;
                     }
                 };
@@ -183,7 +186,7 @@ fn core_proc(
     buffer: &[u8],
 ) -> Result<(), Box<Error>> {
     let (status_line, mut contents, mime) = dispatch(&buffer, env);
-    println!("{}", status_line);
+    info!("{}", status_line);
     http_write!(stream, format!("{} {}", PROTOCOL, status_line));
 
     let header: [&str; 3] = [
@@ -240,7 +243,7 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
     let mut requst: [&str; 8] = [""; 8];
 
     if let Some(r) = lines.next() {
-        println!("{}", r);
+        info!("{}", r);
         for (i, s) in r.split_whitespace().into_iter().enumerate() {
             if i >= 3 {
                 return Err(Box::new(UriParseError { code: "E2001" }));
