@@ -98,12 +98,22 @@ macro_rules! http_value_error {
 pub enum Method {
     GET,
     POST,
+    HEAD,
 }
 impl Method {
     fn as_ref(&self) -> &str {
         match self {
             Method::GET => "GET",
             Method::POST => "POST",
+            Method::HEAD => "HEAD",
+        }
+    }
+    fn create(other: &str) -> Option<Method> {
+        match other {
+            "GET" => Some(Method::GET),
+            "POST" => Some(Method::POST),
+            "HEAD" => Some(Method::HEAD),
+            _ => None,
         }
     }
 }
@@ -195,6 +205,22 @@ impl Contents {
         }
     }
 }
+macro_rules! is_head_method {
+    ($result: expr) => {
+        if let Ok(req) = $result {
+            if let Some(m) = req.get_method() {
+                match m {
+                    Method::HEAD => true,
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    };
+}
 pub fn core_proc(
     mut stream: TcpStream,
     env: lisp::Environment,
@@ -226,7 +252,10 @@ pub fn core_proc(
         http_write!(stream, format!("Content-length: {}", contents.len()));
         stream.write(CRLF.as_bytes())?;
     }
-    contents.http_write(&mut stream);
+    let head = is_head_method!(r);
+    if !head {
+        contents.http_write(&mut stream);
+    }
     stream.flush()?;
     Ok(())
 }
@@ -245,14 +274,7 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
     } else {
         return Err(Box::new(UriParseError { code: "E2001" }));
     }
-    let method = if Method::GET == *requst[0] {
-        Some(Method::GET)
-    } else if Method::POST == *requst[0] {
-        Some(Method::POST)
-    } else {
-        None
-    };
-
+    let method = Method::create(requst[0]);
     let iter = urldecode(requst[1])?;
     let mut iter = iter.split('?').into_iter();
 
