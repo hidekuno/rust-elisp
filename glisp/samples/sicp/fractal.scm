@@ -1,4 +1,3 @@
-(define frame (make-frame (make-vect 0 0) (make-vect 1 0) (make-vect 0 1)))
 (define pi (*(atan 1)4))
 (define (cs angle)(cos (/(* pi angle)180)))
 (define (sn angle)(sin (/(* pi angle)180)))

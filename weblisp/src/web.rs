@@ -19,7 +19,6 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::time::Duration;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -42,8 +41,6 @@ const CGI_EXT: &'static str = ".cgi";
 
 const LISP: &'static str = "/lisp";
 const LISP_PARAMNAME: &'static str = "expr=";
-
-const READ_TIMEOUT: u64 = 60;
 
 #[derive(Debug)]
 struct UriParseError {
@@ -97,15 +94,45 @@ macro_rules! http_value_error {
         )
     };
 }
+#[derive(Clone)]
+pub enum Method {
+    GET,
+    POST,
+}
+impl Method {
+    fn as_ref(&self) -> &str {
+        match self {
+            Method::GET => "GET",
+            Method::POST => "POST",
+        }
+    }
+}
+impl PartialEq<Method> for Method {
+    fn eq(&self, other: &Method) -> bool {
+        self == other
+    }
+}
+impl PartialEq<str> for Method {
+    fn eq(&self, other: &str) -> bool {
+        self.as_ref() == other
+    }
+}
+impl PartialEq<Method> for str {
+    fn eq(&self, other: &Method) -> bool {
+        self == other.as_ref()
+    }
+}
 pub struct Request {
-    method: String,
+    method: Option<Method>,
     resource: String,
     protocol: String,
     parameter: String,
+    headers: Vec<String>,
+    body: String,
 }
 impl Request {
-    pub fn get_method(&self) -> &String {
-        &self.method
+    pub fn get_method(&self) -> Option<Method> {
+        self.method.clone()
     }
     pub fn get_resource(&self) -> &String {
         &self.resource
@@ -115,6 +142,12 @@ impl Request {
     }
     pub fn get_parameter(&self) -> &String {
         &self.parameter
+    }
+    pub fn get_headers(&self) -> &Vec<String> {
+        &self.headers
+    }
+    pub fn get_body(&self) -> &String {
+        &self.body
     }
 }
 pub struct WebFile {
@@ -162,30 +195,17 @@ impl Contents {
         }
     }
 }
-pub fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
-    stream
-        .set_read_timeout(Some(Duration::from_secs(READ_TIMEOUT)))
-        .unwrap();
-
-    let mut buffer = [0; 2048];
-
-    // read() is Not Good.(because it's not detected EOF)
-    // I try read_to_end() and read_exact(), But it was NG
-    if let Err(e) = stream.read(&mut buffer) {
-        print_error!("read", e);
-        return;
-    }
-
-    if let Err(e) = core_proc(stream, env, &buffer) {
-        print_error!("core proc", e);
-    }
-}
-fn core_proc(
+pub fn core_proc(
     mut stream: TcpStream,
     env: lisp::Environment,
     buffer: &[u8],
 ) -> Result<(), Box<Error>> {
-    let (status_line, mut contents, mime) = dispatch(&buffer, env);
+    let r = parse_request(buffer);
+    let (status_line, mut contents, mime) = match &r {
+        Ok(r) => dispatch(&r, env),
+        Err(e) => http_value_error!(RESPONSE_400, e),
+    };
+
     info!("{}", status_line);
     http_write!(stream, format!("{} {}", PROTOCOL, status_line));
 
@@ -210,36 +230,6 @@ fn core_proc(
     stream.flush()?;
     Ok(())
 }
-fn dispatch(
-    buffer: &[u8],
-    env: lisp::Environment,
-) -> (&'static str, Contents, Option<&'static str>) {
-    let r = match parse_request(buffer) {
-        Ok(r) => r,
-        Err(e) => return http_value_error!(RESPONSE_400, e),
-    };
-    if r.get_method() != "GET" {
-        return http_error!(RESPONSE_405);
-    }
-    return if r.get_resource() == "/" {
-        static_contents("index.html")
-    } else if r.get_resource().starts_with(LISP) {
-        if r.get_parameter().len() < LISP_PARAMNAME.len() {
-            return http_error!(RESPONSE_400);
-        }
-        let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
-        let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
-            Ok(r) => r.to_string(),
-            Err(e) => e.get_msg(),
-        };
-        result.push_str(CRLF);
-        (RESPONSE_200, Contents::String(result), Some(MIME_PLAIN.1))
-    } else if r.get_resource().ends_with(CGI_EXT) {
-        do_cgi(&r)
-    } else {
-        static_contents(r.get_resource())
-    };
-}
 fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
     let mut lines = std::str::from_utf8(buffer)?.lines();
     let mut requst: [&str; 8] = [""; 8];
@@ -255,6 +245,14 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
     } else {
         return Err(Box::new(UriParseError { code: "E2001" }));
     }
+    let method = if Method::GET == *requst[0] {
+        Some(Method::GET)
+    } else if Method::POST == *requst[0] {
+        Some(Method::POST)
+    } else {
+        None
+    };
+
     let iter = urldecode(requst[1])?;
     let mut iter = iter.split('?').into_iter();
 
@@ -263,13 +261,30 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
     } else {
         return Err(Box::new(UriParseError { code: "E2001" }));
     };
-    let parameter = if let Some(s) = iter.next() { s } else { "" };
-
+    let mut parameter = if let Some(s) = iter.next() { s } else { "" };
+    let mut headers = Vec::new();
+    let mut body = String::from("");
+    let mut header = true;
+    for e in lines {
+        if e == "" {
+            header = false;
+        } else if header == true {
+            headers.push(e.into());
+        } else {
+            body = match urldecode(e) {
+                Ok(n) => n,
+                Err(_) => body,
+            };
+            parameter = body.as_str();
+        }
+    }
     Ok(Request {
-        method: String::from(requst[0]),
+        method: method,
         resource: String::from(url),
         protocol: String::from(requst[2]),
         parameter: String::from(parameter),
+        headers: headers,
+        body: body,
     })
 }
 fn urldecode(s: &str) -> Result<String, Box<Error>> {
@@ -290,6 +305,9 @@ fn urldecode(s: &str) -> Result<String, Box<Error>> {
     let mut mode = ByteMode::ASCII;
 
     for b in s.bytes() {
+        if b == 0x00 {
+            continue;
+        }
         let c = b as char;
         match state {
             PercentState::Init => match c {
@@ -328,6 +346,29 @@ fn urldecode(s: &str) -> Result<String, Box<Error>> {
         }
     }
     Ok(r)
+}
+fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Option<&'static str>) {
+    if None == r.get_method() {
+        return http_error!(RESPONSE_405);
+    }
+    return if r.get_resource() == "/" {
+        static_contents("index.html")
+    } else if r.get_resource().starts_with(LISP) {
+        if !r.get_parameter().starts_with(LISP_PARAMNAME) {
+            return http_error!(RESPONSE_400);
+        }
+        let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
+        let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
+            Ok(r) => r.to_string(),
+            Err(e) => e.get_msg(),
+        };
+        result.push_str(CRLF);
+        (RESPONSE_200, Contents::String(result), Some(MIME_PLAIN.1))
+    } else if r.get_resource().ends_with(CGI_EXT) {
+        do_cgi(r)
+    } else {
+        static_contents(r.get_resource())
+    };
 }
 fn set_path_security(path: &mut PathBuf, filename: &str) {
     for s in filename.split('/') {
@@ -397,13 +438,17 @@ fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
     if false == path.as_path().exists() {
         return http_error!(RESPONSE_404);
     }
-    let cgi = match Command::new(path)
+    let mut cgi = match Command::new(path)
         .arg(r.get_parameter())
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
     {
         Ok(v) => v,
         Err(e) => return http_value_error!(RESPONSE_500, e),
     };
+    let stdin = cgi.stdin.as_mut().unwrap();
+    stdin.write_all(r.get_body().as_bytes()).unwrap();
+    stdin.write_all(b"\n").unwrap();
     (RESPONSE_200, Contents::Cgi(cgi), None)
 }
