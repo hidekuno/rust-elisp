@@ -20,7 +20,7 @@ mod tests {
     use crate::server::run_web_service;
     use crate::server::BIND_ADDRESS;
 
-    const TEST_COUNT: usize = 16;
+    const TEST_COUNT: usize = 21;
 
     fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<Error>> {
         use std::io::prelude::*;
@@ -390,7 +390,98 @@ mod tests {
         assert_str!("Bad Request", iter.next());
     }
     #[test]
-    fn test_case_50() {
+    fn test_case_17_post_cgi() {
+        let s = vec!["POST /examples/index.cgi HTTP/1.1"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+    }
+    #[test]
+    fn test_case_18_post_cgi() {
+        let s = vec!["POST /examples/index.cgi HTTP/1.1\nUser-Agent: rust\n"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+    }
+    #[test]
+    fn test_case_19_post_cgi() {
+        let s = vec![
+            "POST /examples/post.cgi HTTP/1.1\nUser-Agent: rust\n\nexpr=%28define%20a%20100%29",
+        ];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        iter.next();
+        assert_str!("expr=(define a 100)", iter.next());
+        assert_str!("expr=(define a 100)", iter.next());
+    }
+    #[test]
+    fn test_case_20_post_lisp() {
+        let s = vec!["POST /lisp HTTP/1.1\nUser-Agent: rust\n\nexpr=%28define%20b%20200%29"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 3", iter.next());
+        iter.next();
+        assert_str!("b", iter.next());
+    }
+    #[test]
+    fn test_case_21_post_lisp() {
+        let s = vec!["POST /lisp HTTP/1.1\nUser-Agent: rust\n\nexpr=b"];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!("HTTP/1.1 200 OK", iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        iter.next();
+        assert_str!("200", iter.next());
+    }
+    #[test]
+    fn test_case_90() {
         thread::sleep(Duration::from_millis(30));
         thread::spawn(|| {
             if let Err(e) = run_web_service(1024) {
@@ -399,7 +490,7 @@ mod tests {
         });
     }
     #[test]
-    fn test_case_51_stop() {
+    fn test_case_91_stop() {
         let t = thread::spawn(|| {
             let s = vec!["GET /lisp?expr=%28let%20loop%20%28%28i%200%29%29%20%28if%20%28%3C%3D%20100000000%20i%29%20i%20%28loop%20%28%2B%20i%201%29%29%29%29 HTTP/1.1"];
             test_skelton(&s);
