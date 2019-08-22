@@ -1,3 +1,10 @@
+;
+; this is a SICP program(https://sicp.iijlab.net/fulltext/x224.html)
+; (https://sicp.iijlab.net/fulltext/x224.html)
+;
+; hidekuno@gmail.com
+;
+
 ;;======================================================================
 ;; ペインタは規定した平行四辺形の フレームの中に合うように,
 ;; ずらしたり大きさを変えたりした画像を描く
@@ -111,3 +118,10 @@
       painter
       (let ((smaller (right-split painter (- n 1))))
         (beside painter (below smaller smaller)))))
+
+;;======================================================================
+;; 汎用部品
+;;======================================================================
+(define pi (*(atan 1)4))
+(define (cs angle)(cos (/(* pi angle)180)))
+(define (sn angle)(sin (/(* pi angle)180)))

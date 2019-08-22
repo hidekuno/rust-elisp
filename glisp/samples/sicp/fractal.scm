@@ -1,7 +1,8 @@
-(define frame (make-frame (make-vect 0 0) (make-vect 1 0) (make-vect 0 1)))
-(define pi (*(atan 1)4))
-(define (cs angle)(cos (/(* pi angle)180)))
-(define (sn angle)(sin (/(* pi angle)180)))
+;
+; this is a fractal program for picture language
+;
+; hidekuno@gmail.com
+;
 
 ;;========================================================================
 ;; 線を描画する
@@ -20,10 +21,10 @@
       (let ((tcos (cs 15))
             (tsin (sn 45))
             (alpha 0.6))
-        (let ((ya (+ y1  (*    tsin (- x1 x0) alpha) (*    tcos (- y1 y0) alpha)))
-              (xa (+ x1  (*    tcos (- x1 x0) alpha) (* -1 tsin (- y1 y0) alpha)))
-              (yb (+ y1  (* -1 tsin (- x1 x0) alpha) (*    tcos (- y1 y0) alpha)))
-              (xb (+ x1  (*    tcos (- x1 x0) alpha) (*    tsin (- y1 y0) alpha))))
+        (let ((xa (+ x1  (*    tcos (- x1 x0) alpha) (* -1 tsin (- y1 y0) alpha)))
+              (ya (+ y1  (*    tsin (- x1 x0) alpha) (*    tcos (- y1 y0) alpha)))
+              (xb (+ x1  (*    tcos (- x1 x0) alpha) (*    tsin (- y1 y0) alpha)))
+              (yb (+ y1  (* -1 tsin (- x1 x0) alpha) (*    tcos (- y1 y0) alpha))))
           (draw-line-segment (make-segment (make-vect x0 y0) (make-vect x1 y1)) frame)
           (if (>= 0 c)
               (begin
