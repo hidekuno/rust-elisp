@@ -28,6 +28,7 @@ use gtk::prelude::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::env;
 use std::fs::File;
 use std::rc::Rc;
 
@@ -36,6 +37,7 @@ const DRAW_HEIGHT: i32 = 560;
 
 const EVAL_RESULT_ID: &str = "result";
 const DEFALUT_CANVAS: &str = "canvas";
+const PNG_SAVE_FILE: &str = "glisp.png";
 
 const EVAL_KEYCODE: u32 = 101;
 const TEXT_CLEAR_KEYCODE: u32 = 107;
@@ -54,6 +56,11 @@ macro_rules! get_default_surface {
             .get(&DEFALUT_CANVAS.to_string())
             .unwrap()
             .clone();
+    };
+}
+macro_rules! set_message {
+    ($s: expr, $v: expr) => {
+        $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
     };
 }
 pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
@@ -76,7 +83,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     // GtkStatusBar
     //--------------------------------------------------------
     let status_bar = gtk::Statusbar::new();
-    status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), "");
+    set_message!(status_bar, "");
     status_bar.set_margin_top(0);
     status_bar.set_margin_bottom(0);
 
@@ -126,6 +133,33 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let menu_bar = gtk::MenuBar::new();
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
+    menu.append(&{
+        let surface = get_default_surface!(image_table);
+        let status_bar = status_bar.downgrade();
+        let save = gtk::MenuItem::new_with_mnemonic("_Save");
+        save.connect_activate(move |_| {
+            let status_bar = status_bar.upgrade().unwrap();
+            let mut tmpfile = env::temp_dir();
+            tmpfile.push(PNG_SAVE_FILE);
+            if tmpfile.exists() {
+                set_message!(status_bar, "File is Exists");
+                return;
+            }
+            let mut file = match File::create(tmpfile) {
+                Ok(f) => f,
+                Err(e) => {
+                    set_message!(status_bar, &e.to_string().into_boxed_str());
+                    return;
+                }
+            };
+            let msg = match surface.write_to_png(&mut file) {
+                Ok(_) => "Saved PNG file".into(),
+                Err(e) => e.to_string(),
+            };
+            set_message!(status_bar, msg.as_str());
+        });
+        save
+    });
     menu.append(&{
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
@@ -208,9 +242,10 @@ fn execute_lisp(
             gtk::Continue(true)
         })
     };
-
-    let s = text_buffer.get_start_iter();
-    let e = text_buffer.get_end_iter();
+    let (s, e) = match text_buffer.get_selection_bounds() {
+        Some(t) => t,
+        None => (text_buffer.get_start_iter(), text_buffer.get_end_iter()),
+    };
     let exp = text_buffer.get_text(&s, &e, false).expect("die");
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
@@ -223,7 +258,7 @@ fn execute_lisp(
         }
     };
     println!("{}", result);
-    status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
+    set_message!(status_bar, result.as_str());
 
     #[cfg(feature = "animation")]
     glib::source::source_remove(sid);
@@ -437,6 +472,9 @@ pub fn create_image_table() -> ImageTable {
 
     let cr = Context::new(&surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+    cr.set_source_rgb(0.9, 0.9, 0.9);
+    cr.paint();
+    cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.set_font_size(0.25);
 
     cr.move_to(0.04, 0.50);
@@ -444,7 +482,6 @@ pub fn create_image_table() -> ImageTable {
 
     cr.move_to(0.27, 0.69);
     cr.text_path("eLisp");
-
     cr.set_source_rgb(0.5, 0.5, 1.0);
     cr.fill_preserve();
     cr.set_source_rgb(0.0, 0.0, 0.0);
