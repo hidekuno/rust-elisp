@@ -26,11 +26,10 @@ impl Tree {
 
         (self.draw_line)(x0, y0, x1, y1);
 
-        let ya = y1 + self.sn * (x1 - x0) * alpha + self.cs * (y1 - y0) * alpha;
         let xa = x1 + self.cs * (x1 - x0) * alpha - self.sn * (y1 - y0) * alpha;
-
-        let yb = y1 + (-self.sn * (x1 - x0)) * alpha + self.cs * (y1 - y0) * alpha;
+        let ya = y1 + self.sn * (x1 - x0) * alpha + self.cs * (y1 - y0) * alpha;
         let xb = x1 + self.cs * (x1 - x0) * alpha + self.sn * (y1 - y0) * alpha;
+        let yb = y1 + (-self.sn * (x1 - x0)) * alpha + self.cs * (y1 - y0) * alpha;
 
         if 0 >= c {
             (self.draw_line)(x1, y1, xa, ya);
