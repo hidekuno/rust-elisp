@@ -28,6 +28,7 @@ use gtk::prelude::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::env;
 use std::fs::File;
 use std::rc::Rc;
 
@@ -36,7 +37,7 @@ const DRAW_HEIGHT: i32 = 560;
 
 const EVAL_RESULT_ID: &str = "result";
 const DEFALUT_CANVAS: &str = "canvas";
-const PNG_SAVE_FILE: &str = "/tmp/glisp.png";
+const PNG_SAVE_FILE: &str = "glisp.png";
 
 const EVAL_KEYCODE: u32 = 101;
 const TEXT_CLEAR_KEYCODE: u32 = 107;
@@ -55,6 +56,11 @@ macro_rules! get_default_surface {
             .get(&DEFALUT_CANVAS.to_string())
             .unwrap()
             .clone();
+    };
+}
+macro_rules! set_message {
+    ($s: expr, $v: expr) => {
+        $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
     };
 }
 pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
@@ -77,7 +83,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     // GtkStatusBar
     //--------------------------------------------------------
     let status_bar = gtk::Statusbar::new();
-    status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), "");
+    set_message!(status_bar, "");
     status_bar.set_margin_top(0);
     status_bar.set_margin_bottom(0);
 
@@ -133,13 +139,16 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         let save = gtk::MenuItem::new_with_mnemonic("_Save");
         save.connect_activate(move |_| {
             let status_bar = status_bar.upgrade().unwrap();
-            let mut file = match File::create(PNG_SAVE_FILE) {
+            let mut tmpfile = env::temp_dir();
+            tmpfile.push(PNG_SAVE_FILE);
+            if tmpfile.exists() {
+                set_message!(status_bar, "File is Exists");
+                return;
+            }
+            let mut file = match File::create(tmpfile) {
                 Ok(f) => f,
                 Err(e) => {
-                    status_bar.push(
-                        status_bar.get_context_id(EVAL_RESULT_ID),
-                        &e.to_string().into_boxed_str(),
-                    );
+                    set_message!(status_bar, &e.to_string().into_boxed_str());
                     return;
                 }
             };
@@ -147,7 +156,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
                 Ok(_) => "Saved PNG file".into(),
                 Err(e) => e.to_string(),
             };
-            status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), msg.as_str());
+            set_message!(status_bar, msg.as_str());
         });
         save
     });
@@ -249,7 +258,7 @@ fn execute_lisp(
         }
     };
     println!("{}", result);
-    status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), result.as_str());
+    set_message!(status_bar, result.as_str());
 
     #[cfg(feature = "animation")]
     glib::source::source_remove(sid);
