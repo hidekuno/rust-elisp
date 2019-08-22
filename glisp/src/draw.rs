@@ -36,6 +36,7 @@ const DRAW_HEIGHT: i32 = 560;
 
 const EVAL_RESULT_ID: &str = "result";
 const DEFALUT_CANVAS: &str = "canvas";
+const PNG_SAVE_FILE: &str = "/tmp/glisp.png";
 
 const EVAL_KEYCODE: u32 = 101;
 const TEXT_CLEAR_KEYCODE: u32 = 107;
@@ -127,6 +128,30 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     menu.append(&{
+        let surface = get_default_surface!(image_table);
+        let status_bar = status_bar.downgrade();
+        let save = gtk::MenuItem::new_with_mnemonic("_Save");
+        save.connect_activate(move |_| {
+            let status_bar = status_bar.upgrade().unwrap();
+            let mut file = match File::create(PNG_SAVE_FILE) {
+                Ok(f) => f,
+                Err(e) => {
+                    status_bar.push(
+                        status_bar.get_context_id(EVAL_RESULT_ID),
+                        &e.to_string().into_boxed_str(),
+                    );
+                    return;
+                }
+            };
+            let msg = match surface.write_to_png(&mut file) {
+                Ok(_) => "Saved PNG file".into(),
+                Err(e) => e.to_string(),
+            };
+            status_bar.push(status_bar.get_context_id(EVAL_RESULT_ID), msg.as_str());
+        });
+        save
+    });
+    menu.append(&{
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
         quit.connect_activate(move |_| {
@@ -208,9 +233,10 @@ fn execute_lisp(
             gtk::Continue(true)
         })
     };
-
-    let s = text_buffer.get_start_iter();
-    let e = text_buffer.get_end_iter();
+    let (s, e) = match text_buffer.get_selection_bounds() {
+        Some(t) => t,
+        None => (text_buffer.get_start_iter(), text_buffer.get_end_iter()),
+    };
     let exp = text_buffer.get_text(&s, &e, false).expect("die");
 
     let result = match lisp::do_core_logic(&exp.to_string(), env) {
@@ -437,6 +463,9 @@ pub fn create_image_table() -> ImageTable {
 
     let cr = Context::new(&surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+    cr.set_source_rgb(0.9, 0.9, 0.9);
+    cr.paint();
+    cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.set_font_size(0.25);
 
     cr.move_to(0.04, 0.50);
@@ -444,7 +473,6 @@ pub fn create_image_table() -> ImageTable {
 
     cr.move_to(0.27, 0.69);
     cr.text_path("eLisp");
-
     cr.set_source_rgb(0.5, 0.5, 1.0);
     cr.fill_preserve();
     cr.set_source_rgb(0.0, 0.0, 0.0);
