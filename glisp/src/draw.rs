@@ -28,6 +28,7 @@ use gtk::prelude::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::LinkedList;
 use std::env;
 use std::fs::File;
 use std::rc::Rc;
@@ -49,6 +50,50 @@ const MOTION_DELAY: i32 = 70;
 pub type ImageTable = Rc<RefCell<HashMap<String, Rc<ImageSurface>>>>;
 pub type DrawLine = Box<Fn(f64, f64, f64, f64) + 'static>;
 
+#[derive(Clone)]
+struct History {
+    menu: gtk::MenuItem,
+    children: Rc<RefCell<LinkedList<gtk::MenuItem>>>,
+}
+impl History {
+    fn new() -> Self {
+        History {
+            menu: gtk::MenuItem::new_with_mnemonic("_History"),
+            children: Rc::new(RefCell::new(LinkedList::new())),
+        }
+    }
+    fn push(&self, exp: &String) {
+        let s = exp.replace("\n", " ");
+        let s = s.as_str();
+
+        let l = if let Some(ref v) = s.get(0..32) {
+            v.to_string() + " .."
+        } else {
+            s.into()
+        };
+
+        let mut h = self.children.borrow_mut();
+        let mut c = gtk::MenuItem::new_with_mnemonic(l.as_str());
+        gtk::WidgetExt::set_name(&mut c, s);
+
+        if None == self.menu.get_submenu() {
+            self.menu.set_submenu(Some(&gtk::Menu::new()));
+        }
+        if let Some(w) = self.menu.get_submenu() {
+            if let Ok(w) = w.downcast::<gtk::Menu>() {
+                w.append(&c);
+                h.push_front(c);
+
+                if h.len() > 10 {
+                    if let Some(c) = h.pop_back() {
+                        w.remove(&c);
+                    }
+                }
+                w.show_all();
+            }
+        }
+    }
+}
 #[allow(unused_macros)]
 macro_rules! get_default_surface {
     ($tbl: expr) => {
@@ -99,6 +144,12 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         cr.paint();
         Inhibit(false)
     });
+
+    //--------------------------------------------------------
+    // History
+    //--------------------------------------------------------
+    let history = History::new();
+
     //--------------------------------------------------------
     // TextView
     //--------------------------------------------------------
@@ -113,12 +164,14 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         let status_bar = status_bar.downgrade();
         let surface = get_default_surface!(image_table);
         let text_buffer = text_view.get_buffer().expect("Couldn't get window");
-
+        let history = history.clone();
         text_view.connect_key_press_event(move |w, key| {
             if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
                 let canvas = canvas.upgrade().unwrap();
                 match key.get_keyval() {
-                    EVAL_KEYCODE => execute_lisp(&env, &canvas, w, &status_bar.upgrade().unwrap()),
+                    EVAL_KEYCODE => {
+                        execute_lisp(&env, &canvas, w, &status_bar.upgrade().unwrap(), &history)
+                    }
                     DRAW_CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
                     TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
                     _ => {}
@@ -180,12 +233,14 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         let env = env.clone();
         let canvas = canvas.downgrade();
         let status_bar = status_bar.downgrade();
+        let history = history.clone();
         eval.connect_activate(move |_| {
             execute_lisp(
                 &env,
                 &canvas.upgrade().unwrap(),
                 &text_view,
                 &status_bar.upgrade().unwrap(),
+                &history,
             );
         });
         eval
@@ -205,6 +260,11 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     });
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
+
+    //--------------------------------------------------------
+    // History Command
+    //--------------------------------------------------------
+    menu_bar.append(&history.menu);
 
     //--------------------------------------------------------
     // Application Setup
@@ -230,6 +290,7 @@ fn execute_lisp(
     canvas: &gtk::DrawingArea,
     text_view: &gtk::TextView,
     status_bar: &gtk::Statusbar,
+    history: &History,
 ) {
     let text_buffer = text_view.get_buffer().expect("Couldn't get window");
 
@@ -246,10 +307,16 @@ fn execute_lisp(
         Some(t) => t,
         None => (text_buffer.get_start_iter(), text_buffer.get_end_iter()),
     };
-    let exp = text_buffer.get_text(&s, &e, false).expect("die");
+    let exp = text_buffer
+        .get_text(&s, &e, false)
+        .expect("die")
+        .to_string();
 
-    let result = match lisp::do_core_logic(&exp.to_string(), env) {
-        Ok(r) => r.to_string(),
+    let result = match lisp::do_core_logic(&exp, env) {
+        Ok(r) => {
+            history.push(&exp);
+            r.to_string()
+        }
         Err(e) => {
             if "E9000" == e.get_code() {
                 env.set_force_stop(false);
