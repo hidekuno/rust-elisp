@@ -455,10 +455,10 @@ pub fn do_interactive() {
     }
 }
 pub fn repl(
-    stream: &mut BufRead,
+    stream: &mut dyn BufRead,
     env: &Environment,
     batch: bool,
-) -> Result<(), Box<std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = String::new();
     let mut program: Vec<String> = Vec::new();
     let mut w = std::io::stdout();
