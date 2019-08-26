@@ -51,7 +51,7 @@ const HISTORY_COL_SIZE: usize = 32;
 const MOTION_DELAY: i32 = 70;
 
 pub type ImageTable = Rc<RefCell<HashMap<String, Rc<ImageSurface>>>>;
-pub type DrawLine = Box<Fn(f64, f64, f64, f64) + 'static>;
+pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 
 #[derive(Clone)]
 struct History {
