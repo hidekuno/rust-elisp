@@ -22,7 +22,7 @@ mod tests {
 
     const TEST_COUNT: usize = 21;
 
-    fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<Error>> {
+    fn web_test_client(msg: &str, vec: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
         use std::io::prelude::*;
         use std::net::TcpStream;
 
@@ -36,7 +36,7 @@ mod tests {
         let mut v = Vec::new();
         for e in &buffer {
             match &e {
-                0x00...0x7F => v.push(e.clone()),
+                0x00..=0x7F => v.push(e.clone()),
                 0xE5 => v.push(e.clone()), //山(0xE5B1B1)
                 0xB1 => v.push(e.clone()), //山(0xE5B1B1)
                 _ => {}

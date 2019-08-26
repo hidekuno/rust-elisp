@@ -55,7 +55,7 @@ impl Error for UriParseError {
     fn description(&self) -> &str {
         self.code
     }
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
 }
@@ -225,7 +225,7 @@ pub fn core_proc(
     mut stream: TcpStream,
     env: lisp::Environment,
     buffer: &[u8],
-) -> Result<(), Box<Error>> {
+) -> Result<(), Box<dyn Error>> {
     let r = parse_request(buffer);
     let (status_line, mut contents, mime) = match &r {
         Ok(r) => dispatch(&r, env),
@@ -259,7 +259,7 @@ pub fn core_proc(
     stream.flush()?;
     Ok(())
 }
-fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
+fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
     let mut lines = std::str::from_utf8(buffer)?.lines();
     let mut requst: [&str; 8] = [""; 8];
 
@@ -309,7 +309,7 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<Error>> {
         body: body,
     })
 }
-fn urldecode(s: &str) -> Result<String, Box<Error>> {
+fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
     enum PercentState {
         Init,
         First,
@@ -340,7 +340,7 @@ fn urldecode(s: &str) -> Result<String, Box<Error>> {
                 en[0] = b;
                 state = PercentState::Second;
                 mode = match b {
-                    0x30...0x37 => ByteMode::ASCII,
+                    0x30..=0x37 => ByteMode::ASCII,
                     _ => ByteMode::Jpn,
                 }
             }
