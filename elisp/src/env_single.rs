@@ -11,7 +11,7 @@ use std::rc::Rc;
 use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
 //========================================================================
-type ExtOperation = Fn(&[Expression], &Environment) -> ResultExpression;
+type ExtOperation = dyn Fn(&[Expression], &Environment) -> ResultExpression;
 type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Rc<RsFunction>;
@@ -59,7 +59,7 @@ impl Environment {
     pub fn get_builtin_ext_func(
         &self,
         key: &str,
-    ) -> Option<Rc<Fn(&[Expression], &Environment) -> ResultExpression + 'static>> {
+    ) -> Option<Rc<dyn Fn(&[Expression], &Environment) -> ResultExpression + 'static>> {
         match self.globals.borrow().builtin_tbl_ext.get(key) {
             Some(f) => Some(f.clone()),
             None => None,

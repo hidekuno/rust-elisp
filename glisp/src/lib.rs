@@ -4,6 +4,7 @@
 
    hidekuno@gmail.com
 */
+pub mod buildin;
 pub mod draw;
 pub mod fractal;
 
@@ -11,7 +12,9 @@ pub mod fractal;
 mod tests {
     use super::*;
     extern crate elisp;
-    use draw::{create_image_table, scheme_gtk};
+    use buildin::{build_demo_function, build_lisp_function};
+    use draw::create_image_table;
+
     use elisp::lisp;
     use elisp::lisp::Environment;
 
@@ -25,26 +28,78 @@ mod tests {
             assert!($a == $b.to_string())
         };
     }
-
     fn do_lisp_env(program: &str, env: &Environment) -> String {
         match lisp::do_core_logic(&program.into(), env) {
             Ok(v) => v.to_string(),
             Err(e) => e.get_code(),
         }
     }
+    fn create_png_file(kind: &str) -> String {
+        let png = format!(
+            "/tmp/hoge_{}_{}.png",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            kind
+        );
+        let mut file = File::create(&png).unwrap();
+        let png_data: Vec<u8> = vec![
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
+            0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08,
+            0xd7, 0x63, 0xd0, 0xd2, 0xd2, 0x02, 0x00, 0x01, 0x00, 0x00, 0x7f, 0x09, 0xa9, 0x5a,
+            0x4d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        file.write_all(&png_data).unwrap();
+        file.flush().unwrap();
+        png
+    }
+    fn init() -> Environment {
+        let env = Environment::new();
+        let image_table = create_image_table();
+        build_lisp_function(&env, &image_table);
+        build_demo_function(&env, &image_table);
+        env
+    }
+    #[test]
+    fn test_check() {
+        let env = init();
+        // draw-clear check
+        assert_str!(do_lisp_env("(draw-clear)", &env), "nil");
+        assert_str!(do_lisp_env("(draw-line 0.0 1.0 0.2 0.3)", &env), "nil");
+        assert_str!(do_lisp_env("(draw-koch 2)", &env), "nil");
+        assert_str!(do_lisp_env("(draw-tree 2)", &env), "nil");
+        assert_str!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
+        assert_str!(do_lisp_env("(draw-dragon 2)", &env), "nil");
+
+        let png = create_png_file("1");
+        assert_str!(
+            do_lisp_env(
+                format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
+                &env,
+            ),
+            "nil"
+        );
+        assert_str!(
+            do_lisp_env(
+                "(draw-image \"sample\" (list 0.0 0.0 1.0 1.0 1.0 1.0))",
+                &env
+            ),
+            "nil"
+        );
+        std::fs::remove_file(png).unwrap();
+    }
     #[test]
     fn test_error_check() {
+        let env = init();
         let png = format!(
-            "/tmp/hoge_{}.png",
+            "/tmp/hoge_{}_2.png",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs()
         );
-        let env = Environment::new();
-        let image_table = create_image_table();
-        scheme_gtk(&env, &image_table);
-
         // draw-clear check
         assert_str!(do_lisp_env("(draw-clear 10)", &env), "E1007");
 
@@ -74,7 +129,7 @@ mod tests {
             ),
             "E9999"
         );
-        let mut file = File::create(&png).unwrap();
+        File::create(&png).unwrap();
         assert_str!(
             do_lisp_env(
                 format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
@@ -82,15 +137,7 @@ mod tests {
             ),
             "E9999"
         );
-        let png_data: Vec<u8> = vec![
-            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48,
-            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00,
-            0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08,
-            0xd7, 0x63, 0xd0, 0xd2, 0xd2, 0x02, 0x00, 0x01, 0x00, 0x00, 0x7f, 0x09, 0xa9, 0x5a,
-            0x4d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
-        ];
-        file.write_all(&png_data).unwrap();
-        file.flush().unwrap();
+        let png = create_png_file("2");
         do_lisp_env(
             format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
             &env,

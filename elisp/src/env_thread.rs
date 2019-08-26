@@ -13,7 +13,7 @@ use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
 //========================================================================
 type ExtOperation =
-    Box<Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static>;
+    Box<dyn Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static>;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<RsFunction>;

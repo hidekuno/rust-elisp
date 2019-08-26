@@ -8,10 +8,14 @@ extern crate elisp;
 extern crate glisp;
 
 use elisp::lisp;
+use glisp::buildin;
 use glisp::draw;
 
-use draw::{create_image_table, scheme_gtk};
 use lisp::Environment;
+
+use buildin::build_demo_function;
+use buildin::build_lisp_function;
+use draw::{create_image_table, scheme_gtk};
 
 // rustc --explain E0255
 use gtk::main as gtk_main;
@@ -21,6 +25,11 @@ fn main() {
     let env = Environment::new();
     let image_table = create_image_table();
 
+    // Create Lisp Function
+    build_lisp_function(&env, &image_table);
+    build_demo_function(&env, &image_table);
+
     scheme_gtk(&env, &image_table);
+
     gtk_main();
 }
