@@ -28,6 +28,7 @@ use gtk::prelude::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::LinkedList;
 use std::env;
 use std::fs::File;
 use std::rc::Rc;
@@ -43,12 +44,95 @@ const EVAL_KEYCODE: u32 = 101;
 const TEXT_CLEAR_KEYCODE: u32 = 107;
 const DRAW_CLEAR_KEYCODE: u32 = 108;
 
+const HISTORY_SIZE: usize = 10;
+const HISTORY_COL_SIZE: usize = 32;
+
 #[cfg(feature = "animation")]
 const MOTION_DELAY: i32 = 70;
 
 pub type ImageTable = Rc<RefCell<HashMap<String, Rc<ImageSurface>>>>;
 pub type DrawLine = Box<Fn(f64, f64, f64, f64) + 'static>;
 
+#[derive(Clone)]
+struct History {
+    menu: gtk::MenuItem,
+    children: Rc<RefCell<LinkedList<(gtk::MenuItem, String)>>>,
+    max_item: usize,
+}
+impl History {
+    fn new(n: usize) -> Self {
+        History {
+            menu: gtk::MenuItem::new_with_mnemonic("_History"),
+            children: Rc::new(RefCell::new(LinkedList::new())),
+            max_item: n,
+        }
+    }
+    fn push(&self, exp: &String, ui: &ControlWidget) {
+        let s = String::from(exp).replace("\n", " ");
+        let c = if let Some(ref v) = s.get(0..HISTORY_COL_SIZE) {
+            gtk::MenuItem::new_with_mnemonic(format!("{} ..", v).as_str())
+        } else {
+            gtk::MenuItem::new_with_mnemonic(s.as_str())
+        };
+        let ui = ui.clone();
+        let exp_ = exp.clone();
+        let exp_ = exp_.into_boxed_str();
+        c.connect_activate(move |_| {
+            let text_buffer = ui.text_view().get_buffer().expect("Couldn't get window");
+            text_buffer.set_text(&exp_);
+        });
+
+        if None == self.menu.get_submenu() {
+            self.menu.set_submenu(Some(&gtk::Menu::new()));
+        }
+        if let Some(w) = self.menu.get_submenu() {
+            if let Ok(w) = w.downcast::<gtk::Menu>() {
+                w.append(&c);
+
+                let mut h = self.children.borrow_mut();
+                h.push_front((c, exp.clone()));
+                if h.len() > self.max_item {
+                    if let Some((c, _)) = h.pop_back() {
+                        w.remove(&c);
+                    }
+                }
+                w.show_all();
+            }
+        }
+    }
+    fn is_once(&self, exp: &String) -> bool {
+        for (_, e) in self.children.borrow().iter() {
+            if e == exp {
+                return true;
+            }
+        }
+        false
+    }
+}
+#[derive(Clone)]
+struct ControlWidget {
+    canvas: gtk::DrawingArea,
+    text_view: gtk::TextView,
+    status_bar: gtk::Statusbar,
+}
+impl ControlWidget {
+    fn new() -> Self {
+        ControlWidget {
+            canvas: gtk::DrawingArea::new(),
+            text_view: gtk::TextView::new(),
+            status_bar: gtk::Statusbar::new(),
+        }
+    }
+    fn canvas(&self) -> &gtk::DrawingArea {
+        &self.canvas
+    }
+    fn text_view(&self) -> &gtk::TextView {
+        &self.text_view
+    }
+    fn status_bar(&self) -> &gtk::Statusbar {
+        &self.status_bar
+    }
+}
 #[allow(unused_macros)]
 macro_rules! get_default_surface {
     ($tbl: expr) => {
@@ -80,9 +164,15 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     vbox.set_border_width(5);
 
     //--------------------------------------------------------
+    // History
+    //--------------------------------------------------------
+    let ui = ControlWidget::new();
+    let history = History::new(HISTORY_SIZE);
+
+    //--------------------------------------------------------
     // GtkStatusBar
     //--------------------------------------------------------
-    let status_bar = gtk::Statusbar::new();
+    let status_bar = ui.status_bar();
     set_message!(status_bar, "");
     status_bar.set_margin_top(0);
     status_bar.set_margin_bottom(0);
@@ -90,7 +180,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     // DrawingArea
     //--------------------------------------------------------
-    let canvas = gtk::DrawingArea::new();
+    let canvas = ui.canvas();
     canvas.set_size_request(DRAW_WIDTH, DRAW_HEIGHT);
 
     let surface = get_default_surface!(image_table);
@@ -99,27 +189,26 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         cr.paint();
         Inhibit(false)
     });
+
     //--------------------------------------------------------
     // TextView
     //--------------------------------------------------------
-    let text_view = gtk::TextView::new();
+    let text_view = ui.text_view();
     let scroll = gtk::ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
     scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-    scroll.add(&text_view);
+    scroll.add(text_view);
     scroll.set_size_request(DRAW_WIDTH, 160);
     {
         let env = env.clone();
-        let canvas = canvas.downgrade();
-        let status_bar = status_bar.downgrade();
         let surface = get_default_surface!(image_table);
         let text_buffer = text_view.get_buffer().expect("Couldn't get window");
-
-        text_view.connect_key_press_event(move |w, key| {
+        let history = history.clone();
+        let ui = ui.clone();
+        text_view.connect_key_press_event(move |_, key| {
             if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
-                let canvas = canvas.upgrade().unwrap();
                 match key.get_keyval() {
-                    EVAL_KEYCODE => execute_lisp(&env, &canvas, w, &status_bar.upgrade().unwrap()),
-                    DRAW_CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), &canvas),
+                    EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
+                    DRAW_CLEAR_KEYCODE => clear_canvas(&Context::new(&*surface), ui.canvas()),
                     TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
                     _ => {}
                 }
@@ -178,15 +267,10 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     menu.append(&{
         let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
         let env = env.clone();
-        let canvas = canvas.downgrade();
-        let status_bar = status_bar.downgrade();
+        let ui = ui.clone();
+        let history = history.clone();
         eval.connect_activate(move |_| {
-            execute_lisp(
-                &env,
-                &canvas.upgrade().unwrap(),
-                &text_view,
-                &status_bar.upgrade().unwrap(),
-            );
+            execute_lisp(&env, &ui, &history);
         });
         eval
     });
@@ -207,12 +291,17 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     menu_bar.append(&edit);
 
     //--------------------------------------------------------
+    // History Command
+    //--------------------------------------------------------
+    menu_bar.append(&history.menu);
+
+    //--------------------------------------------------------
     // Application Setup
     //--------------------------------------------------------
     vbox.pack_start(&menu_bar, false, false, 0);
-    vbox.pack_start(&canvas, true, true, 0);
+    vbox.pack_start(canvas, true, true, 0);
     vbox.pack_start(&scroll, true, true, 0);
-    vbox.pack_start(&status_bar, true, true, 0);
+    vbox.pack_start(status_bar, true, true, 0);
 
     //--------------------------------------------------------
     // Create Lisp Function
@@ -225,12 +314,10 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     window.add(&vbox);
     window.show_all();
 }
-fn execute_lisp(
-    env: &Environment,
-    canvas: &gtk::DrawingArea,
-    text_view: &gtk::TextView,
-    status_bar: &gtk::Statusbar,
-) {
+fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
+    let canvas = ui.canvas();
+    let text_view = ui.text_view();
+    let status_bar = ui.status_bar();
     let text_buffer = text_view.get_buffer().expect("Couldn't get window");
 
     #[cfg(feature = "animation")]
@@ -246,10 +333,18 @@ fn execute_lisp(
         Some(t) => t,
         None => (text_buffer.get_start_iter(), text_buffer.get_end_iter()),
     };
-    let exp = text_buffer.get_text(&s, &e, false).expect("die");
+    let exp = text_buffer
+        .get_text(&s, &e, false)
+        .expect("die")
+        .to_string();
 
-    let result = match lisp::do_core_logic(&exp.to_string(), env) {
-        Ok(r) => r.to_string(),
+    let result = match lisp::do_core_logic(&exp, env) {
+        Ok(r) => {
+            if !history.is_once(&exp) {
+                history.push(&exp, ui);
+            }
+            r.to_string()
+        }
         Err(e) => {
             if "E9000" == e.get_code() {
                 env.set_force_stop(false);
