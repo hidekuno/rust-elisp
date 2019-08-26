@@ -15,5 +15,7 @@
           (begin
             (dragon-curve xa ya xc yc (- n 1))
             (dragon-curve xb yb xc yc (- n 1)))))))
-(draw-clear)
-(dragon-curve 0.2777777777777778 0.25 0.5972222222222222 0.625 10)
+(define (dragon-demo)
+  (begin
+    (draw-clear)
+    (dragon-curve 0.2777777777777778 0.25 0.5972222222222222 0.625 10)))
