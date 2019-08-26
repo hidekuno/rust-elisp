@@ -918,7 +918,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::collections::HashMap;
 
-    fn create_function_dyn_dispatch(b: &mut BuildInTable) {
+    fn create_function_dyn_dispatch(b: &mut dyn BuildInTable) {
         create_function(b);
     }
 
