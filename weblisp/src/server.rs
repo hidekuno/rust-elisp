@@ -26,7 +26,7 @@ pub const BIND_ADDRESS: &'static str = "127.0.0.1:9000";
 const MAX_CONCURRENCY: usize = 4;
 const READ_TIMEOUT: u64 = 60;
 
-pub fn run_web_service(count: usize) -> Result<(), Box<Error>> {
+pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
     let listenner = TcpListener::bind(BIND_ADDRESS)?;
     listenner.set_nonblocking(false)?;
 
