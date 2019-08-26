@@ -17,7 +17,7 @@ enum Message {
     Terminate,
 }
 
-type Job = Box<FnOnce() + Send + 'static>;
+type Job = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,

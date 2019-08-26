@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use elisp::print_error;
-fn main() -> Result<(), Box<Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     env_logger::init();
 
