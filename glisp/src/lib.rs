@@ -7,6 +7,7 @@
 pub mod buildin;
 pub mod draw;
 pub mod fractal;
+pub mod ui;
 
 #[cfg(test)]
 mod tests {
@@ -154,7 +155,10 @@ mod tests {
             "E1015"
         );
         assert_str!(
-            do_lisp_env("(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0))", &env),
+            do_lisp_env(
+                "(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0 1.0 1.0))",
+                &env
+            ),
             "E1008"
         );
         assert_str!(

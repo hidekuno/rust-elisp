@@ -10,12 +10,14 @@ extern crate glisp;
 use elisp::lisp;
 use glisp::buildin;
 use glisp::draw;
+use glisp::ui;
 
 use lisp::Environment;
 
 use buildin::build_demo_function;
 use buildin::build_lisp_function;
-use draw::{create_image_table, scheme_gtk};
+use draw::create_image_table;
+use ui::scheme_gtk;
 
 // rustc --explain E0255
 use gtk::main as gtk_main;
