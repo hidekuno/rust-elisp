@@ -57,3 +57,54 @@
             (draw-line-segment (make-segment (make-vect x2 y2) (make-vect x0 y0)) frame))))
     (sierpinski-iter 0.44428969359331477 0.07168458781362007 0.04178272980501393 0.7706093189964157 0.8481894150417827 0.7706093189964157 n)))
 ;;((square-limit (sierpinski 8) 0) frame)
+
+;;========================================================================
+;; ヒルベルト曲線(paint版)
+;;========================================================================
+(define (hilbert c)
+  (lambda (frame)
+    (define width 1.0)
+    (define lgth (expt (/ width 2.0) c))
+    (define y (/ (- width (* lgth (expt 2 (- c 1)))) 3.6))
+    (define x (- width y))
+    (define oldx x)
+    (define oldy y)
+
+    (define (line)
+      (begin
+        (draw-line-segment (make-segment (make-vect oldx oldy) (make-vect x y)) frame)
+        (set! oldx x)(set! oldy y)))
+
+    (define (ldr c)
+      (if (= 0 c)(list)
+          (begin
+            (dlu (- c 1))(set! x (- x lgth))(line)
+            (ldr (- c 1))(set! y (+ y lgth))(line)
+            (ldr (- c 1))(set! x (+ x lgth))(line)
+            (urd (- c 1)))))
+
+    (define (urd c)
+      (if (= 0 c)(list)
+          (begin
+            (rul (- c 1))(set! y (- y lgth))(line)
+            (urd (- c 1))(set! x (+ x lgth))(line)
+            (urd (- c 1))(set! y (+ y lgth))(line)
+            (ldr (- c 1)))))
+
+    (define (rul c)
+      (if (= 0 c)(list)
+          (begin
+            (urd (- c 1))(set! x (+ x lgth))(line)
+            (rul (- c 1))(set! y (- y lgth))(line)
+            (rul (- c 1))(set! x (- x lgth))(line)
+            (dlu (- c 1)))))
+
+    (define (dlu c)
+      (if (= 0 c)(list)
+          (begin
+            (ldr (- c 1))(set! y (+ y lgth))(line)
+            (dlu (- c 1))(set! x (- x lgth))(line)
+            (dlu (- c 1))(set! y (- y lgth))(line)
+            (rul (- c 1)))))
+    (ldr c)))
+;;((transform-painter (hilbert 6)(make-vect 0.15 0.0)(make-vect 0.9 0.0)(make-vect 0.15 0.75)) frame)
