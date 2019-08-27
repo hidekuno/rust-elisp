@@ -5,23 +5,22 @@
    hidekuno@gmail.com
 */
 use crate::draw::DrawLine;
+use crate::fractal::Fractal;
 
 pub struct Tree {
     cs: f64,
     sn: f64,
-    scale: i64,
     draw_line: DrawLine,
 }
 impl Tree {
-    pub fn new(c: i64, draw_line: DrawLine) -> Tree {
+    pub fn new(draw_line: DrawLine) -> Tree {
         Tree {
             cs: ((std::f64::consts::PI * 15.0) / 180.0).cos(),
             sn: ((std::f64::consts::PI * 45.0) / 180.0).sin(),
-            scale: c,
             draw_line: draw_line,
         }
     }
-    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) {
         let alpha = 0.6;
 
         (self.draw_line)(x0, y0, x1, y1);
@@ -39,13 +38,18 @@ impl Tree {
             self.draw(x1, y1, xb, yb, c - 1);
         }
     }
-    pub fn do_demo(&self) {
+}
+impl Fractal for Tree {
+    fn get_func_name(&self) -> &'static str {
+        "draw-tree"
+    }
+    fn do_demo(&self, c: i32) {
         self.draw(
             0.4166666666666667,
             0.7142857142857143,
             0.4166666666666667,
             0.5357142857142857,
-            self.scale,
+            c,
         );
     }
 }

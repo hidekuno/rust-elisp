@@ -5,19 +5,18 @@
    hidekuno@gmail.com
 */
 use crate::draw::DrawLine;
+use crate::fractal::Fractal;
 
 pub struct Sierpinski {
-    scale: i64,
     draw_line: DrawLine,
 }
 impl Sierpinski {
-    pub fn new(c: i64, draw_line: DrawLine) -> Sierpinski {
+    pub fn new(draw_line: DrawLine) -> Sierpinski {
         Sierpinski {
-            scale: c,
             draw_line: draw_line,
         }
     }
-    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, x2: f64, y2: f64, c: i64) {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, x2: f64, y2: f64, c: i32) {
         if c > 1 {
             let xx0 = (x0 + x1) / 2.0;
             let yy0 = (y0 + y1) / 2.0;
@@ -35,7 +34,12 @@ impl Sierpinski {
             (self.draw_line)(x2, y2, x0, y0);
         }
     }
-    pub fn do_demo(&self) {
+}
+impl Fractal for Sierpinski {
+    fn get_func_name(&self) -> &'static str {
+        "draw-sierpinski"
+    }
+    fn do_demo(&self, c: i32) {
         self.draw(
             0.44428969359331477,
             0.07168458781362007,
@@ -43,7 +47,7 @@ impl Sierpinski {
             0.7706093189964157,
             0.8481894150417827,
             0.7706093189964157,
-            self.scale,
+            c,
         );
     }
 }

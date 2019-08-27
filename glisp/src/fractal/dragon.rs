@@ -5,19 +5,18 @@
    hidekuno@gmail.com
 */
 use crate::draw::DrawLine;
+use crate::fractal::Fractal;
 
 pub struct Dragon {
-    scale: i64,
     draw_line: DrawLine,
 }
 impl Dragon {
-    pub fn new(c: i64, draw_line: DrawLine) -> Dragon {
+    pub fn new(draw_line: DrawLine) -> Dragon {
         Dragon {
-            scale: c,
             draw_line: draw_line,
         }
     }
-    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i64) {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) {
         let xx = x1 - x0;
         let yy = (y1 - y0) * -1.0;
         let xc = x0 + (xx + yy) / 2.0;
@@ -31,13 +30,12 @@ impl Dragon {
             self.draw(x1, y1, xc, yc, c - 1);
         }
     }
-    pub fn do_demo(&self) {
-        self.draw(
-            0.2777777777777778,
-            0.25,
-            0.5972222222222222,
-            0.625,
-            self.scale,
-        );
+}
+impl Fractal for Dragon {
+    fn get_func_name(&self) -> &'static str {
+        "draw-dragon"
+    }
+    fn do_demo(&self, c: i32) {
+        self.draw(0.2777777777777778, 0.25, 0.5972222222222222, 0.625, c);
     }
 }

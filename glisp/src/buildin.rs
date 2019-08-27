@@ -5,57 +5,49 @@
    hidekuno@gmail.com
 */
 extern crate cairo;
-extern crate gdk;
-
 extern crate elisp;
 
 use super::fractal::dragon::Dragon;
 use super::fractal::koch::Koch;
 use super::fractal::sierpinski::Sierpinski;
 use super::fractal::tree::Tree;
+use super::fractal::Fractal;
+use crate::draw::create_draw_image;
+use crate::draw::create_draw_line;
 use crate::draw::draw_clear;
 use crate::draw::ImageTable;
-use crate::draw::DEFALUT_CANVAS;
-use crate::draw::DRAW_HEIGHT;
-use crate::draw::DRAW_WIDTH;
-use crate::get_default_surface;
 
 use elisp::create_error;
 use elisp::create_error_value;
 use elisp::lisp;
+
 use lisp::Environment;
 use lisp::Expression;
 use lisp::RsError;
 
-use cairo::{Context, ImageSurface, Matrix};
+use cairo::ImageSurface;
 use std::fs::File;
 use std::rc::Rc;
 
-#[cfg(feature = "animation")]
-macro_rules! force_event_loop {
-    () => {
-        while gtk::events_pending() {
-            gtk::main_iteration_do(true);
-        }
-    };
-}
 pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
-    let surface = get_default_surface!(image_table);
-    env.add_builtin_ext_func("draw-clear", move |exp, _| {
-        if exp.len() != 1 {
-            return Err(create_error!("E1007"));
-        }
-        draw_clear(&Context::new(&*surface));
-        Ok(Expression::Nil())
-    });
+    {
+        let image_table = image_table.clone();
+        env.add_builtin_ext_func("draw-clear", move |exp, _| {
+            if exp.len() != 1 {
+                return Err(create_error!("E1007"));
+            }
+            draw_clear(&image_table);
+            Ok(Expression::Nil())
+        });
+    }
     //--------------------------------------------------------
     // DrawLine
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
-    let surface = get_default_surface!(image_table);
+    let draw_line = create_draw_line(image_table);
     env.add_builtin_ext_func("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
@@ -72,19 +64,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
                 }
             }
         }
-        let (x0, y0, x1, y1) = (loc[0], loc[1], loc[2], loc[3]);
-
-        let cr = Context::new(&*surface);
-        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-        cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.set_line_width(0.001);
-        cr.move_to(x0, y0);
-        cr.line_to(x1, y1);
-        cr.stroke();
-
-        #[cfg(feature = "animation")]
-        force_event_loop!();
-
+        draw_line(loc[0], loc[1], loc[2], loc[3]);
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -122,8 +102,8 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (draw-image "roger" (list -1.0 0.0 0.0 1.0 180.0 0.0))
     // ex. (draw-image "roger" (list 1.0 0.0 0.0 1.0 0.0 0.0))
     //--------------------------------------------------------
-    let surface = get_default_surface!(image_table);
-    let image_table_clone = image_table.clone();
+    let draw_image = create_draw_image(image_table);
+    let image_table = image_table.clone();
     env.add_builtin_ext_func("draw-image", move |exp, env| {
         if exp.len() != 3 {
             return Err(create_error!("E1007"));
@@ -132,11 +112,6 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
             Expression::String(s) => s,
             _ => return Err(create_error!("E1015")),
         };
-        let img = match (*image_table_clone).borrow().get(&symbol) {
-            Some(v) => v.clone(),
-            None => return Err(create_error!("E1008")),
-        };
-
         const N: usize = 6;
         let mut ctm: [f64; N] = [0.0; N];
         if let Expression::List(l) = lisp::eval(&exp[2], env)? {
@@ -156,61 +131,53 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         } else {
             return Err(create_error!("E1005"));
         }
-        let cr = Context::new(&*surface);
-        cr.scale(1.0, 1.0);
-        cr.move_to(0.0, 0.0);
-        let matrix = Matrix {
-            xx: ctm[0],
-            yx: ctm[1],
-            xy: ctm[2],
-            yy: ctm[3],
-            x0: ctm[4],
-            y0: ctm[5],
+        let img = match (*image_table).borrow().get(&symbol) {
+            Some(v) => v.clone(),
+            None => return Err(create_error!("E1008")),
         };
-        cr.transform(matrix);
-        cr.set_source_surface(&*img, 0.0, 0.0);
-        cr.paint();
-        #[cfg(feature = "animation")]
-        force_event_loop!();
-
+        draw_image(ctm[0], ctm[1], ctm[2], ctm[3], ctm[4], ctm[5], &img);
         Ok(Expression::Nil())
     });
 }
 pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
-    macro_rules! make_demo_closure {
-        ($drawable: ty, $func: expr, $env: expr, $image_table: expr) => {
-            let surface = get_default_surface!($image_table);
+    // ----------------------------------------------------------------
+    // create new lisp interface
+    // ----------------------------------------------------------------
+    fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
+        env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
+            if exp.len() != 2 {
+                return Err(create_error!("E1007"));
+            }
+            let c = match lisp::eval(&exp[1], env)? {
+                Expression::Integer(c) => c,
+                _ => return Err(create_error!("E1002")),
+            };
 
-            $env.add_builtin_ext_func($func, move |exp, env| {
-                if exp.len() != 2 {
-                    return Err(create_error!("E1007"));
-                }
-                let c = match lisp::eval(&exp[1], env)? {
-                    Expression::Integer(c) => c,
-                    _ => return Err(create_error!("E1002")),
-                };
-                let cr = Context::new(&*surface);
-                cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-                cr.set_source_rgb(0.0, 0.0, 0.0);
-                cr.set_line_width(0.001);
-
-                let fractal = <$drawable>::new(
-                    c,
-                    Box::new(move |x0, y0, x1, y1| {
-                        cr.move_to(x0, y0);
-                        cr.line_to(x1, y1);
-                        cr.stroke();
-                        #[cfg(feature = "animation")]
-                        force_event_loop!();
-                    }),
-                );
-                fractal.do_demo();
-                Ok(Expression::Nil())
-            });
-        };
+            fractal.do_demo(c as i32);
+            Ok(Expression::Nil())
+        });
     }
-    make_demo_closure!(Koch, "draw-koch", env, image_table);
-    make_demo_closure!(Tree, "draw-tree", env, image_table);
-    make_demo_closure!(Sierpinski, "draw-sierpinski", env, image_table);
-    make_demo_closure!(Dragon, "draw-dragon", env, image_table);
+    fn make_lisp_function_by_static<T>(fractal: T, env: &Environment)
+    where
+        T: Fractal + 'static,
+    {
+        env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
+            if exp.len() != 2 {
+                return Err(create_error!("E1007"));
+            }
+            let c = match lisp::eval(&exp[1], env)? {
+                Expression::Integer(c) => c,
+                _ => return Err(create_error!("E1002")),
+            };
+            fractal.do_demo(c as i32);
+            Ok(Expression::Nil())
+        });
+    }
+    // ----------------------------------------------------------------
+    // create each demo program
+    // ----------------------------------------------------------------
+    make_lisp_function(Box::new(Koch::new(create_draw_line(image_table))), env);
+    make_lisp_function(Box::new(Tree::new(create_draw_line(image_table))), env);
+    make_lisp_function_by_static(Sierpinski::new(create_draw_line(image_table)), env);
+    make_lisp_function_by_static(Dragon::new(create_draw_line(image_table)), env);
 }
