@@ -13,6 +13,7 @@ use super::fractal::koch::Koch;
 use super::fractal::sierpinski::Sierpinski;
 use super::fractal::tree::Tree;
 use super::fractal::Fractal;
+use super::fractal::FractalMut;
 use crate::draw::create_draw_image;
 use crate::draw::create_draw_line;
 use crate::draw::draw_clear;
@@ -27,6 +28,7 @@ use lisp::Expression;
 use lisp::RsError;
 
 use cairo::ImageSurface;
+use std::cell::RefCell;
 use std::fs::File;
 use std::rc::Rc;
 
@@ -158,11 +160,13 @@ pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
             Ok(Expression::Nil())
         });
     }
-    fn make_lisp_function_by_static<T>(fractal: T, env: &Environment)
+    fn make_lisp_function_mut<T>(fractal: T, env: &Environment)
     where
-        T: Fractal + 'static,
+        T: FractalMut + 'static,
     {
-        env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
+        let f = fractal.get_func_name();
+        let fractal = RefCell::new(fractal);
+        env.add_builtin_ext_func(f, move |exp, env| {
             if exp.len() != 2 {
                 return Err(create_error!("E1007"));
             }
@@ -170,7 +174,7 @@ pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
                 Expression::Integer(c) => c,
                 _ => return Err(create_error!("E1002")),
             };
-            fractal.do_demo(c as i32);
+            fractal.borrow_mut().do_demo(c as i32);
             Ok(Expression::Nil())
         });
     }
@@ -179,7 +183,10 @@ pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     // ----------------------------------------------------------------
     make_lisp_function(Box::new(Koch::new(create_draw_line(image_table))), env);
     make_lisp_function(Box::new(Tree::new(create_draw_line(image_table))), env);
-    make_lisp_function_by_static(Sierpinski::new(create_draw_line(image_table)), env);
-    make_lisp_function_by_static(Dragon::new(create_draw_line(image_table)), env);
-    make_lisp_function_by_static(Hilvert::new(create_draw_line(image_table)), env);
+    make_lisp_function(
+        Box::new(Sierpinski::new(create_draw_line(image_table))),
+        env,
+    );
+    make_lisp_function(Box::new(Dragon::new(create_draw_line(image_table))), env);
+    make_lisp_function_mut(Hilvert::new(create_draw_line(image_table)), env);
 }
