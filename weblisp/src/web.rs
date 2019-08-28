@@ -293,11 +293,19 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
         } else if header == true {
             headers.push(e.into());
         } else {
-            body = match urldecode(e) {
-                Ok(n) => n,
-                Err(_) => body,
-            };
-            parameter = body.as_str();
+            match method {
+                Some(ref m) => match m {
+                    Method::POST => {
+                        body = match urldecode(e) {
+                            Ok(n) => n,
+                            Err(_) => body,
+                        };
+                        parameter = body.as_str();
+                    }
+                    _ => {}
+                },
+                None => {}
+            }
         }
     }
     Ok(Request {

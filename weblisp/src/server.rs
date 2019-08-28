@@ -60,13 +60,22 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
         .set_read_timeout(Some(Duration::from_secs(READ_TIMEOUT)))
         .unwrap();
 
-    let mut buffer = [0; 2048];
-
     // read() is Not Good.(because it's not detected EOF)
     // I try read_to_end() and read_exact(), But it was NG
-    if let Err(e) = stream.read(&mut buffer) {
-        error!("read {}", e);
-        return;
+    let mut buffer = [0; 2048];
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(n) => {
+                debug!("recv datasize = {}", n);
+                if n > 0 {
+                    break;
+                }
+            }
+            Err(e) => {
+                error!("read {}", e);
+                return;
+            }
+        }
     }
     if let Err(e) = web::core_proc(stream, env, &buffer) {
         error!("core proc {}", e);
