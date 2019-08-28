@@ -11,7 +11,7 @@ pub struct Dragon {
     draw_line: DrawLine,
 }
 impl Dragon {
-    pub fn new(draw_line: DrawLine) -> Dragon {
+    pub fn new(draw_line: DrawLine) -> Self {
         Dragon {
             draw_line: draw_line,
         }

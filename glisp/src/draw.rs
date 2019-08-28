@@ -76,7 +76,7 @@ pub fn create_draw_image(image_table: &ImageTable) -> DrawImage {
     let surface = get_default_surface(image_table);
     let draw_image = move |x0, y0, x1, y1, xorg, yorg, img: &ImageSurface| {
         let cr = Context::new(&*surface);
-        cr.scale(1.0, 1.0);
+        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
         let matrix = Matrix {
             xx: x0,

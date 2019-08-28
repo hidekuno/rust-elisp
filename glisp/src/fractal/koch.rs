@@ -13,7 +13,7 @@ pub struct Koch {
     draw_line: DrawLine,
 }
 impl Koch {
-    pub fn new(draw_line: DrawLine) -> Koch {
+    pub fn new(draw_line: DrawLine) -> Self {
         Koch {
             sin60: ((std::f64::consts::PI * 60.0) / 180.0).sin(),
             cos60: ((std::f64::consts::PI * 60.0) / 180.0).cos(),
