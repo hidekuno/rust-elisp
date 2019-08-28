@@ -5,7 +5,7 @@
 ; hidekuno@gmail.com
 ;
 
-(define gframe (make-frame (make-vect 0.0 0.0) (make-vect 540.0 0.0) (make-vect 0.0 540.0)))
+(define gframe (make-frame (make-vect 0.0 0.0)(make-vect 0.75 0.0)(make-vect 0.0 0.9642857142857143)))
 (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
 
 (define roger

@@ -11,7 +11,7 @@ pub struct Sierpinski {
     draw_line: DrawLine,
 }
 impl Sierpinski {
-    pub fn new(draw_line: DrawLine) -> Sierpinski {
+    pub fn new(draw_line: DrawLine) -> Self {
         Sierpinski {
             draw_line: draw_line,
         }

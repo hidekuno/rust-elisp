@@ -73,6 +73,7 @@ mod tests {
         assert_str!(do_lisp_env("(draw-tree 2)", &env), "nil");
         assert_str!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
         assert_str!(do_lisp_env("(draw-dragon 2)", &env), "nil");
+        assert_str!(do_lisp_env("(draw-hilvert 2)", &env), "nil");
 
         let png = create_png_file("1");
         assert_str!(
@@ -188,5 +189,8 @@ mod tests {
         assert_str!(do_lisp_env("(draw-dragon)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-dragon 10 20)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-dragon 10.5)", &env), "E1002");
+        assert_str!(do_lisp_env("(draw-hilvert)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-hilvert 10 20)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-hilvert 10.5)", &env), "E1002");
     }
 }
