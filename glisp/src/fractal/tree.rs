@@ -13,7 +13,7 @@ pub struct Tree {
     draw_line: DrawLine,
 }
 impl Tree {
-    pub fn new(draw_line: DrawLine) -> Tree {
+    pub fn new(draw_line: DrawLine) -> Self {
         Tree {
             cs: ((std::f64::consts::PI * 15.0) / 180.0).cos(),
             sn: ((std::f64::consts::PI * 45.0) / 180.0).sin(),
