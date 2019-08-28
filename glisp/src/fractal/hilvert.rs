@@ -5,39 +5,32 @@
    hidekuno@gmail.com
 */
 use crate::draw::DrawLine;
-use crate::fractal::Fractal;
+use crate::fractal::FractalMut;
 
 struct Coord {
     oldx: f64,
     oldy: f64,
     x: f64,
     y: f64,
-    lgth: f64,
 }
 impl Coord {
-    fn new(c: i32) -> Self {
-        let width = 1.0;
-        let lgth = ((width / 2.0) as f64).powi(c);
-        let y = (width - (lgth * (2.0 as f64).powi(c - 1))) / 3.6;
-        let x = width - y;
-        let oldx = x;
-        let oldy = y;
-
+    fn new(oldx: f64, oldy: f64, x: f64, y: f64) -> Self {
         Coord {
             oldx: oldx,
             oldy: oldy,
             x: x,
             y: y,
-            lgth: lgth,
         }
     }
 }
 pub struct Hilvert {
+    lgth: f64,
     draw_line: DrawLine,
 }
 impl Hilvert {
     pub fn new(draw_line: DrawLine) -> Self {
         Hilvert {
+            lgth: 0.0,
             draw_line: draw_line,
         }
     }
@@ -51,15 +44,15 @@ impl Hilvert {
             return;
         } else {
             self.dlu(c - 1, coord);
-            coord.x -= coord.lgth;
+            coord.x -= self.lgth;
             self.draw(coord);
 
             self.ldr(c - 1, coord);
-            coord.y += coord.lgth;
+            coord.y += self.lgth;
             self.draw(coord);
 
             self.ldr(c - 1, coord);
-            coord.x += coord.lgth;
+            coord.x += self.lgth;
             self.draw(coord);
 
             self.urd(c - 1, coord);
@@ -70,15 +63,15 @@ impl Hilvert {
             return;
         } else {
             self.rul(c - 1, coord);
-            coord.y -= coord.lgth;
+            coord.y -= self.lgth;
             self.draw(coord);
 
             self.urd(c - 1, coord);
-            coord.x += coord.lgth;
+            coord.x += self.lgth;
             self.draw(coord);
 
             self.urd(c - 1, coord);
-            coord.y += coord.lgth;
+            coord.y += self.lgth;
             self.draw(coord);
 
             self.ldr(c - 1, coord);
@@ -89,15 +82,15 @@ impl Hilvert {
             return;
         } else {
             self.urd(c - 1, coord);
-            coord.x += coord.lgth;
+            coord.x += self.lgth;
             self.draw(coord);
 
             self.rul(c - 1, coord);
-            coord.y -= coord.lgth;
+            coord.y -= self.lgth;
             self.draw(coord);
 
             self.rul(c - 1, coord);
-            coord.x -= coord.lgth;
+            coord.x -= self.lgth;
             self.draw(coord);
 
             self.dlu(c - 1, coord);
@@ -108,27 +101,34 @@ impl Hilvert {
             return;
         } else {
             self.ldr(c - 1, coord);
-            coord.y += coord.lgth;
+            coord.y += self.lgth;
             self.draw(coord);
 
             self.dlu(c - 1, coord);
-            coord.x -= coord.lgth;
+            coord.x -= self.lgth;
             self.draw(coord);
 
             self.dlu(c - 1, coord);
-            coord.y -= coord.lgth;
+            coord.y -= self.lgth;
             self.draw(coord);
 
             self.rul(c - 1, coord);
         }
     }
 }
-impl Fractal for Hilvert {
+impl FractalMut for Hilvert {
     fn get_func_name(&self) -> &'static str {
         "draw-hilvert"
     }
-    fn do_demo(&self, c: i32) {
-        let mut coord = Coord::new(c);
+    fn do_demo(&mut self, c: i32) {
+        let width = 1.0;
+        self.lgth = ((width / 2.0) as f64).powi(c);
+        let y = (width - (self.lgth * (2.0 as f64).powi(c - 1))) / 3.6;
+        let x = width - y;
+        let oldx = x;
+        let oldy = y;
+
+        let mut coord = Coord::new(oldx, oldy, x, y);
         self.ldr(c, &mut coord);
     }
 }
