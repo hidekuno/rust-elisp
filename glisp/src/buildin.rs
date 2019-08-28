@@ -8,6 +8,7 @@ extern crate cairo;
 extern crate elisp;
 
 use super::fractal::dragon::Dragon;
+use super::fractal::hilvert::Hilvert;
 use super::fractal::koch::Koch;
 use super::fractal::sierpinski::Sierpinski;
 use super::fractal::tree::Tree;
@@ -180,4 +181,5 @@ pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     make_lisp_function(Box::new(Tree::new(create_draw_line(image_table))), env);
     make_lisp_function_by_static(Sierpinski::new(create_draw_line(image_table)), env);
     make_lisp_function_by_static(Dragon::new(create_draw_line(image_table)), env);
+    make_lisp_function_by_static(Hilvert::new(create_draw_line(image_table)), env);
 }
