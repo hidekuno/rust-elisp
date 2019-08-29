@@ -1,15 +1,22 @@
-FROM centos:centos7
+FROM ubuntu as builder
 MAINTAINER hidekuno@gmail.com
 
-RUN yum update -y|true
-RUN yum install -y epel-release |true
-RUN yum install -y rust cargo git gtk3-devel |true
 ENV HOME /root
+RUN apt-get update && apt-get -y install git curl libgtk-3-dev |true
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH $PATH:$HOME/.cargo/bin
 
 WORKDIR $HOME
 RUN git clone https://github.com/hidekuno/rust-elisp
 
 WORKDIR $HOME/rust-elisp/glisp
 RUN cargo build --release --features animation --bin glisp
-RUN sed -i "s/home.kunohi/root/" samples/sicp/roger.scm
-RUN dbus-uuidgen > /etc/machine-id
+RUN strip target/release/glisp
+
+FROM ubuntu as glisp
+MAINTAINER hidekuno@gmail.com
+
+RUN apt-get update && apt-get -y install libgtk-3-0
+COPY --from=builder /root/rust-elisp/glisp/target/release/glisp /root/
+COPY --from=builder /root/rust-elisp/glisp/samples /root/
+RUN sed -i "s|home/kunohi/rust-elisp/glisp/samples|root|" /root/sicp/roger.scm
