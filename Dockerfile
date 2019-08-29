@@ -9,14 +9,17 @@ ENV PATH $PATH:$HOME/.cargo/bin
 WORKDIR $HOME
 RUN git clone https://github.com/hidekuno/rust-elisp
 
+WORKDIR $HOME/rust-elisp/elisp
+RUN cargo build --release --bin lisp && strip target/release/lisp
+
 WORKDIR $HOME/rust-elisp/glisp
-RUN cargo build --release --features animation --bin glisp
-RUN strip target/release/glisp
+RUN cargo build --release --features animation --bin glisp && strip target/release/glisp
 
 FROM ubuntu as glisp
 MAINTAINER hidekuno@gmail.com
 
 RUN apt-get update && apt-get -y install libgtk-3-0
+COPY --from=builder /root/rust-elisp/elisp/target/release/lisp /root/
 COPY --from=builder /root/rust-elisp/glisp/target/release/glisp /root/
 COPY --from=builder /root/rust-elisp/glisp/samples /root/
 RUN sed -i "s|home/kunohi/rust-elisp/glisp/samples|root|" /root/sicp/roger.scm
