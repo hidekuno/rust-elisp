@@ -17,7 +17,9 @@ use gtk::prelude::*;
 use std::cell::RefCell;
 use std::collections::LinkedList;
 use std::env;
+use std::fs;
 use std::fs::File;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::draw::draw_clear;
@@ -29,8 +31,8 @@ pub const DRAW_HEIGHT: i32 = 560;
 const EVAL_RESULT_ID: &str = "result";
 const PNG_SAVE_FILE: &str = "glisp.png";
 
-const EVAL_KEYCODE: u32 = 101;
-const TEXT_CLEAR_KEYCODE: u32 = 107;
+const EVAL_KEYCODE: u32 = 114;
+const TEXT_CLEAR_KEYCODE: u32 = 117;
 const DRAW_CLEAR_KEYCODE: u32 = 108;
 
 const HISTORY_SIZE: usize = 10;
@@ -124,10 +126,96 @@ macro_rules! set_message {
         $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
     };
 }
+fn clear_canvas(image_table: &ImageTable, canvas: &gtk::DrawingArea) {
+    draw_clear(image_table);
+    canvas.queue_draw();
+}
+fn setup_key_emacs_like() {
+    // https://gist.github.com/shelling/663759
+    let style = "
+@binding-set my-text-view-bindings
+{
+    bind \"<ctrl>b\" { \"move-cursor\" (logical-positions, -1, 0) };
+    bind \"<ctrl>f\" { \"move-cursor\" (logical-positions, 1, 0) };
+    bind \"<alt>b\"  { \"move-cursor\" (words, -1, 0) };
+    bind \"<alt>f\"  { \"move-cursor\" (words, 1, 0) };
+
+    bind \"<ctrl>a\" { \"move-cursor\" (paragraph-ends, -1, 0)};
+    bind \"<ctrl>e\" { \"move-cursor\" (paragraph-ends,  1, 0) };
+    bind \"<ctrl>p\" { \"move-cursor\" (display-lines, -1, 0) };
+    bind \"<ctrl>n\" { \"move-cursor\" (display-lines, 1, 0) };
+
+    bind \"<ctrl>d\" { \"delete-from-cursor\" (chars, 1) };
+    bind \"<alt>d\"  { \"delete-from-cursor\" (word-ends, 1) };
+    bind \"<ctrl>k\" { \"delete-from-cursor\" (paragraph-ends, 1) };
+    bind \"<ctrl>h\" { \"delete-from-cursor\" (chars, -1) };
+
+    bind \"<ctrl>m\" { \"insert-at-cursor\" (\"\\n\")};
+    bind \"<ctrl>i\" { \"insert-at-cursor\" (\"  \")};
+
+    bind \"<ctrl>space\" { \"set-anchor\" () };
+    bind \"<alt>w\" { \"copy-clipboard\" () };
+    bind \"<ctrl>y\" { \"paste-clipboard\" () };
+    bind \"<ctrl>w\" { \"cut-clipboard\" () };
+}
+textview {
+  -gtk-key-bindings: my-text-view-bindings;
+}";
+
+    let provider = gtk::CssProvider::new();
+    provider
+        .load_from_data(style.as_bytes())
+        .expect("Failed to load CSS");
+    gtk::StyleContext::add_provider_for_screen(
+        &gdk::Screen::get_default().expect("Error initializing gtk css provider."),
+        &provider,
+        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+}
+fn load_demo_program() -> std::io::Result<String> {
+    fn get_program_name(vec: Vec<&str>) -> std::io::Result<(String, bool)> {
+        let mut program = String::new();
+
+        let mut path = PathBuf::new();
+        path.push(match env::var("HOME") {
+            Ok(v) => v,
+            Err(_) => "/root".into(),
+        });
+        for dir in vec {
+            path.push(dir);
+        }
+        if false == path.as_path().exists() {
+            return Ok((String::from(""), false));
+        }
+        for entry in fs::read_dir(path)? {
+            let dir = entry?;
+            let path = dir.path();
+            let f = path.to_str().unwrap();
+            if f.ends_with(".scm") {
+                program.push_str("(load-file \"");
+                program.push_str(f);
+                program.push_str("\")\n");
+            }
+        }
+        Ok((program, true))
+    }
+    for v in vec![vec!["rust-elisp", "glisp", "samples", "sicp"], vec!["sicp"]] {
+        match get_program_name(v) {
+            Ok((s, b)) => {
+                if b == true {
+                    return Ok(s);
+                }
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Ok("".into())
+}
 pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
-    let window = gtk::Window::new(gtk::WindowType::Toplevel);
+    setup_key_emacs_like();
 
+    let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.set_title("Rust eLisp");
     window.set_position(gtk::WindowPosition::Center);
     window.connect_delete_event(|_, _| {
@@ -264,6 +352,22 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         });
         clear
     });
+    menu.append(&{
+        let load = gtk::MenuItem::new_with_mnemonic("_Load Sample");
+        let ui = ui.clone();
+        load.connect_activate(move |_| match load_demo_program() {
+            Ok(v) => {
+                let text_buffer = ui.text_view().get_buffer().expect("Couldn't get window");
+                text_buffer.set_text(&v.into_boxed_str());
+            }
+            Err(e) => {
+                let status_bar = ui.status_bar();
+                set_message!(status_bar, &e.to_string().into_boxed_str());
+            }
+        });
+        load
+    });
+
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
 
@@ -330,9 +434,5 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     #[cfg(feature = "animation")]
     glib::source::source_remove(sid);
 
-    canvas.queue_draw();
-}
-fn clear_canvas(image_table: &ImageTable, canvas: &gtk::DrawingArea) {
-    draw_clear(image_table);
     canvas.queue_draw();
 }
