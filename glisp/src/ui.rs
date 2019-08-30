@@ -174,9 +174,9 @@ textview {
 }
 fn load_demo_program() -> std::io::Result<String> {
     fn get_program_name(vec: Vec<&str>) -> std::io::Result<(String, bool)> {
-        let mut program = String::new();
-
+        let mut program: Vec<String> = Vec::new();
         let mut path = PathBuf::new();
+
         path.push(match env::var("HOME") {
             Ok(v) => v,
             Err(_) => "/root".into(),
@@ -191,13 +191,12 @@ fn load_demo_program() -> std::io::Result<String> {
             let dir = entry?;
             let path = dir.path();
             let f = path.to_str().unwrap();
-            if f.ends_with(".scm") {
-                program.push_str("(load-file \"");
-                program.push_str(f);
-                program.push_str("\")\n");
+            if f.ends_with(".scm") && !f.ends_with("huge-memory.scm") {
+                program.push(format!("(load-file \"{}\")", f));
             }
         }
-        Ok((program, true))
+        program.sort();
+        Ok((program.join("\n"), true))
     }
     for v in vec![vec!["rust-elisp", "glisp", "samples", "sicp"], vec!["sicp"]] {
         match get_program_name(v) {
