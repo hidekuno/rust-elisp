@@ -1,4 +1,4 @@
-FROM ubuntu as builder
+FROM ubuntu:18.04 as builder
 MAINTAINER hidekuno@gmail.com
 
 ENV HOME /root
@@ -15,7 +15,7 @@ RUN cargo build --release --bin lisp && strip target/release/lisp
 WORKDIR $HOME/rust-elisp/glisp
 RUN cargo build --release --features animation --bin glisp && strip target/release/glisp
 
-FROM ubuntu as glisp
+FROM ubuntu:18.04 as glisp
 MAINTAINER hidekuno@gmail.com
 
 RUN apt-get update && apt-get -y install libgtk-3-0
