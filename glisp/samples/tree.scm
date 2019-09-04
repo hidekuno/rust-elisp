@@ -16,7 +16,5 @@
           ((lambda () (draw-line x1 y1 xa ya) (draw-line x1 y1 xb yb)))
           ((lambda () (tree x1 y1 xa ya (- c 1))(tree x1  y1  xb  yb (- c 1))))))))
 
-(define (tree-demo)
-  (begin
-    (draw-clear)
-    (tree 0.4166666666666667 0.7142857142857143 0.4166666666666667 0.5357142857142857 14)))
+(define (tree-demo n)
+  (tree 0.4166666666666667 0.7142857142857143 0.4166666666666667 0.5357142857142857 n))
