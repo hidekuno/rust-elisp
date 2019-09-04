@@ -339,7 +339,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         eval
     });
     menu.append(&{
-        let clear = gtk::MenuItem::new_with_mnemonic("_Clear");
+        let clear = gtk::MenuItem::new_with_mnemonic("_Draw Clear");
         let image_table = image_table.clone();
         // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
         let canvas = canvas.downgrade();
@@ -348,6 +348,15 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
             let canvas = canvas.upgrade().unwrap();
             clear_canvas(&image_table, &canvas);
             canvas.queue_draw();
+        });
+        clear
+    });
+    menu.append(&{
+        let clear = gtk::MenuItem::new_with_mnemonic("_Code Clear");
+        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+
+        clear.connect_activate(move |_| {
+            text_buffer.set_text("");
         });
         clear
     });
