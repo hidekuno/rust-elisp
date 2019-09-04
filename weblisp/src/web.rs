@@ -23,8 +23,8 @@ use std::process::{Child, Command, Stdio};
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-const PROTOCOL: &'static str = "HTTP/1.1";
-const CRLF: &'static str = "\r\n";
+pub const PROTOCOL: &'static str = "HTTP/1.1";
+pub const CRLF: &'static str = "\r\n";
 
 const RESPONSE_200: &'static str = "200 OK";
 const RESPONSE_400: &'static str = "400 Bad Request";
