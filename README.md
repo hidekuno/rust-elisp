@@ -18,6 +18,6 @@ RustによるLisp(subset版)の実装
 | Item   | Ver. |備考|
 |--------|--------|--------|
 | OS     | CentOS7 | draw系を使わなければ特になし|
-| rust   | 1.36.0|1.35以下ではglispでコンパイルエラーになる|
+| rust   | 1.37.0|1.35以下ではglispでコンパイルエラーになる|
 | Gtk+   | 3.22.30||
 | rust-gtk |0.7.1|https://github.com/gtk-rs/gtk|
