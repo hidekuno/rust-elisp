@@ -29,6 +29,7 @@ use crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
 use crate::env_single::Environment;
+
 //========================================================================
 const SAMPLE_INT: i64 = 10_000_000_000_000;
 //========================================================================
@@ -43,11 +44,39 @@ where
     b.regist("-", |exp, env| calc(exp, env, |x, y| x - y));
     b.regist("*", |exp, env| calc(exp, env, |x, y| x * y));
     b.regist("/", |exp, env| calc(exp, env, |x, y| x / y));
+    b.regist("max", |exp, env| {
+        calc(exp, env, |x, y| if x > y { x } else { y })
+    });
+    b.regist("min", |exp, env| {
+        calc(exp, env, |x, y| if x < y { x } else { y })
+    });
     b.regist("=", |exp, env| cmp(exp, env, |x, y| x == y));
     b.regist("<", |exp, env| cmp(exp, env, |x, y| x < y));
     b.regist("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
     b.regist(">", |exp, env| cmp(exp, env, |x, y| x > y));
     b.regist(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
+
+    b.regist("even?", |exp, env| odd_even(exp, env, |x| x % 2 == 0));
+    b.regist("odd?", |exp, env| odd_even(exp, env, |x| x % 2 != 0));
+    b.regist("zero?", |exp, env| is_sign(exp, env, |x, y| x == y));
+    b.regist("positive?", |exp, env| is_sign(exp, env, |x, y| x > y));
+    b.regist("negative?", |exp, env| is_sign(exp, env, |x, y| x < y));
+
+    b.regist("list?", |exp, env| is_type(exp, env, Expression::is_list));
+    b.regist("pair?", |exp, env| is_type(exp, env, Expression::is_pair));
+    b.regist("char?", |exp, env| is_type(exp, env, Expression::is_char));
+    b.regist("string?", |exp, env| {
+        is_type(exp, env, Expression::is_string)
+    });
+    b.regist("procedure?", |exp, env| {
+        is_type(exp, env, Expression::is_procedure)
+    });
+    b.regist("integer?", |exp, env| {
+        is_type(exp, env, Expression::is_integer)
+    });
+    b.regist("number?", |exp, env| {
+        is_type(exp, env, Expression::is_number)
+    });
     b.regist("expt", expt);
     b.regist("modulo", |exp, env| divide(exp, env, |x, y| x % y));
     b.regist("quotient", |exp, env| divide(exp, env, |x, y| x / y));
@@ -95,6 +124,12 @@ where
     b.regist("tan", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.tan()))
     });
+    b.regist("asin", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.asin()))
+    });
+    b.regist("acos", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.acos()))
+    });
     b.regist("atan", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.atan()))
     });
@@ -104,6 +139,20 @@ where
     b.regist("log", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
     });
+    b.regist("truncate", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.trunc()))
+    });
+    b.regist("floor", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.floor()))
+    });
+    b.regist("ceiling", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.ceil()))
+    });
+    b.regist("round", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.round()))
+    });
+    b.regist("abs", abs);
+
     b.regist("rand-integer", rand_integer);
     b.regist("rand-list", rand_list);
 
@@ -911,6 +960,54 @@ fn cmp(
         }
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
+}
+fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    Ok(match eval(&exp[1], env)? {
+        Expression::Float(v) => Expression::Float(v.abs()),
+        Expression::Integer(v) => Expression::Integer(v.abs()),
+        Expression::Rational(v) => Expression::Rational(v.abs()),
+        _ => return Err(create_error!("E1003")),
+    })
+}
+fn odd_even(exp: &[Expression], env: &Environment, f: fn(x: i64) -> bool) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::Integer(i) => Ok(Expression::Boolean(f(i))),
+        _ => return Err(create_error!("E1002")),
+    }
+}
+fn is_sign(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: &Number, y: &Number) -> bool,
+) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let zero = Number::Integer(0);
+    let v = match eval(&exp[1], env)? {
+        Expression::Float(f) => Number::Float(f),
+        Expression::Integer(i) => Number::Integer(i),
+        Expression::Rational(r) => Number::Rational(r),
+        _ => return Err(create_error!("E1003")),
+    };
+    Ok(Expression::Boolean(f(&v, &zero)))
+}
+fn is_type(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(e: &Expression) -> bool,
+) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let v = eval(&exp[1], env)?;
+    Ok(Expression::Boolean(f(&v)))
 }
 #[cfg(test)]
 mod tests {
