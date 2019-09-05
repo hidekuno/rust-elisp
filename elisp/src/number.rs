@@ -33,6 +33,12 @@ impl Rat {
     pub fn div_float(&self) -> f64 {
         self.numer as f64 / self.denom as f64
     }
+    pub fn abs(&self) -> Rat {
+        Rat {
+            numer: self.numer.abs(),
+            denom: self.denom,
+        }
+    }
 }
 fn gcm(n: i64, m: i64) -> i64 {
     match n % m {

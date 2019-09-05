@@ -140,6 +140,52 @@ pub enum Expression {
     CPS(RsCPS),
 }
 impl Expression {
+    pub fn is_list(exp: &Expression) -> bool {
+        match exp {
+            Expression::List(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_pair(exp: &Expression) -> bool {
+        match exp {
+            Expression::Pair(_, _) => true,
+            _ => false,
+        }
+    }
+    pub fn is_char(exp: &Expression) -> bool {
+        match exp {
+            Expression::Char(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_string(exp: &Expression) -> bool {
+        match exp {
+            Expression::String(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_procedure(exp: &Expression) -> bool {
+        match exp {
+            Expression::Function(_) => true,
+            Expression::BuildInFunction(_, _) => true,
+            Expression::BuildInFunctionExt(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_integer(exp: &Expression) -> bool {
+        match exp {
+            Expression::Integer(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_number(exp: &Expression) -> bool {
+        match exp {
+            Expression::Integer(_) => true,
+            Expression::Float(_) => true,
+            Expression::Rational(_) => true,
+            _ => false,
+        }
+    }
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
 

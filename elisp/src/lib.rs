@@ -110,6 +110,20 @@ mod tests {
         assert_str!(do_lisp("(/ (+ 4 4)(+ 2 2))"), "2");
     }
     #[test]
+    fn max_f() {
+        assert_str!(do_lisp("(max 10 12 11 1 2)"), "12");
+        assert_str!(do_lisp("(max 10 12 11 1 12)"), "12");
+        assert_str!(do_lisp("(max 10 12 13.5 1 1)"), "13.5");
+        assert_str!(do_lisp("(max 10 123/11 10.5 1 1)"), "123/11");
+    }
+    #[test]
+    fn min_f() {
+        assert_str!(do_lisp("(min 10 12 11 3 9)"), "3");
+        assert_str!(do_lisp("(min 3 12 11 3 12)"), "3");
+        assert_str!(do_lisp("(min 10 12 0.5 1 1)"), "0.5");
+        assert_str!(do_lisp("(min 10 1/11 10.5 1 1)"), "1/11");
+    }
+    #[test]
     fn eq() {
         assert_str!(do_lisp("(= 5 5)"), "#t");
         assert_str!(do_lisp("(= 5.5 5.5)"), "#t");
@@ -172,6 +186,94 @@ mod tests {
         assert_str!(do_lisp("(<= 5.9 6)"), "#t");
         assert_str!(do_lisp("(<= 5 6.1)"), "#t");
         assert_str!(do_lisp("(<= (+ 3 3) 6)"), "#t");
+    }
+    #[test]
+    fn even() {
+        assert_str!(do_lisp("(even? 2)"), "#t");
+        assert_str!(do_lisp("(even? 4)"), "#t");
+        assert_str!(do_lisp("(even? 0)"), "#t");
+        assert_str!(do_lisp("(even? 1)"), "#f");
+        assert_str!(do_lisp("(even? 5)"), "#f");
+    }
+    #[test]
+    fn odd() {
+        assert_str!(do_lisp("(odd? 2)"), "#f");
+        assert_str!(do_lisp("(odd? 4)"), "#f");
+        assert_str!(do_lisp("(odd? 0)"), "#f");
+        assert_str!(do_lisp("(odd? 1)"), "#t");
+        assert_str!(do_lisp("(odd? 5)"), "#t");
+    }
+    #[test]
+    fn zero() {
+        assert_str!(do_lisp("(zero? 0)"), "#t");
+        assert_str!(do_lisp("(zero? 0.0)"), "#t");
+        assert_str!(do_lisp("(zero? 0/3)"), "#t");
+        assert_str!(do_lisp("(zero? 2)"), "#f");
+        assert_str!(do_lisp("(zero? -3)"), "#f");
+        assert_str!(do_lisp("(zero? 2.5)"), "#f");
+        assert_str!(do_lisp("(zero? 1/3)"), "#f");
+    }
+    #[test]
+    fn positive() {
+        assert_str!(do_lisp("(positive? 0)"), "#f");
+        assert_str!(do_lisp("(positive? 0.0)"), "#f");
+        assert_str!(do_lisp("(positive? 0/3)"), "#f");
+        assert_str!(do_lisp("(positive? 2)"), "#t");
+        assert_str!(do_lisp("(positive? -3)"), "#f");
+        assert_str!(do_lisp("(positive? 2.5)"), "#t");
+        assert_str!(do_lisp("(positive? -1.5)"), "#f");
+        assert_str!(do_lisp("(positive? 1/3)"), "#t");
+        assert_str!(do_lisp("(positive? -1/3)"), "#f");
+    }
+    #[test]
+    fn negative() {
+        assert_str!(do_lisp("(negative? 0)"), "#f");
+        assert_str!(do_lisp("(negative? 0.0)"), "#f");
+        assert_str!(do_lisp("(negative? 0/3)"), "#f");
+        assert_str!(do_lisp("(negative? 2)"), "#f");
+        assert_str!(do_lisp("(negative? -3)"), "#t");
+        assert_str!(do_lisp("(negative? 2.5)"), "#f");
+        assert_str!(do_lisp("(negative? -1.5)"), "#t");
+        assert_str!(do_lisp("(negative? 1/3)"), "#f");
+        assert_str!(do_lisp("(negative? -1/3)"), "#t");
+    }
+    #[test]
+    fn list_f() {
+        assert_str!(do_lisp("(list? (list 1 2 3))"), "#t");
+        assert_str!(do_lisp("(list? 90)"), "#f");
+    }
+    #[test]
+    fn pair_f() {
+        assert_str!(do_lisp("(pair? (cons 1 2))"), "#t");
+        assert_str!(do_lisp("(pair? 110)"), "#f");
+    }
+    #[test]
+    fn char_f() {
+        assert_str!(do_lisp("(char? #\\a)"), "#t");
+        assert_str!(do_lisp("(char? 100)"), "#f");
+    }
+    #[test]
+    fn string_f() {
+        assert_str!(do_lisp("(string? \"a\")"), "#t");
+        assert_str!(do_lisp("(string? 100)"), "#f");
+    }
+    #[test]
+    fn integer_f() {
+        assert_str!(do_lisp("(integer? 10)"), "#t");
+        assert_str!(do_lisp("(integer? \"a\")"), "#f");
+    }
+    #[test]
+    fn number_f() {
+        assert_str!(do_lisp("(number? 10)"), "#t");
+        assert_str!(do_lisp("(number? 10.5)"), "#t");
+        assert_str!(do_lisp("(number? 1/3)"), "#t");
+        assert_str!(do_lisp("(number? \"a\")"), "#f");
+    }
+    #[test]
+    fn procedure_f() {
+        assert_str!(do_lisp("(procedure? (lambda (n)n))"), "#t");
+        assert_str!(do_lisp("(procedure? +)"), "#t");
+        assert_str!(do_lisp("(procedure? 10)"), "#f");
     }
     #[test]
     fn define() {
@@ -715,6 +817,28 @@ mod tests {
         assert_str!(do_lisp_env("(tan a)", &env), "0.9999999999999999");
     }
     #[test]
+    fn asin() {
+        assert_str!(
+            do_lisp("(sin (asin (/(* pi 30)180)))"),
+            do_lisp("(/(* pi 30)180)")
+        );
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* pi 30)180))", &env);
+        assert_str!(do_lisp_env("(sin (asin a))", &env), do_lisp_env("a", &env));
+    }
+    #[test]
+    fn acos() {
+        assert_str!(
+            do_lisp("(cos (acos (/(* pi 30)180)))"),
+            do_lisp("(/(* pi 30)180)")
+        );
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* pi 30)180))", &env);
+        assert_str!(do_lisp_env("(cos (acos a))", &env), do_lisp_env("a", &env));
+    }
+    #[test]
     fn atan() {
         assert_str!(do_lisp("(* 4 (atan 1))"), "3.141592653589793");
         assert_str!(do_lisp("(* 4 (atan 1.0))"), "3.141592653589793");
@@ -745,6 +869,49 @@ mod tests {
         do_lisp_env("(define b 3)", &env);
         assert_str!(do_lisp_env("(/(log a)(log b))", &env), "2");
     }
+    #[test]
+    fn truncate() {
+        assert_str!(do_lisp("(truncate 3.7)"), "3");
+        assert_str!(do_lisp("(truncate 3.1)"), "3");
+        assert_str!(do_lisp("(truncate -3.1)"), "-3");
+        assert_str!(do_lisp("(truncate -3.7)"), "-3");
+    }
+    #[test]
+    fn floor() {
+        assert_str!(do_lisp("(floor 3.7)"), "3");
+        assert_str!(do_lisp("(floor 3.1)"), "3");
+        assert_str!(do_lisp("(floor -3.1)"), "-4");
+        assert_str!(do_lisp("(floor -3.7)"), "-4");
+    }
+    #[test]
+    fn ceiling() {
+        assert_str!(do_lisp("(ceiling 3.7)"), "4");
+        assert_str!(do_lisp("(ceiling 3.1)"), "4");
+        assert_str!(do_lisp("(ceiling -3.1)"), "-3");
+        assert_str!(do_lisp("(ceiling -3.7)"), "-3");
+    }
+    #[test]
+    fn round() {
+        assert_str!(do_lisp("(round 3.7)"), "4");
+        assert_str!(do_lisp("(round 3.1)"), "3");
+        assert_str!(do_lisp("(round -3.1)"), "-3");
+        assert_str!(do_lisp("(round -3.7)"), "-4");
+    }
+    #[test]
+    fn abs() {
+        assert_str!(do_lisp("(abs -20)"), "20");
+        assert_str!(do_lisp("(abs  20)"), "20");
+        assert_str!(do_lisp("(abs -1.5)"), "1.5");
+        assert_str!(do_lisp("(abs  1.5)"), "1.5");
+        assert_str!(do_lisp("(abs -1/3)"), "1/3");
+        assert_str!(do_lisp("(abs  1/3)"), "1/3");
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a -20)", &env);
+        do_lisp_env("(define b -1.5)", &env);
+        assert_str!(do_lisp_env("(+ (abs a)(abs b))", &env), "21.5");
+    }
+
     #[test]
     #[allow(unused_must_use)]
     fn load_file() {
@@ -894,6 +1061,7 @@ mod tests {
         assert_str!(do_lisp("(+ 3/4 1)"), "7/4");
         assert_str!(do_lisp("(+ 1/4 2.5)"), "2.75");
         assert_str!(do_lisp("(+ 3/4 1/3)"), "13/12");
+        assert_str!(do_lisp("(+ -1/3 1/3)"), "0");
     }
     #[test]
     fn test_sub_rational() {
@@ -1081,6 +1249,20 @@ mod error_tests {
         assert_str!(do_lisp("(/ 1)"), "E1007");
     }
     #[test]
+    fn max_f() {
+        assert_str!(do_lisp("(max 10)"), "E1007");
+        assert_str!(do_lisp("(max 9 a)"), "E1008");
+        assert_str!(do_lisp("(max 1 3.4 #t)"), "E1003");
+        assert_str!(do_lisp("(max 1)"), "E1007");
+    }
+    #[test]
+    fn min_f() {
+        assert_str!(do_lisp("(min 10)"), "E1007");
+        assert_str!(do_lisp("(min 9 a)"), "E1008");
+        assert_str!(do_lisp("(min 1 3.4 #t)"), "E1003");
+        assert_str!(do_lisp("(min 1)"), "E1007");
+    }
+    #[test]
     fn eq() {
         assert_str!(do_lisp("(= 5)"), "E1007");
         assert_str!(do_lisp("(= 5 a)"), "E1008");
@@ -1109,6 +1291,88 @@ mod error_tests {
         assert_str!(do_lisp("(<= 6)"), "E1007");
         assert_str!(do_lisp("(<= 6 a)"), "E1008");
         assert_str!(do_lisp("(<= 6 #t)"), "E1003");
+    }
+    #[test]
+    fn even() {
+        assert_str!(do_lisp("(even?)"), "E1007");
+        assert_str!(do_lisp("(even? 1 2)"), "E1007");
+        assert_str!(do_lisp("(even? 1/3)"), "E1002");
+        assert_str!(do_lisp("(even? 10.5)"), "E1002");
+        assert_str!(do_lisp("(even? a)"), "E1008");
+    }
+    #[test]
+    fn odd() {
+        assert_str!(do_lisp("(odd?)"), "E1007");
+        assert_str!(do_lisp("(odd? 1 2)"), "E1007");
+        assert_str!(do_lisp("(odd? 1/3)"), "E1002");
+        assert_str!(do_lisp("(odd? 10.5)"), "E1002");
+        assert_str!(do_lisp("(odd? a)"), "E1008");
+    }
+    #[test]
+    fn zero() {
+        assert_str!(do_lisp("(zero?)"), "E1007");
+        assert_str!(do_lisp("(zero? 1 2)"), "E1007");
+        assert_str!(do_lisp("(zero? #f)"), "E1003");
+        assert_str!(do_lisp("(zero? a)"), "E1008");
+    }
+    #[test]
+    fn positive() {
+        assert_str!(do_lisp("(positive?)"), "E1007");
+        assert_str!(do_lisp("(positive? 1 2)"), "E1007");
+        assert_str!(do_lisp("(positive? #f)"), "E1003");
+        assert_str!(do_lisp("(positive? a)"), "E1008");
+    }
+    #[test]
+    fn negative() {
+        assert_str!(do_lisp("(negative?)"), "E1007");
+        assert_str!(do_lisp("(negative? 1 2)"), "E1007");
+        assert_str!(do_lisp("(negative? #f)"), "E1003");
+        assert_str!(do_lisp("(negative? a)"), "E1008");
+    }
+    #[test]
+    fn list_f() {
+        assert_str!(do_lisp("(list?)"), "E1007");
+        assert_str!(do_lisp("(list? (list 1)(list 2))"), "E1007");
+        assert_str!(do_lisp("(list? a)"), "E1008");
+    }
+    #[test]
+    fn pair_f() {
+        assert_str!(do_lisp("(pair?)"), "E1007");
+        assert_str!(do_lisp("(pair? (cons 1 2)(cons 3 4))"), "E1007");
+        assert_str!(do_lisp("(pair? a)"), "E1008");
+    }
+    #[test]
+    fn char_f() {
+        assert_str!(do_lisp("(char?)"), "E1007");
+        assert_str!(do_lisp("(char? #\\a #\\b)"), "E1007");
+        assert_str!(do_lisp("(char? a)"), "E1008");
+    }
+    #[test]
+    fn string_f() {
+        assert_str!(do_lisp("(string?)"), "E1007");
+        assert_str!(do_lisp("(string? \"a\" \"b\")"), "E1007");
+        assert_str!(do_lisp("(string? a)"), "E1008");
+    }
+    #[test]
+    fn integer_f() {
+        assert_str!(do_lisp("(integer?)"), "E1007");
+        assert_str!(do_lisp("(integer? 10 20)"), "E1007");
+        assert_str!(do_lisp("(integer? a)"), "E1008");
+    }
+    #[test]
+    fn number_f() {
+        assert_str!(do_lisp("(number?)"), "E1007");
+        assert_str!(do_lisp("(number? 10 20)"), "E1007");
+        assert_str!(do_lisp("(number? a)"), "E1008");
+    }
+    #[test]
+    fn procedure_f() {
+        assert_str!(do_lisp("(procedure?)"), "E1007");
+        assert_str!(
+            do_lisp("(procedure? (lambda (n) n)(lambda (n) n))"),
+            "E1007"
+        );
+        assert_str!(do_lisp("(procedure? a)"), "E1008");
     }
     #[test]
     fn define() {
@@ -1385,6 +1649,20 @@ mod error_tests {
         assert_str!(do_lisp("(tan a)"), "E1008");
     }
     #[test]
+    fn asin() {
+        assert_str!(do_lisp("(asin)"), "E1007");
+        assert_str!(do_lisp("(asin 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(asin #t)"), "E1003");
+        assert_str!(do_lisp("(asin a)"), "E1008");
+    }
+    #[test]
+    fn acos() {
+        assert_str!(do_lisp("(acos)"), "E1007");
+        assert_str!(do_lisp("(acos 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(acos #t)"), "E1003");
+        assert_str!(do_lisp("(acos a)"), "E1008");
+    }
+    #[test]
     fn atan() {
         assert_str!(do_lisp("(atan)"), "E1007");
         assert_str!(do_lisp("(atan 10 2.5)"), "E1007");
@@ -1405,7 +1683,41 @@ mod error_tests {
         assert_str!(do_lisp("(log #t)"), "E1003");
         assert_str!(do_lisp("(log a)"), "E1008");
     }
-
+    #[test]
+    fn truncate() {
+        assert_str!(do_lisp("(truncate)"), "E1007");
+        assert_str!(do_lisp("(truncate 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(truncate #t)"), "E1003");
+        assert_str!(do_lisp("(truncate a)"), "E1008");
+    }
+    #[test]
+    fn floor() {
+        assert_str!(do_lisp("(floor)"), "E1007");
+        assert_str!(do_lisp("(floor 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(floor #t)"), "E1003");
+        assert_str!(do_lisp("(floor a)"), "E1008");
+    }
+    #[test]
+    fn ceiling() {
+        assert_str!(do_lisp("(ceiling)"), "E1007");
+        assert_str!(do_lisp("(ceiling 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(ceiling #t)"), "E1003");
+        assert_str!(do_lisp("(ceiling a)"), "E1008");
+    }
+    #[test]
+    fn round() {
+        assert_str!(do_lisp("(round)"), "E1007");
+        assert_str!(do_lisp("(round 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(round #t)"), "E1003");
+        assert_str!(do_lisp("(round a)"), "E1008");
+    }
+    #[test]
+    fn abs() {
+        assert_str!(do_lisp("(abs)"), "E1007");
+        assert_str!(do_lisp("(abs 10 2.5)"), "E1007");
+        assert_str!(do_lisp("(abs #t)"), "E1003");
+        assert_str!(do_lisp("(abs a)"), "E1008");
+    }
     #[test]
     fn sample_program() {
         let env = lisp::Environment::new();
