@@ -7,6 +7,8 @@
 use std::cmp::Ordering;
 use std::cmp::PartialEq;
 use std::cmp::PartialOrd;
+use std::error::Error;
+use std::fmt;
 use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
@@ -15,8 +17,24 @@ use std::string::ToString;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
-
 //========================================================================
+#[derive(Debug)]
+pub struct RatParseError {
+    pub code: &'static str,
+}
+impl fmt::Display for RatParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.code)
+    }
+}
+impl Error for RatParseError {
+    fn description(&self) -> &str {
+        self.code
+    }
+    fn cause(&self) -> Option<&dyn Error> {
+        None
+    }
+}
 #[derive(Debug, Copy, Clone)]
 pub struct Rat {
     pub numer: i64,
@@ -38,6 +56,22 @@ impl Rat {
             numer: self.numer.abs(),
             denom: self.denom,
         }
+    }
+    pub fn from(s: &String) -> Result<Rat, RatParseError> {
+        let mut v = Vec::new();
+        for e in s.split("/") {
+            if let Ok(n) = e.parse::<i64>() {
+                v.push(n);
+            }
+        }
+        if v.len() == 2 {
+            if v[1] == 0 {
+                return Err(RatParseError { code: "E1013" });
+            }
+        } else {
+            return Err(RatParseError { code: "E1020" });
+        }
+        Ok(Rat::new(v[0], v[1]))
     }
 }
 fn gcm(n: i64, m: i64) -> i64 {

@@ -51,7 +51,7 @@ mod tests {
         assert_str!(do_lisp("1/2"), "1/2");
         assert_str!(do_lisp("#t"), "#t");
         assert_str!(do_lisp("#f"), "#f");
-        assert_str!(do_lisp("#\\a"), "a");
+        assert_str!(do_lisp("#\\a"), "#\\a");
         assert_str!(do_lisp("\"abc\""), "\"abc\"");
         assert_str!(do_lisp("#\\space"), "#\\space");
         assert_str!(do_lisp("#\\tab"), "#\\tab");
@@ -61,6 +61,7 @@ mod tests {
     }
     #[test]
     fn atom_utf8() {
+        assert_str!(do_lisp("#\\山"), "#\\山");
         assert_str!(do_lisp("\"山田太郎\""), "\"山田太郎\"");
         assert_str!(do_lisp("\"山田(太郎\""), "\"山田(太郎\"");
 
@@ -285,7 +286,7 @@ mod tests {
         do_lisp_env("(define a #t)", &env);
         assert_str!(do_lisp_env("a", &env), "#t");
         do_lisp_env("(define a #\\A)", &env);
-        assert_str!(do_lisp_env("a", &env), "A");
+        assert_str!(do_lisp_env("a", &env), "#\\A");
 
         do_lisp_env("(define (fuga a b)(* a b))", &env);
         assert_str!(do_lisp_env("(fuga 6 8)", &env), "48");
@@ -311,10 +312,10 @@ mod tests {
     }
     #[test]
     fn if_f() {
-        assert_str!(do_lisp("(if (= 10 10) #\\a)"), "a");
+        assert_str!(do_lisp("(if (= 10 10) #\\a)"), "#\\a");
         assert_str!(do_lisp("(if (= 10 11) #\\a)"), "nil");
-        assert_str!(do_lisp("(if (<= 1 6) #\\a #\\b)"), "a");
-        assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "b");
+        assert_str!(do_lisp("(if (<= 1 6) #\\a #\\b)"), "#\\a");
+        assert_str!(do_lisp("(if (<= 9 6) #\\a #\\b)"), "#\\b");
     }
     #[test]
     fn cond() {
@@ -819,6 +820,10 @@ mod tests {
     #[test]
     fn asin() {
         assert_str!(
+            do_lisp("(round (/ (* (asin (/(sqrt 3) 2)) 180)(*(atan 1)4)))"),
+            "60"
+        );
+        assert_str!(
             do_lisp("(sin (asin (/(* pi 30)180)))"),
             do_lisp("(/(* pi 30)180)")
         );
@@ -830,6 +835,10 @@ mod tests {
     #[test]
     fn acos() {
         assert_str!(
+            do_lisp("(round (/ (* (acos (/ 1 2)) 180)(*(atan 1)4)))"),
+            "60"
+        );
+        assert_str!(
             do_lisp("(cos (acos (/(* pi 30)180)))"),
             do_lisp("(/(* pi 30)180)")
         );
@@ -840,6 +849,7 @@ mod tests {
     }
     #[test]
     fn atan() {
+        assert_str!(do_lisp("(round (/(* (atan 1) 180)(*(atan 1)4)))"), "45");
         assert_str!(do_lisp("(* 4 (atan 1))"), "3.141592653589793");
         assert_str!(do_lisp("(* 4 (atan 1.0))"), "3.141592653589793");
 
@@ -862,7 +872,7 @@ mod tests {
         assert_str!(do_lisp("(/(log 8)(log 2))"), "3");
         assert_str!(do_lisp("(/(log 9.0)(log 3.0))"), "2");
         assert_str!(do_lisp("(exp (/(log 8) 3))"), "2");
-        assert_str!(do_lisp("(exp (* (log 2) 3))"), "7.999999999999998");
+        assert_str!(do_lisp("(round (exp (* (log 2) 3)))"), "8");
 
         let env = lisp::Environment::new();
         do_lisp_env("(define a 9)", &env);
@@ -1003,7 +1013,7 @@ mod tests {
         assert_str!(do_lisp_env("(bad-gcm 36 27)", &env), "9");
         assert_str!(
             do_lisp_env("(hanoi #\\a #\\b #\\c 3)", &env),
-            "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
+            "(((#\\a . #\\b) 1)((#\\a . #\\c) 2)((#\\b . #\\c) 1)((#\\a . #\\b) 3)((#\\c . #\\a) 1)((#\\c . #\\b) 2)((#\\a . #\\b) 1))"
         );
         assert_str!(
             do_lisp_env("(prime (iota 30 2))", &env),
@@ -1199,6 +1209,101 @@ mod tests {
         assert!(env.is_tail_recursion() == false);
         do_lisp_env("(  tail-recursion-on )", &env);
         assert!(env.is_tail_recursion() == true);
+    }
+    #[test]
+    fn string_eq() {
+        assert_str!(do_lisp("(string=? \"abc\" \"abc\")"), "#t");
+        assert_str!(do_lisp("(string=? \"abc\" \"ABC\")"), "#f");
+    }
+    #[test]
+    fn string_less() {
+        assert_str!(do_lisp("(string<? \"1234\" \"9\")"), "#t");
+        assert_str!(do_lisp("(string<? \"9\" \"1234\")"), "#f");
+    }
+    #[test]
+    fn string_than() {
+        assert_str!(do_lisp("(string>? \"9\" \"1234\")"), "#t");
+        assert_str!(do_lisp("(string>? \"1234\" \"9\")"), "#f");
+    }
+    #[test]
+    fn string_le() {
+        assert_str!(do_lisp("(string<=? \"1234\" \"9\")"), "#t");
+        assert_str!(do_lisp("(string<=? \"1234\" \"1234\")"), "#t");
+        assert_str!(do_lisp("(string<=? \"9\" \"1234\")"), "#f");
+    }
+    #[test]
+    fn string_ge() {
+        assert_str!(do_lisp("(string>=?  \"9\" \"1234\")"), "#t");
+        assert_str!(do_lisp("(string>=?  \"1234\" \"1234\")"), "#t");
+        assert_str!(do_lisp("(string>=?  \"1234\" \"9\")"), "#f");
+    }
+    #[test]
+    fn char_eq() {
+        assert_str!(do_lisp("(char=? #\\a #\\a)"), "#t");
+        assert_str!(do_lisp("(char=? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn char_less() {
+        assert_str!(do_lisp("(char<? #\\a #\\b)"), "#t");
+        assert_str!(do_lisp("(char<? #\\b #\\a)"), "#f");
+    }
+    #[test]
+    fn char_than() {
+        assert_str!(do_lisp("(char>? #\\b #\\a)"), "#t");
+        assert_str!(do_lisp("(char>? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn char_le() {
+        assert_str!(do_lisp("(char<=? #\\a #\\b)"), "#t");
+        assert_str!(do_lisp("(char<=? #\\a #\\a)"), "#t");
+        assert_str!(do_lisp("(char<=? #\\b #\\a)"), "#f");
+    }
+    #[test]
+    fn char_ge() {
+        assert_str!(do_lisp("(char>=? #\\b #\\a)"), "#t");
+        assert_str!(do_lisp("(char>=? #\\a #\\a)"), "#t");
+        assert_str!(do_lisp("(char>=? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn str_append() {
+        assert_str!(do_lisp("(string-append \"ABC\" \"DEF\")"), "\"ABCDEF\"");
+        assert_str!(
+            do_lisp("(string-append \"ABC\" \"DEF\" \"123\")"),
+            "\"ABCDEF123\""
+        );
+    }
+    #[test]
+    fn number_string() {
+        assert_str!(do_lisp("(number->string 10)"), "\"10\"");
+        assert_str!(do_lisp("(number->string 10.5)"), "\"10.5\"");
+        assert_str!(do_lisp("(number->string 1/3)"), "\"1/3\"");
+    }
+    #[test]
+    fn string_number() {
+        assert_str!(do_lisp("(string->number \"123\")"), "123");
+        assert_str!(do_lisp("(string->number \"10.5\")"), "10.5");
+        assert_str!(do_lisp("(string->number \"1/3\")"), "1/3");
+    }
+    #[test]
+    fn list_string() {
+        assert_str!(do_lisp("(list->string (list))"), "\"\"");
+        assert_str!(do_lisp("(list->string (list #\\a #\\b #\\c))"), "\"abc\"");
+    }
+    #[test]
+    fn string_list() {
+        assert_str!(do_lisp("(string->list \"\")"), "()");
+        assert_str!(do_lisp("(string->list \"abc\")"), "(#\\a #\\b #\\c)");
+        assert_str!(do_lisp("(string->list \"山田\")"), "(#\\山 #\\田)");
+    }
+    #[test]
+    fn integer_char() {
+        assert_str!(do_lisp("(integer->char 65)"), "#\\A");
+        assert_str!(do_lisp("(integer->char 23665)"), "#\\山");
+    }
+    #[test]
+    fn char_integer() {
+        assert_str!(do_lisp("(char->integer #\\A)"), "65");
+        assert_str!(do_lisp("(char->integer #\\山)"), "23665");
     }
 }
 #[cfg(test)]
@@ -1806,5 +1911,146 @@ mod error_tests {
     fn set_tail_recursion() {
         assert_str!(do_lisp("(tail-recursion-off 20)"), "E1008");
         assert_str!(do_lisp("(tail-recursion-on 30)"), "E1008");
+    }
+    #[test]
+    fn string_eq() {
+        assert_str!(do_lisp("(string=?)"), "E1007");
+        assert_str!(do_lisp("(string=? \"abc\")"), "E1007");
+        assert_str!(do_lisp("(string=? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_str!(do_lisp("(string=? \"abc\" 10)"), "E1015");
+        assert_str!(do_lisp("(string=? 10 \"abc\")"), "E1015");
+        assert_str!(do_lisp("(string=? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_less() {
+        assert_str!(do_lisp("(string<?)"), "E1007");
+        assert_str!(do_lisp("(string<? \"abc\")"), "E1007");
+        assert_str!(do_lisp("(string<? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_str!(do_lisp("(string<? \"abc\" 10)"), "E1015");
+        assert_str!(do_lisp("(string<? 10 \"abc\")"), "E1015");
+        assert_str!(do_lisp("(string<? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_than() {
+        assert_str!(do_lisp("(string>?)"), "E1007");
+        assert_str!(do_lisp("(string>? \"abc\")"), "E1007");
+        assert_str!(do_lisp("(string>? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_str!(do_lisp("(string>? \"abc\" 10)"), "E1015");
+        assert_str!(do_lisp("(string>? 10 \"abc\")"), "E1015");
+        assert_str!(do_lisp("(string>? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_le() {
+        assert_str!(do_lisp("(string<=?)"), "E1007");
+        assert_str!(do_lisp("(string<=? \"abc\")"), "E1007");
+        assert_str!(do_lisp("(string<=? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_str!(do_lisp("(string<=? \"abc\" 10)"), "E1015");
+        assert_str!(do_lisp("(string<=? 10 \"abc\")"), "E1015");
+        assert_str!(do_lisp("(string<=? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_ge() {
+        assert_str!(do_lisp("(string>=?)"), "E1007");
+        assert_str!(do_lisp("(string>=? \"abc\")"), "E1007");
+        assert_str!(do_lisp("(string>=? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_str!(do_lisp("(string>=? \"abc\" 10)"), "E1015");
+        assert_str!(do_lisp("(string>=? 10 \"abc\")"), "E1015");
+        assert_str!(do_lisp("(string>=? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn char_eq() {
+        assert_str!(do_lisp("(char=?)"), "E1007");
+        assert_str!(do_lisp("(char=? #\\a)"), "E1007");
+        assert_str!(do_lisp("(char=? #\\a #\\b #\\c)"), "E1007");
+        assert_str!(do_lisp("(char=? #\\a 10)"), "E1019");
+        assert_str!(do_lisp("(char=? 10 #\\a)"), "E1019");
+        assert_str!(do_lisp("(char=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_less() {
+        assert_str!(do_lisp("(char<?)"), "E1007");
+        assert_str!(do_lisp("(char<? #\\a)"), "E1007");
+        assert_str!(do_lisp("(char<? #\\a #\\b #\\c)"), "E1007");
+        assert_str!(do_lisp("(char<? #\\a 10)"), "E1019");
+        assert_str!(do_lisp("(char<? 10 #\\a)"), "E1019");
+        assert_str!(do_lisp("(char<? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_than() {
+        assert_str!(do_lisp("(char>?)"), "E1007");
+        assert_str!(do_lisp("(char>? #\\a)"), "E1007");
+        assert_str!(do_lisp("(char>? #\\a #\\b #\\c)"), "E1007");
+        assert_str!(do_lisp("(char>? #\\a 10)"), "E1019");
+        assert_str!(do_lisp("(char>? 10 #\\a)"), "E1019");
+        assert_str!(do_lisp("(char>? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_le() {
+        assert_str!(do_lisp("(char<=?)"), "E1007");
+        assert_str!(do_lisp("(char<=? #\\a)"), "E1007");
+        assert_str!(do_lisp("(char<=? #\\a #\\b #\\c)"), "E1007");
+        assert_str!(do_lisp("(char<=? #\\a 10)"), "E1019");
+        assert_str!(do_lisp("(char<=? 10 #\\a)"), "E1019");
+        assert_str!(do_lisp("(char<=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ge() {
+        assert_str!(do_lisp("(char>=?)"), "E1007");
+        assert_str!(do_lisp("(char>=? #\\a)"), "E1007");
+        assert_str!(do_lisp("(char>=? #\\a #\\b #\\c)"), "E1007");
+        assert_str!(do_lisp("(char>=? #\\a 10)"), "E1019");
+        assert_str!(do_lisp("(char>=? 10 #\\a)"), "E1019");
+        assert_str!(do_lisp("(char>=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn str_append() {
+        assert_str!(do_lisp("(string-append)"), "E1007");
+        assert_str!(do_lisp("(string-append \"a\")"), "E1007");
+        assert_str!(do_lisp("(string-append \"a\" 10)"), "E1015");
+        assert_str!(do_lisp("(string-append \"a\" a)"), "E1008");
+    }
+    #[test]
+    fn number_string() {
+        assert_str!(do_lisp("(number->string)"), "E1007");
+        assert_str!(do_lisp("(number->string 10 20)"), "E1007");
+        assert_str!(do_lisp("(number->string #f)"), "E1003");
+    }
+    #[test]
+    fn string_number() {
+        assert_str!(do_lisp("(string->number)"), "E1007");
+        assert_str!(do_lisp("(string->number \"123\" \"10.5\")"), "E1007");
+        assert_str!(do_lisp("(string->number 100)"), "E1015");
+        assert_str!(do_lisp("(string->number \"/1\")"), "E1003");
+        assert_str!(do_lisp("(string->number \"1/3/2\")"), "E1003");
+        assert_str!(do_lisp("(string->number \"1/0\")"), "E1013");
+    }
+    #[test]
+    fn list_string() {
+        assert_str!(do_lisp("(list->string)"), "E1007");
+        assert_str!(
+            do_lisp("(list->string (list #\\a #\\b)(list #\\a #\\b))"),
+            "E1007"
+        );
+        assert_str!(do_lisp("(list->string 10)"), "E1005");
+        assert_str!(do_lisp("(list->string (list #\\a 10))"), "E1019");
+    }
+    #[test]
+    fn string_list() {
+        assert_str!(do_lisp("(string->list)"), "E1007");
+        assert_str!(do_lisp("(string->list \"a\" \"b\")"), "E1007");
+        assert_str!(do_lisp("(string->list #\\a)"), "E1015");
+    }
+    #[test]
+    fn integer_char() {
+        assert_str!(do_lisp("(integer->char)"), "E1007");
+        assert_str!(do_lisp("(integer->char 23 665)"), "E1007");
+        assert_str!(do_lisp("(integer->char #\\a)"), "E1002");
+        assert_str!(do_lisp("(integer->char -999)"), "E1019");
+    }
+    #[test]
+    fn char_integer() {
+        assert_str!(do_lisp("(char->integer)"), "E1007");
+        assert_str!(do_lisp("(char->integer #\\a #\\b)"), "E1007");
+        assert_str!(do_lisp("(char->integer 999)"), "E1019");
     }
 }
