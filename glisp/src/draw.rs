@@ -36,6 +36,14 @@ pub fn get_default_surface(image_table: &ImageTable) -> Rc<ImageSurface> {
         .unwrap()
         .clone()
 }
+pub fn draw_graffiti(image_table: &ImageTable, x: f64, y: f64) {
+    let surface = get_default_surface(image_table);
+    let cr = Context::new(&*surface);
+    cr.scale(1.0, 1.0);
+    cr.set_source_rgb(0.0, 0.0, 0.0);
+    cr.rectangle(x - 3.0, y - 3.0, 4.0, 4.0);
+    cr.fill();
+}
 pub fn draw_clear(image_table: &ImageTable) {
     let surface = get_default_surface(image_table);
     let cr = &Context::new(&*surface);
