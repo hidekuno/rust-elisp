@@ -8,6 +8,7 @@
 use log::{debug, error, info, warn};
 
 use rand::Rng;
+use std::char;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -29,6 +30,7 @@ use crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
 use crate::env_single::Environment;
+
 //========================================================================
 const SAMPLE_INT: i64 = 10_000_000_000_000;
 //========================================================================
@@ -43,11 +45,39 @@ where
     b.regist("-", |exp, env| calc(exp, env, |x, y| x - y));
     b.regist("*", |exp, env| calc(exp, env, |x, y| x * y));
     b.regist("/", |exp, env| calc(exp, env, |x, y| x / y));
+    b.regist("max", |exp, env| {
+        calc(exp, env, |x, y| if x > y { x } else { y })
+    });
+    b.regist("min", |exp, env| {
+        calc(exp, env, |x, y| if x < y { x } else { y })
+    });
     b.regist("=", |exp, env| cmp(exp, env, |x, y| x == y));
     b.regist("<", |exp, env| cmp(exp, env, |x, y| x < y));
     b.regist("<=", |exp, env| cmp(exp, env, |x, y| x <= y));
     b.regist(">", |exp, env| cmp(exp, env, |x, y| x > y));
     b.regist(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
+
+    b.regist("even?", |exp, env| odd_even(exp, env, |x| x % 2 == 0));
+    b.regist("odd?", |exp, env| odd_even(exp, env, |x| x % 2 != 0));
+    b.regist("zero?", |exp, env| is_sign(exp, env, |x, y| x == y));
+    b.regist("positive?", |exp, env| is_sign(exp, env, |x, y| x > y));
+    b.regist("negative?", |exp, env| is_sign(exp, env, |x, y| x < y));
+
+    b.regist("list?", |exp, env| is_type(exp, env, Expression::is_list));
+    b.regist("pair?", |exp, env| is_type(exp, env, Expression::is_pair));
+    b.regist("char?", |exp, env| is_type(exp, env, Expression::is_char));
+    b.regist("string?", |exp, env| {
+        is_type(exp, env, Expression::is_string)
+    });
+    b.regist("procedure?", |exp, env| {
+        is_type(exp, env, Expression::is_procedure)
+    });
+    b.regist("integer?", |exp, env| {
+        is_type(exp, env, Expression::is_integer)
+    });
+    b.regist("number?", |exp, env| {
+        is_type(exp, env, Expression::is_number)
+    });
     b.regist("expt", expt);
     b.regist("modulo", |exp, env| divide(exp, env, |x, y| x % y));
     b.regist("quotient", |exp, env| divide(exp, env, |x, y| x / y));
@@ -95,6 +125,12 @@ where
     b.regist("tan", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.tan()))
     });
+    b.regist("asin", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.asin()))
+    });
+    b.regist("acos", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.acos()))
+    });
     b.regist("atan", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.atan()))
     });
@@ -104,6 +140,20 @@ where
     b.regist("log", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
     });
+    b.regist("truncate", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.trunc()))
+    });
+    b.regist("floor", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.floor()))
+    });
+    b.regist("ceiling", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.ceil()))
+    });
+    b.regist("round", |exp, env| {
+        Ok(Expression::Float(to_f64(exp, env)?.round()))
+    });
+    b.regist("abs", abs);
+
     b.regist("rand-integer", rand_integer);
     b.regist("rand-list", rand_list);
 
@@ -114,8 +164,26 @@ where
 
     b.regist("delay", delay);
     b.regist("force", force);
-
     b.regist("format", format_f);
+
+    b.regist("string=?", |exp, env| strcmp(exp, env, |x, y| x == y));
+    b.regist("string<?", |exp, env| strcmp(exp, env, |x, y| x < y));
+    b.regist("string>?", |exp, env| strcmp(exp, env, |x, y| x > y));
+    b.regist("string<=?", |exp, env| strcmp(exp, env, |x, y| x <= y));
+    b.regist("string>=?", |exp, env| strcmp(exp, env, |x, y| x >= y));
+
+    b.regist("char=?", |exp, env| charcmp(exp, env, |x, y| x == y));
+    b.regist("char<?", |exp, env| charcmp(exp, env, |x, y| x < y));
+    b.regist("char>?", |exp, env| charcmp(exp, env, |x, y| x > y));
+    b.regist("char<=?", |exp, env| charcmp(exp, env, |x, y| x <= y));
+    b.regist("char>=?", |exp, env| charcmp(exp, env, |x, y| x >= y));
+    b.regist("string-append", str_append);
+    b.regist("number->string", number_string);
+    b.regist("string->number", string_number);
+    b.regist("list->string", list_string);
+    b.regist("string->list", string_list);
+    b.regist("integer->char", integer_char);
+    b.regist("char->integer", char_integer);
 }
 fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -911,6 +979,199 @@ fn cmp(
         }
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
+}
+fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    Ok(match eval(&exp[1], env)? {
+        Expression::Float(v) => Expression::Float(v.abs()),
+        Expression::Integer(v) => Expression::Integer(v.abs()),
+        Expression::Rational(v) => Expression::Rational(v.abs()),
+        _ => return Err(create_error!("E1003")),
+    })
+}
+fn odd_even(exp: &[Expression], env: &Environment, f: fn(x: i64) -> bool) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::Integer(i) => Ok(Expression::Boolean(f(i))),
+        _ => return Err(create_error!("E1002")),
+    }
+}
+fn is_sign(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: &Number, y: &Number) -> bool,
+) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let zero = Number::Integer(0);
+    let v = match eval(&exp[1], env)? {
+        Expression::Float(f) => Number::Float(f),
+        Expression::Integer(i) => Number::Integer(i),
+        Expression::Rational(r) => Number::Rational(r),
+        _ => return Err(create_error!("E1003")),
+    };
+    Ok(Expression::Boolean(f(&v, &zero)))
+}
+fn is_type(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(e: &Expression) -> bool,
+) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let v = eval(&exp[1], env)?;
+    Ok(Expression::Boolean(f(&v)))
+}
+fn strcmp(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: &String, y: &String) -> bool,
+) -> ResultExpression {
+    if 3 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let mut v = Vec::new();
+    for e in &exp[1 as usize..] {
+        let s = match eval(e, env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!("E1015")),
+        };
+        v.push(s);
+    }
+    Ok(Expression::Boolean(f(&v[0], &v[1])))
+}
+fn charcmp(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: char, y: char) -> bool,
+) -> ResultExpression {
+    if 3 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let mut v: [char; 2] = [' '; 2];
+
+    for (i, e) in exp[1 as usize..].iter().enumerate() {
+        v[i] = match eval(e, env)? {
+            Expression::Char(c) => c,
+            _ => return Err(create_error!("E1019")),
+        }
+    }
+    Ok(Expression::Boolean(f(v[0], v[1])))
+}
+fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 3 > exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let mut v = String::new();
+    for e in &exp[1 as usize..] {
+        match eval(e, env)? {
+            Expression::String(s) => v.push_str(&s.into_boxed_str()),
+            _ => return Err(create_error!("E1015")),
+        };
+    }
+    Ok(Expression::String(v))
+}
+fn number_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let v = match eval(&exp[1], env)? {
+        Expression::Float(f) => Expression::Float(f),
+        Expression::Integer(i) => Expression::Integer(i),
+        Expression::Rational(r) => Expression::Rational(r),
+        _ => return Err(create_error!("E1003")),
+    };
+    Ok(Expression::String(v.to_string()))
+}
+fn string_number(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        _ => return Err(create_error!("E1015")),
+    };
+    let v = if let Ok(n) = s.parse::<i64>() {
+        Expression::Integer(n)
+    } else if let Ok(n) = s.parse::<f64>() {
+        Expression::Float(n)
+    } else {
+        match Rat::from(&s) {
+            Ok(n) => Expression::Rational(n),
+            Err(n) => {
+                return if n.code != "E1020" {
+                    Err(create_error!(n.code))
+                } else {
+                    Err(create_error!("E1003"))
+                }
+            }
+        }
+    };
+    Ok(v)
+}
+fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!("E1005")),
+    };
+    let mut v = String::new();
+
+    for e in l.into_iter() {
+        v.push(match eval(&e, env)? {
+            Expression::Char(c) => c,
+            _ => return Err(create_error!("E1019")),
+        });
+    }
+    Ok(Expression::String(v))
+}
+fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        _ => return Err(create_error!("E1015")),
+    };
+    let mut l: Vec<Expression> = Vec::new();
+    for c in s.as_str().chars() {
+        l.push(Expression::Char(c));
+    }
+    Ok(Expression::List(l))
+}
+fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let i = match eval(&exp[1], env)? {
+        Expression::Integer(i) => i,
+        _ => return Err(create_error!("E1002")),
+    };
+    let i = i as u32;
+    if let Some(c) = char::from_u32(i) {
+        Ok(Expression::Char(c))
+    } else {
+        Err(create_error!("E1019"))
+    }
+}
+fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let c = match eval(&exp[1], env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!("E1019")),
+    };
+    let a = c as u32;
+    Ok(Expression::Integer(a as i64))
 }
 #[cfg(test)]
 mod tests {
