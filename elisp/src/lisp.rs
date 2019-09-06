@@ -53,6 +53,8 @@ lazy_static! {
         e.insert("E1016", "Not Program File");
         e.insert("E1017", "Not Case Gramar");
         e.insert("E1018", "Not Format Gramar");
+        e.insert("E1019", "Not Char");
+        e.insert("E1020", "Not Rat");
         e.insert("E9000", "Forced stop");
         e.insert("E9999", "System Panic");
         e
@@ -140,6 +142,52 @@ pub enum Expression {
     CPS(RsCPS),
 }
 impl Expression {
+    pub fn is_list(exp: &Expression) -> bool {
+        match exp {
+            Expression::List(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_pair(exp: &Expression) -> bool {
+        match exp {
+            Expression::Pair(_, _) => true,
+            _ => false,
+        }
+    }
+    pub fn is_char(exp: &Expression) -> bool {
+        match exp {
+            Expression::Char(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_string(exp: &Expression) -> bool {
+        match exp {
+            Expression::String(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_procedure(exp: &Expression) -> bool {
+        match exp {
+            Expression::Function(_) => true,
+            Expression::BuildInFunction(_, _) => true,
+            Expression::BuildInFunctionExt(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_integer(exp: &Expression) -> bool {
+        match exp {
+            Expression::Integer(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_number(exp: &Expression) -> bool {
+        match exp {
+            Expression::Integer(_) => true,
+            Expression::Float(_) => true,
+            Expression::Rational(_) => true,
+            _ => false,
+        }
+    }
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
 
@@ -187,7 +235,7 @@ impl ToString for Expression {
                     }
                     return "#\\non-printable-char".to_string();
                 } else {
-                    return v.to_string();
+                    return format!("#\\{}", v);
                 }
             }
             Expression::Boolean(v) => (if *v { TRUE } else { FALSE }).to_string(),
@@ -667,7 +715,7 @@ fn atom(token: &String, env: &Environment) -> ResultExpression {
         Expression::Char(char::from(NEWLINE.0))
     } else if token == CARRIAGERETRUN.1 {
         Expression::Char(char::from(CARRIAGERETRUN.0))
-    } else if (token.len() == 3) && (token.starts_with("#\\")) {
+    } else if (token.starts_with("#\\")) && (token.as_str().chars().count() == 3) {
         let c = token.chars().collect::<Vec<char>>();
         Expression::Char(c[2])
     } else if (token.len() >= 2) && (token.starts_with("\"")) && (token.ends_with("\"")) {
@@ -678,19 +726,14 @@ fn atom(token: &String, env: &Environment) -> ResultExpression {
     } else if let Some(f) = env.get_builtin_ext_func(token.as_str()) {
         Expression::BuildInFunctionExt(f)
     } else {
-        let mut v = Vec::new();
-        for e in token.split("/") {
-            if let Ok(n) = e.parse::<i64>() {
-                v.push(n);
+        match Rat::from(&token) {
+            Ok(n) => Expression::Rational(n),
+            Err(n) => {
+                if n.code != "E1020" {
+                    return Err(create_error!(n.code));
+                }
+                Expression::Symbol(token.to_string())
             }
-        }
-        if v.len() == 2 {
-            if v[1] == 0 {
-                return Err(create_error!("E1013"));
-            }
-            Expression::Rational(Rat::new(v[0], v[1]))
-        } else {
-            Expression::Symbol(token.to_string())
         }
     };
     Ok(v)
