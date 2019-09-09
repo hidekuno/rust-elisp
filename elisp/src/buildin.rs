@@ -105,6 +105,9 @@ where
     b.regist("cadr", cadr);
     b.regist("cons", cons);
     b.regist("append", append);
+    b.regist("take", |exp, env| take_drop(exp, env, |l, n| &l[0..n]));
+    b.regist("drop", |exp, env| take_drop(exp, env, |l, n| &l[n..]));
+    b.regist("delete", delete);
     b.regist("last", last);
     b.regist("reverse", reverse);
     b.regist("iota", iota);
@@ -657,6 +660,54 @@ fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
     }
     Ok(Expression::List(v))
+}
+fn take_drop(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(l: &Vec<Expression>, n: usize) -> &[Expression],
+) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!("E1005")),
+    };
+    let n = match eval(&exp[2], env)? {
+        Expression::Integer(n) => n,
+        _ => return Err(create_error!("E1002")),
+    };
+    if l.len() < n as usize || n < 0 {
+        return Err(create_error!("E1011"));
+    }
+    let mut vec = Vec::new();
+    vec.extend_from_slice(f(&l, n as usize));
+
+    Ok(Expression::List(vec))
+}
+fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let other = eval(&exp[1], env)?;
+    let l = match eval(&exp[2], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!("E1005")),
+    };
+    let mut vec = Vec::new();
+    for e in &l {
+        if true == Expression::eq_integer(e, &other)
+            || true == Expression::eq_float(e, &other)
+            || true == Expression::eq_rat(e, &other)
+            || true == Expression::eq_string(e, &other)
+            || true == Expression::eq_char(e, &other)
+            || true == Expression::eq_boolean(e, &other)
+        {
+            continue;
+        }
+        vec.push(e.clone());
+    }
+    Ok(Expression::List(vec))
 }
 fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
