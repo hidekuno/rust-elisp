@@ -653,6 +653,51 @@ mod tests {
         assert_str!(do_lisp("(append (iota 5) (list 100))"), "(0 1 2 3 4 100)");
     }
     #[test]
+    fn take() {
+        assert_str!(do_lisp("(take (iota 10) 0)"), "()");
+        assert_str!(do_lisp("(take (iota 10) 1)"), "(0)");
+        assert_str!(do_lisp("(take (iota 10) 3)"), "(0 1 2)");
+        assert_str!(do_lisp("(take (iota 10) 9)"), "(0 1 2 3 4 5 6 7 8)");
+        assert_str!(do_lisp("(take (iota 10) 10)"), "(0 1 2 3 4 5 6 7 8 9)");
+    }
+    #[test]
+    fn drop() {
+        assert_str!(do_lisp("(drop (iota 10) 0)"), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_str!(do_lisp("(drop (iota 10) 1)"), "(1 2 3 4 5 6 7 8 9)");
+        assert_str!(do_lisp("(drop (iota 10) 3)"), "(3 4 5 6 7 8 9)");
+        assert_str!(do_lisp("(drop (iota 10) 9)"), "(9)");
+        assert_str!(do_lisp("(drop (iota 10) 10)"), "()");
+    }
+    #[test]
+    fn delete() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 10.5 3/5 \"ABC\" #\\a #t))", &env);
+        assert_str!(
+            do_lisp_env("(delete 10 a)", &env),
+            "(10.5 3/5 \"ABC\" #\\a #t)"
+        );
+        assert_str!(
+            do_lisp_env("(delete 10.5 a)", &env),
+            "(10 3/5 \"ABC\" #\\a #t)"
+        );
+        assert_str!(
+            do_lisp_env("(delete 3/5 a)", &env),
+            "(10 10.5 \"ABC\" #\\a #t)"
+        );
+        assert_str!(
+            do_lisp_env("(delete \"ABC\" a)", &env),
+            "(10 10.5 3/5 #\\a #t)"
+        );
+        assert_str!(
+            do_lisp_env("(delete #\\a a)", &env),
+            "(10 10.5 3/5 \"ABC\" #t)"
+        );
+        assert_str!(
+            do_lisp_env("(delete #t a)", &env),
+            "(10 10.5 3/5 \"ABC\" #\\a)"
+        );
+    }
+    #[test]
     fn last() {
         assert_str!(do_lisp("(last (list 1))"), "1");
         assert_str!(do_lisp("(last (list 1 2))"), "2");
@@ -987,12 +1032,9 @@ mod tests {
             "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
             "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
             "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
-            "(define delete (lambda (x l) (filter (lambda (n) (not (= x n))) l)))",
             "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(list)(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
             "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
             "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
-            "(define take (lambda (l n)(if (>= 0 n) (list)(cons (car l)(take (cdr l)(- n 1))))))",
-            "(define drop (lambda (l n)(if (>= 0 n) l (drop (cdr l)(- n 1)))))",
             "(define merge (lambda (a b)(if (or (null? a)(null? b)) (append a b) (if (< (car a)(car b))(cons (car a)(merge (cdr a) b))(cons (car b) (merge a (cdr b)))))))",
             "(define msort (lambda (l)(let ((n (length l)))(if (>= 1 n ) l (if (= n 2) (if (< (car l)(cadr l)) l (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid)))))))))",
             "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
@@ -1662,6 +1704,33 @@ mod error_tests {
         assert_str!(do_lisp("(append)"), "E1007");
         assert_str!(do_lisp("(append (list 1))"), "E1007");
         assert_str!(do_lisp("(append (list 1) 105)"), "E1005");
+    }
+    #[test]
+    fn take() {
+        assert_str!(do_lisp("(take)"), "E1007");
+        assert_str!(do_lisp("(take (list 10 20))"), "E1007");
+        assert_str!(do_lisp("(take (list 10 20) 1 2)"), "E1007");
+        assert_str!(do_lisp("(take 1 (list 1 2))"), "E1005");
+        assert_str!(do_lisp("(take (list 1 2) 10.5)"), "E1002");
+        assert_str!(do_lisp("(take (list 1 2) 3)"), "E1011");
+        assert_str!(do_lisp("(take (list 1 2) -1)"), "E1011");
+    }
+    #[test]
+    fn drop() {
+        assert_str!(do_lisp("(drop)"), "E1007");
+        assert_str!(do_lisp("(drop (list 10 20))"), "E1007");
+        assert_str!(do_lisp("(drop (list 10 20) 1 2)"), "E1007");
+        assert_str!(do_lisp("(drop 1 (list 1 2))"), "E1005");
+        assert_str!(do_lisp("(drop (list 1 2) 10.5)"), "E1002");
+        assert_str!(do_lisp("(drop (list 1 2) 3)"), "E1011");
+        assert_str!(do_lisp("(drop (list 1 2) -1)"), "E1011");
+    }
+    #[test]
+    fn delete() {
+        assert_str!(do_lisp("(delete)"), "E1007");
+        assert_str!(do_lisp("(delete 10)"), "E1007");
+        assert_str!(do_lisp("(delete 10 (list 10 20) 3)"), "E1007");
+        assert_str!(do_lisp("(delete 10 20)"), "E1005");
     }
     #[test]
     fn last() {
