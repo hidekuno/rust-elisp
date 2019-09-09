@@ -188,6 +188,54 @@ impl Expression {
             _ => false,
         }
     }
+    pub fn eq_integer(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::Integer(a), Expression::Integer(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eq_float(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::Float(a), Expression::Float(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eq_rat(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::Rational(a), Expression::Rational(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eq_string(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::String(a), Expression::String(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eq_char(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::Char(a), Expression::Char(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eq_boolean(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::Boolean(a), Expression::Boolean(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
 
