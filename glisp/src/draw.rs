@@ -13,14 +13,67 @@ use crate::ui::DRAW_WIDTH;
 use cairo::{Context, Format, ImageSurface, Matrix};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::f64::consts::PI;
 use std::rc::Rc;
 
 const DEFALUT_CANVAS: &str = "canvas";
-type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &ImageSurface) + 'static>;
-
-pub type ImageTable = Rc<RefCell<HashMap<String, Rc<ImageSurface>>>>;
+pub type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &ImageSurface) + 'static>;
 pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
+pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
+pub type DrawArc = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
+pub type ImageTable = Rc<RefCell<Graphics>>;
 
+pub struct Graphics {
+    image_table: HashMap<String, Rc<ImageSurface>>,
+    fg: Color,
+    bg: Color,
+}
+pub struct Color {
+    red: f64,
+    green: f64,
+    blue: f64,
+}
+impl Color {
+    pub fn new(red: f64, green: f64, blue: f64) -> Self {
+        Color {
+            red: red,
+            green: green,
+            blue: blue,
+        }
+    }
+}
+impl Graphics {
+    pub fn regist(&mut self, key: String, surface: Rc<ImageSurface>) {
+        self.image_table.insert(key, surface);
+    }
+    pub fn find(&self, key: &String) -> Option<&Rc<ImageSurface>> {
+        self.image_table.get(key)
+    }
+    pub fn set_background(&mut self, red: f64, green: f64, blue: f64) {
+        self.bg.red = red;
+        self.bg.green = green;
+        self.bg.blue = blue;
+    }
+    pub fn set_foreground(&mut self, red: f64, green: f64, blue: f64) {
+        self.fg.red = red;
+        self.fg.green = green;
+        self.fg.blue = blue;
+    }
+}
+pub struct ImageTable1 {
+    core: Rc<RefCell<Graphics>>,
+}
+impl ImageTable1 {
+    pub fn regist(&self, key: String, surface: Rc<ImageSurface>) {
+        self.core.borrow_mut().image_table.insert(key, surface);
+    }
+    pub fn find(&self, key: &String) -> Option<Rc<ImageSurface>> {
+        match self.core.borrow().image_table.get(key) {
+            Some(v) => Some(v.clone()),
+            None => None,
+        }
+    }
+}
 #[cfg(feature = "animation")]
 macro_rules! force_event_loop {
     () => {
@@ -32,18 +85,26 @@ macro_rules! force_event_loop {
 pub fn get_default_surface(image_table: &ImageTable) -> Rc<ImageSurface> {
     image_table
         .borrow()
-        .get(&DEFALUT_CANVAS.to_string())
+        .find(&DEFALUT_CANVAS.to_string())
         .unwrap()
         .clone()
 }
+// ----------------------------------------------------------------
+// rakugaki
+// ----------------------------------------------------------------
 pub fn draw_graffiti(image_table: &ImageTable, x: f64, y: f64) {
     let surface = get_default_surface(image_table);
     let cr = Context::new(&*surface);
     cr.scale(1.0, 1.0);
-    cr.set_source_rgb(0.0, 0.0, 0.0);
+    let fg = &image_table.borrow().fg;
+    cr.set_source_rgb(fg.red, fg.green, fg.blue);
+
     cr.rectangle(x - 3.0, y - 3.0, 4.0, 4.0);
     cr.fill();
 }
+// ----------------------------------------------------------------
+// screen clear
+// ----------------------------------------------------------------
 pub fn draw_clear(image_table: &ImageTable) {
     let surface = get_default_surface(image_table);
     let cr = &Context::new(&*surface);
@@ -55,7 +116,8 @@ pub fn draw_clear(image_table: &ImageTable) {
         x0: 0.0,
         y0: 0.0,
     });
-    cr.set_source_rgb(0.9, 0.9, 0.9);
+    let bg = &image_table.borrow().bg;
+    cr.set_source_rgb(bg.red, bg.green, bg.blue);
     cr.paint();
 }
 // ----------------------------------------------------------------
@@ -65,10 +127,12 @@ pub fn create_draw_line(image_table: &ImageTable) -> DrawLine {
     let surface = get_default_surface(image_table);
     let cr = Context::new(&*surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-    cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.set_line_width(0.001);
 
+    let image_table = image_table.clone();
     let draw_line = move |x0, y0, x1, y1| {
+        let fg = &image_table.borrow().fg;
+        cr.set_source_rgb(fg.red, fg.green, fg.blue);
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
         cr.stroke();
@@ -102,20 +166,60 @@ pub fn create_draw_image(image_table: &ImageTable) -> DrawImage {
     };
     Box::new(draw_image)
 }
+// ----------------------------------------------------------------
+// create new cairo from imagetable, and create draw_image
+// ----------------------------------------------------------------
+pub fn create_draw_string(image_table: &ImageTable) -> DrawString {
+    let surface = get_default_surface(image_table);
+
+    let image_table = image_table.clone();
+    let draw_string = move |x, y, f, s: String| {
+        let fg = &image_table.borrow().fg;
+        let cr = Context::new(&*surface);
+        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+        cr.set_source_rgb(fg.red, fg.green, fg.blue);
+        cr.move_to(x, y);
+        cr.set_font_size(f);
+        cr.show_text(s.as_str());
+
+        cr.stroke();
+        #[cfg(feature = "animation")]
+        force_event_loop!();
+    };
+    Box::new(draw_string)
+}
+pub fn create_draw_arc(image_table: &ImageTable) -> DrawArc {
+    let surface = get_default_surface(image_table);
+    let image_table = image_table.clone();
+
+    let draw_arc = move |x, y, r, a| {
+        let fg = &image_table.borrow().fg;
+        let cr = Context::new(&*surface);
+        cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+        cr.set_source_rgb(fg.red, fg.green, fg.blue);
+        cr.arc(x, y, r, a, PI * 2.);
+        cr.fill();
+        #[cfg(feature = "animation")]
+        force_event_loop!();
+    };
+    Box::new(draw_arc)
+}
 pub fn create_image_table() -> ImageTable {
     let mut image_table = HashMap::new();
 
     let surface = ImageSurface::create(Format::ARgb32, DRAW_WIDTH, DRAW_HEIGHT)
         .expect("Can't create surface");
+    let fg = Color::new(0.0, 0.0, 0.0);
+    let bg = Color::new(0.9, 0.9, 0.9);
 
     let cr = Context::new(&surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-    cr.set_source_rgb(0.9, 0.9, 0.9);
+    cr.set_source_rgb(bg.red, bg.green, bg.blue);
     cr.paint();
-    cr.set_source_rgb(0.0, 0.0, 0.0);
-    cr.set_font_size(0.25);
 
+    cr.set_source_rgb(fg.red, fg.green, fg.blue);
     cr.move_to(0.04, 0.50);
+    cr.set_font_size(0.25);
     cr.show_text("Rust");
 
     cr.move_to(0.27, 0.69);
@@ -128,5 +232,9 @@ pub fn create_image_table() -> ImageTable {
 
     image_table.insert(DEFALUT_CANVAS.to_string(), Rc::new(surface));
 
-    Rc::new(RefCell::new(image_table))
+    Rc::new(RefCell::new(Graphics {
+        image_table: image_table,
+        fg: fg,
+        bg: bg,
+    }))
 }
