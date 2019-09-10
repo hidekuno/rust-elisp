@@ -310,9 +310,13 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
             let mut tmpfile = env::temp_dir();
             tmpfile.push(PNG_SAVE_FILE);
             if tmpfile.exists() {
-                set_message!(status_bar, "File is Exists");
+                set_message!(
+                    status_bar,
+                    format!("\"{}\" is exists", tmpfile.to_str().unwrap()).as_str()
+                );
                 return;
             }
+            let message = format!("Saved \"{}\"", tmpfile.to_str().unwrap());
             let mut file = match File::create(tmpfile) {
                 Ok(f) => f,
                 Err(e) => {
@@ -321,7 +325,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
                 }
             };
             let msg = match surface.write_to_png(&mut file) {
-                Ok(_) => "Saved PNG file".into(),
+                Ok(_) => message,
                 Err(e) => e.to_string(),
             };
             set_message!(status_bar, msg.as_str());
