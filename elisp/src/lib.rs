@@ -1004,11 +1004,14 @@ mod tests {
     }
     #[test]
     fn cps() {
+        // https://practical-scheme.net/wiliki/wiliki.cgi?Scheme%3A使いたい人のための継続入門
+        let env = lisp::Environment::new();
+        do_lisp_env("(tail-recursion-off)", &env);
+
         let program = [
             "(define fact-cps (lambda (n cont)(if (= n 0)(cont 1)(fact-cps (- n 1) (lambda (a) (cont (* n a)))))))",
             "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
         ];
-        let env = lisp::Environment::new();
         for p in &program {
             do_lisp_env(p, &env);
         }
@@ -1934,11 +1937,13 @@ mod error_tests {
     }
     #[test]
     fn cps() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(  tail-recursion-off )", &env);
+
         let program = [
             "(define (fact/cps-ng n cont)(if (= n 0)(cont 1)(fact/cps-ng (- n 1) (lambda (a b) (cont (* n a))))))",
             "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
         ];
-        let env = lisp::Environment::new();
         for p in &program {
             do_lisp_env(p, &env);
         }
