@@ -5,7 +5,6 @@
    hidekuno@gmail.com
 */
 use std::collections::HashMap;
-use std::collections::LinkedList;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
@@ -15,7 +14,6 @@ use std::vec::Vec;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use crate::buildin::identity;
 use crate::number::Rat;
 
 #[cfg(feature = "thread")]
@@ -139,7 +137,6 @@ pub enum Expression {
     TailRecursion(FunctionRc),
     Promise(Box<Expression>, Environment),
     Rational(Rat),
-    CPS(RsCPS),
 }
 impl Expression {
     pub fn is_list(exp: &Expression) -> bool {
@@ -299,59 +296,7 @@ impl ToString for Expression {
             Expression::TailRecursion(_) => "Tail Recursion".into(),
             Expression::Promise(_, _) => "Promise".into(),
             Expression::Rational(v) => v.to_string(),
-            Expression::CPS(_) => "CPS".into(),
         };
-    }
-}
-#[derive(Clone)]
-pub struct RsCPS {
-    name: String,
-    list: LinkedList<(Expression, HashMap<String, Expression>)>,
-    param: Vec<String>,
-}
-impl RsCPS {
-    fn new(s: &String, param: Vec<String>) -> Self {
-        let list = LinkedList::new();
-        RsCPS {
-            name: s.to_string(),
-            list: list,
-            param: param,
-        }
-    }
-    fn add(&mut self, exp: Expression, env: &Environment) {
-        let mut h = HashMap::new();
-        for s in &self.param {
-            if self.name == *s {
-                continue;
-            }
-            if let Some(e) = env.find(s) {
-                h.insert(s.clone(), e);
-            }
-        }
-        self.list.push_front((exp, h));
-    }
-    pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
-        if exp.len() != 2 {
-            return Err(create_error_value!("E1007", exp.len()));
-        }
-        env.regist(
-            self.name.clone(),
-            Expression::BuildInFunction(String::from("identity"), identity),
-        );
-        let mut vec = Vec::new();
-        vec.push(Expression::Nil());
-        vec.push(exp[1].clone());
-        for (e, h) in self.list.iter() {
-            if let Expression::Function(f) = e {
-                for (k, v) in h.iter() {
-                    env.regist(k.clone(), v.clone());
-                }
-                let e = f.execute(&vec, env)?;
-                debug!("@@@ CPS execute {} {}", self.name, e.to_string());
-                vec[1] = e;
-            }
-        }
-        Ok(vec[1].clone())
     }
 }
 #[derive(Clone)]
@@ -399,30 +344,10 @@ impl RsFunction {
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
-        for (i, e) in exp[1 as usize..].iter().enumerate() {
-            let v = eval(e, env)?;
-            match v {
-                Expression::Function(_) => {
-                    if let Some(e) = env.find(&self.param[i]) {
-                        match e {
-                            Expression::Function(f) => {
-                                let mut cps = RsCPS::new(&self.param[i], self.param.clone());
-                                cps.add(Expression::Function(f), env);
-                                cps.add(v, env);
-                                vec.push(Expression::CPS(cps));
-                            }
-                            Expression::CPS(mut cps) => {
-                                cps.add(v, env);
-                                vec.push(Expression::CPS(cps));
-                            }
-                            _ => return Err(create_error!("E9999")),
-                        }
-                    }
-                }
-                v => vec.push(v),
-            }
-        }
         // env set
+        for e in &exp[1 as usize..] {
+            vec.push(eval(e, env)?);
+        }
         for (i, e) in vec.into_iter().enumerate() {
             env.update(&self.param[i], e);
         }
@@ -817,7 +742,6 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                     Expression::List(_) => Ok(v),
                     Expression::BuildInFunction(_, _) => Ok(v),
                     Expression::BuildInFunctionExt(_) => Ok(v),
-                    Expression::CPS(_) => Ok(v),
                     _ => Err(create_error!("E9999")),
                 };
             }
@@ -835,7 +759,6 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                 Expression::Function(f) => f.execute(&v[..], env),
                 Expression::BuildInFunction(_, f) => f(&v[..], env),
                 Expression::BuildInFunctionExt(f) => f(&v[..], env),
-                Expression::CPS(f) => f.execute(&v[..], env),
                 _ => Err(create_error!("E1006")),
             },
         };
