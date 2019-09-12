@@ -173,8 +173,8 @@ textview {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
-fn load_demo_program() -> std::io::Result<String> {
-    fn get_program_name(vec: Vec<&str>) -> std::io::Result<(String, bool)> {
+fn load_demo_program(dir: &str) -> std::io::Result<String> {
+    fn get_program_name(vec: Vec<&str>) -> std::io::Result<Option<String>> {
         let mut program: Vec<String> = Vec::new();
         let mut path = PathBuf::new();
 
@@ -186,7 +186,7 @@ fn load_demo_program() -> std::io::Result<String> {
             path.push(dir);
         }
         if false == path.as_path().exists() {
-            return Ok((String::from(""), false));
+            return Ok(None);
         }
         for entry in fs::read_dir(path)? {
             let dir = entry?;
@@ -197,19 +197,33 @@ fn load_demo_program() -> std::io::Result<String> {
             }
         }
         program.sort();
-        Ok((program.join("\n"), true))
+        Ok(Some(program.join("\n")))
     }
-    for v in vec![vec!["rust-elisp", "glisp", "samples", "sicp"], vec!["sicp"]] {
+    for v in vec![vec!["rust-elisp", "glisp", "samples", dir], vec![dir]] {
         match get_program_name(v) {
-            Ok((s, b)) => {
-                if b == true {
-                    return Ok(s);
-                }
-            }
+            Ok(s) => match s {
+                Some(s) => return Ok(s),
+                None => continue,
+            },
             Err(e) => return Err(e),
         }
     }
     Ok("".into())
+}
+fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) -> gtk::MenuItem {
+    let load = gtk::MenuItem::new_with_mnemonic(menu);
+    let ui = ui.clone();
+    load.connect_activate(move |_| match load_demo_program(pdir) {
+        Ok(v) => {
+            let text_buffer = ui.text_view().get_buffer().expect("Couldn't get window");
+            text_buffer.set_text(&v.into_boxed_str());
+        }
+        Err(e) => {
+            let status_bar = ui.status_bar();
+            set_message!(status_bar, &e.to_string().into_boxed_str());
+        }
+    });
+    load
 }
 pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
@@ -379,24 +393,15 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         });
         clear
     });
-    menu.append(&{
-        let load = gtk::MenuItem::new_with_mnemonic("_Load Sample");
-        let ui = ui.clone();
-        load.connect_activate(move |_| match load_demo_program() {
-            Ok(v) => {
-                let text_buffer = ui.text_view().get_buffer().expect("Couldn't get window");
-                text_buffer.set_text(&v.into_boxed_str());
-            }
-            Err(e) => {
-                let status_bar = ui.status_bar();
-                set_message!(status_bar, &e.to_string().into_boxed_str());
-            }
-        });
-        load
-    });
-
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
+
+    let load = gtk::MenuItem::new_with_mnemonic("_Load");
+    let menu = gtk::Menu::new();
+    menu.append(&create_demo_program_menu("_SICP", "sicp", &ui));
+    menu.append(&create_demo_program_menu("_Fractal", "fractal", &ui));
+    load.set_submenu(Some(&menu));
+    menu_bar.append(&load);
 
     //--------------------------------------------------------
     // History Command
