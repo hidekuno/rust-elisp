@@ -59,9 +59,15 @@ where
 
     b.regist("even?", |exp, env| odd_even(exp, env, |x| x % 2 == 0));
     b.regist("odd?", |exp, env| odd_even(exp, env, |x| x % 2 != 0));
-    b.regist("zero?", |exp, env| is_sign(exp, env, |x, y| x == y));
-    b.regist("positive?", |exp, env| is_sign(exp, env, |x, y| x > y));
-    b.regist("negative?", |exp, env| is_sign(exp, env, |x, y| x < y));
+    b.regist("zero?", |exp, env| {
+        is_sign(exp, env, |x| x == &Number::Integer(0))
+    });
+    b.regist("positive?", |exp, env| {
+        is_sign(exp, env, |x| x > &Number::Integer(0))
+    });
+    b.regist("negative?", |exp, env| {
+        is_sign(exp, env, |x| x < &Number::Integer(0))
+    });
 
     b.regist("list?", |exp, env| is_type(exp, env, Expression::is_list));
     b.regist("pair?", |exp, env| is_type(exp, env, Expression::is_pair));
@@ -1051,22 +1057,17 @@ fn odd_even(exp: &[Expression], env: &Environment, f: fn(x: i64) -> bool) -> Res
         _ => return Err(create_error!("E1002")),
     }
 }
-fn is_sign(
-    exp: &[Expression],
-    env: &Environment,
-    f: fn(x: &Number, y: &Number) -> bool,
-) -> ResultExpression {
+fn is_sign(exp: &[Expression], env: &Environment, f: fn(x: &Number) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
-    let zero = Number::Integer(0);
     let v = match eval(&exp[1], env)? {
         Expression::Float(f) => Number::Float(f),
         Expression::Integer(i) => Number::Integer(i),
         Expression::Rational(r) => Number::Rational(r),
         _ => return Err(create_error!("E1003")),
     };
-    Ok(Expression::Boolean(f(&v, &zero)))
+    Ok(Expression::Boolean(f(&v)))
 }
 fn is_type(
     exp: &[Expression],
