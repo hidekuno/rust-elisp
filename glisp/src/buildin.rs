@@ -73,7 +73,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
-    // Create Image
+    // Create Image from png
     // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
     //--------------------------------------------------------
     {
@@ -104,8 +104,8 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     }
     //--------------------------------------------------------
     // Draw Image
-    // ex. (draw-image "roger" (list -1.0 0.0 0.0 1.0 180.0 0.0))
-    // ex. (draw-image "roger" (list 1.0 0.0 0.0 1.0 0.0 0.0))
+    // ex. (draw-image "roger" (list (/ 0.75 180) (/ 0.0 180) (/ 0.0 180) (/ 0.96 180) 0.0 0.0))
+    // ex. (draw-image "roger" (list (/ 0.25 180) 0.0  0.0 (/ 0.32142857142857145 180) 0.0 0.0))
     //--------------------------------------------------------
     let draw_image = create_draw_image(image_table);
     {

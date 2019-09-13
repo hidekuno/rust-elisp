@@ -86,6 +86,48 @@ impl Environment {
     pub fn is_force_stop(&self) -> bool {
         self.globals.borrow_mut().force_stop
     }
+    pub fn get_function_list(&self) -> Option<String> {
+        self.get_environment_list(|_k, v| match v {
+            Expression::Function(_) => true,
+            _ => false,
+        })
+    }
+    pub fn get_variable_list(&self) -> Option<String> {
+        self.get_environment_list(|_k, v| match v {
+            Expression::Function(_) => false,
+            _ => true,
+        })
+    }
+    fn get_environment_list(&self, f: fn(&String, &Expression) -> bool) -> Option<String> {
+        let mut list = Vec::new();
+        let e = self.core.borrow();
+        for (k, v) in e.env_tbl.iter() {
+            if f(k, v) {
+                list.push(k.as_str());
+            }
+        }
+        if list.len() == 0 {
+            None
+        } else {
+            Some(list.join("\n"))
+        }
+    }
+    pub fn get_builtin_func_list(&self) -> String {
+        let mut s = String::new();
+        for (i, (k, _)) in self.globals.borrow().builtin_tbl.iter().enumerate() {
+            s.push_str(k);
+            s.push_str(if (i + 1) % 10 == 0 { ",\n" } else { ",  " });
+        }
+        s
+    }
+    pub fn get_builtin_ext_list(&self) -> String {
+        let mut s = String::new();
+        for (k, _) in self.globals.borrow().builtin_tbl_ext.iter() {
+            s.push_str(k);
+            s.push_str("\n");
+        }
+        s
+    }
 }
 impl BuildInTable for BTreeMap<&'static str, Operation> {
     fn regist(&mut self, symbol: &'static str, func: Operation) {
