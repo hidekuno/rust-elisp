@@ -1048,7 +1048,7 @@ fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => return Err(create_error!("E1003")),
     })
 }
-fn odd_even(exp: &[Expression], env: &Environment, f: fn(x: i64) -> bool) -> ResultExpression {
+fn odd_even(exp: &[Expression], env: &Environment, f: fn(i64) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
@@ -1057,7 +1057,7 @@ fn odd_even(exp: &[Expression], env: &Environment, f: fn(x: i64) -> bool) -> Res
         _ => return Err(create_error!("E1002")),
     }
 }
-fn is_sign(exp: &[Expression], env: &Environment, f: fn(x: &Number) -> bool) -> ResultExpression {
+fn is_sign(exp: &[Expression], env: &Environment, f: fn(&Number) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
