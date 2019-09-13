@@ -225,6 +225,32 @@ fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) 
     });
     load
 }
+fn create_environment_menu(
+    env: &Environment,
+    window: &gtk::Window,
+    menu: &'static str,
+    f: fn(&Environment) -> String,
+) -> gtk::MenuItem {
+    let mi = gtk::MenuItem::new_with_mnemonic(menu);
+    let env = env.clone();
+    let window = window.downgrade();
+    mi.connect_activate(move |_| {
+        let window = window.upgrade().unwrap();
+        let d = gtk::Dialog::new();
+        d.set_title(menu);
+        d.set_transient_for(Some(&window));
+        d.add_button("Ok", gtk::ResponseType::Ok.into());
+        let content_area = d.get_content_area();
+
+        let label = gtk::Label::new(Some(f(&env).as_str()));
+        label.set_selectable(true);
+        content_area.add(&label);
+        d.show_all();
+        d.run();
+        d.destroy();
+    });
+    mi
+}
 pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     gtk::init().expect("Failed to initialize GTK.");
     setup_key_emacs_like();
@@ -407,6 +433,41 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     // History Command
     //--------------------------------------------------------
     menu_bar.append(&history.menu);
+
+    //--------------------------------------------------------
+    // Function List
+    //--------------------------------------------------------
+    let help = gtk::MenuItem::new_with_mnemonic("Help");
+    let menu = gtk::Menu::new();
+    menu.append(&create_environment_menu(
+        env,
+        &window,
+        "Functoins",
+        |env| match env.get_function_list() {
+            Some(e) => e,
+            None => "Not exists".into(),
+        },
+    ));
+    menu.append(&create_environment_menu(
+        env,
+        &window,
+        "Variables",
+        |env| match env.get_variable_list() {
+            Some(e) => e,
+            None => "Not exists".into(),
+        },
+    ));
+    menu.append(&create_environment_menu(env, &window, "Builtins", |env| {
+        env.get_builtin_func_list()
+    }));
+    menu.append(&create_environment_menu(
+        env,
+        &window,
+        "Draw Builtins",
+        |env| env.get_builtin_ext_list(),
+    ));
+    help.set_submenu(Some(&menu));
+    menu_bar.append(&help);
 
     //--------------------------------------------------------
     // Application Setup
