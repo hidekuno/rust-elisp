@@ -76,6 +76,7 @@ mod tests {
         assert_str!(do_lisp("(+ 2.5 1)"), "3.5");
         assert_str!(do_lisp("(+ 3 1.5)"), "4.5");
         assert_str!(do_lisp("(+ (* 1 2)(* 3 4))"), "14");
+        assert_str!(do_lisp("(+ 1/2 1)"), "3/2");
     }
     #[test]
     fn minus() {
@@ -84,6 +85,7 @@ mod tests {
         assert_str!(do_lisp("(- 6 1.5)"), "4.5");
         assert_str!(do_lisp("(- 6.5 3)"), "3.5");
         assert_str!(do_lisp("(- (* 3 4)(* 1 2))"), "10");
+        assert_str!(do_lisp("(- 1 1/2)"), "1/2");
     }
     #[test]
     fn multi() {
@@ -92,6 +94,7 @@ mod tests {
         assert_str!(do_lisp("(* 3.5 6)"), "21");
         assert_str!(do_lisp("(* 6 3.5)"), "21");
         assert_str!(do_lisp("(* (+ 3 4)(+ 1 2))"), "21");
+        assert_str!(do_lisp("(* 1/2 1)"), "1/2");
     }
     #[test]
     fn div() {
@@ -1672,6 +1675,7 @@ mod error_tests {
         assert_str!(do_lisp("(length)"), "E1007");
         assert_str!(do_lisp("(length (list 1)(list 2))"), "E1007");
         assert_str!(do_lisp("(length (cons 1 2))"), "E1005");
+        assert_str!(do_lisp("(length a)"), "E1008");
     }
     #[test]
     fn car() {
@@ -1701,12 +1705,14 @@ mod error_tests {
     fn cons() {
         assert_str!(do_lisp("(cons)"), "E1007");
         assert_str!(do_lisp("(cons (list 1)(list 2)(list 3))"), "E1007");
+        assert_str!(do_lisp("(cons a 10)"), "E1008");
     }
     #[test]
     fn append() {
         assert_str!(do_lisp("(append)"), "E1007");
         assert_str!(do_lisp("(append (list 1))"), "E1007");
         assert_str!(do_lisp("(append (list 1) 105)"), "E1005");
+        assert_str!(do_lisp("(append (list 1) a)"), "E1008");
     }
     #[test]
     fn take() {
@@ -1717,6 +1723,7 @@ mod error_tests {
         assert_str!(do_lisp("(take (list 1 2) 10.5)"), "E1002");
         assert_str!(do_lisp("(take (list 1 2) 3)"), "E1011");
         assert_str!(do_lisp("(take (list 1 2) -1)"), "E1011");
+        assert_str!(do_lisp("(take a 1)"), "E1008");
     }
     #[test]
     fn drop() {
@@ -1727,6 +1734,7 @@ mod error_tests {
         assert_str!(do_lisp("(drop (list 1 2) 10.5)"), "E1002");
         assert_str!(do_lisp("(drop (list 1 2) 3)"), "E1011");
         assert_str!(do_lisp("(drop (list 1 2) -1)"), "E1011");
+        assert_str!(do_lisp("(drop a 1)"), "E1008");
     }
     #[test]
     fn delete() {
@@ -1734,6 +1742,7 @@ mod error_tests {
         assert_str!(do_lisp("(delete 10)"), "E1007");
         assert_str!(do_lisp("(delete 10 (list 10 20) 3)"), "E1007");
         assert_str!(do_lisp("(delete 10 20)"), "E1005");
+        assert_str!(do_lisp("(delete 10 a)"), "E1008");
     }
     #[test]
     fn last() {
@@ -1741,12 +1750,14 @@ mod error_tests {
         assert_str!(do_lisp("(last (list 1)(list 2))"), "E1007");
         assert_str!(do_lisp("(last (list))"), "E1011");
         assert_str!(do_lisp("(last 29)"), "E1005");
+        assert_str!(do_lisp("(last a)"), "E1008");
     }
     #[test]
     fn reverse() {
         assert_str!(do_lisp("(reverse)"), "E1007");
         assert_str!(do_lisp("(reverse (list 1)(list 2))"), "E1007");
         assert_str!(do_lisp("(reverse 29)"), "E1005");
+        assert_str!(do_lisp("(reverse a)"), "E1008");
     }
     #[test]
     fn iota() {
@@ -1754,6 +1765,7 @@ mod error_tests {
         assert_str!(do_lisp("(iota 1 2 3)"), "E1007");
         assert_str!(do_lisp("(iota 1.5 2)"), "E1002");
         assert_str!(do_lisp("(iota 1 10.5)"), "E1002");
+        assert_str!(do_lisp("(iota a)"), "E1008");
     }
     #[test]
     fn map() {
@@ -1934,6 +1946,7 @@ mod error_tests {
     #[test]
     fn begin() {
         assert_str!(do_lisp("(display)"), "E1007");
+        assert_str!(do_lisp("(display a)"), "E1008");
     }
     #[test]
     fn cps() {
@@ -2088,6 +2101,7 @@ mod error_tests {
         assert_str!(do_lisp("(number->string)"), "E1007");
         assert_str!(do_lisp("(number->string 10 20)"), "E1007");
         assert_str!(do_lisp("(number->string #f)"), "E1003");
+        assert_str!(do_lisp("(number->string a)"), "E1008");
     }
     #[test]
     fn string_number() {
@@ -2097,6 +2111,7 @@ mod error_tests {
         assert_str!(do_lisp("(string->number \"/1\")"), "E1003");
         assert_str!(do_lisp("(string->number \"1/3/2\")"), "E1003");
         assert_str!(do_lisp("(string->number \"1/0\")"), "E1013");
+        assert_str!(do_lisp("(string->number a)"), "E1008");
     }
     #[test]
     fn list_string() {
@@ -2107,12 +2122,14 @@ mod error_tests {
         );
         assert_str!(do_lisp("(list->string 10)"), "E1005");
         assert_str!(do_lisp("(list->string (list #\\a 10))"), "E1019");
+        assert_str!(do_lisp("(list->string a)"), "E1008");
     }
     #[test]
     fn string_list() {
         assert_str!(do_lisp("(string->list)"), "E1007");
         assert_str!(do_lisp("(string->list \"a\" \"b\")"), "E1007");
         assert_str!(do_lisp("(string->list #\\a)"), "E1015");
+        assert_str!(do_lisp("(string->list a)"), "E1008");
     }
     #[test]
     fn integer_char() {
@@ -2120,11 +2137,13 @@ mod error_tests {
         assert_str!(do_lisp("(integer->char 23 665)"), "E1007");
         assert_str!(do_lisp("(integer->char #\\a)"), "E1002");
         assert_str!(do_lisp("(integer->char -999)"), "E1019");
+        assert_str!(do_lisp("(integer->char a)"), "E1008");
     }
     #[test]
     fn char_integer() {
         assert_str!(do_lisp("(char->integer)"), "E1007");
         assert_str!(do_lisp("(char->integer #\\a #\\b)"), "E1007");
         assert_str!(do_lisp("(char->integer 999)"), "E1019");
+        assert_str!(do_lisp("(char->integer a)"), "E1008");
     }
 }
