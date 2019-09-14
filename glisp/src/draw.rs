@@ -151,10 +151,10 @@ pub fn create_draw_image(image_table: &ImageTable) -> DrawImage {
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
         let matrix = Matrix {
-            xx: x0,
-            yx: y0,
-            xy: x1,
-            yy: y1,
+            xx: x0 / img.get_width() as f64,
+            yx: y0 / img.get_height() as f64,
+            xy: x1 / img.get_width() as f64,
+            yy: y1 / img.get_height() as f64,
             x0: xorg,
             y0: yorg,
         };
