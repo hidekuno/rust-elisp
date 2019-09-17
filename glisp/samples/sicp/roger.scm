@@ -12,11 +12,10 @@
   (let ((image-name "roger"))
     (lambda (f)
       (draw-image image-name
-                  (list 
-                   (/ (xcor-vect (edge1-frame f)) 180.0)
-                   (/ (ycor-vect (edge1-frame f)) 180.0)
-                   (/ (xcor-vect (edge2-frame f)) 180.0)
-                   (/ (ycor-vect (edge2-frame f)) 180.0)
-                   (xcor-vect (origin-frame f))
-                   (ycor-vect (origin-frame f)))))))
+                  (xcor-vect (origin-frame f))
+                  (ycor-vect (origin-frame f))
+                  (xcor-vect (edge1-frame f))
+                  (ycor-vect (edge1-frame f))
+                  (xcor-vect (edge2-frame f))
+                  (ycor-vect (edge2-frame f))))))
 ;;((square-limit roger 4) gframe)

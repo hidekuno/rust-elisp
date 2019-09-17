@@ -103,15 +103,14 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         });
     }
     //--------------------------------------------------------
-    // Draw Image
-    // ex. (draw-image "roger" (list (/ 0.75 180) (/ 0.0 180) (/ 0.0 180) (/ 0.96 180) 0.0 0.0))
-    // ex. (draw-image "roger" (list (/ 0.25 180) 0.0  0.0 (/ 0.32142857142857145 180) 0.0 0.0))
+    // Draw Image (draw-image image xorg yorg x0 y0 x1 y1)
+    // ex. (draw-image "roger" 0.0 0.0 0.25 0.0 0.0 0.32142857142857145)
     //--------------------------------------------------------
     let draw_image = create_draw_image(image_table);
     {
         let image_table = image_table.clone();
         env.add_builtin_ext_func("draw-image", move |exp, env| {
-            if exp.len() != 3 {
+            if exp.len() != 8 {
                 return Err(create_error!("E1007"));
             }
             let symbol = match lisp::eval(&exp[1], env)? {
@@ -120,28 +119,23 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
             };
             const N: usize = 6;
             let mut ctm: [f64; N] = [0.0; N];
-            if let Expression::List(l) = lisp::eval(&exp[2], env)? {
-                if l.len() != 6 {
+            let mut iter = exp[2 as usize..].iter();
+            for i in 0..N {
+                if let Some(e) = iter.next() {
+                    if let Expression::Float(f) = lisp::eval(e, env)? {
+                        ctm[i] = f;
+                    } else {
+                        return Err(create_error!("E1003"));
+                    }
+                } else {
                     return Err(create_error!("E1007"));
                 }
-                let mut iter = l.iter();
-                for i in 0..N {
-                    if let Some(e) = iter.next() {
-                        if let Expression::Float(f) = lisp::eval(e, env)? {
-                            ctm[i] = f;
-                        } else {
-                            return Err(create_error!("E1003"));
-                        }
-                    }
-                }
-            } else {
-                return Err(create_error!("E1005"));
             }
             let img = match (*image_table).borrow().find(&symbol) {
                 Some(v) => v.clone(),
                 None => return Err(create_error!("E1008")),
             };
-            draw_image(ctm[0], ctm[1], ctm[2], ctm[3], ctm[4], ctm[5], &img);
+            draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &img);
             Ok(Expression::Nil())
         });
     }

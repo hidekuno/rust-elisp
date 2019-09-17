@@ -92,10 +92,7 @@ mod tests {
             "nil"
         );
         assert_str!(
-            do_lisp_env(
-                "(draw-image \"sample\" (list 0.0 0.0 1.0 1.0 1.0 1.0))",
-                &env
-            ),
+            do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "nil"
         );
         std::fs::remove_file(png).unwrap();
@@ -218,33 +215,21 @@ mod tests {
         assert_str!(do_lisp_env("(draw-image)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-image 10)", &env), "E1007");
         assert_str!(
-            do_lisp_env("(draw-image \"sample\" (list 1 2 3) 10)", &env),
+            do_lisp_env("(draw-image \"sample\" 1 2 3 10)", &env),
             "E1007"
         );
         assert_str!(
-            do_lisp_env("(draw-image 10 (list 0.0 0.0 1.0 1.0))", &env),
+            do_lisp_env("(draw-image 10 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "E1015"
         );
         assert_str!(
-            do_lisp_env(
-                "(draw-image \"sample1\" (list 0.0 0.0 1.0 1.0 1.0 1.0))",
-                &env
-            ),
+            do_lisp_env("(draw-image \"sample1\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "E1008"
         );
         assert_str!(
-            do_lisp_env("(draw-image \"sample\" (list 0.0 0.0 1.0 1.0))", &env),
-            "E1007"
-        );
-        assert_str!(
-            do_lisp_env(
-                "(draw-image \"sample\" (list 0.0 0.0 1.0 1.0 1.0 10))",
-                &env
-            ),
+            do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 1.0 1.0 10)", &env),
             "E1003"
         );
-        assert_str!(do_lisp_env("(draw-image \"sample\" 10)", &env), "E1005");
-
         std::fs::remove_file(png).unwrap();
     }
     #[test]
