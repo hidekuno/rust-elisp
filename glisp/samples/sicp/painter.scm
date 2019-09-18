@@ -9,8 +9,6 @@
 ;; ペインタは規定した平行四辺形の フレームの中に合うように,
 ;; ずらしたり大きさを変えたりした画像を描く
 ;;======================================================================
-(define draw-line-vect (lambda (p1 p2) (draw-line (xcor-vect p1)(ycor-vect p1)(xcor-vect p2)(ycor-vect p2))))
-
 (define (segments->painter segment-list)
   (lambda (frame)
     (for-each
@@ -125,3 +123,20 @@
 (define pi (*(atan 1)4))
 (define (cs angle)(cos (/(* pi angle)180)))
 (define (sn angle)(sin (/(* pi angle)180)))
+
+(define draw-line-vect (lambda (p1 p2) (draw-line (xcor-vect p1)(ycor-vect p1)(xcor-vect p2)(ycor-vect p2))))
+
+(define (paint-image image-name)
+    (lambda (f)
+      (draw-image image-name
+                  (xcor-vect (origin-frame f))
+                  (ycor-vect (origin-frame f))
+                  (xcor-vect (edge1-frame f))
+                  (ycor-vect (edge1-frame f))
+                  (xcor-vect (edge2-frame f))
+                  (ycor-vect (edge2-frame f)))))
+
+(define (make-image-frame img scale)
+  (make-frame (make-vect 0.0 0.0)
+              (make-vect (/ (* scale (image-width img)) 720.0) 0.0)
+              (make-vect 0.0 (/ (* scale (image-height img)) 560.0))))
