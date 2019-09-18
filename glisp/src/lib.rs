@@ -95,6 +95,8 @@ mod tests {
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "nil"
         );
+        assert_str!(do_lisp_env("(image-width \"sample\")", &env), "1");
+        assert_str!(do_lisp_env("(image-height \"sample\")", &env), "1");
         std::fs::remove_file(png).unwrap();
     }
     #[test]
@@ -230,6 +232,21 @@ mod tests {
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 1.0 1.0 10)", &env),
             "E1003"
         );
+        assert_str!(do_lisp_env("(image-width)", &env), "E1007");
+        assert_str!(
+            do_lisp_env("(image-width \"sample\" \"sample1\")", &env),
+            "E1007"
+        );
+        assert_str!(do_lisp_env("(image-width 10)", &env), "E1015");
+        assert_str!(do_lisp_env("(image-width a)", &env), "E1008");
+
+        assert_str!(do_lisp_env("(image-height)", &env), "E1007");
+        assert_str!(
+            do_lisp_env("(image-height \"sample\" \"sample1\")", &env),
+            "E1007"
+        );
+        assert_str!(do_lisp_env("(image-height 10)", &env), "E1015");
+        assert_str!(do_lisp_env("(image-height a)", &env), "E1008");
         std::fs::remove_file(png).unwrap();
     }
     #[test]

@@ -140,6 +140,28 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
         });
     }
     //--------------------------------------------------------
+    // get image width (image-width image)
+    // ex. (image-width "roger")
+    //--------------------------------------------------------
+    {
+        let image_table = image_table.clone();
+        env.add_builtin_ext_func("image-width", move |exp, env| {
+            let f = image_size(exp, env, &image_table, |img| img.get_width())?;
+            Ok(Expression::Float(f))
+        });
+    }
+    //--------------------------------------------------------
+    // get image width (image-width image)
+    // ex. (image-width "roger")
+    //--------------------------------------------------------
+    {
+        let image_table = image_table.clone();
+        env.add_builtin_ext_func("image-height", move |exp, env| {
+            let f = image_size(exp, env, &image_table, |img| img.get_height())?;
+            Ok(Expression::Float(f))
+        });
+    }
+    //--------------------------------------------------------
     // draw string
     // ex. (draw-string 0.04 0.50 0.15 "日本語")
     //--------------------------------------------------------
@@ -223,6 +245,25 @@ fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), R
         };
     }
     Ok((rgb[0], rgb[1], rgb[2]))
+}
+fn image_size(
+    exp: &[Expression],
+    env: &Environment,
+    image_table: &ImageTable,
+    f: fn(&ImageSurface) -> i32,
+) -> Result<f64, RsError> {
+    if exp.len() != 2 {
+        return Err(create_error!("E1007"));
+    }
+    let symbol = match lisp::eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        _ => return Err(create_error!("E1015")),
+    };
+    let img = match (*image_table).borrow().find(&symbol) {
+        Some(v) => v.clone(),
+        None => return Err(create_error!("E1008")),
+    };
+    Ok(f(&img) as f64)
 }
 pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     // ----------------------------------------------------------------
