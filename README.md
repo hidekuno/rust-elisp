@@ -7,12 +7,9 @@ RustによるLisp(subset版)の実装
 
 
 ## 完成度合い
-- 簡単なプログラム(quick-sort, merge-sort, permutations,combination,Eratosthenes等)が動くレベル  
-
 - SICPの図形言語プログラムが動作するところまで確認した。(https://sicp.iijlab.net/fulltext/x224.html)
 
-<img src="https://user-images.githubusercontent.com/22115777/57493176-d8702a80-72fe-11e9-86d2-bc3e563e4c40.png" width=50%>
-<img src="https://user-images.githubusercontent.com/22115777/57909858-dc7fe780-78be-11e9-9509-3ea7cac4cba9.png" width=50%>
+<img src="https://user-images.githubusercontent.com/22115777/65193640-bf4e6600-dab6-11e9-9851-eb001450a08d.png" width=60%>
 
 ## 開発環境
 | Item   | Ver. |備考|
@@ -21,3 +18,21 @@ RustによるLisp(subset版)の実装
 | rust   | 1.37.0|1.35以下ではglispでコンパイルエラーになる|
 | Gtk+   | 3.22.30||
 | rust-gtk |0.7.1|https://github.com/gtk-rs/gtk|
+
+## 動かし方
+### 動作条件
+- dockerが動いていること
+- Xサーバ(macの場合、XQuartz)が動いていること
+
+### macOS
+```
+docker pull hidekuno/rust-elisp
+docker run --name glisp -e DISPLAY=docker.for.mac.localhost:0 hidekuno/rust-elisp /root/glisp
+```
+
+### Linux
+```
+docker pull hidekuno/rust-elisp
+xhost + 
+docker run --name glisp -e DISPLAY=${host_ipaddr}:0.0 hidekuno/rust-elisp /root/glisp
+```
