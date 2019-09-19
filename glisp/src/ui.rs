@@ -25,7 +25,7 @@ use std::rc::Rc;
 use crate::draw::draw_clear;
 use crate::draw::draw_graffiti;
 use crate::draw::get_default_surface;
-use crate::draw::ImageTable;
+use crate::draw::DrawTable;
 
 pub const DRAW_WIDTH: i32 = 720;
 pub const DRAW_HEIGHT: i32 = 560;
@@ -127,8 +127,8 @@ macro_rules! set_message {
         $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
     };
 }
-fn clear_canvas(image_table: &ImageTable, canvas: &gtk::DrawingArea) {
-    draw_clear(image_table);
+fn clear_canvas(draw_table: &DrawTable, canvas: &gtk::DrawingArea) {
+    draw_clear(draw_table);
     canvas.queue_draw();
 }
 fn setup_key_emacs_like() {
@@ -251,7 +251,7 @@ fn create_environment_menu(
     });
     mi
 }
-pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
+pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     gtk::init().expect("Failed to initialize GTK.");
     setup_key_emacs_like();
 
@@ -288,13 +288,13 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let canvas = ui.canvas();
     canvas.set_size_request(DRAW_WIDTH, DRAW_HEIGHT);
 
-    let surface = get_default_surface(image_table);
+    let surface = get_default_surface(draw_table);
     canvas.connect_draw(move |_, cr| {
         cr.set_source_surface(&*surface, 0.0, 0.0);
         cr.paint();
         Inhibit(false)
     });
-    let img = image_table.clone();
+    let img = draw_table.clone();
     canvas.connect_motion_notify_event(move |w, e| {
         if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
             let (x, y) = e.get_position();
@@ -322,12 +322,12 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
         let text_buffer = text_view.get_buffer().expect("Couldn't get window");
         let history = history.clone();
         let ui = ui.clone();
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         text_view.connect_key_press_event(move |_, key| {
             if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
                 match key.get_keyval() {
                     EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
-                    DRAW_CLEAR_KEYCODE => clear_canvas(&image_table, ui.canvas()),
+                    DRAW_CLEAR_KEYCODE => clear_canvas(&draw_table, ui.canvas()),
                     TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
                     _ => {}
                 }
@@ -342,7 +342,7 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     menu.append(&{
-        let surface = get_default_surface(image_table);
+        let surface = get_default_surface(draw_table);
         let status_bar = status_bar.downgrade();
         let save = gtk::MenuItem::new_with_mnemonic("_Save");
         save.connect_activate(move |_| {
@@ -399,13 +399,13 @@ pub fn scheme_gtk(env: &Environment, image_table: &ImageTable) {
     });
     menu.append(&{
         let clear = gtk::MenuItem::new_with_mnemonic("_Draw Clear");
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
         let canvas = canvas.downgrade();
         clear.connect_activate(move |_| {
             // https://doc.rust-lang.org/std/rc/struct.Weak.html#method.upgrade
             let canvas = canvas.upgrade().unwrap();
-            clear_canvas(&image_table, &canvas);
+            clear_canvas(&draw_table, &canvas);
             canvas.queue_draw();
         });
         clear

@@ -14,7 +14,7 @@ mod tests {
     use super::*;
     extern crate elisp;
     use buildin::{build_demo_function, build_lisp_function};
-    use draw::create_image_table;
+    use draw::create_draw_table;
 
     use elisp::lisp;
     use elisp::lisp::Environment;
@@ -58,9 +58,9 @@ mod tests {
     }
     fn init() -> Environment {
         let env = Environment::new();
-        let image_table = create_image_table();
-        build_lisp_function(&env, &image_table);
-        build_demo_function(&env, &image_table);
+        let draw_table = create_draw_table();
+        build_lisp_function(&env, &draw_table);
+        build_demo_function(&env, &draw_table);
         env
     }
     #[test]
