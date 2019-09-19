@@ -19,7 +19,7 @@ use crate::draw::create_draw_image;
 use crate::draw::create_draw_line;
 use crate::draw::create_draw_string;
 use crate::draw::draw_clear;
-use crate::draw::ImageTable;
+use crate::draw::DrawTable;
 
 use elisp::create_error;
 use elisp::create_error_value;
@@ -34,17 +34,17 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::rc::Rc;
 
-pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
+pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
     {
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         env.add_builtin_ext_func("draw-clear", move |exp, _| {
             if exp.len() != 1 {
                 return Err(create_error!("E1007"));
             }
-            draw_clear(&image_table);
+            draw_clear(&draw_table);
             Ok(Expression::Nil())
         });
     }
@@ -52,7 +52,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // DrawLine
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
-    let draw_line = create_draw_line(image_table);
+    let draw_line = create_draw_line(draw_table);
     env.add_builtin_ext_func("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
@@ -77,7 +77,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
     //--------------------------------------------------------
     {
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         env.add_builtin_ext_func("create-image-from-png", move |exp, env| {
             if exp.len() != 3 {
                 return Err(create_error!("E1007"));
@@ -98,7 +98,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
                 Ok(s) => s,
                 Err(e) => return Err(create_error_value!("E9999", e)),
             };
-            (*image_table).borrow_mut().regist(symbol, Rc::new(surface));
+            draw_table.regist(symbol, Rc::new(surface));
             Ok(Expression::Nil())
         });
     }
@@ -106,9 +106,9 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // Draw Image (draw-image image xorg yorg x0 y0 x1 y1)
     // ex. (draw-image "roger" 0.0 0.0 0.25 0.0 0.0 0.32142857142857145)
     //--------------------------------------------------------
-    let draw_image = create_draw_image(image_table);
+    let draw_image = create_draw_image(draw_table);
     {
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         env.add_builtin_ext_func("draw-image", move |exp, env| {
             if exp.len() != 8 {
                 return Err(create_error!("E1007"));
@@ -131,7 +131,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
                     return Err(create_error!("E1007"));
                 }
             }
-            let img = match (*image_table).borrow().find(&symbol) {
+            let img = match draw_table.find(&symbol) {
                 Some(v) => v.clone(),
                 None => return Err(create_error!("E1008")),
             };
@@ -144,9 +144,9 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (image-width "roger")
     //--------------------------------------------------------
     {
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         env.add_builtin_ext_func("image-width", move |exp, env| {
-            let f = image_size(exp, env, &image_table, |img| img.get_width())?;
+            let f = image_size(exp, env, &draw_table, |img| img.get_width())?;
             Ok(Expression::Float(f))
         });
     }
@@ -155,9 +155,9 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (image-width "roger")
     //--------------------------------------------------------
     {
-        let image_table = image_table.clone();
+        let draw_table = draw_table.clone();
         env.add_builtin_ext_func("image-height", move |exp, env| {
-            let f = image_size(exp, env, &image_table, |img| img.get_height())?;
+            let f = image_size(exp, env, &draw_table, |img| img.get_height())?;
             Ok(Expression::Float(f))
         });
     }
@@ -165,7 +165,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // draw string
     // ex. (draw-string 0.04 0.50 0.15 "日本語")
     //--------------------------------------------------------
-    let draw_string = create_draw_string(image_table);
+    let draw_string = create_draw_string(draw_table);
     env.add_builtin_ext_func("draw-string", move |exp, env| {
         if exp.len() != 5 {
             return Err(create_error!("E1007"));
@@ -189,7 +189,7 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // draw arc
     // ex. (draw-arc 0.27 0.65 0.02 0.0)
     //--------------------------------------------------------
-    let draw_arc = create_draw_arc(image_table);
+    let draw_arc = create_draw_arc(draw_table);
     env.add_builtin_ext_func("draw-arc", move |exp, env| {
         if exp.len() != 5 {
             return Err(create_error!("E1007"));
@@ -210,11 +210,10 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (set-background 0.0 0.0 0.0)
     //--------------------------------------------------------
     {
-        let image_table = image_table.clone();
+        let draw_table = RefCell::new(draw_table.clone());
         env.add_builtin_ext_func("set-background", move |exp, env| {
             let (r, g, b) = get_color(exp, env)?;
-            let mut image_table = image_table.borrow_mut();
-            image_table.set_background(r, g, b);
+            draw_table.borrow_mut().set_background(r, g, b);
             Ok(Expression::Nil())
         });
     }
@@ -223,11 +222,10 @@ pub fn build_lisp_function(env: &Environment, image_table: &ImageTable) {
     // ex. (set-foreground 0.0 1.0 0.0)
     //--------------------------------------------------------
     {
-        let image_table = image_table.clone();
+        let draw_table = RefCell::new(draw_table.clone());
         env.add_builtin_ext_func("set-foreground", move |exp, env| {
             let (r, g, b) = get_color(exp, env)?;
-            let mut image_table = image_table.borrow_mut();
-            image_table.set_foreground(r, g, b);
+            draw_table.borrow_mut().set_foreground(r, g, b);
             Ok(Expression::Nil())
         });
     }
@@ -249,7 +247,7 @@ fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), R
 fn image_size(
     exp: &[Expression],
     env: &Environment,
-    image_table: &ImageTable,
+    draw_table: &DrawTable,
     f: fn(&ImageSurface) -> i32,
 ) -> Result<f64, RsError> {
     if exp.len() != 2 {
@@ -259,13 +257,13 @@ fn image_size(
         Expression::String(s) => s,
         _ => return Err(create_error!("E1015")),
     };
-    let img = match (*image_table).borrow().find(&symbol) {
+    let img = match (*draw_table).find(&symbol) {
         Some(v) => v.clone(),
         None => return Err(create_error!("E1008")),
     };
     Ok(f(&img) as f64)
 }
-pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
+pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
     // ----------------------------------------------------------------
     // create new lisp interface
     // ----------------------------------------------------------------
@@ -304,12 +302,9 @@ pub fn build_demo_function(env: &Environment, image_table: &ImageTable) {
     // ----------------------------------------------------------------
     // create each demo program
     // ----------------------------------------------------------------
-    make_lisp_function(Box::new(Koch::new(create_draw_line(image_table))), env);
-    make_lisp_function(Box::new(Tree::new(create_draw_line(image_table))), env);
-    make_lisp_function(
-        Box::new(Sierpinski::new(create_draw_line(image_table))),
-        env,
-    );
-    make_lisp_function(Box::new(Dragon::new(create_draw_line(image_table))), env);
-    make_lisp_function_mut(Hilvert::new(create_draw_line(image_table)), env);
+    make_lisp_function(Box::new(Koch::new(create_draw_line(draw_table))), env);
+    make_lisp_function(Box::new(Tree::new(create_draw_line(draw_table))), env);
+    make_lisp_function(Box::new(Sierpinski::new(create_draw_line(draw_table))), env);
+    make_lisp_function(Box::new(Dragon::new(create_draw_line(draw_table))), env);
+    make_lisp_function_mut(Hilvert::new(create_draw_line(draw_table)), env);
 }
