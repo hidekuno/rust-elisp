@@ -17,6 +17,10 @@ use std::f64::consts::PI;
 use std::rc::Rc;
 
 const DEFALUT_CANVAS: &str = "canvas";
+const DEFALUT_LINE_WIDTH: f64 = 0.001;
+const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
+const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
+
 pub type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &ImageSurface) + 'static>;
 pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
@@ -38,6 +42,7 @@ impl Color {
 }
 struct Graphics {
     image_table: HashMap<String, Rc<ImageSurface>>,
+    line_width: f64,
     fg: Color,
     bg: Color,
 }
@@ -72,6 +77,9 @@ impl DrawTable {
     }
     pub fn set_foreground(&mut self, red: f64, green: f64, blue: f64) {
         self.core.borrow_mut().set_foreground(red, green, blue);
+    }
+    pub fn set_line_width(&mut self, w: f64) {
+        self.core.borrow_mut().line_width = w;
     }
 }
 #[cfg(feature = "animation")]
@@ -120,18 +128,18 @@ pub fn draw_clear(draw_table: &DrawTable) {
     cr.paint();
 }
 // ----------------------------------------------------------------
-// create new cairo from imagetable, and create draw_line
+// create new cairo from imagetable, and draw line
 // ----------------------------------------------------------------
 pub fn create_draw_line(draw_table: &DrawTable) -> DrawLine {
     let surface = get_default_surface(draw_table);
     let cr = Context::new(&*surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
-    cr.set_line_width(0.001);
 
     let draw_table = draw_table.clone();
     let draw_line = move |x0, y0, x1, y1| {
         let fg = &draw_table.core.borrow().fg;
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
+        cr.set_line_width(draw_table.core.borrow().line_width);
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
         cr.stroke();
@@ -141,7 +149,7 @@ pub fn create_draw_line(draw_table: &DrawTable) -> DrawLine {
     Box::new(draw_line)
 }
 // ----------------------------------------------------------------
-// create new cairo from imagetable, and create draw_image
+// create new cairo from imagetable, and draw image
 // ----------------------------------------------------------------
 pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
     let surface = get_default_surface(draw_table);
@@ -166,7 +174,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
     Box::new(draw_image)
 }
 // ----------------------------------------------------------------
-// create new cairo from imagetable, and create draw_image
+// create new cairo from imagetable, and draw string
 // ----------------------------------------------------------------
 pub fn create_draw_string(draw_table: &DrawTable) -> DrawString {
     let surface = get_default_surface(draw_table);
@@ -187,6 +195,9 @@ pub fn create_draw_string(draw_table: &DrawTable) -> DrawString {
     };
     Box::new(draw_string)
 }
+// ----------------------------------------------------------------
+// create new cairo from imagetable, and draw arc
+// ----------------------------------------------------------------
 pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
     let surface = get_default_surface(draw_table);
     let draw_table = draw_table.clone();
@@ -203,13 +214,16 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
     };
     Box::new(draw_arc)
 }
+// ----------------------------------------------------------------
+// create draw table
+// ----------------------------------------------------------------
 pub fn create_draw_table() -> DrawTable {
     let mut image_table = HashMap::new();
 
     let surface = ImageSurface::create(Format::ARgb32, DRAW_WIDTH, DRAW_HEIGHT)
         .expect("Can't create surface");
-    let fg = Color::new(0.0, 0.0, 0.0);
-    let bg = Color::new(0.9, 0.9, 0.9);
+    let fg = Color::new(DEFALUT_FG_COLOR.0, DEFALUT_FG_COLOR.1, DEFALUT_FG_COLOR.2);
+    let bg = Color::new(DEFALUT_BG_COLOR.0, DEFALUT_BG_COLOR.1, DEFALUT_BG_COLOR.2);
 
     let cr = Context::new(&surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
@@ -234,6 +248,7 @@ pub fn create_draw_table() -> DrawTable {
     DrawTable {
         core: Rc::new(RefCell::new(Graphics {
             image_table: image_table,
+            line_width: DEFALUT_LINE_WIDTH,
             fg: fg,
             bg: bg,
         })),
