@@ -49,7 +49,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         });
     }
     //--------------------------------------------------------
-    // DrawLine
+    // Draw Line
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
     let draw_line = create_draw_line(draw_table);
@@ -229,39 +229,58 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             Ok(Expression::Nil())
         });
     }
-}
-fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), RsError> {
-    if exp.len() != 4 {
-        return Err(create_error!("E1007"));
+    //--------------------------------------------------------
+    // set line width
+    // ex. (set-line-width 0.001)
+    //--------------------------------------------------------
+    {
+        let draw_table = RefCell::new(draw_table.clone());
+        env.add_builtin_ext_func("set-line-width", move |exp, env| {
+            if exp.len() != 2 {
+                return Err(create_error!("E1007"));
+            }
+            let w = match lisp::eval(&exp[1], env)? {
+                Expression::Float(f) => f,
+                _ => return Err(create_error!("E1003")),
+            };
+            draw_table.borrow_mut().set_line_width(w);
+            Ok(Expression::Nil())
+        });
     }
-    const N: usize = 3;
-    let mut rgb: [f64; N] = [0.0; N];
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
-        rgb[i] = match lisp::eval(e, env)? {
-            Expression::Float(f) => f,
-            _ => return Err(create_error!("E1003")),
+
+    fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), RsError> {
+        if exp.len() != 4 {
+            return Err(create_error!("E1007"));
+        }
+        const N: usize = 3;
+        let mut rgb: [f64; N] = [0.0; N];
+        for (i, e) in exp[1 as usize..].iter().enumerate() {
+            rgb[i] = match lisp::eval(e, env)? {
+                Expression::Float(f) => f,
+                _ => return Err(create_error!("E1003")),
+            };
+        }
+        Ok((rgb[0], rgb[1], rgb[2]))
+    }
+    fn image_size(
+        exp: &[Expression],
+        env: &Environment,
+        draw_table: &DrawTable,
+        f: fn(&ImageSurface) -> i32,
+    ) -> Result<f64, RsError> {
+        if exp.len() != 2 {
+            return Err(create_error!("E1007"));
+        }
+        let symbol = match lisp::eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!("E1015")),
         };
+        let img = match (*draw_table).find(&symbol) {
+            Some(v) => v.clone(),
+            None => return Err(create_error!("E1008")),
+        };
+        Ok(f(&img) as f64)
     }
-    Ok((rgb[0], rgb[1], rgb[2]))
-}
-fn image_size(
-    exp: &[Expression],
-    env: &Environment,
-    draw_table: &DrawTable,
-    f: fn(&ImageSurface) -> i32,
-) -> Result<f64, RsError> {
-    if exp.len() != 2 {
-        return Err(create_error!("E1007"));
-    }
-    let symbol = match lisp::eval(&exp[1], env)? {
-        Expression::String(s) => s,
-        _ => return Err(create_error!("E1015")),
-    };
-    let img = match (*draw_table).find(&symbol) {
-        Some(v) => v.clone(),
-        None => return Err(create_error!("E1008")),
-    };
-    Ok(f(&img) as f64)
 }
 pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
     // ----------------------------------------------------------------
@@ -281,6 +300,9 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
             Ok(Expression::Nil())
         });
     }
+    // ----------------------------------------------------------------
+    // create new lisp interface (mutable)
+    // ----------------------------------------------------------------
     fn make_lisp_function_mut<T>(fractal: T, env: &Environment)
     where
         T: FractalMut + 'static,

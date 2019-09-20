@@ -77,6 +77,7 @@ mod tests {
 
         assert_str!(do_lisp_env("(set-background 0.0 0.0 0.0)", &env), "nil");
         assert_str!(do_lisp_env("(set-foreground 0.0 1.0 0.0)", &env), "nil");
+        assert_str!(do_lisp_env("(set-line-width 0.001)", &env), "nil");
         assert_str!(
             do_lisp_env("(draw-string 0.04 0.50 0.15 \"日本語\")", &env),
             "nil"
@@ -283,5 +284,13 @@ mod tests {
         assert_str!(do_lisp_env("(draw-hilvert)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-hilvert 10 20)", &env), "E1007");
         assert_str!(do_lisp_env("(draw-hilvert 10.5)", &env), "E1002");
+    }
+    #[test]
+    fn test_14_error_check() {
+        let env = init();
+        assert_str!(do_lisp_env("(set-line-width)", &env), "E1007");
+        assert_str!(do_lisp_env("(set-line-width  0.001 0.001)", &env), "E1007");
+        assert_str!(do_lisp_env("(set-line-width 2)", &env), "E1003");
+        assert_str!(do_lisp_env("(set-line-width a)", &env), "E1008");
     }
 }
