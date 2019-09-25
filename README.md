@@ -42,4 +42,4 @@ docker run --name glisp -e DISPLAY=${host_ipaddr}:0.0 hidekuno/rust-elisp /root/
 docker pull hidekuno/rust-elisp
 docker run -it --name elisp hidekuno/rust-elisp /root/lisp
 ```
-<img src="https://user-images.githubusercontent.com/22115777/65196982-6bdf1680-dabc-11e9-9de8-2340bd50c96e.png" width=80%>
+<img src="https://user-images.githubusercontent.com/22115777/65646335-bb31c380-e035-11e9-8d12-34b6ce0ee667.png" width=80%>
