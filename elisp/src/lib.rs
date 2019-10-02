@@ -1060,8 +1060,8 @@ mod tests {
         assert_str!(do_lisp_env("(lcm 36 27)", &env), "108");
         assert_str!(do_lisp_env("(bad-gcm 36 27)", &env), "9");
         assert_str!(
-            do_lisp_env("(hanoi #\\a #\\b #\\c 3)", &env),
-            "(((#\\a . #\\b) 1)((#\\a . #\\c) 2)((#\\b . #\\c) 1)((#\\a . #\\b) 3)((#\\c . #\\a) 1)((#\\c . #\\b) 2)((#\\a . #\\b) 1))"
+            do_lisp_env("(hanoi (quote a)(quote b)(quote c) 3)", &env),
+            "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
         );
         assert_str!(
             do_lisp_env("(prime (iota 30 2))", &env),
@@ -1352,6 +1352,13 @@ mod tests {
     fn char_integer() {
         assert_str!(do_lisp("(char->integer #\\A)"), "65");
         assert_str!(do_lisp("(char->integer #\\山)"), "23665");
+    }
+    #[test]
+    fn quote() {
+        assert_str!(do_lisp("(quote 1)"), "1");
+        assert_str!(do_lisp("(quote \"abc\")"), "\"abc\"");
+        assert_str!(do_lisp("(quote a)"), "a");
+        assert_str!(do_lisp("(quote (a b c))"), "(a b c)");
     }
 }
 #[cfg(test)]
@@ -2145,5 +2152,10 @@ mod error_tests {
         assert_str!(do_lisp("(char->integer #\\a #\\b)"), "E1007");
         assert_str!(do_lisp("(char->integer 999)"), "E1019");
         assert_str!(do_lisp("(char->integer a)"), "E1008");
+    }
+    #[test]
+    fn quote() {
+        assert_str!(do_lisp("(quote)"), "E1007");
+        assert_str!(do_lisp("(quote 1 2)"), "E1007");
     }
 }
