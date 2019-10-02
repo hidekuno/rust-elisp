@@ -193,6 +193,14 @@ where
     b.regist("string->list", string_list);
     b.regist("integer->char", integer_char);
     b.regist("char->integer", char_integer);
+
+    b.regist("quote", |exp, _env| {
+        if exp.len() != 2 {
+            Err(create_error_value!("E1007", exp.len()))
+        } else {
+            Ok(exp[1].clone())
+        }
+    });
 }
 fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {

@@ -734,17 +734,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     ret_clone_if_atom!(sexp);
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
-            Some(v) => {
-                ret_clone_if_atom!(v);
-                return match v {
-                    Expression::Function(_) => Ok(v),
-                    Expression::TailRecursion(_) => Ok(v),
-                    Expression::List(_) => Ok(v),
-                    Expression::BuildInFunction(_, _) => Ok(v),
-                    Expression::BuildInFunctionExt(_) => Ok(v),
-                    _ => Err(create_error!("E9999")),
-                };
-            }
+            Some(v) => Ok(v),
             None => Err(create_error_value!("E1008", val)),
         }
     } else if let Expression::List(v) = sexp {
