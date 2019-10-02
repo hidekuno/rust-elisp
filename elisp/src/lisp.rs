@@ -583,45 +583,44 @@ fn tokenize(program: &String) -> Vec<String> {
     let mut symbol_name = String::new();
     let mut from = 0;
     let mut i = 0;
-
-    let mut s = program.clone();
-    s = s.replace("\t", " ");
-    s = s.replace("\n", " ");
-    s = s.replace("\r", " ");
-    let vc = s.as_bytes();
+    let vc = program.as_bytes();
 
     //A String is a wrapper over a Vec<u8>.(https://doc.rust-lang.org/book/ch08-02-strings.html)
-    for c in s.as_str().chars() {
+    for c in program.as_str().chars() {
         if string_mode {
             if c == '"' {
                 // "abc \""
                 if vc[i - 1] != BACKSLASH {
-                    let ls = s.get(from..(i + 1)).unwrap();
+                    let ls = program.get(from..(i + 1)).unwrap();
                     token.push(ls.to_string());
                     string_mode = false;
                 }
             }
         } else {
-            if c == '"' {
-                from = i;
-                string_mode = true;
-            } else if c == '(' {
-                token.push(String::from("("));
-            } else if c == ')' {
-                token.push(String::from(")"));
-            } else if c == ' ' {
-                // Nop
-            } else {
-                symbol_name.push(c);
-                if s.len() - c.len_utf8() == i {
-                    token.push(symbol_name.to_string());
-                } else {
-                    match vc[i + c.len_utf8()] as char {
-                        '(' | ')' | ' ' => {
-                            token.push(String::from(symbol_name.as_str()));
-                            symbol_name.clear();
+            match c {
+                '"' => {
+                    from = i;
+                    string_mode = true;
+                }
+                '(' => {
+                    token.push("(".into());
+                }
+                ')' => {
+                    token.push(")".into());
+                }
+                ' ' | '\r' | '\n' | '\t' => {}
+                _ => {
+                    symbol_name.push(c);
+                    if program.len() - c.len_utf8() == i {
+                        token.push(symbol_name.to_string());
+                    } else {
+                        match vc[i + c.len_utf8()] as char {
+                            '(' | ')' | ' ' | '\r' | '\n' | '\t' => {
+                                token.push(symbol_name.to_string());
+                                symbol_name.clear();
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             }
@@ -629,7 +628,7 @@ fn tokenize(program: &String) -> Vec<String> {
         i += c.len_utf8();
     }
     if string_mode {
-        token.push(s.get(from..i).unwrap().to_string());
+        token.push(program.get(from..i).unwrap().to_string());
     }
     return token;
 }
