@@ -233,6 +233,14 @@ impl Expression {
         }
         false
     }
+    pub fn eq_symbol(x: &Expression, y: &Expression) -> bool {
+        if let (Expression::Symbol(a), Expression::Symbol(b)) = (x, y) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
 
@@ -577,47 +585,103 @@ pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
     }
     return Ok(ret);
 }
+struct TokenState {
+    tokens: Vec<String>,
+    symbol_name: String,
+    left: i32,
+    right: i32,
+    string_mode: bool,
+    quote_mode: bool,
+}
+impl TokenState {
+    fn new() -> Self {
+        TokenState {
+            tokens: Vec::new(),
+            symbol_name: String::new(),
+            left: 0,
+            right: 0,
+            string_mode: false,
+            quote_mode: false,
+        }
+    }
+    fn push(&mut self, s: String) {
+        self.tokens.push(s);
+    }
+    fn push_if_quote(&mut self, s: String) {
+        if let Some(last) = self.tokens.last() {
+            if self.quote_mode == true && last == "quote" {
+                self.tokens.push(s);
+                self.tokens.push(")".into());
+                self.quote_mode = false;
+            } else {
+                self.tokens.push(s);
+            }
+        } else {
+            self.tokens.push(s);
+        }
+    }
+    fn set_quote(&mut self) {
+        self.left = 0;
+        self.right = 0;
+        self.quote_mode = true;
+        self.tokens.push("(".into());
+        self.tokens.push("quote".into());
+    }
+    fn tokens(self) -> Vec<String> {
+        self.tokens
+    }
+}
 fn tokenize(program: &String) -> Vec<String> {
-    let mut token: Vec<String> = Vec::new();
-    let mut string_mode = false;
-    let mut symbol_name = String::new();
+    let mut token = TokenState::new();
     let mut from = 0;
     let mut i = 0;
     let vc = program.as_bytes();
 
     //A String is a wrapper over a Vec<u8>.(https://doc.rust-lang.org/book/ch08-02-strings.html)
     for c in program.as_str().chars() {
-        if string_mode {
+        if token.string_mode {
             if c == '"' {
-                // "abc \""
+                // ex. <rust-elisp> "abc \""
                 if vc[i - 1] != BACKSLASH {
                     let ls = program.get(from..(i + 1)).unwrap();
-                    token.push(ls.to_string());
-                    string_mode = false;
+                    token.push_if_quote(ls.to_string());
+                    token.string_mode = false;
                 }
             }
         } else {
             match c {
+                '\'' => {
+                    token.set_quote();
+                }
                 '"' => {
                     from = i;
-                    string_mode = true;
+                    token.string_mode = true;
                 }
                 '(' => {
+                    token.left += 1;
                     token.push("(".into());
                 }
                 ')' => {
+                    token.right += 1;
                     token.push(")".into());
+
+                    if (token.quote_mode == true) && (token.left == token.right) {
+                        token.push(")".into());
+                        token.quote_mode = false;
+                    }
                 }
                 ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
-                    symbol_name.push(c);
+                    token.symbol_name.push(c);
                     if program.len() - c.len_utf8() == i {
-                        token.push(symbol_name.to_string());
+                        // ex. <rust-elisp> abc
+                        token.push_if_quote(token.symbol_name.to_string());
                     } else {
+                        // ex. <rust-elisp> abc def ghi
                         match vc[i + c.len_utf8()] as char {
                             '(' | ')' | ' ' | '\r' | '\n' | '\t' => {
-                                token.push(symbol_name.to_string());
-                                symbol_name.clear();
+                                token.push_if_quote(token.symbol_name.to_string());
+                                token.symbol_name.clear();
                             }
                             _ => {}
                         }
@@ -627,10 +691,12 @@ fn tokenize(program: &String) -> Vec<String> {
         }
         i += c.len_utf8();
     }
-    if string_mode {
-        token.push(program.get(from..i).unwrap().to_string());
+
+    // For Occur charactor syntax error ex. <rust-elisp> "abc
+    if token.string_mode {
+        token.push_if_quote(program.get(from..i).unwrap().to_string());
     }
-    return token;
+    return token.tokens();
 }
 fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.len() == 0 {
@@ -663,7 +729,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpr
     } else if ")" == token {
         Err(create_error!("E0003"))
     } else {
-        // string check
+        // string check ex. <rust-elisp> "abc
         if (token == "\"") || (token.starts_with("\"") && !token.ends_with("\"")) {
             return Err(create_error!("E0004"));
         }

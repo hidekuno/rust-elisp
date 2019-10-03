@@ -1064,6 +1064,10 @@ mod tests {
             "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
         );
         assert_str!(
+            do_lisp_env("(hanoi 'a 'b 'c 3)", &env),
+            "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
+        );
+        assert_str!(
             do_lisp_env("(prime (iota 30 2))", &env),
             "(2 3 5 7 11 13 17 19 23 29 31)"
         );
@@ -1072,9 +1076,14 @@ mod tests {
             "((1 2)(1 3)(2 1)(2 3)(3 1)(3 2))"
         );
         assert_str!(
+            do_lisp_env("(perm '(a b c) 2)", &env),
+            "((a b)(a c)(b a)(b c)(c a)(c b))"
+        );
+        assert_str!(
             do_lisp_env("(comb (list 1 2 3) 2)", &env),
             "((1 2)(1 3)(2 3))"
         );
+        assert_str!(do_lisp_env("(comb '(a b c) 2)", &env), "((a b)(a c)(b c))");
         assert_str!(
             do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &env),
             "(1 2 3 4 5 6 7 8 9 10)"
@@ -1359,6 +1368,16 @@ mod tests {
         assert_str!(do_lisp("(quote \"abc\")"), "\"abc\"");
         assert_str!(do_lisp("(quote a)"), "a");
         assert_str!(do_lisp("(quote (a b c))"), "(a b c)");
+
+        assert_str!(do_lisp("' a"), "a");
+        assert_str!(do_lisp("'abc"), "abc");
+        assert_str!(do_lisp("'\"abc\""), "\"abc\"");
+        assert_str!(do_lisp("'\"abc\" '\"def\""), "\"def\"");
+        assert_str!(do_lisp("'(a b c)"), "(a b c)");
+        assert_str!(
+            do_lisp("'(a b c (d e f (g h i)))"),
+            "(a b c (d e f (g h i)))"
+        );
     }
 }
 #[cfg(test)]
