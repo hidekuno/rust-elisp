@@ -48,6 +48,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         for result in BufReader::new(File::open(filename)?).lines() {
             let l = result?;
+            if l.starts_with(";") {
+                continue;
+            }
             program.push(l);
         }
         match lisp::do_core_logic(&program.join(" "), &env) {
