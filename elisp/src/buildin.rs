@@ -716,6 +716,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
             || true == Expression::eq_string(e, &other)
             || true == Expression::eq_char(e, &other)
             || true == Expression::eq_boolean(e, &other)
+            || true == Expression::eq_symbol(e, &other)
         {
             continue;
         }
