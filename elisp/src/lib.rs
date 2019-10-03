@@ -472,9 +472,9 @@ mod tests {
         assert_str!(do_lisp("(expt 2 (+ 1 2))"), "8");
         assert_str!(do_lisp("(expt 2 -2)"), "1/4");
         assert_str!(do_lisp("(expt 2 0)"), "1");
-        assert_str!(do_lisp("(expt 2.0 2.0)"), "4");
-        assert_str!(do_lisp("(expt 2.0 2)"), "4");
-        assert_str!(do_lisp("(expt 2 2.0)"), "4");
+        assert_str!(do_lisp("(expt 2.0 3.0)"), "8");
+        assert_str!(do_lisp("(expt 2.0 3)"), "8");
+        assert_str!(do_lisp("(expt 2 3.0)"), "8");
     }
     #[test]
     fn and() {
