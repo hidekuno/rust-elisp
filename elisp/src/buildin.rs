@@ -329,22 +329,17 @@ fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::Boolean(true))
 }
 fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
-    macro_rules! natural_log {
-        ($x: expr, $y: expr) => {
-            ($x.log((1.0 as f64).exp()) * $y).exp()
-        };
-    }
     if exp.len() != 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     match eval(&exp[1], env)? {
         Expression::Float(x) => match eval(&exp[2], env)? {
-            Expression::Float(y) => Ok(Expression::Float(natural_log!(x, y))),
-            Expression::Integer(y) => Ok(Expression::Float(natural_log!(x, (y as f64)))),
+            Expression::Float(y) => Ok(Expression::Float(x.powf(y))),
+            Expression::Integer(y) => Ok(Expression::Float(x.powf(y as f64))),
             _ => Err(create_error!("E1003")),
         },
         Expression::Integer(x) => match eval(&exp[2], env)? {
-            Expression::Float(y) => Ok(Expression::Float(natural_log!((x as f64), y))),
+            Expression::Float(y) => Ok(Expression::Float((x as f64).powf(y))),
             Expression::Integer(y) => {
                 if y >= 0 {
                     Ok(Expression::Integer(x.pow(y as u32)))
