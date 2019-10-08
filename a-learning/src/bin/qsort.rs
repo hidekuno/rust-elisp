@@ -57,3 +57,32 @@ fn main() {
     qsort(&mut heap, 0, N - 1);
     println!("{:?}", heap);
 }
+
+#[allow(dead_code)]
+const RESULT: &'static str = "[5, 8, 12, 16, 18, 21, 23, 25, 28, 29, 30, 45, 46, 46, 50, 54, 55, 58, 59, 59, 62, 62, 68, 85, 85, 85, 86, 86, 87, 91, 95, 97]";
+
+#[test]
+fn test_qsort_statck() {
+    const N: usize = 32;
+    let mut stack: [i32; N] = [
+        54, 85, 97, 12, 50, 45, 8, 59, 21, 68, 55, 16, 28, 85, 30, 46, 86, 62, 25, 87, 85, 46, 29,
+        58, 23, 5, 86, 95, 62, 18, 59, 91,
+    ];
+    qsort(&mut stack, 0, N - 1);
+    assert_eq!(format!("{:?}", stack), RESULT);
+}
+#[test]
+fn test_qsort_heap() {
+    const N: usize = 32;
+    let stack: [i32; N] = [
+        54, 85, 97, 12, 50, 45, 8, 59, 21, 68, 55, 16, 28, 85, 30, 46, 86, 62, 25, 87, 85, 46, 29,
+        58, 23, 5, 86, 95, 62, 18, 59, 91,
+    ];
+
+    let mut heap = Vec::new();
+    for i in 0..N {
+        heap.push(stack[i]);
+    }
+    qsort(&mut heap, 0, N - 1);
+    assert_eq!(format!("{:?}", heap), RESULT);
+}
