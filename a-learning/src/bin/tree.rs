@@ -15,7 +15,6 @@ use std::rc::Weak;
 type ItemRef = Rc<RefCell<Item>>;
 type ItemWeakRef = Weak<RefCell<Item>>;
 
-#[derive(Clone)]
 struct Item {
     name: String,
     last_name: String,
@@ -104,6 +103,21 @@ impl LineItemVisitor {
             hline_not_last: hline_not_last,
         }
     }
+    fn make_vline(&self, keisen: &mut Vec<&str>, item: &Item) {
+        match item.parent {
+            Some(ref p) => {
+                if let Some(_) = p.borrow().parent {
+                    keisen.push(if p.borrow().is_last() {
+                        self.vline_last
+                    } else {
+                        self.vline_not_last
+                    });
+                }
+                self.make_vline(keisen, &p.borrow());
+            }
+            None => return,
+        }
+    }
 }
 impl Visitor for LineItemVisitor {
     fn visit(&mut self, item: &Item) {
@@ -116,24 +130,7 @@ impl Visitor for LineItemVisitor {
             } else {
                 self.hline_not_last
             });
-
-            let mut c = item.clone();
-            loop {
-                let p = match c.parent {
-                    Some(ref p) => {
-                        if let Some(_) = p.borrow().parent {
-                            keisen.push(if p.borrow().is_last() {
-                                self.vline_last
-                            } else {
-                                self.vline_not_last
-                            });
-                        }
-                        p.borrow().clone()
-                    }
-                    None => break,
-                };
-                c = p;
-            }
+            self.make_vline(&mut keisen, item);
             keisen.reverse();
             for line in keisen {
                 write!(out, "{}", line).unwrap();
