@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::env;
-use std::io::{stdin, stdout, BufRead, Write};
+use std::io::{stdin, stdout, BufRead, StdinLock, Write};
 use std::rc::Rc;
 use std::rc::Weak;
 
@@ -164,7 +164,10 @@ impl Cache {
         }
     }
 }
-fn create_tree(reader: &mut dyn BufRead, sep: char) -> Cache {
+fn create_tree<T>(reader: &mut T, sep: char) -> Cache
+where
+    T: BufRead,
+{
     let mut cache = Cache::new();
 
     for line in reader.lines().filter_map(|result| result.ok()) {
@@ -204,7 +207,7 @@ fn main() {
     let s = stdin();
     let mut cin = s.lock();
 
-    let cache = create_tree(&mut cin, '.');
+    let cache = create_tree::<StdinLock>(&mut cin, '.');
 
     if let Some(top) = cache.top {
         let args: Vec<String> = env::args().collect();
@@ -223,5 +226,53 @@ fn main() {
         } else {
             top.borrow().accept(&mut ItemVisitor::new());
         }
+    }
+}
+#[test]
+fn test_tree() {
+    use std::io::{self};
+    let mut cursor =
+        io::Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
+    let cache = create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.');
+
+    if let Some(top) = cache.top {
+        assert_eq!(top.borrow().name, "fj");
+    } else {
+        panic!("test failure");
+    }
+}
+#[test]
+fn test_tree_children() {
+    struct TestVisitor {
+        v: Vec<String>,
+    }
+    impl Visitor for TestVisitor {
+        fn visit(&mut self, item: &Item) {
+            self.v.push(item.last_name.to_string());
+
+            for it in item.children.iter() {
+                let e = it.upgrade().unwrap();
+                e.borrow().accept::<TestVisitor>(self);
+            }
+        }
+    }
+    use std::io::Cursor;
+    let mut cursor =
+        Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
+    let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
+
+    if let Some(top) = cache.top {
+        assert_eq!(top.borrow().name, "fj");
+        let mut test = TestVisitor { v: Vec::new() };
+        top.borrow().accept(&mut test);
+
+        let mut iterator = test.v.iter();
+        assert_eq!(iterator.next(), Some(&String::from("fj")));
+        assert_eq!(iterator.next(), Some(&String::from("news")));
+        assert_eq!(iterator.next(), Some(&String::from("reader")));
+        assert_eq!(iterator.next(), Some(&String::from("server")));
+        assert_eq!(iterator.next(), None);
+    } else {
+        panic!("test failure");
     }
 }
