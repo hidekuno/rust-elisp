@@ -933,7 +933,11 @@ mod tests {
         do_lisp_env("(define b -1.5)", &env);
         assert_str!(do_lisp_env("(+ (abs a)(abs b))", &env), "21.5");
     }
-
+    #[test]
+    fn rand_integer() {
+        assert_str!(do_lisp("(integer? (rand-integer))"), "#t");
+        assert_str!(do_lisp("(* 0 (rand-integer))"), "0");
+    }
     #[test]
     #[allow(unused_must_use)]
     fn load_file() {
@@ -1789,6 +1793,10 @@ mod error_tests {
         assert_str!(do_lisp("(abs 10 2.5)"), "E1007");
         assert_str!(do_lisp("(abs #t)"), "E1003");
         assert_str!(do_lisp("(abs a)"), "E1008");
+    }
+    #[test]
+    fn rand_integer() {
+        assert_str!(do_lisp("(rand-integer 10)"), "E1007");
     }
     #[test]
     fn load_file() {
