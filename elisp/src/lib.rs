@@ -1867,8 +1867,8 @@ mod error_tests {
     }
     #[test]
     fn begin() {
-        assert_str!(do_lisp("(display)"), "E1007");
-        assert_str!(do_lisp("(display a)"), "E1008");
+        assert_str!(do_lisp("(begin)"), "E1007");
+        assert_str!(do_lisp("(begin a)"), "E1008");
     }
     #[test]
     fn sequence() {
