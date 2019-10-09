@@ -552,54 +552,6 @@ mod tests {
         assert_str!(do_lisp_env("c", &env), "11");
     }
     #[test]
-    fn closure() {
-        let env = lisp::Environment::new();
-        do_lisp_env(
-            "(define (counter) (let ((c 0)) (lambda () (set! c (+ 1 c)) c)))",
-            &env,
-        );
-        do_lisp_env("(define a (counter))", &env);
-        do_lisp_env("(define b (counter))", &env);
-        for _i in 0..10 {
-            do_lisp_env("(a)", &env);
-        }
-        for _i in 0..5 {
-            do_lisp_env("(b)", &env);
-        }
-        assert_str!(do_lisp_env("(a)", &env), "11");
-        assert_str!(do_lisp_env("(b)", &env), "6");
-
-        do_lisp_env(
-            "(define (scounter step) (let ((c 0)) (lambda () (set! c (+ step c)) c)))",
-            &env,
-        );
-        do_lisp_env("(define x (scounter 10))", &env);
-        do_lisp_env("(define y (scounter 100))", &env);
-        for _i in 0..2 {
-            do_lisp_env("(x)", &env);
-            do_lisp_env("(y)", &env);
-        }
-        assert_str!(do_lisp_env("(x)", &env), "30");
-        assert_str!(do_lisp_env("(y)", &env), "300");
-    }
-    #[test]
-    fn closure_nest() {
-        let env = lisp::Environment::new();
-
-        do_lisp_env("(define (testf x) (lambda () (* x 10)))", &env);
-        do_lisp_env("(define (foo x) (testf (* 2 x)))", &env);
-        assert_str!(do_lisp_env("((foo 2))", &env), "40");
-
-        do_lisp_env(
-            "(define (counter x) (let ((c 0)) (lambda () (set! c (+ x c)) c)))",
-            &env,
-        );
-        do_lisp_env("(define (make-counter c) (counter c))", &env);
-        do_lisp_env("(define c (make-counter 10))", &env);
-        assert_str!(do_lisp_env("(c)", &env), "10");
-        assert_str!(do_lisp_env("(c)", &env), "20");
-    }
-    #[test]
     fn list() {
         assert_str!(do_lisp("(list 1 2)"), "(1 2)");
         assert_str!(do_lisp("(list 0.5 1)"), "(0.5 1)");
@@ -981,7 +933,19 @@ mod tests {
         do_lisp_env("(define b -1.5)", &env);
         assert_str!(do_lisp_env("(+ (abs a)(abs b))", &env), "21.5");
     }
-
+    #[test]
+    fn rand_integer() {
+        assert_str!(do_lisp("(integer? (rand-integer))"), "#t");
+        assert_str!(do_lisp("(* 0 (rand-integer))"), "0");
+    }
+    #[test]
+    fn rand_list() {
+        assert_str!(do_lisp("(length (rand-list 4))"), "4");
+        assert_str!(
+            do_lisp("(map (lambda (n) (integer? n)) (rand-list 4))"),
+            "(#t #t #t #t)"
+        );
+    }
     #[test]
     #[allow(unused_must_use)]
     fn load_file() {
@@ -1839,6 +1803,16 @@ mod error_tests {
         assert_str!(do_lisp("(abs a)"), "E1008");
     }
     #[test]
+    fn rand_integer() {
+        assert_str!(do_lisp("(rand-integer 10)"), "E1007");
+    }
+    #[test]
+    fn rand_list() {
+        assert_str!(do_lisp("(rand-list)"), "E1007");
+        assert_str!(do_lisp("(rand-list 1 2)"), "E1007");
+        assert_str!(do_lisp("(rand-list 10.5)"), "E1002");
+    }
+    #[test]
     fn load_file() {
         assert_str!(do_lisp("(load-file)"), "E1007");
         assert_str!(do_lisp("(load-file 1 2)"), "E1007");
@@ -1867,8 +1841,8 @@ mod error_tests {
     }
     #[test]
     fn begin() {
-        assert_str!(do_lisp("(display)"), "E1007");
-        assert_str!(do_lisp("(display a)"), "E1008");
+        assert_str!(do_lisp("(begin)"), "E1007");
+        assert_str!(do_lisp("(begin a)"), "E1008");
     }
     #[test]
     fn sequence() {
