@@ -302,6 +302,13 @@ mod tests {
 
         do_lisp_env("(define plus +)", &env);
         assert_str!(do_lisp_env("(plus 10 20)", &env), "30");
+
+        do_lisp_env("(define (p-nashi)(* 10 20))", &env);
+        assert_str!(do_lisp_env("(p-nashi)", &env), "200");
+
+        do_lisp_env("(define (hoge a b)(define (alpha x)(+ x 10))(define (beta y)(+ y 10))(+ (alpha a)(beta b)))",&env);
+        assert_str!(do_lisp_env("(hoge 1 2)", &env), "23");
+        assert_str!(do_lisp_env("(hoge 3 4)", &env), "27");
     }
     #[test]
     fn lambda() {
@@ -1558,6 +1565,7 @@ mod error_tests {
         let env = lisp::Environment::new();
         assert_str!(do_lisp_env("(define)", &env), "E1007");
         assert_str!(do_lisp_env("(define a)", &env), "E1007");
+        assert_str!(do_lisp_env("(define a 11 12)", &env), "E1007");
         assert_str!(do_lisp_env("(define 1 10)", &env), "E1004");
         assert_str!(do_lisp_env("(define (hoge a 1) (+ 100 a))", &env), "E1004");
         assert_str!(do_lisp_env("(define (hoge 1 a) (+ 100 a))", &env), "E1004");
