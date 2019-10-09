@@ -939,6 +939,14 @@ mod tests {
         assert_str!(do_lisp("(* 0 (rand-integer))"), "0");
     }
     #[test]
+    fn rand_list() {
+        assert_str!(do_lisp("(length (rand-list 4))"), "4");
+        assert_str!(
+            do_lisp("(map (lambda (n) (integer? n)) (rand-list 4))"),
+            "(#t #t #t #t)"
+        );
+    }
+    #[test]
     #[allow(unused_must_use)]
     fn load_file() {
         let test_dir = Path::new(&env::var("HOME").unwrap()).join("tmp");
@@ -1797,6 +1805,12 @@ mod error_tests {
     #[test]
     fn rand_integer() {
         assert_str!(do_lisp("(rand-integer 10)"), "E1007");
+    }
+    #[test]
+    fn rand_list() {
+        assert_str!(do_lisp("(rand-list)"), "E1007");
+        assert_str!(do_lisp("(rand-list 1 2)"), "E1007");
+        assert_str!(do_lisp("(rand-list 10.5)"), "E1002");
     }
     #[test]
     fn load_file() {
