@@ -538,6 +538,11 @@ mod tests {
         assert_str!(do_lisp_env("(hoge 0)", &env), "10000");
     }
     #[test]
+    fn time_f() {
+        let env = lisp::Environment::new();
+        assert_str!(do_lisp_env("(time (+ 10 20))", &env), "30");
+    }
+    #[test]
     fn set_f() {
         let env = lisp::Environment::new();
         do_lisp_env("(define c 0)", &env);
@@ -1011,27 +1016,6 @@ mod tests {
         let env = lisp::Environment::new();
         do_lisp_env("(define p (delay (+ 2 3)))", &env);
         assert_str!(do_lisp_env("(force p)", &env), "5");
-    }
-    #[test]
-    fn cps() {
-        // https://practical-scheme.net/wiliki/wiliki.cgi?Scheme%3A使いたい人のための継続入門
-        let env = lisp::Environment::new();
-        do_lisp_env("(tail-recursion-off)", &env);
-
-        let program = [
-            "(define fact-cps (lambda (n cont)(if (= n 0)(cont 1)(fact-cps (- n 1) (lambda (a) (cont (* n a)))))))",
-            "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
-        ];
-        for p in &program {
-            do_lisp_env(p, &env);
-        }
-        assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) a))", &env), "24");
-        assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) (* 2 a)))", &env), "48");
-        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &env), "120");
-        assert_str!(
-            do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &env),
-            "240"
-        );
     }
     #[test]
     fn test_add_rational() {
@@ -1593,8 +1577,16 @@ mod error_tests {
         );
     }
     #[test]
+    fn time_f() {
+        let env = lisp::Environment::new();
+        assert_str!(do_lisp_env("(time)", &env), "E1007");
+        assert_str!(do_lisp_env("(time 10 10)", &env), "E1007");
+        assert_str!(do_lisp_env("(time c)", &env), "E1008");
+    }
+    #[test]
     fn set_f() {
         let env = lisp::Environment::new();
+        assert_str!(do_lisp_env("(set!)", &env), "E1007");
         assert_str!(do_lisp_env("(set! c)", &env), "E1007");
         assert_str!(do_lisp_env("(set! 10 10)", &env), "E1004");
         assert_str!(do_lisp_env("(set! c 10)", &env), "E1008");
@@ -1877,28 +1869,6 @@ mod error_tests {
     fn begin() {
         assert_str!(do_lisp("(display)"), "E1007");
         assert_str!(do_lisp("(display a)"), "E1008");
-    }
-    #[test]
-    fn cps() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(  tail-recursion-off )", &env);
-
-        let program = [
-            "(define (fact/cps-ng n cont)(if (= n 0)(cont 1)(fact/cps-ng (- n 1) (lambda (a b) (cont (* n a))))))",
-            "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
-        ];
-        for p in &program {
-            do_lisp_env(p, &env);
-        }
-        assert_str!(
-            do_lisp_env("(fact/cps-ng 3 (lambda (a) (* 2 a)))", &env),
-            "E1007"
-        );
-        assert_str!(do_lisp_env("(fact/cps 5 (lambda (a b) a))", &env), "E1007");
-        assert_str!(
-            do_lisp_env("(fact/cps 5 (lambda (a) (+ ng a)))", &env),
-            "E1008"
-        );
     }
     #[test]
     fn sequence() {

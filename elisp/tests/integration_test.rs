@@ -56,13 +56,13 @@ fn fact() {
 #[test]
 fn hanoi() {
     let env = lisp::Environment::new();
-    let program = [
-        "(define hanoi (lambda (from to work n) (if (>= 0 n) (list) (append (hanoi from work to (- n 1)) (list (list (cons from to) n)) (hanoi work to from (- n 1))))))",
-    ];
-    for p in &program {
-        do_lisp_env(p, &env);
-    }
-
+    do_lisp_env(
+        "(define hanoi (lambda (from to work n) \
+         (if (>= 0 n) (list) \
+         (append (hanoi from work to (- n 1)) \
+         (list (list (cons from to) n)) (hanoi work to from (- n 1))))))",
+        &env,
+    );
     assert_str!(
         do_lisp_env("(hanoi (quote a)(quote b)(quote c) 3)", &env),
         "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
@@ -76,7 +76,11 @@ fn hanoi() {
 fn prime() {
     let env = lisp::Environment::new();
     do_lisp_env(
-        "(define (prime l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l))))))", &env);
+        "(define (prime l) \
+         (if (> (car l)(sqrt (last l))) l \
+         (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l))))))",
+        &env,
+    );
 
     assert_str!(
         do_lisp_env("(prime (iota 30 2))", &env),
@@ -87,7 +91,12 @@ fn prime() {
 fn perm() {
     let env = lisp::Environment::new();
     do_lisp_env(
-    "(define (perm l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(list)(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l))))", &env);
+        "(define (perm l n)\
+         (if (>= 0 n) (list (list))\
+         (reduce (lambda (a b)(append a b))(list)\
+         (map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l))))",
+        &env,
+    );
 
     assert_str!(
         do_lisp_env("(perm (list 1 2 3) 2)", &env),
@@ -101,7 +110,12 @@ fn perm() {
 #[test]
 fn comb() {
     let env = lisp::Environment::new();
-    do_lisp_env("(define (comb l n)(if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n)))))", &env);
+    do_lisp_env(
+        "(define (comb l n)(if (null? l) l \
+         (if (= n 1) (map (lambda (n) (list n)) l) \
+         (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n)))))",
+        &env,
+    );
 
     assert_str!(
         do_lisp_env("(comb (list 1 2 3) 2)", &env),
@@ -114,7 +128,9 @@ fn quick_sort() {
     let env = lisp::Environment::new();
     let program = [
         "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
-        "(define (qsort l pred)(if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred)))))",
+        "(define (qsort l pred)(if (null? l) l \
+         (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) \
+         (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred)))))",
     ];
     for p in &program {
         do_lisp_env(p, &env);
@@ -133,7 +149,8 @@ fn bubble_sort() {
     let env = lisp::Environment::new();
     let program = [
         "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
-        "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
+        "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))\
+         (cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
         "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
     ];
     for p in &program {
@@ -150,13 +167,16 @@ fn merge_sort() {
 
     let program = [
         "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
-        "(define merge (lambda (a b)(if (or (null? a)(null? b)) (append a b) (if (< (car a)(car b))(cons (car a)(merge (cdr a) b))(cons (car b) (merge a (cdr b)))))))",
-        "(define msort (lambda (l)(let ((n (length l)))(if (>= 1 n ) l (if (= n 2) (if (< (car l)(cadr l)) l (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid)))))))))",
+        "(define (merge a b)(if (or (null? a)(null? b)) (append a b) \
+         (if (< (car a)(car b))(cons (car a)(merge (cdr a) b)) \
+         (cons (car b) (merge a (cdr b))))))",
+        "(define (msort l)(let ((n (length l)))(if (>= 1 n ) l \
+         (if (= n 2) (if (< (car l)(cadr l)) l \
+         (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid))))))))",
     ];
     for p in &program {
         do_lisp_env(p, &env);
     }
-
     assert_str!(
         do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &env),
         "(1 2 3 4 5 6 7 8 9 10)"
@@ -167,18 +187,19 @@ fn merge_sort() {
     );
 }
 #[test]
-fn force_delay() {
+fn inf_list() {
     let env = lisp::Environment::new();
     let program = [
         "(define stream-car (lambda (l)(car l)))",
         "(define stream-cdr (lambda (l)(force (cdr l))))",
-        "(define make-generator (lambda (generator inits)(cons (car inits)(delay (make-generator generator (generator inits))))))",
-        "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
+        "(define (make-generator generator inits)(cons (car inits)(delay (make-generator generator (generator inits)))))",
+        "(define (inf-list generator inits limit)\
+         (let loop ((l (make-generator generator inits))(c limit)) \
+         (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1))))))",
     ];
     for p in &program {
         do_lisp_env(p, &env);
     }
-
     assert_str!(
         do_lisp_env(
             "(inf-list (lambda (n) (list (+ 1 (car n)))) (list 0) 10)",
@@ -192,5 +213,35 @@ fn force_delay() {
             &env
         ),
         "(0 1 1 2 3 5 8 13 21 34)"
+    );
+}
+#[test]
+fn cps() {
+    // https://practical-scheme.net/wiliki/wiliki.cgi?Scheme%3A使いたい人のための継続入門
+    let env = lisp::Environment::new();
+    do_lisp_env("(tail-recursion-off)", &env);
+
+    let program = [
+        "(define fact-cps (lambda (n cont)(if (= n 0)(cont 1)(fact-cps (- n 1) (lambda (a) (cont (* n a)))))))",
+        "(define (fact/cps n cont)(if (= n 0)(cont 1)(fact/cps (- n 1) (lambda (a) (cont (* n a))))))",
+    ];
+    for p in &program {
+        do_lisp_env(p, &env);
+    }
+    assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) a))", &env), "24");
+    assert_str!(do_lisp_env("(fact-cps 4 (lambda (a) (* 2 a)))", &env), "48");
+    assert_str!(do_lisp_env("(fact/cps 5 (lambda (a) a))", &env), "120");
+    assert_str!(
+        do_lisp_env("(fact/cps 5 (lambda (a) (* 2 a)))", &env),
+        "240"
+    );
+    assert_str!(
+        do_lisp_env("(fact/cps-ng 3 (lambda (a) (* 2 a)))", &env),
+        "E1007"
+    );
+    assert_str!(do_lisp_env("(fact/cps 5 (lambda (a b) a))", &env), "E1007");
+    assert_str!(
+        do_lisp_env("(fact/cps 5 (lambda (a) (+ ng a)))", &env),
+        "E1008"
     );
 }
