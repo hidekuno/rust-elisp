@@ -393,10 +393,13 @@ fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
     )))
 }
 fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() < 3 {
         return Err(create_error_value!("E1007", exp.len()));
     }
     if let Expression::Symbol(v) = &exp[1] {
+        if exp.len() != 3 {
+            return Err(create_error_value!("E1007", exp.len()));
+        }
         let se = eval(&exp[2], env)?;
         env.regist(v.to_string(), se);
 
@@ -407,8 +410,6 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
             return Err(create_error_value!("E1007", l.len()));
         }
         if let Expression::Symbol(s) = &l[0] {
-            let mut f = exp.to_vec();
-
             let mut param: Vec<Expression> = Vec::new();
             for n in &l[1..] {
                 match n {
@@ -418,6 +419,8 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
                     _ => return Err(create_error!("E1004")),
                 }
             }
+
+            let mut f = exp.to_vec();
             f[1] = Expression::List(param);
             let mut func = RsFunction::new(&f, s.to_string(), env.clone());
             if env.is_tail_recursion() == true {
