@@ -1034,101 +1034,6 @@ mod tests {
         );
     }
     #[test]
-    fn sample_program() {
-        let program = [
-            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
-            "(define (effect/gcm n m) (if (= 0 (modulo n m)) m (effect/gcm m (modulo n m))))",
-            "(define (fact-iter n m)(if (= n 1)m(fact-iter (- n 1)(* n m))))",
-            "(define (bad-gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (+ 0 (bad-gcm m mod)))))",
-            "(define (lcm n m) (/(* n m)(gcm n m)))",
-            "(define hanoi (lambda (from to work n) (if (>= 0 n) (list) (append (hanoi from work to (- n 1)) (list (list (cons from to) n)) (hanoi work to from (- n 1))))))",
-            "(define prime (lambda (l) (if (> (car l)(sqrt (last l))) l (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l)))))))",
-            "(define qsort (lambda (l pred) (if (null? l) l (append (qsort (filter (lambda (n) (pred n (car l))) (cdr l)) pred) (cons (car l) (qsort (filter (lambda (n) (not (pred n (car l))))(cdr l)) pred))))))",
-            "(define comb (lambda (l n) (if (null? l) l (if (= n 1) (map (lambda (n) (list n)) l) (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n))))))",
-            "(define perm (lambda (l n)(if (>= 0 n) (list (list))(reduce (lambda (a b)(append a b))(list)(map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l)))))",
-            "(define bubble-iter (lambda (x l)(if (or (null? l)(< x (car l)))(cons x l)(cons (car l)(bubble-iter x (cdr l))))))",
-            "(define bsort (lambda (l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l))))))",
-            "(define merge (lambda (a b)(if (or (null? a)(null? b)) (append a b) (if (< (car a)(car b))(cons (car a)(merge (cdr a) b))(cons (car b) (merge a (cdr b)))))))",
-            "(define msort (lambda (l)(let ((n (length l)))(if (>= 1 n ) l (if (= n 2) (if (< (car l)(cadr l)) l (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid)))))))))",
-            "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
-            "(define stream-car (lambda (l)(car l)))",
-            "(define stream-cdr (lambda (l)(force (cdr l))))",
-            "(define make-generator (lambda (generator inits)(cons (car inits)(delay (make-generator generator (generator inits))))))",
-            "(define inf-list (lambda (generator inits limit)(let loop ((l (make-generator generator inits))(c limit)) (if (>= 0 c) (list)(cons (stream-car l)(loop (stream-cdr l)(- c 1)))))))",
-        ];
-
-        let env = lisp::Environment::new();
-        for p in &program {
-            do_lisp_env(p, &env);
-        }
-        assert_str!(do_lisp_env("(gcm 36 27)", &env), "9");
-        assert_str!(do_lisp_env("(effect/gcm 36 15)", &env), "3");
-        assert_str!(do_lisp_env("(fact-iter 4 1)", &env), "24");
-        assert_str!(do_lisp_env("(lcm 36 27)", &env), "108");
-        assert_str!(do_lisp_env("(bad-gcm 36 27)", &env), "9");
-        assert_str!(
-            do_lisp_env("(hanoi (quote a)(quote b)(quote c) 3)", &env),
-            "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
-        );
-        assert_str!(
-            do_lisp_env("(hanoi 'a 'b 'c 3)", &env),
-            "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
-        );
-        assert_str!(
-            do_lisp_env("(prime (iota 30 2))", &env),
-            "(2 3 5 7 11 13 17 19 23 29 31)"
-        );
-        assert_str!(
-            do_lisp_env("(perm (list 1 2 3) 2)", &env),
-            "((1 2)(1 3)(2 1)(2 3)(3 1)(3 2))"
-        );
-        assert_str!(
-            do_lisp_env("(perm '(a b c) 2)", &env),
-            "((a b)(a c)(b a)(b c)(c a)(c b))"
-        );
-        assert_str!(
-            do_lisp_env("(comb (list 1 2 3) 2)", &env),
-            "((1 2)(1 3)(2 3))"
-        );
-        assert_str!(do_lisp_env("(comb '(a b c) 2)", &env), "((a b)(a c)(b c))");
-        assert_str!(
-            do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &env),
-            "(1 2 3 4 5 6 7 8 9 10)"
-        );
-        assert_str!(do_lisp_env("(take (list 2 4 6 8 10) 3)", &env), "(2 4 6)");
-        assert_str!(do_lisp_env("(drop (list 2 4 6 8 10) 3)", &env), "(8 10)");
-        assert_str!(
-            do_lisp_env("(qsort test-list (lambda (a b)(< a b)))", &env),
-            "(0 2 3 6 7 8 9 14 19 27 36)"
-        );
-        assert_str!(
-            do_lisp_env("(qsort test-list (lambda (a b)(> a b)))", &env),
-            "(36 27 19 14 9 8 7 6 3 2 0)"
-        );
-        assert_str!(
-            do_lisp_env("(bsort test-list)", &env),
-            "(0 2 3 6 7 8 9 14 19 27 36)"
-        );
-        assert_str!(
-            do_lisp_env("(msort test-list)", &env),
-            "(0 2 3 6 7 8 9 14 19 27 36)"
-        );
-        assert_str!(
-            do_lisp_env(
-                "(inf-list (lambda (n) (list (+ 1 (car n)))) (list 0) 10)",
-                &env
-            ),
-            "(0 1 2 3 4 5 6 7 8 9)"
-        );
-        assert_str!(
-            do_lisp_env(
-                "(inf-list (lambda (n) (list (cadr n)(+ (cadr n) (car n)))) (list 0 1) 10)",
-                &env
-            ),
-            "(0 1 1 2 3 5 8 13 21 34)"
-        );
-    }
-    #[test]
     fn test_add_rational() {
         assert_str!(do_lisp("(+ 1 1/2)"), "3/2");
         assert_str!(do_lisp("(+ 2.5 1/4)"), "2.75");
@@ -1940,15 +1845,6 @@ mod error_tests {
         assert_str!(do_lisp("(abs 10 2.5)"), "E1007");
         assert_str!(do_lisp("(abs #t)"), "E1003");
         assert_str!(do_lisp("(abs a)"), "E1008");
-    }
-    #[test]
-    fn sample_program() {
-        let env = lisp::Environment::new();
-        do_lisp_env(
-            "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm f mod))))",
-            &env,
-        );
-        assert_str!(do_lisp_env("(gcm 36 27)", &env), "E1008");
     }
     #[test]
     fn load_file() {
