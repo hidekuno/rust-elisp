@@ -863,7 +863,7 @@ fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
     Ok(Expression::Integer(x.abs() / SAMPLE_INT))
 }
 fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if 2 < exp.len() {
+    if 2 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
     if let Expression::Integer(i) = eval(&exp[1], env)? {
