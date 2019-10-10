@@ -1190,6 +1190,11 @@ mod tests {
         );
     }
     #[test]
+    fn str_length() {
+        assert_str!(do_lisp("(string-length \"\")"), "0");
+        assert_str!(do_lisp("(string-length \"1234567890\")"), "10");
+    }
+    #[test]
     fn number_string() {
         assert_str!(do_lisp("(number->string 10)"), "\"10\"");
         assert_str!(do_lisp("(number->string 10.5)"), "\"10.5\"");
@@ -1969,6 +1974,12 @@ mod error_tests {
         assert_str!(do_lisp("(string-append \"a\")"), "E1007");
         assert_str!(do_lisp("(string-append \"a\" 10)"), "E1015");
         assert_str!(do_lisp("(string-append \"a\" a)"), "E1008");
+    }
+    #[test]
+    fn str_length() {
+        assert_str!(do_lisp("(string-length)"), "E1007");
+        assert_str!(do_lisp("(string-length \"1234\" \"12345\")"), "E1007");
+        assert_str!(do_lisp("(string-length 1000)"), "E1015");
     }
     #[test]
     fn number_string() {
