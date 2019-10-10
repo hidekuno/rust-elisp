@@ -314,3 +314,35 @@ fn fibonacci() {
     );
     assert_str!(do_lisp_env("(fibonacci 8)", &env), "21");
 }
+#[test]
+fn trigonometric() {
+    let env = lisp::Environment::new();
+
+    let program = [
+        "(define pi (* (atan 1) 4))",
+        "(define (x-dash len x angle)(+ x (* len (cos (/(* pi angle)180)))))",
+        "(define (y-dash len y angle)(+ y (* len (sin (/(* pi angle)180)))))",
+        "(define (get-angle x0 x1 y0 y1) \
+         (let ((l (sqrt (+ (* (- x1 x0)(- x1 x0))(* (- y1 y0)(- y1 y0)))))) \
+         (* (/ (acos (/ (- x1 x0) l)) pi) 180)))",
+        "(define (get-angle2 x0 x1 y0 y1) \
+         (let ((l (sqrt (+ (* (- x1 x0)(- x1 x0))(* (- y1 y0)(- y1 y0)))))) \
+         (* (/ (asin (/ (- y1 y0) l)) pi) 180)))",
+    ];
+    for p in &program {
+        do_lisp_env(p, &env);
+    }
+    assert_str!(do_lisp_env("(x-dash 1.0 0 60)", &env), "0.5000000000000001");
+    assert_str!(
+        do_lisp_env("(y-dash 1.0 0 30)", &env),
+        "0.49999999999999994"
+    );
+    assert_str!(
+        do_lisp_env("(get-angle 0 0.5 0 0.8660254037844387)", &env),
+        "60.00000000000001"
+    );
+    assert_str!(
+        do_lisp_env("(get-angle2 0 0.5 0 0.8660254037844387)", &env),
+        "60.00000000000001"
+    );
+}

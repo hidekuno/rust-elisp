@@ -192,6 +192,31 @@ mod tests {
         assert_str!(do_lisp("(<= (+ 3 3) 6)"), "#t");
     }
     #[test]
+    fn ash() {
+        assert_str!(do_lisp("(ash 10 1)"), "20");
+        assert_str!(do_lisp("(ash 10 -1)"), "5");
+        assert_str!(do_lisp("(ash 10 0)"), "10");
+    }
+    #[test]
+    fn logand() {
+        assert_str!(do_lisp("(logand 10 2)"), "2");
+        assert_str!(do_lisp("(logand 10 2 3)"), "2");
+    }
+    #[test]
+    fn logior() {
+        assert_str!(do_lisp("(logior 10 2)"), "10");
+        assert_str!(do_lisp("(logior 10 2 3)"), "11");
+    }
+    #[test]
+    fn logxor() {
+        assert_str!(do_lisp("(logxor 10 2)"), "8");
+        assert_str!(do_lisp("(logxor 10 2 2)"), "10");
+    }
+    #[test]
+    fn lognot() {
+        assert_str!(do_lisp("(lognot 10)"), "-11");
+    }
+    #[test]
     fn even() {
         assert_str!(do_lisp("(even? 2)"), "#t");
         assert_str!(do_lisp("(even? 4)"), "#t");
@@ -1344,6 +1369,50 @@ mod error_tests {
         assert_str!(do_lisp("(<= 6)"), "E1007");
         assert_str!(do_lisp("(<= 6 a)"), "E1008");
         assert_str!(do_lisp("(<= 6 #t)"), "E1003");
+    }
+    #[test]
+    fn ash() {
+        assert_str!(do_lisp("(ash)"), "E1007");
+        assert_str!(do_lisp("(ash 10)"), "E1007");
+        assert_str!(do_lisp("(ash 10 1 1)"), "E1007");
+        assert_str!(do_lisp("(ash a 1)"), "E1008");
+        assert_str!(do_lisp("(ash 10 a)"), "E1008");
+        assert_str!(do_lisp("(ash 10.5 1)"), "E1002");
+        assert_str!(do_lisp("(ash 10 1.5)"), "E1002");
+    }
+    #[test]
+    fn logand() {
+        assert_str!(do_lisp("(logand)"), "E1007");
+        assert_str!(do_lisp("(logand 10)"), "E1007");
+        assert_str!(do_lisp("(logand a 1)"), "E1008");
+        assert_str!(do_lisp("(logand 10 a)"), "E1008");
+        assert_str!(do_lisp("(logand 10.5 1)"), "E1002");
+        assert_str!(do_lisp("(logand 10 1.5)"), "E1002");
+    }
+    #[test]
+    fn logior() {
+        assert_str!(do_lisp("(logior)"), "E1007");
+        assert_str!(do_lisp("(logior 10)"), "E1007");
+        assert_str!(do_lisp("(logior a 1)"), "E1008");
+        assert_str!(do_lisp("(logior 10 a)"), "E1008");
+        assert_str!(do_lisp("(logior 10.5 1)"), "E1002");
+        assert_str!(do_lisp("(logior 10 1.5)"), "E1002");
+    }
+    #[test]
+    fn logxor() {
+        assert_str!(do_lisp("(logxor)"), "E1007");
+        assert_str!(do_lisp("(logxor 10)"), "E1007");
+        assert_str!(do_lisp("(logxor a 1)"), "E1008");
+        assert_str!(do_lisp("(logxor 10 a)"), "E1008");
+        assert_str!(do_lisp("(logxor 10.5 1)"), "E1002");
+        assert_str!(do_lisp("(logxor 10 1.5)"), "E1002");
+    }
+    #[test]
+    fn lognot() {
+        assert_str!(do_lisp("(lognot)"), "E1007");
+        assert_str!(do_lisp("(lognot 10 10)"), "E1007");
+        assert_str!(do_lisp("(lognot a)"), "E1008");
+        assert_str!(do_lisp("(lognot 1.5)"), "E1002");
     }
     #[test]
     fn even() {

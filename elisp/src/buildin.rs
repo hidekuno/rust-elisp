@@ -57,6 +57,12 @@ where
     b.regist(">", |exp, env| cmp(exp, env, |x, y| x > y));
     b.regist(">=", |exp, env| cmp(exp, env, |x, y| x >= y));
 
+    b.regist("ash", shift);
+    b.regist("logand", |exp, env| bit(exp, env, |x, y| x & y));
+    b.regist("logior", |exp, env| bit(exp, env, |x, y| x | y));
+    b.regist("logxor", |exp, env| bit(exp, env, |x, y| x ^ y));
+    b.regist("lognot", lognot);
+
     b.regist("even?", |exp, env| odd_even(exp, env, |x| x % 2 == 0));
     b.regist("odd?", |exp, env| odd_even(exp, env, |x| x % 2 != 0));
     b.regist("zero?", |exp, env| {
@@ -1063,6 +1069,54 @@ fn cmp(
         }
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
+}
+fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let mut x: [i64; 2] = [0; 2];
+    for (i, e) in exp[1 as usize..].iter().enumerate() {
+        x[i] = match eval(e, env)? {
+            Expression::Integer(v) => v,
+            _ => return Err(create_error!("E1002")),
+        };
+    }
+    Ok(Expression::Integer(if x[1] >= 0 {
+        x[0] << x[1]
+    } else {
+        x[0] >> x[1].abs()
+    }))
+}
+fn bit(exp: &[Expression], env: &Environment, f: fn(x: i64, y: i64) -> i64) -> ResultExpression {
+    let mut result: i64 = 0;
+    let mut first: bool = true;
+
+    if 2 >= exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    for e in &exp[1 as usize..] {
+        let param = match eval(e, env)? {
+            Expression::Integer(v) => v,
+            _ => return Err(create_error!("E1002")),
+        };
+        if first == true {
+            result = param;
+            first = false;
+            continue;
+        }
+        result = f(result, param);
+    }
+    Ok(Expression::Integer(result))
+}
+fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        Err(create_error_value!("E1007", exp.len()))
+    } else {
+        match eval(&exp[1], env)? {
+            Expression::Integer(v) => Ok(Expression::Integer(!v)),
+            _ => Err(create_error!("E1002")),
+        }
+    }
 }
 fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
