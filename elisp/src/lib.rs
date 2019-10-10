@@ -592,6 +592,15 @@ mod tests {
         assert_str!(do_lisp_env("(list a b)", &env), "(10 20)");
     }
     #[test]
+    fn make_list() {
+        assert_str!(do_lisp("(make-list 10 0)"), "(0 0 0 0 0 0 0 0 0 0)");
+        assert_str!(
+            do_lisp("(make-list 4 (list 1 2 3))"),
+            "((1 2 3)(1 2 3)(1 2 3)(1 2 3))"
+        );
+        assert_str!(do_lisp("(make-list 8 'a)"), "(a a a a a a a a)");
+    }
+    #[test]
     fn null_f() {
         assert_str!(do_lisp("(null? (list))"), "#t");
         assert_str!(do_lisp("(null? (list 10))"), "#f");
@@ -1224,9 +1233,16 @@ mod tests {
         );
     }
     #[test]
-    fn str_length() {
+    fn string_length() {
         assert_str!(do_lisp("(string-length \"\")"), "0");
         assert_str!(do_lisp("(string-length \"1234567890\")"), "10");
+        assert_str!(do_lisp("(string-length \"山\")"), "1");
+    }
+    #[test]
+    fn string_size() {
+        assert_str!(do_lisp("(string-size \"\")"), "0");
+        assert_str!(do_lisp("(string-size \"1234567890\")"), "10");
+        assert_str!(do_lisp("(string-size \"山\")"), "3");
     }
     #[test]
     fn number_string() {
@@ -1641,6 +1657,15 @@ mod error_tests {
     #[test]
     fn list() {
         assert_str!(do_lisp("(list c 10)"), "E1008");
+    }
+    #[test]
+    fn make_list() {
+        assert_str!(do_lisp("(make-list)"), "E1007");
+        assert_str!(do_lisp("(make-list 10)"), "E1007");
+        assert_str!(do_lisp("(make-list 10 0 1)"), "E1007");
+        assert_str!(do_lisp("(make-list #t 0)"), "E1002");
+        assert_str!(do_lisp("(make-list -1 0)"), "E1011");
+        assert_str!(do_lisp("(make-list 10 c)"), "E1008");
     }
     #[test]
     fn null_f() {
@@ -2068,10 +2093,16 @@ mod error_tests {
         assert_str!(do_lisp("(string-append \"a\" a)"), "E1008");
     }
     #[test]
-    fn str_length() {
+    fn string_length() {
         assert_str!(do_lisp("(string-length)"), "E1007");
         assert_str!(do_lisp("(string-length \"1234\" \"12345\")"), "E1007");
         assert_str!(do_lisp("(string-length 1000)"), "E1015");
+    }
+    #[test]
+    fn string_size() {
+        assert_str!(do_lisp("(string-size)"), "E1007");
+        assert_str!(do_lisp("(string-size \"1234\" \"12345\")"), "E1007");
+        assert_str!(do_lisp("(string-size 1000)"), "E1015");
     }
     #[test]
     fn number_string() {
