@@ -18,14 +18,14 @@
         (display path)
         (newline))))
 
-(define (queen xlist path)
+(define (8queen xlist path)
   (let loop ((x xlist))
     (cond ((null? x)
            (print-path path))
           (else
            (cond ((not (conflict (length path) (car x) path))
-                  (queen (delete (car x) xlist)
+                  (8queen (delete (car x) xlist)
                          (cons (car x) path))))
            (loop (cdr x))))))
 
-(queen (iota 8 1)(list))
+(8queen (iota 8 1)(list))
