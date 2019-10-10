@@ -121,6 +121,7 @@ where
     b.regist("filter", filter);
     b.regist("reduce", reduce);
     b.regist("for-each", for_each);
+    b.regist("list-ref", list_ref);
 
     b.regist("sqrt", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.sqrt()))
@@ -853,6 +854,24 @@ fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
         Ok(Expression::Nil())
     } else {
         Err(create_error!("E1006"))
+    }
+}
+fn list_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::List(l) => match eval(&exp[2], env)? {
+            Expression::Integer(i) => {
+                if i < 0 || l.len() <= i as usize {
+                    Err(create_error!("E1011"))
+                } else {
+                    Ok(l[i as usize].clone())
+                }
+            }
+            _ => Err(create_error!("E1002")),
+        },
+        _ => Err(create_error!("E1005")),
     }
 }
 fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
