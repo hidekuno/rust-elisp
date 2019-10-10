@@ -110,6 +110,7 @@ where
     b.regist("identity", identity);
 
     b.regist("list", list);
+    b.regist("make-list", make_list);
     b.regist("null?", null_f);
     b.regist("length", length);
     b.regist("car", car);
@@ -194,7 +195,10 @@ where
     b.regist("char<=?", |exp, env| charcmp(exp, env, |x, y| x <= y));
     b.regist("char>=?", |exp, env| charcmp(exp, env, |x, y| x >= y));
     b.regist("string-append", str_append);
-    b.regist("string-length", str_length);
+    b.regist("string-length", |exp, env| {
+        str_length(exp, env, |s| s.chars().count())
+    });
+    b.regist("string-size", |exp, env| str_length(exp, env, |s| s.len()));
     b.regist("number->string", number_string);
     b.regist("string->number", string_number);
     b.regist("list->string", list_string);
@@ -590,6 +594,23 @@ fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
         list.push(eval(e, env)?);
     }
     Ok(Expression::List(list))
+}
+fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::Integer(v) => v,
+        _ => return Err(create_error!("E1002")),
+    };
+    if l < 0 {
+        return Err(create_error!("E1011"));
+    }
+    let v = match eval(&exp[2], env) {
+        Ok(v) => v,
+        Err(e) => return Err(create_error!(e.code)),
+    };
+    Ok(Expression::List(vec![v; l as usize]))
 }
 fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -1210,12 +1231,16 @@ fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::String(v))
 }
-fn str_length(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn str_length(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(s: String) -> usize,
+) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!("E1007", exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => Ok(Expression::Integer(s.len() as i64)),
+        Expression::String(s) => Ok(Expression::Integer(f(s) as i64)),
         _ => return Err(create_error!("E1015")),
     }
 }

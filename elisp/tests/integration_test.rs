@@ -320,10 +320,11 @@ fn trigonometric() {
 
     let program = [
         "(define pi (* (atan 1) 4))",
+        "(define (square x) (* x x))",
         "(define (x-dash len x angle)(+ x (* len (cos (/(* pi angle)180)))))",
         "(define (y-dash len y angle)(+ y (* len (sin (/(* pi angle)180)))))",
         "(define (get-angle x0 x1 y0 y1) \
-         (let ((l (sqrt (+ (* (- x1 x0)(- x1 x0))(* (- y1 y0)(- y1 y0)))))) \
+         (let ((l (sqrt (+ (square (- x1 x0))(square (- y1 y0)))))) \
          (* (/ (acos (/ (- x1 x0) l)) pi) 180)))",
         "(define (get-angle2 x0 x1 y0 y1) \
          (let ((l (sqrt (+ (* (- x1 x0)(- x1 x0))(* (- y1 y0)(- y1 y0)))))) \
