@@ -771,6 +771,15 @@ mod tests {
         assert_str!(do_lisp_env("c", &env), "10");
     }
     #[test]
+    fn list_ref() {
+        assert_str!(do_lisp("(list-ref (iota 10) 0)"), "0");
+        assert_str!(do_lisp("(list-ref (iota 10) 1)"), "1");
+        assert_str!(do_lisp("(list-ref (iota 10) 8)"), "8");
+        assert_str!(do_lisp("(list-ref (iota 10) 9)"), "9");
+        assert_str!(do_lisp("(list-ref '(#\\a #\\b #\\c) 1)"), "#\\b");
+        assert_str!(do_lisp("(list-ref (list (list 0 1) 1 2 3) 0)"), "(0 1)");
+    }
+    #[test]
     fn sqrt() {
         assert_str!(do_lisp("(sqrt 9)"), "3");
         assert_str!(do_lisp("(sqrt 25.0)"), "5");
@@ -1708,6 +1717,20 @@ mod error_tests {
         assert_str!(do_lisp("(for-each 1 2 3)"), "E1007");
         assert_str!(do_lisp("(for-each (list) (list))"), "E1006");
         assert_str!(do_lisp("(for-each (lambda (n) n) 10)"), "E1005");
+    }
+    #[test]
+    fn list_ref() {
+        assert_str!(do_lisp("(list-ref)"), "E1007");
+        assert_str!(do_lisp("(list-ref (iota 10))"), "E1007");
+        assert_str!(do_lisp("(list-ref (iota 10) 1 2)"), "E1007");
+        assert_str!(do_lisp("(list-ref 10 -1)"), "E1005");
+        assert_str!(do_lisp("(list-ref (iota 10) #t)"), "E1002");
+
+        assert_str!(do_lisp("(list-ref a #t)"), "E1008");
+        assert_str!(do_lisp("(list-ref (iota 10) a)"), "E1008");
+
+        assert_str!(do_lisp("(list-ref (iota 10) -1)"), "E1011");
+        assert_str!(do_lisp("(list-ref (iota 10) 10)"), "E1011");
     }
     #[test]
     fn sqrt() {
