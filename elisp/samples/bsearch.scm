@@ -1,3 +1,8 @@
+;
+; this is a sample program
+;
+; hidekuno@gmail.com
+
 (define (bsearch buf target)
   (let loop ((mid (quotient (- (length buf) 1) 2))
              (first 0)
