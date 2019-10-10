@@ -44,8 +44,8 @@ fn fact() {
     let env = lisp::Environment::new();
 
     let program = [
-        "(define (fact-iter n m)(if (= n 1)m(fact-iter (- n 1)(* n m))))",
         "(define (fact n)(if (>= 1 n) 1 (* n (fact (- n 1)))))",
+        "(define (fact-iter n m)(if (= n 1)m(fact-iter (- n 1)(* n m))))",
     ];
     for p in &program {
         do_lisp_env(p, &env);
@@ -81,7 +81,6 @@ fn prime() {
          (cons (car l)(prime (filter (lambda (n) (not (= 0 (modulo n (car l))))) (cdr l))))))",
         &env,
     );
-
     assert_str!(
         do_lisp_env("(prime (iota 30 2))", &env),
         "(2 3 5 7 11 13 17 19 23 29 31)"
@@ -90,14 +89,17 @@ fn prime() {
 #[test]
 fn perm() {
     let env = lisp::Environment::new();
-    do_lisp_env(
+    let program = [
+        "(define (perm-count n m)(if (>= 0 m ) 1 (* n (perm-count (- n 1)(- m 1)))))",
         "(define (perm l n)\
          (if (>= 0 n) (list (list))\
          (reduce (lambda (a b)(append a b))(list)\
          (map (lambda (x) (map (lambda (p) (cons x p)) (perm (delete x l)(- n 1)))) l))))",
-        &env,
-    );
-
+    ];
+    for p in &program {
+        do_lisp_env(p, &env);
+    }
+    assert_str!(do_lisp_env("(perm-count 3 2)", &env), "6");
     assert_str!(
         do_lisp_env("(perm (list 1 2 3) 2)", &env),
         "((1 2)(1 3)(2 1)(2 3)(3 1)(3 2))"
@@ -110,13 +112,18 @@ fn perm() {
 #[test]
 fn comb() {
     let env = lisp::Environment::new();
-    do_lisp_env(
+    let program = [
+        "(define (fact n)(if (>= 1 n) 1 (* n (fact (- n 1)))))",
+        "(define (perm-count n m)(if (>= 0 m ) 1 (* n (perm-count (- n 1)(- m 1)))))",
+        "(define (comb-count n m)(/ (perm-count n m)(fact m)))",
         "(define (comb l n)(if (null? l) l \
          (if (= n 1) (map (lambda (n) (list n)) l) \
          (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n)))))",
-        &env,
-    );
-
+    ];
+    for p in &program {
+        do_lisp_env(p, &env);
+    }
+    assert_str!(do_lisp_env("(comb-count 3 2)", &env), "3");
     assert_str!(
         do_lisp_env("(comb (list 1 2 3) 2)", &env),
         "((1 2)(1 3)(2 3))"
@@ -293,4 +300,17 @@ fn closure_nest() {
     do_lisp_env("(define c (make-counter 10))", &env);
     assert_str!(do_lisp_env("(c)", &env), "10");
     assert_str!(do_lisp_env("(c)", &env), "20");
+}
+#[test]
+fn fibonacci() {
+    let env = lisp::Environment::new();
+    do_lisp_env(
+        "(define (fibonacci n) \
+         (cond ((= n 0) 0) \
+         ((= n 1) 1) \
+         (else (+ (fibonacci (- n 1)) \
+         (fibonacci (- n 2))))))",
+        &env,
+    );
+    assert_str!(do_lisp_env("(fibonacci 8)", &env), "21");
 }

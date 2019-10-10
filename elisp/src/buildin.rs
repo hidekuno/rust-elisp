@@ -187,6 +187,7 @@ where
     b.regist("char<=?", |exp, env| charcmp(exp, env, |x, y| x <= y));
     b.regist("char>=?", |exp, env| charcmp(exp, env, |x, y| x >= y));
     b.regist("string-append", str_append);
+    b.regist("string-length", str_length);
     b.regist("number->string", number_string);
     b.regist("string->number", string_number);
     b.regist("list->string", list_string);
@@ -1135,6 +1136,15 @@ fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
         };
     }
     Ok(Expression::String(v))
+}
+fn str_length(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!("E1007", exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::String(s) => Ok(Expression::Integer(s.len() as i64)),
+        _ => return Err(create_error!("E1015")),
+    }
 }
 fn number_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
