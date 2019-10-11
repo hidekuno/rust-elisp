@@ -23,3 +23,4 @@ COPY --from=builder /root/picture-language /root/
 COPY --from=builder /root/rust-elisp/glisp/samples /root/fractal/
 COPY --from=builder /root/rust-elisp/elisp/target/release/lisp /root/
 COPY --from=builder /root/rust-elisp/glisp/target/release/glisp /root/
+RUN sed -i "s/.picture-language//" /root/sicp/roger.scm
