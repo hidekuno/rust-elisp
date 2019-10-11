@@ -1294,6 +1294,13 @@ mod tests {
             "(a b c (d e f (g h i)))"
         );
     }
+    #[test]
+    fn get_env() {
+        assert_str!(
+            do_lisp("(get-environment-variable \"HOME\")"),
+            format!("\"{}\"", env::var("HOME").unwrap())
+        );
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -2158,5 +2165,15 @@ mod error_tests {
     fn quote() {
         assert_str!(do_lisp("(quote)"), "E1007");
         assert_str!(do_lisp("(quote 1 2)"), "E1007");
+    }
+    #[test]
+    fn get_env() {
+        assert_str!(do_lisp("(get-environment-variable)"), "E1007");
+        assert_str!(
+            do_lisp("(get-environment-variable  \"HOME\"  \"HOME\")"),
+            "E1007"
+        );
+        assert_str!(do_lisp("(get-environment-variable a)"), "E1008");
+        assert_str!(do_lisp("(get-environment-variable #t)"), "E1015");
     }
 }

@@ -9,6 +9,7 @@ use log::{debug, error, info, warn};
 
 use rand::Rng;
 use std::char;
+use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -213,6 +214,7 @@ where
             Ok(exp[1].clone())
         }
     });
+    b.regist("get-environment-variable", get_env);
 }
 fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -1337,6 +1339,19 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))
+}
+fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
+    //srfi-98
+    if exp.len() != 2 {
+        return Err(create_error_value!(RsCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::String(s) => match env::var(s) {
+            Ok(v) => Ok(Expression::String(v)),
+            Err(_) => Ok(Expression::Boolean(false)),
+        },
+        _ => Err(create_error!(RsCode::E1015)),
+    }
 }
 #[cfg(test)]
 mod tests {
