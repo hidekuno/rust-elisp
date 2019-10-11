@@ -201,7 +201,7 @@ fn load_demo_program(dir: &str) -> std::io::Result<String> {
         program.sort();
         Ok(Some(program.join("\n")))
     }
-    for v in vec![vec!["rust-elisp", "glisp", "samples", dir], vec![dir]] {
+    for v in vec![vec!["picture-language", dir], vec![dir]] {
         match get_program_name(v) {
             Ok(s) => match s {
                 Some(s) => return Ok(s),
