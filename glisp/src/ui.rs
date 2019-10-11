@@ -42,6 +42,8 @@ const HISTORY_COL_SIZE: usize = 32;
 #[cfg(feature = "animation")]
 const MOTION_DELAY: i32 = 70;
 
+const STOP_ERROR_CODE: &str = "E9000";
+
 #[derive(Clone)]
 struct History {
     menu: gtk::MenuItem,
@@ -515,7 +517,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
             r.to_string()
         }
         Err(e) => {
-            if "E9000" == e.get_code() {
+            if STOP_ERROR_CODE == e.get_code() {
                 env.set_force_stop(false);
             }
             e.get_msg()
