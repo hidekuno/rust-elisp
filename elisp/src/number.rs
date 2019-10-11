@@ -15,21 +15,23 @@ use std::ops::Mul;
 use std::ops::Sub;
 use std::string::ToString;
 
+use crate::lisp::RsCode;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 //========================================================================
 #[derive(Debug)]
 pub struct RatParseError {
-    pub code: &'static str,
+    pub code: RsCode,
 }
 impl fmt::Display for RatParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code)
+        write!(f, "{}", self.code.as_str())
     }
 }
 impl Error for RatParseError {
     fn description(&self) -> &str {
-        self.code
+        self.code.as_str()
     }
     fn cause(&self) -> Option<&dyn Error> {
         None
@@ -66,10 +68,14 @@ impl Rat {
         }
         if v.len() == 2 {
             if v[1] == 0 {
-                return Err(RatParseError { code: "E1013" });
+                return Err(RatParseError {
+                    code: RsCode::E1013,
+                });
             }
         } else {
-            return Err(RatParseError { code: "E1020" });
+            return Err(RatParseError {
+                code: RsCode::E1020,
+            });
         }
         Ok(Rat::new(v[0], v[1]))
     }
