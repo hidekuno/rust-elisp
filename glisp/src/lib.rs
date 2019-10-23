@@ -99,6 +99,9 @@ mod tests {
         assert_str!(do_lisp_env("(image-width \"sample\")", &env), "1");
         assert_str!(do_lisp_env("(image-height \"sample\")", &env), "1");
         std::fs::remove_file(png).unwrap();
+
+        assert_str!(do_lisp_env("(get-screen-width)", &env), "720");
+        assert_str!(do_lisp_env("(get-screen-height)", &env), "560");
     }
     #[test]
     fn test_02_error_check() {
@@ -292,5 +295,15 @@ mod tests {
         assert_str!(do_lisp_env("(set-line-width  0.001 0.001)", &env), "E1007");
         assert_str!(do_lisp_env("(set-line-width 2)", &env), "E1003");
         assert_str!(do_lisp_env("(set-line-width a)", &env), "E1008");
+    }
+    #[test]
+    fn test_15_error_check() {
+        let env = init();
+        assert_str!(do_lisp_env("(get-screen-width a)", &env), "E1007");
+    }
+    #[test]
+    fn test_16_error_check() {
+        let env = init();
+        assert_str!(do_lisp_env("(get-screen-height b)", &env), "E1007");
     }
 }

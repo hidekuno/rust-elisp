@@ -20,6 +20,8 @@ use crate::draw::create_draw_line;
 use crate::draw::create_draw_string;
 use crate::draw::draw_clear;
 use crate::draw::DrawTable;
+use crate::ui::DRAW_HEIGHT;
+use crate::ui::DRAW_WIDTH;
 
 use elisp::create_error;
 use elisp::create_error_value;
@@ -248,7 +250,28 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             Ok(Expression::Nil())
         });
     }
-
+    //--------------------------------------------------------
+    // ex. (get-screen-width)
+    //--------------------------------------------------------
+    {
+        env.add_builtin_ext_func("get-screen-width", move |exp, _env| {
+            if exp.len() != 1 {
+                return Err(create_error!(RsCode::E1007));
+            }
+            Ok(Expression::Float(DRAW_WIDTH as f64))
+        });
+    }
+    //--------------------------------------------------------
+    // ex. (get-screen-height)
+    //--------------------------------------------------------
+    {
+        env.add_builtin_ext_func("get-screen-height", move |exp, _env| {
+            if exp.len() != 1 {
+                return Err(create_error!(RsCode::E1007));
+            }
+            Ok(Expression::Float(DRAW_HEIGHT as f64))
+        });
+    }
     fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), RsError> {
         if exp.len() != 4 {
             return Err(create_error!(RsCode::E1007));
