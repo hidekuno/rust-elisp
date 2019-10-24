@@ -715,6 +715,8 @@ mod tests {
         assert_str!(do_lisp("(iota 10)"), "(0 1 2 3 4 5 6 7 8 9)");
         assert_str!(do_lisp("(iota 10 1)"), "(1 2 3 4 5 6 7 8 9 10)");
         assert_str!(do_lisp("(iota 1 10)"), "(10)");
+        assert_str!(do_lisp("(iota 10 1 2)"), "(1 3 5 7 9 11 13 15 17 19)");
+        assert_str!(do_lisp("(iota 10 1 -1)"), "(1 0 -1 -2 -3 -4 -5 -6 -7 -8)");
     }
     #[test]
     fn map() {
@@ -1772,9 +1774,10 @@ mod error_tests {
     #[test]
     fn iota() {
         assert_str!(do_lisp("(iota)"), "E1007");
-        assert_str!(do_lisp("(iota 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(iota 1 2 3 4)"), "E1007");
         assert_str!(do_lisp("(iota 1.5 2)"), "E1002");
         assert_str!(do_lisp("(iota 1 10.5)"), "E1002");
+        assert_str!(do_lisp("(iota 10 1 10.5)"), "E1002");
         assert_str!(do_lisp("(iota a)"), "E1008");
     }
     #[test]
