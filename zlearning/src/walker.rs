@@ -10,14 +10,16 @@ use std::rc::Rc;
 
 use crate::tree::Item;
 use crate::tree::ItemRef;
+use crate::write_unwrap;
+use crate::writeln_unwrap;
 
 type PrintTree = Box<dyn FnMut(ItemRef) + 'static>;
 pub fn create_walker(mut out: Box<dyn Write>) -> PrintTree {
     fn walk(item: &Item, level: i32, out: &mut dyn Write) {
         for _ in 0..level {
-            write!(out, "    ").unwrap();
+            write_unwrap!(out, "    ");
         }
-        writeln!(out, "{}", item.last_name).unwrap();
+        writeln_unwrap!(out, item.last_name);
 
         for it in item.children.iter() {
             let e = it.upgrade().unwrap();
@@ -76,10 +78,10 @@ pub fn create_line_walker(
                 make_vline(param, &mut keisen, item);
                 keisen.reverse();
                 for line in keisen {
-                    write!(out, "{}", line).unwrap();
+                    write_unwrap!(out, line);
                 }
             }
-            writeln!(out, "{}", item.last_name).unwrap();
+            writeln_unwrap!(out, item.last_name);
             for it in item.children.iter() {
                 let e = it.upgrade().unwrap();
                 walk(&e.borrow(), param, out);
