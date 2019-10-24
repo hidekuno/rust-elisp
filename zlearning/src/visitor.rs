@@ -7,6 +7,8 @@
 use std::io::Write;
 
 use crate::tree::Item;
+use crate::write_unwrap;
+use crate::writeln_unwrap;
 
 pub trait Visitor {
     fn visit(&mut self, item: &Item);
@@ -23,9 +25,9 @@ impl ItemVisitor {
 impl Visitor for ItemVisitor {
     fn visit(&mut self, item: &Item) {
         for _ in 0..self.level {
-            write!(self.out, "    ").unwrap();
+            write_unwrap!(self.out, "    ");
         }
-        writeln!(self.out, "{}", item.last_name).unwrap();
+        writeln_unwrap!(self.out, item.last_name);
 
         for it in item.children.iter() {
             self.level += 1;
@@ -86,10 +88,10 @@ impl Visitor for LineItemVisitor {
             self.make_vline(&mut keisen, item);
             keisen.reverse();
             for line in keisen {
-                write!(self.out, "{}", line).unwrap();
+                write_unwrap!(self.out, line);
             }
         }
-        writeln!(self.out, "{}", item.last_name).unwrap();
+        writeln_unwrap!(self.out, item.last_name);
         for it in item.children.iter() {
             let e = it.upgrade().unwrap();
             e.borrow().accept::<LineItemVisitor>(self);
