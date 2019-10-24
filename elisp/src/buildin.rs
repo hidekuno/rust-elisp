@@ -778,26 +778,24 @@ fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() <= 1 || 4 <= exp.len() {
+    if exp.len() <= 1 || 4 < exp.len() {
         return Err(create_error_value!(RsCode::E1007, exp.len()));
     }
-    let mut from = 0;
-    let mut to = 0;
-
-    for e in &exp[1 as usize..] {
+    let mut param: [i64; 4] = [0, 0, 1, 0];
+    for (i, e) in exp[1 as usize..].iter().enumerate() {
         match eval(e, env)? {
-            Expression::Integer(i) => {
-                if exp.len() == 3 {
-                    from = i;
-                }
-                to += i;
+            Expression::Integer(v) => {
+                param[i] = v;
             }
             _ => return Err(create_error!(RsCode::E1002)),
         }
     }
+    let (to, from, step) = (param[0] + param[1], param[1], param[2]);
     let mut l = Vec::with_capacity(to as usize);
-    for v in from..to {
+    let mut v = from;
+    for _ in from..to {
         l.push(Expression::Integer(v));
+        v += step;
     }
     Ok(Expression::List(l))
 }
