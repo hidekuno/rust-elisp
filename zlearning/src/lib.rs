@@ -11,6 +11,7 @@ pub mod walker;
 #[cfg(test)]
 mod tests {
     use crate::tree::create_tree;
+    use crate::tree::parse_arg;
     use crate::tree::Item;
     use crate::visitor::LineItemVisitor;
     use crate::visitor::Visitor;
@@ -69,7 +70,9 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
+
+        let (delimiter, _) = parse_arg();
+        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
@@ -84,7 +87,9 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
+        let (delimiter, _) = parse_arg();
+
+        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {

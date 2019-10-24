@@ -7,12 +7,33 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::LinkedList;
+use std::env;
 use std::io::BufRead;
 use std::rc::Rc;
 use std::rc::Weak;
 
 use crate::visitor::Visitor;
 
+// Prevent Broken pipe
+#[macro_export]
+macro_rules! write_unwrap {
+    ($o: expr, $s: expr) => {
+        match write!($o, "{}", $s) {
+            Ok(_) => {}
+            Err(_) => return,
+        }
+    };
+}
+// Prevent Broken pipe
+#[macro_export]
+macro_rules! writeln_unwrap {
+    ($o: expr, $s: expr) => {
+        match writeln!($o, "{}", $s) {
+            Ok(_) => {}
+            Err(_) => return,
+        }
+    };
+}
 pub type ItemRef = Rc<RefCell<Item>>;
 pub type ItemWeakRef = Weak<RefCell<Item>>;
 
@@ -116,4 +137,38 @@ where
         }
     }
     cache
+}
+pub enum DisplayMode {
+    Space,
+    SingleCharLine,
+    MultiCharLine,
+}
+pub fn parse_arg() -> (char, DisplayMode) {
+    enum ParamParse {
+        On,
+        Off,
+    }
+    let mut mode = DisplayMode::Space;
+    let mut delimiter = '.';
+    let mut parse = ParamParse::Off;
+
+    let args: Vec<String> = env::args().collect();
+    for arg in &args[1..] {
+        if arg == "-l" {
+            mode = DisplayMode::SingleCharLine;
+        } else if arg == "-m" {
+            mode = DisplayMode::MultiCharLine;
+        } else if arg == "-d" {
+            parse = ParamParse::On;
+        } else {
+            match parse {
+                ParamParse::On => {
+                    delimiter = arg.chars().next().unwrap();
+                    parse = ParamParse::Off;
+                }
+                _ => {}
+            }
+        }
+    }
+    (delimiter, mode)
 }
