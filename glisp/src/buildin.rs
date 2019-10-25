@@ -189,6 +189,45 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
+    // draw eval
+    // ex. (draw-eval (iota 10))
+    //--------------------------------------------------------
+    let draw_string = create_draw_string(draw_table);
+    env.add_builtin_ext_func("draw-eval", move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(RsCode::E1007));
+        }
+        let e = lisp::eval(&exp[1], env)?;
+
+        let mut h = 0.04;
+        let mut s = String::new();
+        let mut j = 0;
+
+        for (i, c) in e
+            .to_string()
+            .chars()
+            .collect::<Vec<char>>()
+            .iter()
+            .enumerate()
+        {
+            if i > 0 && i % 54 == 0 {
+                draw_string(0.02, h, 0.03, s.to_string());
+                h += 0.04;
+                s.clear();
+                j += 1;
+            }
+            if j == 22 {
+                draw_string(0.02, h, 0.03, "...".to_string());
+                break;
+            }
+            s.push(*c);
+        }
+        if j != 22 {
+            draw_string(0.02, h, 0.03, s.to_string());
+        }
+        Ok(Expression::Nil())
+    });
+    //--------------------------------------------------------
     // draw arc
     // ex. (draw-arc 0.27 0.65 0.02 0.0)
     //--------------------------------------------------------

@@ -102,6 +102,7 @@ mod tests {
 
         assert_str!(do_lisp_env("(get-screen-width)", &env), "720");
         assert_str!(do_lisp_env("(get-screen-height)", &env), "560");
+        assert_str!(do_lisp_env("(draw-eval (iota 10))", &env), "nil");
     }
     #[test]
     fn test_02_error_check() {
@@ -305,5 +306,12 @@ mod tests {
     fn test_16_error_check() {
         let env = init();
         assert_str!(do_lisp_env("(get-screen-height b)", &env), "E1007");
+    }
+    #[test]
+    fn test_17_error_check() {
+        let env = init();
+        assert_str!(do_lisp_env("(draw-eval)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-eval a b)", &env), "E1007");
+        assert_str!(do_lisp_env("(draw-eval a)", &env), "E1008");
     }
 }
