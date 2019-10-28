@@ -505,10 +505,12 @@ fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(RsCode::E1007, exp.len()));
     }
     let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
-    if let (Expression::Float(x), Expression::Float(y)) = (&a, &b) {
-        return Ok(Expression::Boolean(*x == *y));
-    }
+
     match a {
+        Expression::Float(x) => match b {
+            Expression::Float(y) => Ok(Expression::Boolean(x == y)),
+            _ => Ok(Expression::Boolean(false)),
+        },
         Expression::Integer(x) => match b {
             Expression::Integer(y) => Ok(Expression::Boolean(x == y)),
             Expression::Rational(y) => Ok(Expression::Boolean(
@@ -523,6 +525,18 @@ fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
             Expression::Rational(y) => Ok(Expression::Boolean(
                 Number::Rational(x) == Number::Rational(y),
             )),
+            _ => Ok(Expression::Boolean(false)),
+        },
+        Expression::Boolean(x) => match b {
+            Expression::Boolean(y) => Ok(Expression::Boolean(x == y)),
+            _ => Ok(Expression::Boolean(false)),
+        },
+        Expression::Symbol(x) => match b {
+            Expression::Symbol(y) => Ok(Expression::Boolean(x == y)),
+            _ => Ok(Expression::Boolean(false)),
+        },
+        Expression::Char(x) => match b {
+            Expression::Char(y) => Ok(Expression::Boolean(x == y)),
             _ => Ok(Expression::Boolean(false)),
         },
         _ => Ok(Expression::Boolean(false)),

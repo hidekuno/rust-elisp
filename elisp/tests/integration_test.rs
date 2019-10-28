@@ -23,6 +23,21 @@ fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
     }
 }
 #[test]
+fn leap() {
+    let env = lisp::Environment::new();
+    do_lisp_env(
+        "(define (leap? year) \
+         (or \
+         (and (= 0 (modulo year 4))(not (= 0 (modulo year 100)))) \
+         (= 0 (modulo year 400))))",
+        &env,
+    );
+    assert_str!(do_lisp_env("(leap? 1900)", &env), "#f");
+    assert_str!(do_lisp_env("(leap? 1996)", &env), "#t");
+    assert_str!(do_lisp_env("(leap? 1997)", &env), "#f");
+    assert_str!(do_lisp_env("(leap? 2000)", &env), "#t");
+}
+#[test]
 fn gcm() {
     let program = [
         "(define (gcm n m) (let ((mod (modulo n m))) (if (= 0 mod)  m (gcm m mod))))",
