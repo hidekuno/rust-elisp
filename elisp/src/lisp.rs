@@ -52,6 +52,7 @@ pub enum RsCode {
     E1018,
     E1019,
     E1020,
+    E1021,
     E9000,
     E9999,
 }
@@ -82,6 +83,7 @@ impl RsCode {
             RsCode::E1018 => "E1018",
             RsCode::E1019 => "E1019",
             RsCode::E1020 => "E1020",
+            RsCode::E1021 => "E1021",
             RsCode::E9000 => "E9000",
             RsCode::E9999 => "E9999",
         };
@@ -119,6 +121,7 @@ lazy_static! {
         e.insert(RsCode::E1018.as_str(), "Not Format Gramar");
         e.insert(RsCode::E1019.as_str(), "Not Char");
         e.insert(RsCode::E1020.as_str(), "Not Rat");
+        e.insert(RsCode::E1021.as_str(), "Out Of Range");
         e.insert(RsCode::E9000.as_str(), "Forced stop");
         e.insert(RsCode::E9999.as_str(), "System Panic");
         e

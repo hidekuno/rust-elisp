@@ -58,16 +58,16 @@ fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(RsCode::E1007, exp.len()));
     }
-    let l = match eval(&exp[1], env)? {
+    let n = match eval(&exp[1], env)? {
         Expression::Integer(v) => v,
         _ => return Err(create_error!(RsCode::E1002)),
     };
-    if l < 0 {
+    if n < 0 {
         return Err(create_error!(RsCode::E1011));
     }
     let v = eval(&exp[2], env)?;
 
-    Ok(Expression::List(vec![v; l as usize]))
+    Ok(Expression::List(vec![v; n as usize]))
 }
 fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
