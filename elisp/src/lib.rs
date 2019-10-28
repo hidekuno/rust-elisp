@@ -403,6 +403,16 @@ mod tests {
         assert_str!(do_lisp("(eqv? 1 1.0)"), "#f");
         assert_str!(do_lisp("(eqv? 1/1 1.0)"), "#f");
         assert_str!(do_lisp("(eqv? 1.0 1)"), "#f");
+
+        assert_str!(do_lisp("(eq? 'a 'a)"), "#t");
+        assert_str!(do_lisp("(eq? 'a 'b)"), "#f");
+        assert_str!(do_lisp("(eq? 'a 10)"), "#f");
+        assert_str!(do_lisp("(eq? #f #f)"), "#t");
+        assert_str!(do_lisp("(eq? #t #f)"), "#f");
+        assert_str!(do_lisp("(eq? #t 10)"), "#f");
+        assert_str!(do_lisp("(eq? #\\a #\\a)"), "#t");
+        assert_str!(do_lisp("(eq? #\\a #\\b)"), "#f");
+        assert_str!(do_lisp("(eq? #\\space #\\space)"), "#t");
     }
     #[test]
     fn case() {
@@ -1570,6 +1580,8 @@ mod error_tests {
         assert_str!(do_lisp("(eqv?)"), "E1007");
         assert_str!(do_lisp("(eqv? 10 10 10)"), "E1007");
         assert_str!(do_lisp("(eq? 10 10 10)"), "E1007");
+        assert_str!(do_lisp("(eq? 10 a)"), "E1008");
+        assert_str!(do_lisp("(eq? a 10)"), "E1008");
     }
     #[test]
     fn case() {
