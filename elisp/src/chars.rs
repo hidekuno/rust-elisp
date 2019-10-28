@@ -32,6 +32,22 @@ where
     b.regist("char<=?", |exp, env| charcmp(exp, env, |x, y| x <= y));
     b.regist("char>=?", |exp, env| charcmp(exp, env, |x, y| x >= y));
 
+    b.regist("char-ci=?", |exp, env| {
+        charcmp(exp, env, |x, y| x.to_lowercase().eq(y.to_lowercase()))
+    });
+    b.regist("char-ci<?", |exp, env| {
+        charcmp(exp, env, |x, y| x.to_lowercase().lt(y.to_lowercase()))
+    });
+    b.regist("char-ci>?", |exp, env| {
+        charcmp(exp, env, |x, y| x.to_lowercase().gt(y.to_lowercase()))
+    });
+    b.regist("char-ci<=?", |exp, env| {
+        charcmp(exp, env, |x, y| x.to_lowercase().le(y.to_lowercase()))
+    });
+    b.regist("char-ci>=?", |exp, env| {
+        charcmp(exp, env, |x, y| x.to_lowercase().ge(y.to_lowercase()))
+    });
+
     b.regist("integer->char", integer_char);
     b.regist("char->integer", char_integer);
 }

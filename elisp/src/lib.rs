@@ -1208,6 +1208,34 @@ mod tests {
         assert_eq!(do_lisp("(string>=?  \"1234\" \"9\")"), "#f");
     }
     #[test]
+    fn string_ci_eq() {
+        assert_eq!(do_lisp("(string-ci=? \"Abc\" \"aBc\")"), "#t");
+        assert_eq!(do_lisp("(string-ci=? \"abc\" \"ABC\")"), "#t");
+        assert_eq!(do_lisp("(string-ci=? \"abcd\" \"ABC\")"), "#f");
+    }
+    #[test]
+    fn string_ci_less() {
+        assert_eq!(do_lisp("(string-ci<? \"abc\" \"DEF\")"), "#t");
+        assert_eq!(do_lisp("(string-ci<? \"DEF\" \"abc\")"), "#f");
+    }
+    #[test]
+    fn string_ci_than() {
+        assert_eq!(do_lisp("(string-ci>? \"DEF\" \"abc\")"), "#t");
+        assert_eq!(do_lisp("(string-ci>? \"abc\" \"DEF\")"), "#f");
+    }
+    #[test]
+    fn string_ci_le() {
+        assert_eq!(do_lisp("(string-ci<=? \"abc\" \"DEF\")"), "#t");
+        assert_eq!(do_lisp("(string-ci<=? \"DEF\" \"abc\")"), "#f");
+        assert_eq!(do_lisp("(string-ci<=? \"Abc\" \"aBC\")"), "#t");
+    }
+    #[test]
+    fn string_ci_ge() {
+        assert_eq!(do_lisp("(string-ci>=? \"abc\" \"DEF\")"), "#f");
+        assert_eq!(do_lisp("(string-ci>=? \"DEF\" \"abc\")"), "#t");
+        assert_eq!(do_lisp("(string-ci>=? \"Abc\" \"aBC\")"), "#t");
+    }
+    #[test]
     fn char_eq() {
         assert_eq!(do_lisp("(char=? #\\a #\\a)"), "#t");
         assert_eq!(do_lisp("(char=? #\\a #\\b)"), "#f");
@@ -1233,6 +1261,34 @@ mod tests {
         assert_eq!(do_lisp("(char>=? #\\b #\\a)"), "#t");
         assert_eq!(do_lisp("(char>=? #\\a #\\a)"), "#t");
         assert_eq!(do_lisp("(char>=? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn char_ci_eq() {
+        assert_eq!(do_lisp("(char-ci=? #\\a #\\A)"), "#t");
+        assert_eq!(do_lisp("(char-ci=? #\\A #\\a)"), "#t");
+        assert_eq!(do_lisp("(char=? #\\a #\\B)"), "#f");
+    }
+    #[test]
+    fn char_ci_less() {
+        assert_eq!(do_lisp("(char-ci<? #\\a #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci<? #\\C #\\a)"), "#f");
+    }
+    #[test]
+    fn char_ci_than() {
+        assert_eq!(do_lisp("(char-ci>? #\\C #\\a)"), "#t");
+        assert_eq!(do_lisp("(char-ci>? #\\a #\\C)"), "#f");
+    }
+    #[test]
+    fn char_ci_le() {
+        assert_eq!(do_lisp("(char-ci<=? #\\a #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci<=? #\\C #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci<=? #\\C #\\a)"), "#f");
+    }
+    #[test]
+    fn char_ci_ge() {
+        assert_eq!(do_lisp("(char-ci>=? #\\C #\\a)"), "#t");
+        assert_eq!(do_lisp("(char-ci>=? #\\C #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci>=? #\\a #\\C)"), "#f");
     }
     #[test]
     fn str_append() {
@@ -2082,6 +2138,51 @@ mod error_tests {
         assert_eq!(do_lisp("(string>=? \"abc\" a)"), "E1008");
     }
     #[test]
+    fn string_ci_eq() {
+        assert_eq!(do_lisp("(string-ci=?)"), "E1007");
+        assert_eq!(do_lisp("(string-ci=? \"abc\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci=? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci=? \"abc\" 10)"), "E1015");
+        assert_eq!(do_lisp("(string-ci=? 10 \"abc\")"), "E1015");
+        assert_eq!(do_lisp("(string-ci=? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_ci_less() {
+        assert_eq!(do_lisp("(string-ci<?)"), "E1007");
+        assert_eq!(do_lisp("(string-ci<? \"abc\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci<? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci<? \"abc\" 10)"), "E1015");
+        assert_eq!(do_lisp("(string-ci<? 10 \"abc\")"), "E1015");
+        assert_eq!(do_lisp("(string-ci<? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_ci_than() {
+        assert_eq!(do_lisp("(string-ci>?)"), "E1007");
+        assert_eq!(do_lisp("(string-ci>? \"abc\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci>? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci>? \"abc\" 10)"), "E1015");
+        assert_eq!(do_lisp("(string-ci>? 10 \"abc\")"), "E1015");
+        assert_eq!(do_lisp("(string-ci>? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_ci_le() {
+        assert_eq!(do_lisp("(string-ci<=?)"), "E1007");
+        assert_eq!(do_lisp("(string-ci<=? \"abc\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci<=? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci<=? \"abc\" 10)"), "E1015");
+        assert_eq!(do_lisp("(string-ci<=? 10 \"abc\")"), "E1015");
+        assert_eq!(do_lisp("(string-ci<=? \"abc\" a)"), "E1008");
+    }
+    #[test]
+    fn string_ci_ge() {
+        assert_eq!(do_lisp("(string-ci>=?)"), "E1007");
+        assert_eq!(do_lisp("(string-ci>=? \"abc\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci>=? \"abc\" \"ABC\" \"DEF\")"), "E1007");
+        assert_eq!(do_lisp("(string-ci>=? \"abc\" 10)"), "E1015");
+        assert_eq!(do_lisp("(string-ci>=? 10 \"abc\")"), "E1015");
+        assert_eq!(do_lisp("(string-ci>=? \"abc\" a)"), "E1008");
+    }
+    #[test]
     fn char_eq() {
         assert_eq!(do_lisp("(char=?)"), "E1007");
         assert_eq!(do_lisp("(char=? #\\a)"), "E1007");
@@ -2125,6 +2226,52 @@ mod error_tests {
         assert_eq!(do_lisp("(char>=? #\\a 10)"), "E1019");
         assert_eq!(do_lisp("(char>=? 10 #\\a)"), "E1019");
         assert_eq!(do_lisp("(char>=? #\\a a)"), "E1008");
+    }
+
+    #[test]
+    fn char_ci_eq() {
+        assert_eq!(do_lisp("(char-ci=?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_less() {
+        assert_eq!(do_lisp("(char-ci<?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_than() {
+        assert_eq!(do_lisp("(char-ci>?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_le() {
+        assert_eq!(do_lisp("(char-ci<=?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_ge() {
+        assert_eq!(do_lisp("(char-ci>=?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>=? #\\a a)"), "E1008");
     }
     #[test]
     fn str_append() {
