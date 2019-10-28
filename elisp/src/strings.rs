@@ -44,6 +44,11 @@ where
     b.regist("string->number", string_number);
     b.regist("list->string", list_string);
     b.regist("string->list", string_list);
+
+    b.regist("substring", substring);
+    b.regist("symbol->string", symbol_string);
+    b.regist("string->symbol", string_symbol);
+    b.regist("make-string", make_string);
 }
 fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -184,4 +189,79 @@ fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
         l.push(Expression::Char(c));
     }
     Ok(Expression::List(l))
+}
+fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 4 != exp.len() {
+        return Err(create_error_value!(RsCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        _ => return Err(create_error!(RsCode::E1015)),
+    };
+    let mut param: [usize; 2] = [0; 2];
+    for (i, e) in exp[2..].iter().enumerate() {
+        let v = match eval(e, env)? {
+            Expression::Integer(v) => v,
+            _ => return Err(create_error!(RsCode::E1002)),
+        };
+        if 0 > v {
+            return Err(create_error!(RsCode::E1021));
+        }
+        param[i] = v as usize;
+    }
+    let (start, end) = (param[0], param[1]);
+    if s.chars().count() < end {
+        return Err(create_error!(RsCode::E1021));
+    }
+    if start > end {
+        return Err(create_error!(RsCode::E1021));
+    }
+    // the trait `std::convert::From<str>` is not implemented for `std::string::String`
+    // s.as_str()[start..end].to_string()),
+    //     => panicked at 'byte index 1 is not a char boundary; it is inside '山' (bytes 0..3)
+    let mut v = String::new();
+    for c in &s.chars().collect::<Vec<char>>()[start..end] {
+        v.push(*c);
+    }
+    Ok(Expression::String(v))
+}
+fn symbol_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!(RsCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::Symbol(s) => Ok(Expression::String(s)),
+        _ => return Err(create_error!(RsCode::E1004)),
+    }
+}
+fn string_symbol(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!(RsCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::String(s) => Ok(Expression::Symbol(s)),
+        _ => Err(create_error!(RsCode::E1015)),
+    }
+}
+fn make_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 3 != exp.len() {
+        return Err(create_error_value!(RsCode::E1007, exp.len()));
+    }
+    let n = match eval(&exp[1], env)? {
+        Expression::Integer(n) => n,
+        _ => return Err(create_error!(RsCode::E1002)),
+    };
+    if n < 0 {
+        return Err(create_error!(RsCode::E1021));
+    }
+    let c = match eval(&exp[2], env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!(RsCode::E1019)),
+    };
+
+    let mut s = String::new();
+    for _ in 0..n {
+        s.push(c);
+    }
+    Ok(Expression::String(s))
 }

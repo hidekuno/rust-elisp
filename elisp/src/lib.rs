@@ -1285,6 +1285,27 @@ mod tests {
         assert_str!(do_lisp("(string->list \"山田\")"), "(#\\山 #\\田)");
     }
     #[test]
+    fn substring() {
+        assert_str!(do_lisp("(substring \"1234567890\" 1 2)"), "\"2\"");
+        assert_str!(do_lisp("(substring \"1234567890\" 1 3)"), "\"23\"");
+        assert_str!(do_lisp("(substring \"1234567890\" 0 10)"), "\"1234567890\"");
+        assert_str!(do_lisp("(substring \"山\" 0 1)"), "\"山\"");
+        assert_str!(do_lisp("(substring \"山1\" 0 2)"), "\"山1\"");
+    }
+    #[test]
+    fn symbol_string() {
+        assert_str!(do_lisp("(symbol->string 'abc)"), "\"abc\"");
+    }
+    #[test]
+    fn string_symbol() {
+        assert_str!(do_lisp("(string->symbol \"abc\")"), "abc");
+    }
+    #[test]
+    fn make_string() {
+        assert_str!(do_lisp("(make-string 4 #\\a)"), "\"aaaa\"");
+        assert_str!(do_lisp("(make-string 4 #\\山)"), "\"山山山山\"");
+    }
+    #[test]
     fn integer_char() {
         assert_str!(do_lisp("(integer->char 65)"), "#\\A");
         assert_str!(do_lisp("(integer->char 23665)"), "#\\山");
@@ -2160,11 +2181,53 @@ mod error_tests {
         assert_str!(do_lisp("(list->string a)"), "E1008");
     }
     #[test]
+    fn substring() {
+        assert_str!(do_lisp("(substring)"), "E1007");
+        assert_str!(do_lisp("(substring \"1234567890\" 1)"), "E1007");
+        assert_str!(do_lisp("(substring \"1234567890\" 1 2 3)"), "E1007");
+        assert_str!(do_lisp("(substring  1 2 3)"), "E1015");
+        assert_str!(do_lisp("(substring \"1234567890\" #t 2)"), "E1002");
+        assert_str!(do_lisp("(substring \"1234567890\" 0 #t)"), "E1002");
+        assert_str!(do_lisp("(substring \"1234567890\" a 2)"), "E1008");
+        assert_str!(do_lisp("(substring \"1234567890\" 0 a)"), "E1008");
+
+        assert_str!(do_lisp("(substring \"1234567890\" -1 2)"), "E1021");
+        assert_str!(do_lisp("(substring \"1234567890\" 0 -2)"), "E1021");
+        assert_str!(do_lisp("(substring \"1234567890\" 0 11)"), "E1021");
+        assert_str!(do_lisp("(substring \"1234567890\" 6 5)"), "E1021");
+
+        assert_str!(do_lisp("(substring \"山\" 0 2)"), "E1021");
+    }
+    #[test]
+    fn symbol_string() {
+        assert_str!(do_lisp("(symbol->string)"), "E1007");
+        assert_str!(do_lisp("(symbol->string 'a 'b)"), "E1007");
+        assert_str!(do_lisp("(symbol->string #t)"), "E1004");
+    }
+    #[test]
+    fn string_symbol() {
+        assert_str!(do_lisp("(string->symbol)"), "E1007");
+        assert_str!(do_lisp("(string->symbol \"abc\"  \"def\")"), "E1007");
+        assert_str!(do_lisp("(string->symbol #t)"), "E1015");
+    }
+
+    #[test]
     fn string_list() {
         assert_str!(do_lisp("(string->list)"), "E1007");
         assert_str!(do_lisp("(string->list \"a\" \"b\")"), "E1007");
         assert_str!(do_lisp("(string->list #\\a)"), "E1015");
         assert_str!(do_lisp("(string->list a)"), "E1008");
+    }
+    #[test]
+    fn make_string() {
+        assert_str!(do_lisp("(make-string)"), "E1007");
+        assert_str!(do_lisp("(make-string a)"), "E1007");
+        assert_str!(do_lisp("(make-string a a a)"), "E1007");
+
+        assert_str!(do_lisp("(make-string #t #\\a)"), "E1002");
+        assert_str!(do_lisp("(make-string -1 #\\a)"), "E1021");
+        assert_str!(do_lisp("(make-string 4 a)"), "E1008");
+        assert_str!(do_lisp("(make-string 4 #t)"), "E1019");
     }
     #[test]
     fn integer_char() {
