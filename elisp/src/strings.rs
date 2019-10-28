@@ -35,6 +35,22 @@ where
     b.regist("string<=?", |exp, env| strcmp(exp, env, |x, y| x <= y));
     b.regist("string>=?", |exp, env| strcmp(exp, env, |x, y| x >= y));
 
+    b.regist("string-ci=?", |exp, env| {
+        strcmp(exp, env, |x, y| x.to_lowercase() == y.to_lowercase())
+    });
+    b.regist("string-ci<?", |exp, env| {
+        strcmp(exp, env, |x, y| x.to_lowercase() < y.to_lowercase())
+    });
+    b.regist("string-ci>?", |exp, env| {
+        strcmp(exp, env, |x, y| x.to_lowercase() > y.to_lowercase())
+    });
+    b.regist("string-ci<=?", |exp, env| {
+        strcmp(exp, env, |x, y| x.to_lowercase() <= y.to_lowercase())
+    });
+    b.regist("string-ci>=?", |exp, env| {
+        strcmp(exp, env, |x, y| x.to_lowercase() >= y.to_lowercase())
+    });
+
     b.regist("string-append", str_append);
     b.regist("string-length", |exp, env| {
         str_length(exp, env, |s| s.chars().count())
