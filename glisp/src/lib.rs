@@ -23,12 +23,6 @@ mod tests {
     use std::io::Write;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    macro_rules! assert_str {
-        ($a: expr,
-         $b: expr) => {
-            assert!($a == $b.to_string())
-        };
-    }
     fn do_lisp_env(program: &str, env: &Environment) -> String {
         match lisp::do_core_logic(&program.into(), env) {
             Ok(v) => v.to_string(),
@@ -67,72 +61,72 @@ mod tests {
     fn test_01_normal_check() {
         let env = init();
         // draw-clear check
-        assert_str!(do_lisp_env("(draw-clear)", &env), "nil");
-        assert_str!(do_lisp_env("(draw-line 0.0 1.0 0.2 0.3)", &env), "nil");
-        assert_str!(do_lisp_env("(draw-koch 2)", &env), "nil");
-        assert_str!(do_lisp_env("(draw-tree 2)", &env), "nil");
-        assert_str!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
-        assert_str!(do_lisp_env("(draw-dragon 2)", &env), "nil");
-        assert_str!(do_lisp_env("(draw-hilvert 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-clear)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 0.2 0.3)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-koch 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-tree 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-dragon 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-hilvert 2)", &env), "nil");
 
-        assert_str!(do_lisp_env("(set-background 0.0 0.0 0.0)", &env), "nil");
-        assert_str!(do_lisp_env("(set-foreground 0.0 1.0 0.0)", &env), "nil");
-        assert_str!(do_lisp_env("(set-line-width 0.001)", &env), "nil");
-        assert_str!(
+        assert_eq!(do_lisp_env("(set-background 0.0 0.0 0.0)", &env), "nil");
+        assert_eq!(do_lisp_env("(set-foreground 0.0 1.0 0.0)", &env), "nil");
+        assert_eq!(do_lisp_env("(set-line-width 0.001)", &env), "nil");
+        assert_eq!(
             do_lisp_env("(draw-string 0.04 0.50 0.15 \"日本語\")", &env),
             "nil"
         );
-        assert_str!(do_lisp_env("(draw-arc 0.27 0.65 0.02 0.0)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 0.02 0.0)", &env), "nil");
 
         let png = create_png_file("1");
-        assert_str!(
+        assert_eq!(
             do_lisp_env(
                 format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
                 &env,
             ),
             "nil"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "nil"
         );
-        assert_str!(do_lisp_env("(image-width \"sample\")", &env), "1");
-        assert_str!(do_lisp_env("(image-height \"sample\")", &env), "1");
+        assert_eq!(do_lisp_env("(image-width \"sample\")", &env), "1");
+        assert_eq!(do_lisp_env("(image-height \"sample\")", &env), "1");
         std::fs::remove_file(png).unwrap();
 
-        assert_str!(do_lisp_env("(get-screen-width)", &env), "720");
-        assert_str!(do_lisp_env("(get-screen-height)", &env), "560");
-        assert_str!(do_lisp_env("(draw-eval (iota 10))", &env), "nil");
+        assert_eq!(do_lisp_env("(get-screen-width)", &env), "720");
+        assert_eq!(do_lisp_env("(get-screen-height)", &env), "560");
+        assert_eq!(do_lisp_env("(draw-eval (iota 10))", &env), "nil");
     }
     #[test]
     fn test_02_error_check() {
         let env = init();
         // draw-clear check
-        assert_str!(do_lisp_env("(draw-clear 10)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-clear 10)", &env), "E1007");
     }
     #[test]
     fn test_03_error_check() {
         let env = init();
         // draw-line check
-        assert_str!(do_lisp_env("(draw-line)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
-        assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
-        assert_str!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
-        assert_str!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
+        assert_eq!(do_lisp_env("(draw-line)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
+        assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
+        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
+        assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
     }
     #[test]
     fn test_04_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-string)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(draw-string)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(draw-string 0.04 0.50 0.15 \"日本語\" 0.04)", &env),
             "E1007"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-string 0.04 0.50 \"日本語\" 0.04)", &env),
             "E1003"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-string 0.04 0.50  0.15 0.01)", &env),
             "E1015"
         );
@@ -140,12 +134,12 @@ mod tests {
     #[test]
     fn test_05_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-arc)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(draw-arc)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(draw-arc 0.27 0.65 0.02 0.0 1.0)", &env),
             "E1007"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-arc 0.04 0.50 \"日本語\" 0.04)", &env),
             "E1003"
         );
@@ -153,26 +147,26 @@ mod tests {
     #[test]
     fn test_06_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(set-background)", &env), "E1007");
-        assert_str!(do_lisp_env("(set-background 1.0)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(set-background)", &env), "E1007");
+        assert_eq!(do_lisp_env("(set-background 1.0)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(set-background 0.0 1.0 2.0 1.0)", &env),
             "E1007"
         );
-        assert_str!(do_lisp_env("(set-background 0.0 1.0 2)", &env), "E1003");
-        assert_str!(do_lisp_env("(set-background 0.0 1.0 a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(set-background 0.0 1.0 2)", &env), "E1003");
+        assert_eq!(do_lisp_env("(set-background 0.0 1.0 a)", &env), "E1008");
     }
     #[test]
     fn test_07_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(set-foreground)", &env), "E1007");
-        assert_str!(do_lisp_env("(set-foreground 1.0)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(set-foreground)", &env), "E1007");
+        assert_eq!(do_lisp_env("(set-foreground 1.0)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(set-foreground 0.0 1.0 2.0 1.0)", &env),
             "E1007"
         );
-        assert_str!(do_lisp_env("(set-foreground 0.0 1.0 2)", &env), "E1003");
-        assert_str!(do_lisp_env("(set-foreground 0.0 1.0 a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(set-foreground 0.0 1.0 2)", &env), "E1003");
+        assert_eq!(do_lisp_env("(set-foreground 0.0 1.0 a)", &env), "E1008");
     }
     #[test]
     fn test_08_error_check() {
@@ -185,20 +179,20 @@ mod tests {
                 .as_secs()
         );
         // create-image-from-png check
-        assert_str!(do_lisp_env("(create-image-from-png)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(create-image-from-png)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(create-image-from-png \"sample\")", &env),
             "E1007"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(create-image-from-png 10 \"/tmp/hoge.png\")", &env),
             "E1015"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(create-image-from-png \"sample\" 20)", &env),
             "E1015"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env(
                 format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
                 &env
@@ -206,7 +200,7 @@ mod tests {
             "E9999"
         );
         File::create(&png).unwrap();
-        assert_str!(
+        assert_eq!(
             do_lisp_env(
                 format!("(create-image-from-png \"sample\" \"{}\")", png).as_str(),
                 &env
@@ -219,99 +213,99 @@ mod tests {
             &env,
         );
 
-        assert_str!(do_lisp_env("(draw-image)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-image 10)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(draw-image)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-image 10)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(draw-image \"sample\" 1 2 3 10)", &env),
             "E1007"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-image 10 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "E1015"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-image \"sample1\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "E1008"
         );
-        assert_str!(
+        assert_eq!(
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 1.0 1.0 10)", &env),
             "E1003"
         );
-        assert_str!(do_lisp_env("(image-width)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(image-width)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(image-width \"sample\" \"sample1\")", &env),
             "E1007"
         );
-        assert_str!(do_lisp_env("(image-width 10)", &env), "E1015");
-        assert_str!(do_lisp_env("(image-width a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(image-width 10)", &env), "E1015");
+        assert_eq!(do_lisp_env("(image-width a)", &env), "E1008");
 
-        assert_str!(do_lisp_env("(image-height)", &env), "E1007");
-        assert_str!(
+        assert_eq!(do_lisp_env("(image-height)", &env), "E1007");
+        assert_eq!(
             do_lisp_env("(image-height \"sample\" \"sample1\")", &env),
             "E1007"
         );
-        assert_str!(do_lisp_env("(image-height 10)", &env), "E1015");
-        assert_str!(do_lisp_env("(image-height a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(image-height 10)", &env), "E1015");
+        assert_eq!(do_lisp_env("(image-height a)", &env), "E1008");
         std::fs::remove_file(png).unwrap();
     }
     #[test]
     fn test_09_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-koch)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-koch 10 20)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-koch 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-koch)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-koch 10 20)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-koch 10.5)", &env), "E1002");
     }
     #[test]
     fn test_10_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-tree)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-tree 10 20)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-tree 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-tree)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-tree 10 20)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-tree 10.5)", &env), "E1002");
     }
     #[test]
     fn test_11_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-sierpinski 10 20)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-sierpinski 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-sierpinski 10 20)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-sierpinski 10.5)", &env), "E1002");
     }
     #[test]
     fn test_12_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-dragon)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-dragon 10 20)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-dragon 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-dragon)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-dragon 10 20)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-dragon 10.5)", &env), "E1002");
     }
     #[test]
     fn test_13_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-hilvert)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-hilvert 10 20)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-hilvert 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-hilvert)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-hilvert 10 20)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-hilvert 10.5)", &env), "E1002");
     }
     #[test]
     fn test_14_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(set-line-width)", &env), "E1007");
-        assert_str!(do_lisp_env("(set-line-width  0.001 0.001)", &env), "E1007");
-        assert_str!(do_lisp_env("(set-line-width 2)", &env), "E1003");
-        assert_str!(do_lisp_env("(set-line-width a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(set-line-width)", &env), "E1007");
+        assert_eq!(do_lisp_env("(set-line-width  0.001 0.001)", &env), "E1007");
+        assert_eq!(do_lisp_env("(set-line-width 2)", &env), "E1003");
+        assert_eq!(do_lisp_env("(set-line-width a)", &env), "E1008");
     }
     #[test]
     fn test_15_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(get-screen-width a)", &env), "E1007");
+        assert_eq!(do_lisp_env("(get-screen-width a)", &env), "E1007");
     }
     #[test]
     fn test_16_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(get-screen-height b)", &env), "E1007");
+        assert_eq!(do_lisp_env("(get-screen-height b)", &env), "E1007");
     }
     #[test]
     fn test_17_error_check() {
         let env = init();
-        assert_str!(do_lisp_env("(draw-eval)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-eval a b)", &env), "E1007");
-        assert_str!(do_lisp_env("(draw-eval a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(draw-eval)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-eval a b)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-eval a)", &env), "E1008");
     }
 }
