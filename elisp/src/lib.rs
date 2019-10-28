@@ -8,8 +8,13 @@
 #[macro_use]
 extern crate lazy_static;
 pub mod buildin;
+pub mod chars;
+pub mod io;
 pub mod lisp;
+pub mod list;
+pub mod math;
 pub mod number;
+pub mod strings;
 
 #[cfg(not(feature = "thread"))]
 pub mod env_single;
