@@ -17,12 +17,12 @@ use log::{debug, error, info, warn};
 use crate::number::Rat;
 
 #[cfg(feature = "thread")]
-use crate::env_thread::{ExtOperationRc, FunctionRc};
+use crate::env_thread::{ExtFunctionRc, FunctionRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
-use crate::env_single::{ExtOperationRc, FunctionRc};
+use crate::env_single::{ExtFunctionRc, FunctionRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 //========================================================================
@@ -186,7 +186,7 @@ macro_rules! print_error {
 }
 //========================================================================
 pub type ResultExpression = Result<Expression, RsError>;
-pub type Operation = fn(&[Expression], &Environment) -> ResultExpression;
+pub type BasicBuiltIn = fn(&[Expression], &Environment) -> ResultExpression;
 //========================================================================
 #[derive(Clone)]
 pub enum Expression {
@@ -199,8 +199,8 @@ pub enum Expression {
     Symbol(String),
     String(String),
     Function(FunctionRc),
-    BuildInFunction(String, Operation),
-    BuildInFunctionExt(ExtOperationRc),
+    BuildInFunction(String, BasicBuiltIn),
+    BuildInFunctionExt(ExtFunctionRc),
     TailLoop(),
     Nil(),
     TailRecursion(FunctionRc),

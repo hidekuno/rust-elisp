@@ -13,14 +13,8 @@ use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{RsCode, RsError};
-
-#[cfg(feature = "thread")]
-use crate::env_thread::Environment;
-
-#[cfg(not(feature = "thread"))]
-use crate::env_single::Environment;
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -94,4 +88,184 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))
+}
+#[cfg(test)]
+mod tests {
+    use crate::do_lisp;
+
+    #[test]
+    fn char_eq() {
+        assert_eq!(do_lisp("(char=? #\\a #\\a)"), "#t");
+        assert_eq!(do_lisp("(char=? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn char_less() {
+        assert_eq!(do_lisp("(char<? #\\a #\\b)"), "#t");
+        assert_eq!(do_lisp("(char<? #\\b #\\a)"), "#f");
+    }
+    #[test]
+    fn char_than() {
+        assert_eq!(do_lisp("(char>? #\\b #\\a)"), "#t");
+        assert_eq!(do_lisp("(char>? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn char_le() {
+        assert_eq!(do_lisp("(char<=? #\\a #\\b)"), "#t");
+        assert_eq!(do_lisp("(char<=? #\\a #\\a)"), "#t");
+        assert_eq!(do_lisp("(char<=? #\\b #\\a)"), "#f");
+    }
+    #[test]
+    fn char_ge() {
+        assert_eq!(do_lisp("(char>=? #\\b #\\a)"), "#t");
+        assert_eq!(do_lisp("(char>=? #\\a #\\a)"), "#t");
+        assert_eq!(do_lisp("(char>=? #\\a #\\b)"), "#f");
+    }
+    #[test]
+    fn char_ci_eq() {
+        assert_eq!(do_lisp("(char-ci=? #\\a #\\A)"), "#t");
+        assert_eq!(do_lisp("(char-ci=? #\\A #\\a)"), "#t");
+        assert_eq!(do_lisp("(char=? #\\a #\\B)"), "#f");
+    }
+    #[test]
+    fn char_ci_less() {
+        assert_eq!(do_lisp("(char-ci<? #\\a #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci<? #\\C #\\a)"), "#f");
+    }
+    #[test]
+    fn char_ci_than() {
+        assert_eq!(do_lisp("(char-ci>? #\\C #\\a)"), "#t");
+        assert_eq!(do_lisp("(char-ci>? #\\a #\\C)"), "#f");
+    }
+    #[test]
+    fn char_ci_le() {
+        assert_eq!(do_lisp("(char-ci<=? #\\a #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci<=? #\\C #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci<=? #\\C #\\a)"), "#f");
+    }
+    #[test]
+    fn char_ci_ge() {
+        assert_eq!(do_lisp("(char-ci>=? #\\C #\\a)"), "#t");
+        assert_eq!(do_lisp("(char-ci>=? #\\C #\\C)"), "#t");
+        assert_eq!(do_lisp("(char-ci>=? #\\a #\\C)"), "#f");
+    }
+    #[test]
+    fn integer_char() {
+        assert_eq!(do_lisp("(integer->char 65)"), "#\\A");
+        assert_eq!(do_lisp("(integer->char 23665)"), "#\\山");
+    }
+    #[test]
+    fn char_integer() {
+        assert_eq!(do_lisp("(char->integer #\\A)"), "65");
+        assert_eq!(do_lisp("(char->integer #\\山)"), "23665");
+    }
+}
+#[cfg(test)]
+mod error_tests {
+    use crate::do_lisp;
+
+    #[test]
+    fn char_eq() {
+        assert_eq!(do_lisp("(char=?)"), "E1007");
+        assert_eq!(do_lisp("(char=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_less() {
+        assert_eq!(do_lisp("(char<?)"), "E1007");
+        assert_eq!(do_lisp("(char<? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char<? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char<? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char<? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char<? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_than() {
+        assert_eq!(do_lisp("(char>?)"), "E1007");
+        assert_eq!(do_lisp("(char>? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char>? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char>? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char>? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char>? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_le() {
+        assert_eq!(do_lisp("(char<=?)"), "E1007");
+        assert_eq!(do_lisp("(char<=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char<=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char<=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char<=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char<=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ge() {
+        assert_eq!(do_lisp("(char>=?)"), "E1007");
+        assert_eq!(do_lisp("(char>=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char>=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char>=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char>=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char>=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_eq() {
+        assert_eq!(do_lisp("(char-ci=?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_less() {
+        assert_eq!(do_lisp("(char-ci<?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_than() {
+        assert_eq!(do_lisp("(char-ci>?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_le() {
+        assert_eq!(do_lisp("(char-ci<=?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci<=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci<=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_ci_ge() {
+        assert_eq!(do_lisp("(char-ci>=?)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>=? #\\a)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>=? #\\a #\\b #\\c)"), "E1007");
+        assert_eq!(do_lisp("(char-ci>=? #\\a 10)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>=? 10 #\\a)"), "E1019");
+        assert_eq!(do_lisp("(char-ci>=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn integer_char() {
+        assert_eq!(do_lisp("(integer->char)"), "E1007");
+        assert_eq!(do_lisp("(integer->char 23 665)"), "E1007");
+        assert_eq!(do_lisp("(integer->char #\\a)"), "E1002");
+        assert_eq!(do_lisp("(integer->char -999)"), "E1019");
+        assert_eq!(do_lisp("(integer->char a)"), "E1008");
+    }
+    #[test]
+    fn char_integer() {
+        assert_eq!(do_lisp("(char->integer)"), "E1007");
+        assert_eq!(do_lisp("(char->integer #\\a #\\b)"), "E1007");
+        assert_eq!(do_lisp("(char->integer 999)"), "E1019");
+        assert_eq!(do_lisp("(char->integer a)"), "E1008");
+    }
 }
