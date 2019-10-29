@@ -9,13 +9,13 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::buildin::{create_function, BuildInTable};
-use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
+use crate::lisp::{BasicBuiltIn, Expression, ResultExpression, RsFunction};
 //========================================================================
-type ExtOperation = dyn Fn(&[Expression], &Environment) -> ResultExpression;
+type ExtFunction = dyn Fn(&[Expression], &Environment) -> ResultExpression;
 type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Rc<RsFunction>;
-pub type ExtOperationRc = Rc<ExtOperation>;
+pub type ExtFunctionRc = Rc<ExtFunction>;
 
 #[derive(Clone)]
 pub struct Environment {
@@ -50,7 +50,7 @@ impl Environment {
     pub fn update(&self, key: &String, exp: Expression) {
         self.core.borrow_mut().update(key, exp);
     }
-    pub fn get_builtin_func(&self, key: &str) -> Option<Operation> {
+    pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
         match self.globals.borrow().builtin_tbl.get(key) {
             Some(f) => Some(f.clone()),
             None => None,
@@ -129,20 +129,20 @@ impl Environment {
         s
     }
 }
-impl BuildInTable for BTreeMap<&'static str, Operation> {
-    fn regist(&mut self, symbol: &'static str, func: Operation) {
+impl BuildInTable for BTreeMap<&'static str, BasicBuiltIn> {
+    fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
         self.insert(symbol, func);
     }
 }
 struct GlobalTbl {
-    builtin_tbl: BTreeMap<&'static str, Operation>,
-    builtin_tbl_ext: BTreeMap<&'static str, ExtOperationRc>,
+    builtin_tbl: BTreeMap<&'static str, BasicBuiltIn>,
+    builtin_tbl_ext: BTreeMap<&'static str, ExtFunctionRc>,
     tail_recursion: bool,
     force_stop: bool,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
-        let mut b: BTreeMap<&'static str, Operation> = BTreeMap::new();
+        let mut b: BTreeMap<&'static str, BasicBuiltIn> = BTreeMap::new();
         create_function(&mut b);
         GlobalTbl {
             builtin_tbl: b,
