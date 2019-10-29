@@ -2,6 +2,7 @@
 ; this is a sample program
 ;
 ; hidekuno@gmail.com
+
 (define tekito-prime 1021)
 (define (easy-hash s)
   (let loop ((x (map (lambda (n) (char->integer n))(string->list s)))
