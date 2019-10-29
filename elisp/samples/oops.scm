@@ -1,3 +1,8 @@
+;
+; this is a sample program
+;
+; hidekuno@gmail.com
+
 (define (make-account balance)
 
   (define (deposit amount)
@@ -13,7 +18,7 @@
 
   (define (dispatch m)
     (cond ((eq? m 'withdraw) withdraw)
-          ((eq? m 'deposit) deposit) 
+          ((eq? m 'deposit) deposit)
           (else
            (display "Error"))))
   dispatch)
