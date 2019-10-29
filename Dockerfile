@@ -19,8 +19,7 @@ FROM ubuntu:18.04 as glisp
 MAINTAINER hidekuno@gmail.com
 
 RUN apt-get update && apt-get -y install libgtk-3-0
-COPY --from=builder /root/picture-language /root/
-COPY --from=builder /root/rust-elisp/glisp/samples /root/fractal/
+COPY --from=builder /root/picture-language/fractal/ /root/picture-language/fractal/
+COPY --from=builder /root/picture-language/sicp/ /root/picture-language/sicp/
 COPY --from=builder /root/rust-elisp/elisp/target/release/lisp /root/
 COPY --from=builder /root/rust-elisp/glisp/target/release/glisp /root/
-RUN sed -i "s/.picture-language//" /root/sicp/roger.scm
