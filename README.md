@@ -5,7 +5,6 @@ RustによるLisp(subset版)の実装
 - Rust手習いのため、Lispの縮小版を実装した。(とりあえずschemeベース)
 - 実装目標として、フラクタル図形プログラムを簡単に動作させるための環境を提供する。
 
-
 ## 完成度合い
 - 簡単なプログラムが動くレベル  
     - https://github.com/hidekuno/rust-elisp/tree/master/elisp/samples  
@@ -15,12 +14,20 @@ RustによるLisp(subset版)の実装
     - https://github.com/hidekuno/picture-language
 
 ## 開発環境
-| Item   | Ver. |備考|
+| Item   | Ver. |Remarks|
 |--------|--------|--------|
 | OS     | CentOS7 | draw系を使わなければ特になし|
 | rust   | 1.37.0|1.35以下ではglispでコンパイルエラーになる|
 | Gtk+   | 3.22.30||
 | rust-gtk |0.7.1|https://github.com/gtk-rs/gtk|
+
+## 構成
+| crate   | instructions |
+|--------|--------|
+| elisp  | lisp本体 |
+| glisp  | 図形描画用GUI |
+| weblisp | マルチスレッド用学習プログラム |
+| zlearning |rust学習プログラム|
 
 ## 動かし方
 ### 動作条件

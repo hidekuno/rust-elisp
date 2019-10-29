@@ -570,7 +570,6 @@ fn test_le_rational() {
         true
     );
 }
-
 #[test]
 fn test_gt_rational() {
     assert_eq!(Number::Rational(Rat::new(7, 2)) > Number::Integer(3), true);
@@ -602,4 +601,95 @@ fn test_ge_rational() {
         Number::Rational(Rat::new(4, 8)) >= Number::Rational(Rat::new(2, 4)),
         true
     );
+}
+#[cfg(test)]
+mod tests {
+    use crate::do_lisp;
+
+    #[test]
+    fn test_add_rational() {
+        assert_eq!(do_lisp("(+ 1 1/2)"), "3/2");
+        assert_eq!(do_lisp("(+ 2.5 1/4)"), "2.75");
+        assert_eq!(do_lisp("(+ 3/4 1)"), "7/4");
+        assert_eq!(do_lisp("(+ 1/4 2.5)"), "2.75");
+        assert_eq!(do_lisp("(+ 3/4 1/3)"), "13/12");
+        assert_eq!(do_lisp("(+ -1/3 1/3)"), "0");
+    }
+    #[test]
+    fn test_sub_rational() {
+        assert_eq!(do_lisp("(- 1 1/2)"), "1/2");
+        assert_eq!(do_lisp("(- 2.5 1/4)"), "2.25");
+        assert_eq!(do_lisp("(- 1/2 1)"), "-1/2");
+        assert_eq!(do_lisp("(- 3/4 0.5)"), "0.25");
+        assert_eq!(do_lisp("(- 3/4 1/2)"), "1/4");
+    }
+    #[test]
+    fn test_mul_rational() {
+        assert_eq!(do_lisp("(* 3 1/2)"), "3/2");
+        assert_eq!(do_lisp("(* 2.5 1/4)"), "0.625");
+        assert_eq!(do_lisp("(* 1/2 3)"), "3/2");
+        assert_eq!(do_lisp("(* 3/4 0.5)"), "0.375");
+        assert_eq!(do_lisp("(* 3/4 1/2)"), "3/8");
+    }
+    #[test]
+    fn test_div_rational() {
+        assert_eq!(do_lisp("(/ 3 1/2)"), "6");
+        assert_eq!(do_lisp("(/ 2.5 1/3)"), "7.5");
+        assert_eq!(do_lisp("(/ 1/2 3)"), "1/6");
+        assert_eq!(do_lisp("(/ 3/4 0.5)"), "1.5");
+        assert_eq!(do_lisp("(/ 3/4 1/2)"), "3/2");
+    }
+    #[test]
+    fn test_eq_rational() {
+        assert_eq!(do_lisp("(= 3 6/2)"), "#t");
+        assert_eq!(do_lisp("(= 0.5 1/2)"), "#t");
+        assert_eq!(do_lisp("(= 6/2 3)"), "#t");
+        assert_eq!(do_lisp("(= 3/2 1.5)"), "#t");
+        assert_eq!(do_lisp("(= 4/8 2/4)"), "#t");
+    }
+
+    #[test]
+    fn test_lt_rational() {
+        assert_eq!(do_lisp("(< 3 7/2)"), "#t");
+        assert_eq!(do_lisp("(< 0.3 1/2)"), "#t");
+        assert_eq!(do_lisp("(< 6/2 4)"), "#t");
+        assert_eq!(do_lisp("(< 4/8 3/4)"), "#t");
+    }
+
+    #[test]
+    fn test_le_rational() {
+        assert_eq!(do_lisp("(<= 3 7/2)"), "#t");
+        assert_eq!(do_lisp("(<= 0.3 1/2)"), "#t");
+        assert_eq!(do_lisp("(<= 6/2 4)"), "#t");
+        assert_eq!(do_lisp("(<= 4/8 3/4)"), "#t");
+
+        assert_eq!(do_lisp("(<= 3 6/2)"), "#t");
+        assert_eq!(do_lisp("(<= 0.5 1/2)"), "#t");
+        assert_eq!(do_lisp("(<= 6/2 3)"), "#t");
+        assert_eq!(do_lisp("(<= 3/2 1.5)"), "#t");
+        assert_eq!(do_lisp("(<= 4/8 2/4)"), "#t");
+    }
+
+    #[test]
+    fn test_gt_rational() {
+        assert_eq!(do_lisp("(> 7/2 3)"), "#t");
+        assert_eq!(do_lisp("(> 1/2 0.3)"), "#t");
+        assert_eq!(do_lisp("(> 4 6/2)"), "#t");
+        assert_eq!(do_lisp("(> 1.6 3/2)"), "#t");
+        assert_eq!(do_lisp("(> 3/4 4/8)"), "#t");
+    }
+    #[test]
+    fn test_ge_rational() {
+        assert_eq!(do_lisp("(>= 7/2 3)"), "#t");
+        assert_eq!(do_lisp("(>= 1/2 0.3)"), "#t");
+        assert_eq!(do_lisp("(>= 4 6/2)"), "#t");
+        assert_eq!(do_lisp("(>= 1.6 3/2)"), "#t");
+        assert_eq!(do_lisp("(>= 3/4 4/8)"), "#t");
+
+        assert_eq!(do_lisp("(>= 3 6/2)"), "#t");
+        assert_eq!(do_lisp("(>= 0.5 1/2)"), "#t");
+        assert_eq!(do_lisp("(>= 6/2 3)"), "#t");
+        assert_eq!(do_lisp("(>= 3/2 1.5)"), "#t");
+        assert_eq!(do_lisp("(>= 4/8 2/4)"), "#t");
+    }
 }

@@ -10,14 +10,14 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::buildin::{create_function, BuildInTable};
-use crate::lisp::{Expression, Operation, ResultExpression, RsFunction};
+use crate::lisp::{BasicBuiltIn, Expression, ResultExpression, RsFunction};
 //========================================================================
-type ExtOperation =
+type ExtFunction =
     Box<dyn Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static>;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<RsFunction>;
-pub type ExtOperationRc = Arc<ExtOperation>;
+pub type ExtFunctionRc = Arc<ExtFunction>;
 //========================================================================
 #[derive(Clone)]
 pub struct Environment {
@@ -52,13 +52,13 @@ impl Environment {
     pub fn update(&self, key: &String, exp: Expression) {
         self.core.lock().unwrap().update(key, exp);
     }
-    pub fn get_builtin_func(&self, key: &str) -> Option<Operation> {
+    pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
         match self.globals.lock().unwrap().builtin_tbl.get(key) {
             Some(f) => Some(f.clone()),
             None => None,
         }
     }
-    pub fn get_builtin_ext_func(&self, key: &str) -> Option<ExtOperationRc> {
+    pub fn get_builtin_ext_func(&self, key: &str) -> Option<ExtFunctionRc> {
         match self.globals.lock().unwrap().builtin_tbl_ext.get(key) {
             Some(f) => Some(f.clone()),
             None => None,
@@ -87,21 +87,21 @@ impl Environment {
         self.globals.lock().unwrap().force_stop
     }
 }
-impl BuildInTable for HashMap<&'static str, Operation> {
-    fn regist(&mut self, symbol: &'static str, func: Operation) {
+impl BuildInTable for HashMap<&'static str, BasicBuiltIn> {
+    fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
         self.insert(symbol, func);
     }
 }
 struct GlobalTbl {
-    builtin_tbl: HashMap<&'static str, Operation>,
-    builtin_tbl_ext: HashMap<&'static str, ExtOperationRc>,
+    builtin_tbl: HashMap<&'static str, BasicBuiltIn>,
+    builtin_tbl_ext: HashMap<&'static str, ExtFunctionRc>,
     tail_recursion: bool,
     force_stop: bool,
 }
 impl GlobalTbl {
     fn new() -> Self {
-        let mut b: HashMap<&'static str, Operation> = HashMap::new();
-        create_function::<HashMap<&'static str, Operation>>(&mut b);
+        let mut b: HashMap<&'static str, BasicBuiltIn> = HashMap::new();
+        create_function::<HashMap<&'static str, BasicBuiltIn>>(&mut b);
         GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: HashMap::new(),

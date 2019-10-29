@@ -16,14 +16,8 @@ use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::{eval, repl};
-use crate::lisp::{Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{RsCode, RsError};
-
-#[cfg(feature = "thread")]
-use crate::env_thread::Environment;
-
-#[cfg(not(feature = "thread"))]
-use crate::env_single::Environment;
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -81,4 +75,72 @@ fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
     }
     print!("\n");
     Ok(Expression::Nil())
+}
+#[cfg(test)]
+mod tests {
+    use crate::lisp;
+    use crate::{do_lisp, do_lisp_env};
+    use std::env;
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::Path;
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn load_file() {
+        let test_dir = Path::new(&env::var("HOME").unwrap()).join("tmp");
+        let test_file = test_dir.join("test.scm");
+
+        std::fs::create_dir(test_dir);
+        std::fs::remove_file(&test_file);
+
+        let mut file = File::create(&test_file).unwrap();
+        writeln!(file, "(define foo 100)").unwrap();
+        writeln!(file, "(define hoge 200)").unwrap();
+        writeln!(file, "(define fuga (+ foo hoge))").unwrap();
+        writeln!(file, "(define a 100)(define b 200)(define c 300)").unwrap();
+        writeln!(file, "(define d 100)").unwrap();
+        file.flush().unwrap();
+
+        let env = lisp::Environment::new();
+        let f = test_file.as_path().to_str().expect("die");
+        do_lisp_env(format!("(load-file \"{}\")", f).as_str(), &env);
+        assert_eq!(do_lisp_env("foo", &env), "100");
+        assert_eq!(do_lisp_env("hoge", &env), "200");
+        assert_eq!(do_lisp_env("fuga", &env), "300");
+        assert_eq!(do_lisp_env("(+ a b c)", &env), "600");
+    }
+    #[test]
+    fn display() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &env);
+        assert_eq!(do_lisp_env("(display a)", &env), "nil");
+    }
+    #[test]
+    fn newline() {
+        assert_eq!(do_lisp("(newline)"), "nil");
+    }
+}
+#[cfg(test)]
+mod error_tests {
+    use crate::do_lisp;
+    #[test]
+    fn load_file() {
+        assert_eq!(do_lisp("(load-file)"), "E1007");
+        assert_eq!(do_lisp("(load-file 1 2)"), "E1007");
+        assert_eq!(do_lisp("(load-file hoge)"), "E1008");
+        assert_eq!(do_lisp("(load-file #t)"), "E1015");
+        assert_eq!(do_lisp("(load-file \"/etc/test.scm\")"), "E1014");
+        assert_eq!(do_lisp("(load-file \"/tmp\")"), "E1016");
+        assert_eq!(do_lisp("(load-file \"/bin/cp\")"), "E9999");
+    }
+    #[test]
+    fn display() {
+        assert_eq!(do_lisp("(display)"), "E1007");
+        assert_eq!(do_lisp("(display a)"), "E1008");
+    }
+    #[test]
+    fn newline() {
+        assert_eq!(do_lisp("(newline 123)"), "E1007");
+    }
 }
