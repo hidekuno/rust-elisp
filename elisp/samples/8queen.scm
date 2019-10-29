@@ -4,6 +4,7 @@
 ; ex.) ./target/release/lisp samples/queen.scm
 ;
 ; hidekuno@gmail.com
+
 (define (conflict col row board)
   (let loop ((x board) (y (- col 1)))
     (cond ((null? x) #f)
