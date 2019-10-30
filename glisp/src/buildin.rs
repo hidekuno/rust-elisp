@@ -6,6 +6,7 @@
 */
 extern crate cairo;
 extern crate elisp;
+extern crate gtk;
 
 use super::fractal::dragon::Dragon;
 use super::fractal::hilvert::Hilvert;
@@ -290,10 +291,10 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         });
     }
     //--------------------------------------------------------
-    // ex. (get-screen-width)
+    // ex. (screen-width)
     //--------------------------------------------------------
     {
-        env.add_builtin_ext_func("get-screen-width", move |exp, _env| {
+        env.add_builtin_ext_func("screen-width", move |exp, _env| {
             if exp.len() != 1 {
                 return Err(create_error!(RsCode::E1007));
             }
@@ -301,15 +302,36 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         });
     }
     //--------------------------------------------------------
-    // ex. (get-screen-height)
+    // ex. (screen-height)
     //--------------------------------------------------------
     {
-        env.add_builtin_ext_func("get-screen-height", move |exp, _env| {
+        env.add_builtin_ext_func("screen-height", move |exp, _env| {
             if exp.len() != 1 {
                 return Err(create_error!(RsCode::E1007));
             }
             Ok(Expression::Float(DRAW_HEIGHT as f64))
         });
+    }
+    //--------------------------------------------------------
+    // ex. (gtk-major-version)
+    // ex. (gtk-minor-version)
+    // ex. (gtk-micro-version)
+    //--------------------------------------------------------
+    {
+        let version_tbl = [
+            ("gtk-major-version", gtk::get_major_version()),
+            ("gtk-minor-version", gtk::get_minor_version()),
+            ("gtk-micro-version", gtk::get_micro_version()),
+        ];
+        for (f, v) in version_tbl.into_iter() {
+            let x = *v;
+            env.add_builtin_ext_func(f, move |exp, _env| {
+                if exp.len() != 1 {
+                    return Err(create_error!(RsCode::E1007));
+                }
+                Ok(Expression::Integer(x as i64))
+            });
+        }
     }
     fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), RsError> {
         if exp.len() != 4 {

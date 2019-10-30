@@ -94,9 +94,12 @@ mod tests {
         assert_eq!(do_lisp_env("(image-height \"sample\")", &env), "1");
         std::fs::remove_file(png).unwrap();
 
-        assert_eq!(do_lisp_env("(get-screen-width)", &env), "720");
-        assert_eq!(do_lisp_env("(get-screen-height)", &env), "560");
+        assert_eq!(do_lisp_env("(screen-width)", &env), "720");
+        assert_eq!(do_lisp_env("(screen-height)", &env), "560");
         assert_eq!(do_lisp_env("(draw-eval (iota 10))", &env), "nil");
+        assert_eq!(do_lisp_env("(gtk-major-version)", &env), "3");
+        assert_eq!(do_lisp_env("(gtk-minor-version)", &env), "22");
+        assert_eq!(do_lisp_env("(gtk-micro-version)", &env), "30");
     }
     #[test]
     fn test_02_error_check() {
@@ -294,12 +297,12 @@ mod tests {
     #[test]
     fn test_15_error_check() {
         let env = init();
-        assert_eq!(do_lisp_env("(get-screen-width a)", &env), "E1007");
+        assert_eq!(do_lisp_env("(screen-width a)", &env), "E1007");
     }
     #[test]
     fn test_16_error_check() {
         let env = init();
-        assert_eq!(do_lisp_env("(get-screen-height b)", &env), "E1007");
+        assert_eq!(do_lisp_env("(screen-height b)", &env), "E1007");
     }
     #[test]
     fn test_17_error_check() {
