@@ -194,7 +194,7 @@ fn load_demo_program(dir: &str) -> std::io::Result<String> {
             let dir = entry?;
             let path = dir.path();
             let f = path.to_str().unwrap();
-            if f.ends_with(".scm") && !f.ends_with("huge-memory.scm") {
+            if f.ends_with(".scm") {
                 program.push(format!("(load-file \"{}\")", f));
             }
         }
