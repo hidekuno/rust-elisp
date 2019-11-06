@@ -23,9 +23,9 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::draw::draw_clear;
-use crate::draw::draw_graffiti;
 use crate::draw::get_default_surface;
 use crate::draw::DrawTable;
+use crate::draw::Graffiti;
 
 pub const DRAW_WIDTH: i32 = 720;
 pub const DRAW_HEIGHT: i32 = 560;
@@ -296,16 +296,33 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         cr.paint();
         Inhibit(false)
     });
-    let img = draw_table.clone();
-    canvas.connect_motion_notify_event(move |w, e| {
+
+    let gr = Rc::new(Graffiti::new(draw_table));
+    let c = gr.clone();
+    canvas.connect_button_press_event(move |_, e| {
         if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
             let (x, y) = e.get_position();
-            draw_graffiti(&img, x, y);
-            w.queue_draw_area(x as i32 - 3, y as i32 - 3, 6, 6);
+            c.start_graffiti(x, y);
         }
         Inhibit(true)
     });
-    canvas.connect_button_press_event(move |_w, _e| Inhibit(true));
+    let c = gr.clone();
+    canvas.connect_motion_notify_event(move |w, e| {
+        if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
+            let (x, y) = e.get_position();
+            c.draw_graffiti(x, y);
+            w.queue_draw_area(x as i32 - 2, y as i32 - 2, 4, 4);
+        }
+        Inhibit(true)
+    });
+    let c = gr.clone();
+    canvas.connect_button_release_event(move |_, e| {
+        if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
+            let (x, y) = e.get_position();
+            c.stop_graffiti(x, y);
+        }
+        Inhibit(true)
+    });
     canvas.set_events(
         canvas.get_events()
             | gdk::EventMask::BUTTON_PRESS_MASK

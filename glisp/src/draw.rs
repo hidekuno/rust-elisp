@@ -99,15 +99,30 @@ pub fn get_default_surface(draw_table: &DrawTable) -> Rc<ImageSurface> {
 // ----------------------------------------------------------------
 // rakugaki
 // ----------------------------------------------------------------
-pub fn draw_graffiti(draw_table: &DrawTable, x: f64, y: f64) {
-    let surface = get_default_surface(draw_table);
-    let cr = Context::new(&*surface);
-    cr.scale(1.0, 1.0);
-    let fg = &draw_table.core.borrow().fg;
-    cr.set_source_rgb(fg.red, fg.green, fg.blue);
-
-    cr.rectangle(x - 3.0, y - 3.0, 4.0, 4.0);
-    cr.fill();
+pub struct Graffiti {
+    cr: Context,
+}
+impl Graffiti {
+    pub fn new(draw_table: &DrawTable) -> Self {
+        let surface = get_default_surface(draw_table);
+        Graffiti {
+            cr: Context::new(&*surface),
+        }
+    }
+    pub fn start_graffiti(&self, x: f64, y: f64) {
+        self.cr.scale(1.0, 1.0);
+        self.cr.set_line_width(1.5);
+        self.cr.move_to(x, y);
+    }
+    pub fn draw_graffiti(&self, x: f64, y: f64) {
+        self.cr.line_to(x, y);
+        self.cr.stroke();
+        self.cr.move_to(x, y);
+    }
+    pub fn stop_graffiti(&self, x: f64, y: f64) {
+        self.cr.line_to(x, y);
+        self.cr.stroke();
+    }
 }
 // ----------------------------------------------------------------
 // screen clear
