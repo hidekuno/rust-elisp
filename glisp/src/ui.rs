@@ -316,16 +316,18 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         Inhibit(true)
     });
     let c = gr.clone();
-    canvas.connect_button_release_event(move |_, e| {
+    canvas.connect_button_release_event(move |w, e| {
         if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
             let (x, y) = e.get_position();
             c.stop_graffiti(x, y);
+            w.queue_draw();
         }
         Inhibit(true)
     });
     canvas.set_events(
         canvas.get_events()
             | gdk::EventMask::BUTTON_PRESS_MASK
+            | gdk::EventMask::BUTTON_RELEASE_MASK
             | gdk::EventMask::POINTER_MOTION_MASK,
     );
     //--------------------------------------------------------
