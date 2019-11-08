@@ -1,0 +1,43 @@
+[package]
+name = "wasmlisp"
+version = "0.1.0"
+authors = ["hidekuno <hidekuno@gmail.com>"]
+edition = "2018"
+description = "A Lisp Interpreter with Web Assembly"
+repository = "https://github.com/hidekuno/rust-elisp"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+elisp = { path = "../elisp",version = "0.6.3" }
+wasm-bindgen = "0.2"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  'console',
+  'CssStyleDeclaration',
+  'Document',
+  'DomStringMap',
+  'DomTokenList',
+  'Element',
+  'Event',
+  'EventTarget',
+  'HtmlBodyElement',
+  'HtmlElement',
+  'HtmlInputElement',
+  'KeyboardEvent',
+  'Location',
+  'Node',
+  'NodeList',
+  'Storage',
+  'Window',
+  'HtmlTextAreaElement',
+  'HtmlCanvasElement',
+  'CanvasRenderingContext2d',
+  'ImageData',
+  'HtmlImageElement',
+]
+[dev-dependencies]
+wasm-bindgen-test = "0.2"

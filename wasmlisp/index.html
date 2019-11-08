@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Rust elisp web assembly</title>
+    <style>
+      #eval {
+          padding: 5px 10px;
+          border: none;
+          background: slategrey;
+          margin: 10px auto;
+          color: white;
+      }
+      #codearea {
+        height: 100px;
+        width:  720px;
+      }
+      #drawingarea {
+        border-radius: 10px;
+        background-color: white;
+        border: 1px solid #000;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+
+  <body>
+    <center><h2>Rust&nbsp;
+      <span style="color:#FFE900">elisp&nbsp;</span>
+      <span>Web&nbsp;</span>
+      <span style="color:#28AFB0">assembly&nbsp;</span>
+      <span>Demo&nbsp;</span>
+      <span style="color:#E53D00">program</span></h2>
+    </center>
+
+    <center><canvas id="drawingarea" width="720px" height="560px"></canvas></center>
+    <center><textarea id="codearea"></textarea></center>
+    <center><button id="eval" type="button">Eval Lisp Code</button></center>
+
+    <script src="./index.js"></script>
+  </body>
+</html>
