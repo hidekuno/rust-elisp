@@ -26,8 +26,8 @@ RustによるLisp(subset版)の実装
 |--------|--------|
 | elisp  | lisp本体 |
 | glisp  | 図形描画用GUI |
+| wasmlisp | Web Assembly用UI |
 | weblisp | マルチスレッド学習プログラム |
-| wasmlisp | Web Assembly学習プログラム |
 | zlearning |rust学習プログラム|
 
 ## 動かし方
