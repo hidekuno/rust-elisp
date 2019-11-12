@@ -13,7 +13,9 @@
    hidekuno@gmail.com
 */
 extern crate elisp;
+extern crate js_sys;
 extern crate wasm_bindgen;
+extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
 use crate::alert;
@@ -24,6 +26,7 @@ use elisp::create_error;
 use elisp::lisp;
 
 use lisp::do_core_logic;
+use lisp::repl;
 use lisp::Environment;
 use lisp::Expression;
 use lisp::RsCode;
@@ -31,6 +34,16 @@ use lisp::RsError;
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::future_to_promise;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{
+    CanvasRenderingContext2d, Document, Element, Event, HtmlCanvasElement, HtmlImageElement,
+    HtmlTextAreaElement, Request, RequestInit, RequestMode, Response,
+};
+
+use std::io::Cursor;
+const SCHEME_URL: &'static str =
+    "https://raw.githubusercontent.com/hidekuno/picture-language/master";
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -39,19 +52,19 @@ pub fn start() -> Result<(), JsValue> {
     let button = document
         .get_element_by_id("eval")
         .unwrap()
-        .dyn_into::<web_sys::Element>()
+        .dyn_into::<Element>()
         .unwrap();
 
     let text = document
         .get_element_by_id("codearea")
         .unwrap()
-        .dyn_into::<web_sys::HtmlTextAreaElement>()
+        .dyn_into::<HtmlTextAreaElement>()
         .unwrap();
 
     let env = Environment::new();
     build_lisp_function(&env, &document);
 
-    let closure = Closure::wrap(Box::new(move |_event: web_sys::Event| {
+    let closure = Closure::wrap(Box::new(move |_event: Event| {
         let result = match do_core_logic(&text.value(), &env) {
             Ok(r) => r.to_string(),
             Err(e) => e.get_msg(),
@@ -78,7 +91,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     let canvas = document
         .get_element_by_id("drawingarea")
         .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .dyn_into::<HtmlCanvasElement>()
         .map_err(|_| ())
         .unwrap();
 
@@ -86,7 +99,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         .get_context("2d")
         .unwrap()
         .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        .dyn_into::<CanvasRenderingContext2d>()
         .unwrap();
 
     //--------------------------------------------------------
@@ -187,7 +200,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             }
         }
         let img = match doc.get_element_by_id(&symbol) {
-            Some(e) => e.dyn_into::<web_sys::HtmlImageElement>().unwrap(),
+            Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),
             None => return Err(create_error!(RsCode::E1008)),
         };
         let w = img.width() as f64;
@@ -232,11 +245,11 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         };
         // update if it exists
         let img = match doc.get_element_by_id(&symbol) {
-            Some(e) => e.dyn_into::<web_sys::HtmlImageElement>().unwrap(),
+            Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),
             None => doc
                 .create_element("img")
                 .unwrap()
-                .dyn_into::<web_sys::HtmlImageElement>()
+                .dyn_into::<HtmlImageElement>()
                 .unwrap(),
         };
         img.set_id(&symbol);
@@ -265,7 +278,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     fn image_size(
         exp: &[Expression],
         env: &Environment,
-        doc: &web_sys::Document,
+        doc: &Document,
     ) -> Result<(f64, f64), RsError> {
         if exp.len() != 2 {
             return Err(create_error!(RsCode::E1007));
@@ -276,11 +289,66 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         };
 
         let img = match doc.get_element_by_id(&symbol) {
-            Some(e) => e.dyn_into::<web_sys::HtmlImageElement>().unwrap(),
+            Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),
             None => return Err(create_error!(RsCode::E9999)),
         };
         Ok((img.width() as f64, img.height() as f64))
     }
+    env.add_builtin_ext_func("load-url", move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(RsCode::E1007));
+        }
+        let scm = match lisp::eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!(RsCode::E1015)),
+        };
+        let env = env.clone();
+        let closure = Closure::wrap(Box::new(move |v: JsValue| {
+            if let Some(s) = v.as_string() {
+                let mut cur = Cursor::new(s.into_bytes());
+                if let Err(e) = repl(&mut cur, &env, true) {
+                    console_log!("{:?}", e);
+                }
+            }
+        }) as Box<dyn FnMut(_)>);
+
+        let err_closure = Closure::wrap(Box::new(move |v: JsValue| {
+            if let Some(s) = v.as_string() {
+                alert(&s.into_boxed_str());
+            }
+        }) as Box<dyn FnMut(_)>);
+
+        let promise = future_to_promise(get_program_file(scm));
+        promise.then(&closure).catch(&err_closure);
+        closure.forget();
+        err_closure.forget();
+        Ok(Expression::Nil())
+    });
+}
+async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
+    let mut opts = RequestInit::new();
+    opts.method("GET");
+    opts.mode(RequestMode::Cors);
+
+    let request = Request::new_with_str_and_init(&format!("{}/{}", SCHEME_URL, scm), &opts)?;
+    let window = web_sys::window().unwrap();
+    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+
+    // `resp_value` is a `Response` object.
+    assert!(resp_value.is_instance_of::<Response>());
+    let resp: Response = resp_value.dyn_into().unwrap();
+
+    if resp.status() != 200 {
+        return Err(JsValue::from(format!(
+            "HTTP Error {} {}",
+            resp.status(),
+            resp.status_text()
+        )));
+    }
+    // Convert this other `Promise` into a rust `Future`.
+    let text = JsFuture::from(resp.text()?).await?;
+    console_log!("http get complete");
+    Ok(text)
 }
 #[cfg(test)]
 mod tests {
@@ -308,14 +376,14 @@ mod tests {
             Err(e) => e.get_code(),
         }
     }
-    fn create_document() -> web_sys::Document {
+    fn create_document() -> Document {
         let document = web_sys::window().unwrap().document().unwrap();
         document.create_element("body").unwrap();
 
         let canvas = document
             .create_element("canvas")
             .unwrap()
-            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .dyn_into::<HtmlCanvasElement>()
             .unwrap();
 
         canvas.set_id("drawingarea");
@@ -413,6 +481,20 @@ mod tests {
         // why zero?
         assert_eq!(do_lisp_env("(image-height \"roger\")", &env), "0");
     }
+    #[wasm_bindgen_test]
+    fn load_url() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(
+            do_lisp_env("(load-url \"sicp/abstract-data.scm\")", &env),
+            "nil"
+        );
+        // why NG?
+        // left: `"E1008"`,
+        // right: `"Function"`', src/lisp.rs:493:9
+        // assert_eq!(do_lisp_env("make-frame", &env), "Function");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -430,14 +512,14 @@ mod error_tests {
             Err(e) => e.get_code(),
         }
     }
-    fn create_document() -> web_sys::Document {
+    fn create_document() -> Document {
         let document = web_sys::window().unwrap().document().unwrap();
         document.create_element("body").unwrap();
 
         let canvas = document
             .create_element("canvas")
             .unwrap()
-            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .dyn_into::<HtmlCanvasElement>()
             .unwrap();
 
         canvas.set_id("drawingarea");
@@ -563,5 +645,18 @@ mod error_tests {
         );
         assert_eq!(do_lisp_env("(image-height 10)", &env), "E1015");
         assert_eq!(do_lisp_env("(image-height a)", &env), "E1008");
+    }
+    #[wasm_bindgen_test]
+    fn load_url() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(do_lisp_env("(load-url)", &env), "E1007");
+        assert_eq!(
+            do_lisp_env("(load-url \"sicp/abstract-data.scm\" 10)", &env),
+            "E1007"
+        );
+        assert_eq!(do_lisp_env("(load-url 10)", &env), "E1015");
+        assert_eq!(do_lisp_env("(load-url a)", &env), "E1008");
     }
 }
