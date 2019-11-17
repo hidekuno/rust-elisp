@@ -324,6 +324,21 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         err_closure.forget();
         Ok(Expression::Nil())
     });
+    env.add_builtin_ext_func("wasm-time", move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(RsCode::E1007));
+        }
+
+        // std::time::SystemTime::now() causes panic on wasm32
+        // https://github.com/rust-lang/rust/issues/48564
+        let start = js_sys::Date::now();
+        let result = lisp::eval(&exp[1], env);
+        let end = js_sys::Date::now();
+
+        let t = ((end - start).trunc()) as i64;
+        console_log!("{}.{}(s)", t / 1000, t % 1000);
+        return result;
+    });
 }
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
     let mut opts = RequestInit::new();
