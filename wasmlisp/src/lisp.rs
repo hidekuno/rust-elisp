@@ -32,6 +32,7 @@ use lisp::Expression;
 use lisp::RsCode;
 use lisp::RsError;
 
+use std::io::Cursor;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;
@@ -40,8 +41,6 @@ use web_sys::{
     CanvasRenderingContext2d, Document, Element, Event, HtmlCanvasElement, HtmlImageElement,
     HtmlTextAreaElement, Request, RequestInit, RequestMode, Response,
 };
-
-use std::io::Cursor;
 const SCHEME_URL: &'static str =
     "https://raw.githubusercontent.com/hidekuno/picture-language/master";
 
@@ -150,7 +149,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             return Err(create_error!(RsCode::E1007));
         }
         // It's dummy code
-        Ok(Expression::Integer(2))
+        Ok(Expression::Integer(-1))
     });
     //--------------------------------------------------------
     // ex. (screen-width)
@@ -244,18 +243,22 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             _ => return Err(create_error!(RsCode::E1015)),
         };
         // update if it exists
-        let img = match doc.get_element_by_id(&symbol) {
-            Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),
-            None => doc
-                .create_element("img")
-                .unwrap()
-                .dyn_into::<HtmlImageElement>()
-                .unwrap(),
+        let (img, exists) = match doc.get_element_by_id(&symbol) {
+            Some(e) => (e.dyn_into::<HtmlImageElement>().unwrap(), true),
+            None => (
+                doc.create_element("img")
+                    .unwrap()
+                    .dyn_into::<HtmlImageElement>()
+                    .unwrap(),
+                false,
+            ),
         };
-        img.set_id(&symbol);
+        if exists == false {
+            img.set_id(&symbol);
+            doc.body().unwrap().append_child(&img).unwrap();
+        }
         img.style().set_property("display", "none").unwrap();
         img.set_src(&url);
-        doc.body().unwrap().append_child(&img).unwrap();
 
         Ok(Expression::Nil())
     });
@@ -287,7 +290,6 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
-
         let img = match doc.get_element_by_id(&symbol) {
             Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),
             None => return Err(create_error!(RsCode::E9999)),
@@ -429,7 +431,7 @@ mod tests {
         let document = create_document();
         let env = Environment::new();
         build_lisp_function(&env, &document);
-        assert_eq!(do_lisp_env("(gtk-major-version)", &env), "2");
+        assert_eq!(do_lisp_env("(gtk-major-version)", &env), "-1");
     }
     #[wasm_bindgen_test]
     fn screen_width() {
