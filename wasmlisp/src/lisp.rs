@@ -26,6 +26,7 @@ use elisp::create_error;
 use elisp::lisp;
 
 use lisp::do_core_logic;
+use lisp::eval;
 use lisp::repl;
 use lisp::Environment;
 use lisp::Expression;
@@ -126,7 +127,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         let mut iter = exp[1 as usize..].iter();
         for i in 0..N {
             if let Some(e) = iter.next() {
-                if let Expression::Float(f) = lisp::eval(e, env)? {
+                if let Expression::Float(f) = eval(e, env)? {
                     loc[i] = f;
                 } else {
                     return Err(create_error!(RsCode::E1003));
@@ -180,7 +181,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         if exp.len() != 8 {
             return Err(create_error!(RsCode::E1007));
         }
-        let symbol = match lisp::eval(&exp[1], env)? {
+        let symbol = match eval(&exp[1], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
@@ -189,7 +190,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         let mut iter = exp[2 as usize..].iter();
         for i in 0..N {
             if let Some(e) = iter.next() {
-                if let Expression::Float(f) = lisp::eval(e, env)? {
+                if let Expression::Float(f) = eval(e, env)? {
                     ctm[i] = f;
                 } else {
                     return Err(create_error!(RsCode::E1003));
@@ -233,12 +234,12 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         if exp.len() != 3 {
             return Err(create_error!(RsCode::E1007));
         }
-        let symbol = match lisp::eval(&exp[1], env)? {
+        let symbol = match eval(&exp[1], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
 
-        let url = match lisp::eval(&exp[2], env)? {
+        let url = match eval(&exp[2], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
@@ -286,7 +287,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         if exp.len() != 2 {
             return Err(create_error!(RsCode::E1007));
         }
-        let symbol = match lisp::eval(&exp[1], env)? {
+        let symbol = match eval(&exp[1], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
@@ -296,11 +297,14 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         };
         Ok((img.width() as f64, img.height() as f64))
     }
+    //--------------------------------------------------------
+    // (load-url)
+    //--------------------------------------------------------
     env.add_builtin_ext_func("load-url", move |exp, env| {
         if exp.len() != 2 {
             return Err(create_error!(RsCode::E1007));
         }
-        let scm = match lisp::eval(&exp[1], env)? {
+        let scm = match eval(&exp[1], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
@@ -326,6 +330,9 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         err_closure.forget();
         Ok(Expression::Nil())
     });
+    //--------------------------------------------------------
+    // (wasm-time)
+    //--------------------------------------------------------
     env.add_builtin_ext_func("wasm-time", move |exp, env| {
         if exp.len() != 2 {
             return Err(create_error!(RsCode::E1007));
@@ -334,7 +341,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         // std::time::SystemTime::now() causes panic on wasm32
         // https://github.com/rust-lang/rust/issues/48564
         let start = js_sys::Date::now();
-        let result = lisp::eval(&exp[1], env);
+        let result = eval(&exp[1], env);
         let end = js_sys::Date::now();
 
         let t = ((end - start).trunc()) as i64;
@@ -483,7 +490,7 @@ mod tests {
             format!("(load-image \"roger\" \"{}\")", RV_URL).as_str(),
             &env,
         );
-        // why zero?
+        // NG because It's Asynchronous processing
         assert_eq!(do_lisp_env("(image-width \"roger\")", &env), "0");
     }
     #[wasm_bindgen_test]
@@ -495,7 +502,7 @@ mod tests {
             format!("(load-image \"roger\" \"{}\")", PS_URL).as_str(),
             &env,
         );
-        // why zero?
+        // NG because It's Asynchronous processing
         assert_eq!(do_lisp_env("(image-height \"roger\")", &env), "0");
     }
     #[wasm_bindgen_test]
@@ -507,7 +514,7 @@ mod tests {
             do_lisp_env("(load-url \"sicp/abstract-data.scm\")", &env),
             "nil"
         );
-        // why NG?
+        // NG because It's Asynchronous processing
         // left: `"E1008"`,
         // right: `"Function"`', src/lisp.rs:493:9
         // assert_eq!(do_lisp_env("make-frame", &env), "Function");
