@@ -19,8 +19,10 @@ extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
 use crate::alert;
+use crate::clearInterval;
 use crate::console_log;
 use crate::log;
+use crate::setInterval;
 
 use elisp::create_error;
 use elisp::lisp;
@@ -33,7 +35,9 @@ use lisp::Expression;
 use lisp::RsCode;
 use lisp::RsError;
 
+use std::cell::RefCell;
 use std::io::Cursor;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;
@@ -173,7 +177,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         Ok(Expression::Float(c.height() as f64))
     });
     //--------------------------------------------------------
-    // ex. (draw-image "roger" 0.0 0.0 1.0 0.0 0.0 1.0)
+    // ex. (draw-image "roger" 0.0 0.0 180.0 0.0 0.0 180.0)
     //--------------------------------------------------------
     let doc = document.clone();
     let ctx = context.clone();
@@ -231,14 +235,13 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     let doc = document.clone();
     env.add_builtin_ext_func("load-image", move |exp, env| {
-        if exp.len() != 3 {
+        if exp.len() != 3 && exp.len() != 4 {
             return Err(create_error!(RsCode::E1007));
         }
         let symbol = match eval(&exp[1], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
-
         let url = match eval(&exp[2], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
@@ -261,10 +264,20 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         img.style().set_property("display", "none").unwrap();
         img.set_src(&url);
 
+        if exp.len() == 4 {
+            let e = exp[3].clone();
+            let env = env.clone();
+            let closure = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &env) {
+                Ok(v) => console_log!("load-image: {}", v.to_string()),
+                Err(e) => console_log!("load-image: {}", e.get_code()),
+            }) as Box<dyn FnMut(_)>);
+            img.decode().then(&closure);
+            closure.forget();
+        }
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
-    // (image-width)
+    // ex. (image-width "am")
     //--------------------------------------------------------
     let doc = document.clone();
     env.add_builtin_ext_func("image-width", move |exp, env| {
@@ -272,7 +285,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         Ok(Expression::Float(w))
     });
     //--------------------------------------------------------
-    // (image-height)
+    // ex. (image-height "am")
     //--------------------------------------------------------
     let doc = document.clone();
     env.add_builtin_ext_func("image-height", move |exp, env| {
@@ -298,40 +311,45 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         Ok((img.width() as f64, img.height() as f64))
     }
     //--------------------------------------------------------
-    // (load-url)
+    // ex. (load-url "sicp/segments-fish.scm")
     //--------------------------------------------------------
     env.add_builtin_ext_func("load-url", move |exp, env| {
-        if exp.len() != 2 {
+        if exp.len() != 2 && exp.len() != 3 {
             return Err(create_error!(RsCode::E1007));
         }
         let scm = match eval(&exp[1], env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(RsCode::E1015)),
         };
-        let env = env.clone();
+        let env_ = env.clone();
         let closure = Closure::wrap(Box::new(move |v: JsValue| {
             if let Some(s) = v.as_string() {
                 let mut cur = Cursor::new(s.into_bytes());
-                if let Err(e) = repl(&mut cur, &env, true) {
-                    console_log!("{:?}", e);
+                if let Err(e) = repl(&mut cur, &env_, true) {
+                    console_log!("load-url {:?}", e);
                 }
             }
         }) as Box<dyn FnMut(_)>);
-
-        let err_closure = Closure::wrap(Box::new(move |v: JsValue| {
-            if let Some(s) = v.as_string() {
-                alert(&s.into_boxed_str());
-            }
-        }) as Box<dyn FnMut(_)>);
-
         let promise = future_to_promise(get_program_file(scm));
-        promise.then(&closure).catch(&err_closure);
+
+        if exp.len() == 2 {
+            promise.then(&closure);
+        } else {
+            let env_ = env.clone();
+            let e = exp[2].clone();
+            let eval = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &env_) {
+                Ok(v) => console_log!("load-url: {}", v.to_string()),
+                Err(e) => console_log!("load-url: {}", e.get_code()),
+            }) as Box<dyn FnMut(_)>);
+            promise.then(&closure).then(&eval);
+            eval.forget();
+        }
         closure.forget();
-        err_closure.forget();
+
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
-    // (wasm-time)
+    // (wasm-time (image-width "sample") 3)
     //--------------------------------------------------------
     env.add_builtin_ext_func("wasm-time", move |exp, env| {
         if exp.len() != 2 {
@@ -347,6 +365,36 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         let t = ((end - start).trunc()) as i64;
         console_log!("{}.{}(s)", t / 1000, t % 1000);
         return result;
+    });
+    //--------------------------------------------------------
+    // ex. (add-timeout (image-width "sample") 3)
+    //--------------------------------------------------------
+    env.add_builtin_ext_func("add-timeout", move |exp, env| {
+        if exp.len() != 3 {
+            return Err(create_error!(RsCode::E1007));
+        }
+        let t = match eval(&exp[2], env)? {
+            Expression::Integer(t) => (t * 1000) as u32,
+            _ => return Err(create_error!(RsCode::E1002)),
+        };
+
+        let rid = Rc::new(RefCell::new(10));
+        let rid_ = rid.clone();
+        let env = env.clone();
+        let e = exp[1].clone();
+
+        let timeout = Closure::wrap(Box::new(move || {
+            let id = rid_.borrow();
+            clearInterval(*id);
+            match eval(&e, &env) {
+                Ok(v) => console_log!("add-timeout: {}", v.to_string()),
+                Err(e) => console_log!("add-timeout: {}", e.get_code()),
+            }
+        }) as Box<dyn FnMut()>);
+        let mut id = rid.borrow_mut();
+        *id = setInterval(&timeout, t);
+        timeout.forget();
+        Ok(Expression::Nil())
     });
 }
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
@@ -371,7 +419,7 @@ async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
     }
     // Convert this other `Promise` into a rust `Future`.
     let text = JsFuture::from(resp.text()?).await?;
-    console_log!("http get complete");
+    console_log!("http get complete: {}", scm);
     Ok(text)
 }
 #[cfg(test)]
@@ -599,6 +647,10 @@ mod error_tests {
         assert_eq!(do_lisp_env("(load-image)", &env), "E1007");
         assert_eq!(do_lisp_env("(load-image  \"sample\")", &env), "E1007");
         assert_eq!(
+            do_lisp_env("(load-image  \"sample\" 10 20 30)", &env),
+            "E1007"
+        );
+        assert_eq!(
             do_lisp_env(format!("(load-image 10 \"{}\")", IMG_URL).as_str(), &env),
             "E1015"
         );
@@ -677,7 +729,7 @@ mod error_tests {
         build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(load-url)", &env), "E1007");
         assert_eq!(
-            do_lisp_env("(load-url \"sicp/abstract-data.scm\" 10)", &env),
+            do_lisp_env("(load-url \"sicp/abstract-data.scm\" 10 12)", &env),
             "E1007"
         );
         assert_eq!(do_lisp_env("(load-url 10)", &env), "E1015");
