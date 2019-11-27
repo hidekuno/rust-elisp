@@ -21,10 +21,6 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     pub fn log_many(a: &str, b: &str);
-
-    pub fn setInterval(closure: &Closure<dyn FnMut()>, time: u32) -> u32;
-
-    pub fn clearInterval(id: u32);
 }
 
 #[macro_export]

@@ -19,10 +19,8 @@ extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
 use crate::alert;
-use crate::clearInterval;
 use crate::console_log;
 use crate::log;
-use crate::setInterval;
 
 use elisp::create_error;
 use elisp::lisp;
@@ -35,9 +33,7 @@ use lisp::Expression;
 use lisp::RsCode;
 use lisp::RsError;
 
-use std::cell::RefCell;
 use std::io::Cursor;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;
@@ -367,32 +363,34 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         return result;
     });
     //--------------------------------------------------------
-    // ex. (add-timeout (image-width "sample") 3)
+    // ex. (add-timeout (image-width "sample") 10)
     //--------------------------------------------------------
     env.add_builtin_ext_func("add-timeout", move |exp, env| {
         if exp.len() != 3 {
             return Err(create_error!(RsCode::E1007));
         }
         let t = match eval(&exp[2], env)? {
-            Expression::Integer(t) => (t * 1000) as u32,
+            Expression::Integer(t) => t as i32,
             _ => return Err(create_error!(RsCode::E1002)),
         };
-
-        let rid = Rc::new(RefCell::new(10));
-        let rid_ = rid.clone();
+        if t < 1 {
+            return Err(create_error!(RsCode::E1021));
+        }
         let env = env.clone();
         let e = exp[1].clone();
 
-        let timeout = Closure::wrap(Box::new(move || {
-            let id = rid_.borrow();
-            clearInterval(*id);
-            match eval(&e, &env) {
-                Ok(v) => console_log!("add-timeout: {}", v.to_string()),
-                Err(e) => console_log!("add-timeout: {}", e.get_code()),
-            }
+        let timeout = Closure::wrap(Box::new(move || match eval(&e, &env) {
+            Ok(_) => {}
+            Err(e) => console_log!("add-timeout: {}", e.get_code()),
         }) as Box<dyn FnMut()>);
-        let mut id = rid.borrow_mut();
-        *id = setInterval(&timeout, t);
+
+        web_sys::window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                timeout.as_ref().unchecked_ref(),
+                t,
+            )
+            .unwrap();
         timeout.forget();
         Ok(Expression::Nil())
     });
@@ -567,6 +565,13 @@ mod tests {
         // right: `"Function"`', src/lisp.rs:493:9
         // assert_eq!(do_lisp_env("make-frame", &env), "Function");
     }
+    #[wasm_bindgen_test]
+    fn add_timeout() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10)", &env), "nil");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -734,5 +739,15 @@ mod error_tests {
         );
         assert_eq!(do_lisp_env("(load-url 10)", &env), "E1015");
         assert_eq!(do_lisp_env("(load-url a)", &env), "E1008");
+    }
+    #[wasm_bindgen_test]
+    fn add_timeout() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(do_lisp_env("(add-timeout)", &env), "E1007");
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10 10)", &env), "E1007");
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) #t)", &env), "E1002");
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 0)", &env), "E1021");
     }
 }
