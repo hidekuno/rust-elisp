@@ -73,12 +73,22 @@ mod tests {
             do_lisp("(let loop ((i 0)) (if (<= 10000 i) i (loop (+ i 1))))"),
             "10000"
         );
+        // stack overflow check
+        assert_eq!(
+            do_lisp("(let loop ((i 0)) (if (<= 10000 i) i (begin (+ 1 1)(loop (+ i 1)))))"),
+            "10000"
+        );
     }
     #[test]
     fn tail_recurcieve_2() {
         // stack overflow check
         assert_eq!(
             do_lisp("(let loop ((i 0)) (cond ((<= 10000 i) i) (else (loop (+ i 1)))))"),
+            "10000"
+        );
+        // stack overflow check
+        assert_eq!(
+            do_lisp("(let loop ((i 0)) (cond ((<= 10000 i) i) (else (+ 1 1)(loop (+ i 1)))))"),
             "10000"
         );
     }
@@ -88,6 +98,11 @@ mod tests {
         let env = lisp::Environment::new();
         do_lisp_env("(define (hoge i) (if (<= 10000 i) i (hoge (+ i 1))))", &env);
         assert_eq!(do_lisp_env("(hoge 0)", &env), "10000");
+        do_lisp_env(
+            "(define (hoge)(let loop ((i 0))(if (<= 10000 i) i (begin (+ 1 1)(loop (+ i 1))))))",
+            &env,
+        );
+        assert_eq!(do_lisp_env("(hoge)", &env), "10000");
     }
     #[test]
     fn sequence() {

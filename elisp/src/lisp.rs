@@ -408,6 +408,7 @@ impl RsFunction {
     pub fn set_tail_recurcieve(&mut self) {
         let mut vec = self.body.clone();
         self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice(), &mut vec);
+
         if self.tail_recurcieve == true {
             self.body = vec;
         }
@@ -479,8 +480,13 @@ impl RsFunction {
                 }
                 if let Expression::BuildInFunction(s, _) = &l[0] {
                     match s.as_str() {
-                        "if" | "let" | "cond" => {
+                        "if" | "cond" => {
                             if let Expression::List(ref mut v) = body[0] {
+                                return self.parse_tail_recurcieve(&l[1..], v);
+                            }
+                        }
+                        "begin" => {
+                            if let Expression::List(ref mut v) = body[i + 1] {
                                 return self.parse_tail_recurcieve(&l[1..], v);
                             }
                         }
@@ -488,37 +494,24 @@ impl RsFunction {
                     }
                 }
                 if let Expression::Symbol(s) = &l[0] {
-                    if *s == "else" {
-                        if let Expression::List(m) = &l[1] {
-                            if 1 >= m.len() {
-                                continue;
-                            }
-                            if let Expression::Symbol(s) = &m[0] {
-                                if *s == self.name {
-                                    if (exp.len() - 1) == i {
-                                        if let Expression::List(ref mut v) = body[i + 1] {
-                                            let mut n = m.clone();
-                                            n[0] = Environment::create_tail_recursion(self.clone());
-                                            v[1] = Expression::List(n);
-                                        }
-                                        tail = true;
-                                    }
-                                    n = n + 1;
-                                }
-                            }
-                        }
-                    } else if *s == self.name {
+                    if *s == self.name {
+                        // check tail
                         if (exp.len() - 1) == i {
                             if let Expression::List(ref mut v) = body[i + 1] {
                                 v[0] = Environment::create_tail_recursion(self.clone());
+                                tail = true;
                             }
-                            tail = true;
                         }
                         n = n + 1;
+                    } else if *s == "else" {
+                        if let Expression::List(ref mut v) = body[i + 1] {
+                            return self.parse_tail_recurcieve(&l[1..], v);
+                        }
                     }
                 }
             }
         }
+        // check calling times
         if n == 1 && tail {
             return true;
         }
