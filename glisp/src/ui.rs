@@ -516,7 +516,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
         gtk::timeout_add(MOTION_DELAY as u32, move || {
             let canvas = canvas.upgrade().unwrap();
             canvas.queue_draw();
-            gtk::Continue(true)
+            glib::Continue(true)
         })
     };
     let (s, e) = match text_buffer.get_selection_bounds() {
