@@ -27,6 +27,6 @@ COPY --from=builder /root/rust-elisp/wasmlisp/webpack.config.js ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.html ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.js ./
 
-EXPOSE 18080
+EXPOSE 8080
 
 CMD [ "npm", "run", "lisp" ]
