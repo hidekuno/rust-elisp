@@ -56,7 +56,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // Draw Line
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     //--------------------------------------------------------
-    let draw_line = create_draw_line(draw_table);
+    let draw_line = create_draw_line(draw_table, 1);
     env.add_builtin_ext_func("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
@@ -409,9 +409,13 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
     // ----------------------------------------------------------------
     // create each demo program
     // ----------------------------------------------------------------
-    make_lisp_function(Box::new(Koch::new(create_draw_line(draw_table))), env);
-    make_lisp_function(Box::new(Tree::new(create_draw_line(draw_table))), env);
-    make_lisp_function(Box::new(Sierpinski::new(create_draw_line(draw_table))), env);
-    make_lisp_function(Box::new(Dragon::new(create_draw_line(draw_table))), env);
-    make_lisp_function_mut(Hilvert::new(create_draw_line(draw_table)), env);
+    const N: usize = 10000;
+    make_lisp_function(Box::new(Koch::new(create_draw_line(draw_table, N))), env);
+    make_lisp_function(Box::new(Tree::new(create_draw_line(draw_table, N))), env);
+    make_lisp_function(
+        Box::new(Sierpinski::new(create_draw_line(draw_table, N))),
+        env,
+    );
+    make_lisp_function(Box::new(Dragon::new(create_draw_line(draw_table, N))), env);
+    make_lisp_function_mut(Hilvert::new(create_draw_line(draw_table, N)), env);
 }
