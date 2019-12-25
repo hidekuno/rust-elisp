@@ -257,6 +257,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         env.add_builtin_ext_func("set-background", move |exp, env| {
             let (r, g, b) = get_color(exp, env)?;
             draw_table.borrow_mut().set_background(r, g, b);
+            draw_clear(&draw_table.borrow());
             Ok(Expression::Nil())
         });
     }

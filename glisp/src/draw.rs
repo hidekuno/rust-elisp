@@ -153,7 +153,6 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
 
     let draw_table = draw_table.clone();
 
-    #[cfg(feature = "animation")]
     let count = RefCell::new(0);
     let draw_line = move |x0, y0, x1, y1| {
         let fg = &draw_table.core.borrow().fg;
@@ -162,13 +161,12 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
         cr.stroke();
-
-        #[cfg(feature = "animation")]
         {
             let mut c = count.borrow_mut();
             *c += 1;
 
             if 0 == (*c % redraw_times) {
+                #[cfg(feature = "animation")]
                 force_event_loop!();
             }
         }
