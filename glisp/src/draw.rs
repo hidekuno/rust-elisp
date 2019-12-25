@@ -82,6 +82,7 @@ impl DrawTable {
         self.core.borrow_mut().line_width = w;
     }
 }
+
 #[cfg(feature = "animation")]
 macro_rules! force_event_loop {
     () => {
@@ -145,12 +146,15 @@ pub fn draw_clear(draw_table: &DrawTable) {
 // ----------------------------------------------------------------
 // create new cairo from imagetable, and draw line
 // ----------------------------------------------------------------
-pub fn create_draw_line(draw_table: &DrawTable) -> DrawLine {
+pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine {
     let surface = get_default_surface(draw_table);
     let cr = Context::new(&*surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
 
     let draw_table = draw_table.clone();
+
+    #[cfg(feature = "animation")]
+    let count = RefCell::new(0);
     let draw_line = move |x0, y0, x1, y1| {
         let fg = &draw_table.core.borrow().fg;
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
@@ -158,8 +162,16 @@ pub fn create_draw_line(draw_table: &DrawTable) -> DrawLine {
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
         cr.stroke();
+
         #[cfg(feature = "animation")]
-        force_event_loop!();
+        {
+            let mut c = count.borrow_mut();
+            *c += 1;
+
+            if 0 == (*c % redraw_times) {
+                force_event_loop!();
+            }
+        }
     };
     Box::new(draw_line)
 }
