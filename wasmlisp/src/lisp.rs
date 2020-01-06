@@ -105,12 +105,13 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
+    let c = canvas.clone();
     let ctx = context.clone();
     env.add_builtin_ext_func("draw-clear", move |exp, _| {
         if exp.len() != 1 {
             return Err(create_error!(RsCode::E1007));
         }
-        ctx.clear_rect(0.0, 0.0, 720.0, 560.0);
+        ctx.clear_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
