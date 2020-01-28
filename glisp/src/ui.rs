@@ -496,7 +496,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     vbox.pack_start(&menu_bar, false, false, 0);
     vbox.pack_start(canvas, true, true, 0);
     vbox.pack_start(&scroll, true, true, 0);
-    vbox.pack_start(status_bar, true, true, 0);
+    vbox.pack_start(status_bar, false, false, 0);
 
     //--------------------------------------------------------
     // Build Up finish
