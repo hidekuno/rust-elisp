@@ -242,6 +242,7 @@ fn setup_key_emacs_like() {
     bind \"<alt>w\" { \"copy-clipboard\" () };
     bind \"<ctrl>y\" { \"paste-clipboard\" () };
     bind \"<ctrl>w\" { \"cut-clipboard\" () };
+    bind \"<ctrl>8\" { \"insert_at_cursor\" (\"()\") \"move-cursor\" (logical-positions, -1, 0)};
 }
 textview {
   -gtk-key-bindings: my-text-view-bindings;
