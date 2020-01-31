@@ -124,6 +124,88 @@ impl ControlWidget {
         &self.status_bar
     }
 }
+#[derive(Clone)]
+struct SourceView {
+    keyword: gtk::TextTag,
+    string: gtk::TextTag,
+}
+impl SourceView {
+    fn new(tb: &gtk::TextBuffer) -> Self {
+        let keyword = gtk::TextTag::new(Some("keyword"));
+        keyword.set_property_foreground(Some("#1e90ff"));
+
+        let string = gtk::TextTag::new(Some("string"));
+        string.set_property_foreground(Some("#660000"));
+
+        let table: gtk::TextTagTable = tb.get_tag_table().unwrap();
+        table.add(&keyword);
+        table.add(&string);
+
+        SourceView {
+            keyword: keyword,
+            string: string,
+        }
+    }
+    fn keyword_highlight(
+        &self,
+        text_buffer: &gtk::TextBuffer,
+        start: &gtk::TextIter,
+        end: &gtk::TextIter,
+    ) {
+        text_buffer.remove_tag(&self.keyword, start, end);
+        for word in vec![
+            "define", "lambda", "if", "map", "filter", "reduce", "let", "set!", "and", "or", "not",
+            "cond", "case", "begin", "else", "apply", "delay", "force", "quote", "for-each",
+        ] {
+            self.keyword_iter(&text_buffer, start, end, word);
+        }
+    }
+    fn keyword_iter(
+        &self,
+        text_buffer: &gtk::TextBuffer,
+        start: &gtk::TextIter,
+        end: &gtk::TextIter,
+        word: &str,
+    ) {
+        if let Some(t) = start.forward_search(
+            (String::from("(") + word).as_str(),
+            gtk::TextSearchFlags::all(),
+            Some(end),
+        ) {
+            let (mut match_start, match_end) = t;
+            match_start.forward_chars(1);
+            text_buffer.apply_tag(&self.keyword, &match_start, &match_end);
+            self.keyword_iter(&text_buffer, &match_end, end, word);
+        }
+    }
+    fn string_highlight(
+        &self,
+        text_buffer: &gtk::TextBuffer,
+        start: &gtk::TextIter,
+        end: &gtk::TextIter,
+    ) {
+        text_buffer.remove_tag(&self.string, start, end);
+        let mut s = start.clone();
+        let mut vec: Vec<gtk::TextIter> = Vec::new();
+        loop {
+            if let Some(t) = s.forward_search("\"", gtk::TextSearchFlags::all(), Some(end)) {
+                let (match_start, match_end) = t;
+                vec.push(match_start);
+                s = match_end.clone();
+            } else {
+                break;
+            }
+        }
+        for (i, mut r) in vec.into_iter().enumerate() {
+            if (i % 2) == 0 {
+                s = r;
+            } else {
+                r.forward_chars(1);
+                text_buffer.apply_tag(&self.string, &s, &r);
+            }
+        }
+    }
+}
 macro_rules! set_message {
     ($s: expr, $v: expr) => {
         $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
@@ -160,6 +242,7 @@ fn setup_key_emacs_like() {
     bind \"<alt>w\" { \"copy-clipboard\" () };
     bind \"<ctrl>y\" { \"paste-clipboard\" () };
     bind \"<ctrl>w\" { \"cut-clipboard\" () };
+    bind \"<ctrl>8\" { \"insert_at_cursor\" (\"()\") \"move-cursor\" (logical-positions, -1, 0)};
 }
 textview {
   -gtk-key-bindings: my-text-view-bindings;
@@ -354,6 +437,16 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
                 }
             }
             Inhibit(false)
+        });
+    }
+    {
+        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+        let sv = SourceView::new(&text_buffer);
+        text_buffer.connect_end_user_action(move |w| {
+            let start = w.get_start_iter();
+            let end = w.get_end_iter();
+            sv.keyword_highlight(&w, &start, &end);
+            sv.string_highlight(&w, &start, &end);
         });
     }
     //--------------------------------------------------------
