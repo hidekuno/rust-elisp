@@ -12,8 +12,7 @@
           color: white;
       }
       #codearea {
-        height: 100px;
-        width:  1080px;
+        display: none;
       }
       #drawingarea {
         border-radius: 10px;
@@ -21,7 +20,16 @@
         border: 1px solid #000;
         overflow: hidden;
       }
+      #editor {
+        border-radius: 10px;
+        border: 1px solid #000;
+        height: 200px;
+        width: 1080px;
+        text-align: left;
+      }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ext-language_tools.js"></script>
   </head>
 
   <body>
@@ -34,6 +42,7 @@
     </center>
 
     <center><canvas id="drawingarea" width="1080px" height="1080px"></canvas></center>
+    <center><div id="editor"></div></center>
     <center><textarea id="codearea"></textarea></center>
     <center><button id="eval" type="button">Eval Lisp Code</button></center>
 
