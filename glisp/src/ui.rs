@@ -105,13 +105,19 @@ struct ControlWidget {
     canvas: gtk::DrawingArea,
     text_view: gtk::TextView,
     status_bar: gtk::Statusbar,
+    source_view: SourceView,
 }
 impl ControlWidget {
     fn new() -> Self {
+        let text_view = gtk::TextView::new();
+        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+        let source_view = SourceView::new(&text_buffer);
+
         ControlWidget {
             canvas: gtk::DrawingArea::new(),
-            text_view: gtk::TextView::new(),
+            text_view: text_view,
             status_bar: gtk::Statusbar::new(),
+            source_view: source_view,
         }
     }
     fn canvas(&self) -> &gtk::DrawingArea {
@@ -123,11 +129,14 @@ impl ControlWidget {
     fn status_bar(&self) -> &gtk::Statusbar {
         &self.status_bar
     }
+    fn source_view(&self) -> &SourceView {
+        &self.source_view
+    }
 }
 #[derive(Clone)]
 struct SourceView {
-    keyword: gtk::TextTag,
-    string: gtk::TextTag,
+    keyword: Box<gtk::TextTag>,
+    string: Box<gtk::TextTag>,
 }
 impl SourceView {
     fn new(tb: &gtk::TextBuffer) -> Self {
@@ -142,8 +151,8 @@ impl SourceView {
         table.add(&string);
 
         SourceView {
-            keyword: keyword,
-            string: string,
+            keyword: Box::new(keyword),
+            string: Box::new(string),
         }
     }
     fn keyword_highlight(
@@ -152,7 +161,7 @@ impl SourceView {
         start: &gtk::TextIter,
         end: &gtk::TextIter,
     ) {
-        text_buffer.remove_tag(&self.keyword, start, end);
+        text_buffer.remove_tag(&*(self.keyword), start, end);
         for word in vec![
             "define", "lambda", "if", "map", "filter", "reduce", "let", "set!", "and", "or", "not",
             "cond", "case", "begin", "else", "apply", "delay", "force", "quote", "for-each",
@@ -174,7 +183,7 @@ impl SourceView {
         ) {
             let (mut match_start, match_end) = t;
             match_start.forward_chars(1);
-            text_buffer.apply_tag(&self.keyword, &match_start, &match_end);
+            text_buffer.apply_tag(&*(self.keyword), &match_start, &match_end);
             self.keyword_iter(&text_buffer, &match_end, end, word);
         }
     }
@@ -184,7 +193,7 @@ impl SourceView {
         start: &gtk::TextIter,
         end: &gtk::TextIter,
     ) {
-        text_buffer.remove_tag(&self.string, start, end);
+        text_buffer.remove_tag(&*(self.string), start, end);
         let mut s = start.clone();
         let mut vec: Vec<gtk::TextIter> = Vec::new();
         loop {
@@ -201,9 +210,19 @@ impl SourceView {
                 s = r;
             } else {
                 r.forward_chars(1);
-                text_buffer.apply_tag(&self.string, &s, &r);
+                text_buffer.apply_tag(&*(self.string), &s, &r);
             }
         }
+    }
+    fn do_highlight(&self, text_buffer: &gtk::TextBuffer) {
+        // println!("{}", std::mem::size_of_val(&self.string));
+        // println!("{}", std::mem::size_of::<gtk::TextBuffer>());
+        // println!("{}", std::any::type_name::<gtk::TextBuffer>());
+
+        let start = text_buffer.get_start_iter();
+        let end = text_buffer.get_end_iter();
+        self.keyword_highlight(&text_buffer, &start, &end);
+        self.string_highlight(&text_buffer, &start, &end);
     }
 }
 macro_rules! set_message {
@@ -302,6 +321,7 @@ fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) 
         Ok(v) => {
             let text_buffer = ui.text_view().get_buffer().expect("Couldn't get window");
             text_buffer.set_text(&v.into_boxed_str());
+            ui.source_view().do_highlight(&text_buffer);
         }
         Err(e) => {
             let status_bar = ui.status_bar();
@@ -417,6 +437,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     // TextView
     //--------------------------------------------------------
     let text_view = ui.text_view();
+    let source_view = ui.source_view().clone();
     let scroll = gtk::ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
     scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
     scroll.add(text_view);
@@ -441,12 +462,8 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     }
     {
         let text_buffer = text_view.get_buffer().expect("Couldn't get window");
-        let sv = SourceView::new(&text_buffer);
         text_buffer.connect_end_user_action(move |w| {
-            let start = w.get_start_iter();
-            let end = w.get_end_iter();
-            sv.keyword_highlight(&w, &start, &end);
-            sv.string_highlight(&w, &start, &end);
+            source_view.do_highlight(&w);
         });
     }
     //--------------------------------------------------------
