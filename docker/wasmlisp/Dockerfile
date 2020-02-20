@@ -14,7 +14,7 @@ RUN git clone https://github.com/hidekuno/rust-elisp
 WORKDIR $HOME/rust-elisp/wasmlisp
 RUN wasm-pack build
 
-FROM node:6.1 as wasmlisp
+FROM node:6-alpine as wasmlisp
 MAINTAINER hidekuno@gmail.com
 
 WORKDIR /usr/src/app
