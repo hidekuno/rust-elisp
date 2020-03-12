@@ -141,7 +141,7 @@ struct SourceView {
 impl SourceView {
     fn new(tb: &gtk::TextBuffer) -> Self {
         let keyword = gtk::TextTag::new(Some("keyword"));
-        keyword.set_property_foreground(Some("#1e90ff"));
+        keyword.set_property_foreground(Some("#0000ff"));
 
         let string = gtk::TextTag::new(Some("string"));
         string.set_property_foreground(Some("#660000"));
@@ -179,7 +179,7 @@ impl SourceView {
         if let Some(t) = start.forward_search(
             (String::from("(") + word).as_str(),
             gtk::TextSearchFlags::all(),
-            Some(end),
+            None,
         ) {
             let (mut match_start, match_end) = t;
             match_start.forward_chars(1);
@@ -197,7 +197,7 @@ impl SourceView {
         let mut s = start.clone();
         let mut vec: Vec<gtk::TextIter> = Vec::new();
         loop {
-            if let Some(t) = s.forward_search("\"", gtk::TextSearchFlags::all(), Some(end)) {
+            if let Some(t) = s.forward_search("\"", gtk::TextSearchFlags::all(), None) {
                 let (match_start, match_end) = t;
                 vec.push(match_start);
                 s = match_end.clone();
