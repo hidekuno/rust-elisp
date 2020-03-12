@@ -137,6 +137,7 @@ impl ControlWidget {
 struct SourceView {
     keyword: Box<gtk::TextTag>,
     string: Box<gtk::TextTag>,
+    digit: Box<gtk::TextTag>,
 }
 impl SourceView {
     fn new(tb: &gtk::TextBuffer) -> Self {
@@ -146,13 +147,18 @@ impl SourceView {
         let string = gtk::TextTag::new(Some("string"));
         string.set_property_foreground(Some("#660000"));
 
+        let digit = gtk::TextTag::new(Some("digit"));
+        digit.set_property_foreground(Some("#009900"));
+
         let table: gtk::TextTagTable = tb.get_tag_table().unwrap();
         table.add(&keyword);
         table.add(&string);
+        table.add(&digit);
 
         SourceView {
             keyword: Box::new(keyword),
             string: Box::new(string),
+            digit: Box::new(digit),
         }
     }
     fn keyword_highlight(
@@ -214,6 +220,68 @@ impl SourceView {
             }
         }
     }
+    fn digit_highlight(
+        &self,
+        text_buffer: &gtk::TextBuffer,
+        start: &gtk::TextIter,
+        end: &gtk::TextIter,
+    ) {
+        enum DigitStatus {
+            Init,
+            Ready,
+            Proc,
+        }
+        text_buffer.remove_tag(&*(self.digit), start, end);
+        let mut s = start.clone();
+        let mut vec: Vec<gtk::TextIter> = Vec::new();
+        let mut state = DigitStatus::Ready;
+
+        loop {
+            if let Some(c) = s.get_char() {
+                match state {
+                    DigitStatus::Init => match c {
+                        '(' | ')' | ' ' | '\n' => state = DigitStatus::Ready,
+                        _ => {}
+                    },
+                    DigitStatus::Ready => match c {
+                        '(' | ')' | ' ' | '\n' => state = DigitStatus::Init,
+                        _ => {
+                            if true == c.is_digit(10) {
+                                vec.push(s.clone());
+                                state = DigitStatus::Proc;
+                            } else {
+                                state = DigitStatus::Init;
+                            }
+                        }
+                    },
+                    DigitStatus::Proc => match c {
+                        '(' | ')' | ' ' | '\n' => {
+                            vec.push(s.clone());
+                            state = DigitStatus::Ready;
+                        }
+                        _ => {
+                            if false == c.is_digit(10) && c != '.' {
+                                vec.pop();
+                                state = DigitStatus::Init;
+                            }
+                        }
+                    },
+                }
+            } else {
+                break;
+            }
+            if false == s.forward_char() {
+                break;
+            }
+        }
+        for (i, r) in vec.into_iter().enumerate() {
+            if (i % 2) == 0 {
+                s = r;
+            } else {
+                text_buffer.apply_tag(&*(self.digit), &s, &r);
+            }
+        }
+    }
     fn do_highlight(&self, text_buffer: &gtk::TextBuffer) {
         // println!("{}", std::mem::size_of_val(&self.string));
         // println!("{}", std::mem::size_of::<gtk::TextBuffer>());
@@ -222,6 +290,7 @@ impl SourceView {
         let start = text_buffer.get_start_iter();
         let end = text_buffer.get_end_iter();
         self.keyword_highlight(&text_buffer, &start, &end);
+        self.digit_highlight(&text_buffer, &start, &end);
         self.string_highlight(&text_buffer, &start, &end);
     }
 }
