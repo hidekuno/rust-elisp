@@ -324,7 +324,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             ("gtk-minor-version", gtk::get_minor_version()),
             ("gtk-micro-version", gtk::get_micro_version()),
         ];
-        for (f, v) in version_tbl.into_iter() {
+        for (f, v) in version_tbl.iter() {
             let x = *v;
             env.add_builtin_ext_func(f, move |exp, _env| {
                 if exp.len() != 1 {
