@@ -408,20 +408,21 @@ fn create_environment_menu(
     let mi = gtk::MenuItem::new_with_mnemonic(menu);
     let env = env.clone();
     let window = window.downgrade();
-    mi.connect_activate(move |_| {
-        let window = window.upgrade().unwrap();
-        let d = gtk::Dialog::new();
-        d.set_title(menu);
-        d.set_transient_for(Some(&window));
-        d.add_button("Ok", gtk::ResponseType::Ok.into());
-        let content_area = d.get_content_area();
 
+    let dialog = gtk::Dialog::new();
+    dialog.set_title(menu);
+    dialog.set_transient_for(Some(&window.upgrade().unwrap()));
+    dialog.add_button("Ok", gtk::ResponseType::Ok.into());
+
+    mi.connect_activate(move |_| {
         let label = gtk::Label::new(Some(f(&env).as_str()));
         label.set_selectable(true);
+
+        let content_area = dialog.get_content_area();
         content_area.add(&label);
-        d.show_all();
-        d.run();
-        d.destroy();
+        dialog.show_all();
+        dialog.run();
+        dialog.hide();
     });
     mi
 }
