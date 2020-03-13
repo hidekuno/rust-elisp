@@ -134,7 +134,7 @@ impl ControlWidget {
     }
 }
 #[derive(Clone)]
-struct SourceView {
+pub struct SourceView {
     keyword: Box<gtk::TextTag>,
     string: Box<gtk::TextTag>,
     digit: Box<gtk::TextTag>,
@@ -142,7 +142,7 @@ struct SourceView {
 impl SourceView {
     fn new(tb: &gtk::TextBuffer) -> Self {
         let keyword = gtk::TextTag::new(Some("keyword"));
-        keyword.set_property_foreground(Some("#0000ff"));
+        keyword.set_property_foreground(Some("#0033ee"));
 
         let string = gtk::TextTag::new(Some("string"));
         string.set_property_foreground(Some("#660000"));
@@ -161,137 +161,150 @@ impl SourceView {
             digit: Box::new(digit),
         }
     }
-    fn keyword_highlight(
-        &self,
-        text_buffer: &gtk::TextBuffer,
-        start: &gtk::TextIter,
-        end: &gtk::TextIter,
-    ) {
-        text_buffer.remove_tag(&*(self.keyword), start, end);
-        for word in vec![
-            "define", "lambda", "if", "map", "filter", "reduce", "let", "set!", "and", "or", "not",
-            "cond", "case", "begin", "else", "apply", "delay", "force", "quote", "for-each",
-        ] {
-            self.keyword_iter(&text_buffer, start, end, word);
-        }
+    pub fn search_word_highlight(&self, text_buffer: &gtk::TextBuffer, word: &String) {
+        let start = text_buffer.get_start_iter();
+        let end = text_buffer.get_end_iter();
+        self.search_word_iter(&text_buffer, &start, &end, word.as_str());
     }
-    fn keyword_iter(
+    fn search_word_iter(
         &self,
         text_buffer: &gtk::TextBuffer,
         start: &gtk::TextIter,
         end: &gtk::TextIter,
         word: &str,
     ) {
-        if let Some(t) = start.forward_search(
-            (String::from("(") + word).as_str(),
-            gtk::TextSearchFlags::all(),
-            None,
-        ) {
+        if let Some(t) = start.forward_search(word, gtk::TextSearchFlags::all(), None) {
             let (mut match_start, match_end) = t;
             match_start.forward_chars(1);
-            text_buffer.apply_tag(&*(self.keyword), &match_start, &match_end);
-            self.keyword_iter(&text_buffer, &match_end, end, word);
+            self.search_word_iter(&text_buffer, &match_end, end, word);
         }
     }
-    fn string_highlight(
-        &self,
-        text_buffer: &gtk::TextBuffer,
-        start: &gtk::TextIter,
-        end: &gtk::TextIter,
-    ) {
-        text_buffer.remove_tag(&*(self.string), start, end);
-        let mut s = start.clone();
-        let mut vec: Vec<gtk::TextIter> = Vec::new();
-        loop {
-            if let Some(t) = s.forward_search("\"", gtk::TextSearchFlags::all(), None) {
-                let (match_start, match_end) = t;
-                vec.push(match_start);
-                s = match_end.clone();
-            } else {
-                break;
-            }
-        }
-        for (i, mut r) in vec.into_iter().enumerate() {
-            if (i % 2) == 0 {
-                s = r;
-            } else {
-                r.forward_chars(1);
-                text_buffer.apply_tag(&*(self.string), &s, &r);
-            }
-        }
-    }
-    fn digit_highlight(
-        &self,
-        text_buffer: &gtk::TextBuffer,
-        start: &gtk::TextIter,
-        end: &gtk::TextIter,
-    ) {
-        enum DigitStatus {
-            Init,
+    fn create_highlight_index(&self, mut start: gtk::TextIter) -> Vec<gtk::TextIter> {
+        enum Status {
             Ready,
-            Proc,
+            Number,
+            Keyword,
+            String,
         }
-        text_buffer.remove_tag(&*(self.digit), start, end);
-        let mut s = start.clone();
         let mut vec: Vec<gtk::TextIter> = Vec::new();
-        let mut state = DigitStatus::Ready;
+        let mut state = Status::Ready;
 
         loop {
-            if let Some(c) = s.get_char() {
+            if let Some(c) = start.get_char() {
                 match state {
-                    DigitStatus::Init => match c {
-                        '(' | ')' | ' ' | '\n' => state = DigitStatus::Ready,
-                        _ => {}
-                    },
-                    DigitStatus::Ready => match c {
-                        '(' | ')' | ' ' | '\n' => state = DigitStatus::Init,
+                    Status::Ready => match c {
+                        '(' | ')' | ' ' | '\n' => state = Status::Ready,
+                        '"' => {
+                            vec.push(start.clone());
+                            state = Status::String;
+                        }
                         _ => {
                             if true == c.is_digit(10) {
-                                vec.push(s.clone());
-                                state = DigitStatus::Proc;
+                                vec.push(start.clone());
+                                state = Status::Number;
+                            } else if true == c.is_lowercase() {
+                                vec.push(start.clone());
+                                state = Status::Keyword;
                             } else {
-                                state = DigitStatus::Init;
+                                state = Status::Ready;
                             }
                         }
                     },
-                    DigitStatus::Proc => match c {
+                    Status::Number => match c {
                         '(' | ')' | ' ' | '\n' => {
-                            vec.push(s.clone());
-                            state = DigitStatus::Ready;
+                            vec.push(start.clone());
+                            state = Status::Ready;
                         }
                         _ => {
                             if false == c.is_digit(10) && c != '.' {
                                 vec.pop();
-                                state = DigitStatus::Init;
+                                state = Status::Ready;
                             }
                         }
+                    },
+                    Status::Keyword => match c {
+                        '(' | ')' | ' ' | '\n' => {
+                            vec.push(start.clone());
+                            state = Status::Ready;
+                        }
+                        _ => {
+                            if false == c.is_lowercase() && c != '-' {
+                                vec.pop();
+                                state = Status::Ready;
+                            }
+                        }
+                    },
+                    Status::String => match c {
+                        '"' => {
+                            vec.push(start.clone());
+                            state = Status::Ready;
+                        }
+                        _ => {}
                     },
                 }
             } else {
                 break;
             }
-            if false == s.forward_char() {
+            if false == start.forward_char() {
                 break;
             }
         }
-        for (i, r) in vec.into_iter().enumerate() {
+        vec
+    }
+    fn update_highlight(&self, text_buffer: &gtk::TextBuffer, vec: Vec<gtk::TextIter>) {
+        if vec.len() == 0 {
+            return;
+        }
+        let mut s = vec[0].clone();
+        for (i, mut r) in vec.into_iter().enumerate() {
             if (i % 2) == 0 {
                 s = r;
             } else {
-                text_buffer.apply_tag(&*(self.digit), &s, &r);
+                if let Some(w) = s.get_slice(&r) {
+                    let mut b = w.as_str().bytes();
+                    if let Some(b'"') = b.next() {
+                        r.forward_chars(1);
+                        text_buffer.apply_tag(&*(self.string), &s, &r);
+                        continue;
+                    }
+                    let mut num = true;
+                    for c in w.as_str().chars() {
+                        if false == c.is_digit(10) && c != '.' {
+                            num = false;
+                            break;
+                        }
+                    }
+                    if true == num {
+                        text_buffer.apply_tag(&*(self.digit), &s, &r);
+                        continue;
+                    }
+                    for word in vec![
+                        "define", "lambda", "if", "map", "filter", "reduce", "let", "set!", "and",
+                        "or", "not", "cond", "case", "begin", "else", "apply", "delay", "force",
+                        "quote", "for-each",
+                    ] {
+                        if w.as_str() == word {
+                            text_buffer.apply_tag(&*(self.keyword), &s, &r);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
-    fn do_highlight(&self, text_buffer: &gtk::TextBuffer) {
+    pub fn do_highlight(&self, text_buffer: &gtk::TextBuffer) {
         // println!("{}", std::mem::size_of_val(&self.string));
         // println!("{}", std::mem::size_of::<gtk::TextBuffer>());
         // println!("{}", std::any::type_name::<gtk::TextBuffer>());
-
         let start = text_buffer.get_start_iter();
         let end = text_buffer.get_end_iter();
-        self.keyword_highlight(&text_buffer, &start, &end);
-        self.digit_highlight(&text_buffer, &start, &end);
-        self.string_highlight(&text_buffer, &start, &end);
+
+        text_buffer.remove_tag(&*(self.keyword), &start, &end);
+        text_buffer.remove_tag(&*(self.digit), &start, &end);
+        text_buffer.remove_tag(&*(self.string), &start, &end);
+
+        let vec = self.create_highlight_index(start);
+        self.update_highlight(&text_buffer, vec);
     }
 }
 macro_rules! set_message {
