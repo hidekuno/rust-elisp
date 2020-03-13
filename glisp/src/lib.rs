@@ -7,6 +7,7 @@
 pub mod buildin;
 pub mod draw;
 pub mod fractal;
+pub mod helper;
 pub mod ui;
 
 #[cfg(test)]

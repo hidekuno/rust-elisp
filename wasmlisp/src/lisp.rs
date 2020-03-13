@@ -38,6 +38,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::JsFuture;
+
 use web_sys::{
     CanvasRenderingContext2d, Document, Element, Event, HtmlCanvasElement, HtmlImageElement,
     HtmlTextAreaElement, Request, RequestInit, RequestMode, Response,
@@ -268,7 +269,8 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
                 Ok(v) => console_log!("load-image: {}", v.to_string()),
                 Err(e) => console_log!("load-image: {}", e.get_code()),
             }) as Box<dyn FnMut(_)>);
-            img.decode().then(&closure);
+
+            let _promise = img.decode().then(&closure);
             closure.forget();
         }
         Ok(Expression::Nil())
@@ -330,7 +332,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         let promise = future_to_promise(get_program_file(scm));
 
         if exp.len() == 2 {
-            promise.then(&closure);
+            let _promise = promise.then(&closure);
         } else {
             let env_ = env.clone();
             let e = exp[2].clone();
@@ -338,7 +340,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
                 Ok(v) => console_log!("load-url: {}", v.to_string()),
                 Err(e) => console_log!("load-url: {}", e.get_code()),
             }) as Box<dyn FnMut(_)>);
-            promise.then(&closure).then(&eval);
+            let _promise = promise.then(&closure).then(&eval);
             eval.forget();
         }
         closure.forget();
