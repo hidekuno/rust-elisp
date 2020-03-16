@@ -217,6 +217,7 @@ impl SourceView {
 // gtk_text_buffer_remove_tag: assertion 'tag->priv->table == buffer->priv->tag_table' failed
 // gtk_text_buffer_apply_tag: assertion 'tag->priv->table == buffer->priv->tag_table' failed
 //------------------------------------------------------------------------
+#[allow(dead_code)]
 fn search_word_highlight(
     word_tag: Box<gtk::TextTag>,
     text_buffer: &gtk::TextBuffer,
@@ -242,6 +243,7 @@ fn search_word_highlight(
 
     search_word_iter(&word_tag, text_buffer, &start, &end, word.as_str());
 }
+#[allow(dead_code)]
 fn test_search_word_highlight(text_buffer: &gtk::TextBuffer) {
     let search_tag = gtk::TextTag::new(Some("search"));
     search_tag.set_property_foreground(Some("#ee0000"));
