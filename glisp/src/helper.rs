@@ -212,42 +212,41 @@ impl SourceView {
     }
 }
 //------------------------------------------------------------------------
-// not support this function
-// (why)
-// gtk_text_buffer_remove_tag: assertion 'tag->priv->table == buffer->priv->tag_table' failed
-// gtk_text_buffer_apply_tag: assertion 'tag->priv->table == buffer->priv->tag_table' failed
+// support search function
+// ex) search_word_highlight(text_buffer, "search", "frame");
 //------------------------------------------------------------------------
-#[allow(dead_code)]
-fn search_word_highlight(
-    word_tag: Box<gtk::TextTag>,
-    text_buffer: &gtk::TextBuffer,
-    word: &String,
-) {
+pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word: &str) {
+    let table: gtk::TextTagTable = text_buffer.get_tag_table().unwrap();
+
+    let search_tag = if let Some(tag) = table.lookup(tag_name) {
+        tag
+    } else {
+        let search_tag = gtk::TextTag::new(Some(tag_name));
+        search_tag.set_property_foreground(Some("#ee0000"));
+        search_tag.set_property_background(Some("#eaeaea"));
+        table.add(&search_tag);
+        search_tag
+    };
+
+    let start = text_buffer.get_start_iter();
+    let end = text_buffer.get_end_iter();
+    text_buffer.remove_tag(&search_tag, &start, &end);
+
+    search_word_iter(&search_tag, text_buffer, &start, &end, word);
+    //------------------------------------------------------------------------
+    // iter child function
+    //------------------------------------------------------------------------
     fn search_word_iter(
-        word_tag: &Box<gtk::TextTag>,
+        word_tag: &gtk::TextTag,
         text_buffer: &gtk::TextBuffer,
         start: &gtk::TextIter,
         end: &gtk::TextIter,
         word: &str,
     ) {
         if let Some(t) = start.forward_search(word, gtk::TextSearchFlags::all(), None) {
-            let (mut match_start, match_end) = t;
-            match_start.forward_chars(1);
-            text_buffer.apply_tag(&*(*word_tag), &match_start, &match_end);
+            let (match_start, match_end) = t;
+            text_buffer.apply_tag(word_tag, &match_start, &match_end);
             search_word_iter(word_tag, text_buffer, &match_end, end, word);
         }
     }
-    let start = text_buffer.get_start_iter();
-    let end = text_buffer.get_end_iter();
-    text_buffer.remove_tag(&*word_tag, &start, &end);
-
-    search_word_iter(&word_tag, text_buffer, &start, &end, word.as_str());
-}
-#[allow(dead_code)]
-fn test_search_word_highlight(text_buffer: &gtk::TextBuffer) {
-    let search_tag = gtk::TextTag::new(Some("search"));
-    search_tag.set_property_foreground(Some("#ee0000"));
-
-    let word = String::from("frame");
-    search_word_highlight(Box::new(search_tag), text_buffer, &word);
 }
