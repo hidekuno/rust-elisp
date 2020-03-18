@@ -24,6 +24,7 @@ use crate::draw::get_default_surface;
 use crate::draw::save_png_file;
 use crate::draw::DrawTable;
 use crate::draw::Graffiti;
+use crate::helper::search_word_highlight;
 use crate::helper::History;
 use crate::helper::SourceView;
 use crate::helper::HISTORY_SIZE;
@@ -194,11 +195,10 @@ fn create_environment_menu(
 ) -> gtk::MenuItem {
     let mi = gtk::MenuItem::new_with_mnemonic(menu);
     let env = env.clone();
-    let window = window.downgrade();
 
     let dialog = gtk::Dialog::new();
     dialog.set_title(menu);
-    dialog.set_transient_for(Some(&window.upgrade().unwrap()));
+    dialog.set_transient_for(Some(window));
     dialog.add_button("Ok", gtk::ResponseType::Ok.into());
 
     mi.connect_activate(move |_| {
@@ -218,8 +218,8 @@ fn create_environment_menu(
 //--------------------------------------------------------
 fn create_save_as_menu(
     window: &gtk::Window,
-    status_bar: gtk::Statusbar,
-    draw_table: DrawTable,
+    status_bar: &gtk::Statusbar,
+    draw_table: &DrawTable,
 ) -> gtk::MenuItem {
     let mi = gtk::MenuItem::new_with_mnemonic("_Save As");
 
@@ -232,10 +232,41 @@ fn create_save_as_menu(
         ("Cancel", gtk::ResponseType::Cancel),
     ]);
 
+    let status_bar = status_bar.clone();
+    let draw_table = draw_table.clone();
+    let dialog = dialog.clone();
     mi.connect_activate(move |_| {
         if gtk::ResponseType::Accept == dialog.run() {
             let message = save_png_file(&draw_table, &dialog.get_filename().unwrap(), true);
             set_message!(status_bar, message.as_str());
+        }
+        dialog.hide();
+    });
+    mi
+}
+//--------------------------------------------------------
+// Create about dialog
+//--------------------------------------------------------
+fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk::MenuItem {
+    let mi = gtk::MenuItem::new_with_mnemonic("Search");
+
+    let dialog = gtk::Dialog::new();
+    dialog.set_title("Search");
+    dialog.set_transient_for(Some(window));
+    dialog.add_button("Ok", gtk::ResponseType::Ok.into());
+
+    let entry = gtk::SearchEntry::new();
+    let content_area = dialog.get_content_area();
+    content_area.add(&entry);
+
+    mi.connect_activate(move |_| {
+        dialog.show_all();
+        if gtk::ResponseType::Ok == dialog.run() {
+            if let Some(text) = entry.get_text() {
+                if !text.is_empty() {
+                    search_word_highlight(&text_buffer, "search", text.as_str());
+                }
+            }
         }
         dialog.hide();
     });
@@ -374,11 +405,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         });
         save
     });
-    menu.append(&create_save_as_menu(
-        &window,
-        status_bar.clone(),
-        draw_table.clone(),
-    ));
+    menu.append(&create_save_as_menu(&window, &status_bar, &draw_table));
     menu.append(&{
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
@@ -428,6 +455,15 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     });
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
+
+    let search = gtk::MenuItem::new_with_mnemonic("_Search");
+    let menu = gtk::Menu::new();
+    menu.append(&create_search_menu(
+        &window,
+        text_view.get_buffer().expect("Couldn't get window"),
+    ));
+    search.set_submenu(Some(&menu));
+    menu_bar.append(&search);
 
     let load = gtk::MenuItem::new_with_mnemonic("_Load");
     let menu = gtk::Menu::new();
