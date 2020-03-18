@@ -43,6 +43,9 @@ const MOTION_DELAY: i32 = 70;
 
 const STOP_ERROR_CODE: &str = "E9000";
 
+//--------------------------------------------------------
+// Control widget table
+//--------------------------------------------------------
 #[derive(Clone)]
 struct ControlWidget {
     canvas: gtk::DrawingArea,
@@ -81,10 +84,16 @@ macro_rules! set_message {
         $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
     };
 }
+//--------------------------------------------------------
+// Drawing Area clear
+//--------------------------------------------------------
 fn clear_canvas(draw_table: &DrawTable, canvas: &gtk::DrawingArea) {
     draw_clear(draw_table);
     canvas.queue_draw();
 }
+//--------------------------------------------------------
+// Setting keystroke like Emacs
+//--------------------------------------------------------
 fn setup_key_emacs_like() {
     // https://gist.github.com/shelling/663759
     let style = "
@@ -168,6 +177,9 @@ fn load_demo_program(dir: &str) -> std::io::Result<String> {
     }
     Ok("".into())
 }
+//--------------------------------------------------------
+// SICP Program
+//--------------------------------------------------------
 fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) -> gtk::MenuItem {
     let load = gtk::MenuItem::new_with_mnemonic(menu);
     let ui = ui.clone();
@@ -234,7 +246,6 @@ fn create_save_as_menu(
 
     let status_bar = status_bar.clone();
     let draw_table = draw_table.clone();
-    let dialog = dialog.clone();
     mi.connect_activate(move |_| {
         if gtk::ResponseType::Accept == dialog.run() {
             let message = save_png_file(&draw_table, &dialog.get_filename().unwrap(), true);

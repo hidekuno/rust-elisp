@@ -28,6 +28,9 @@ pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
 pub type DrawArc = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 
+// ----------------------------------------------------------------
+// Color table
+// ----------------------------------------------------------------
 struct Color {
     red: f64,
     green: f64,
@@ -42,6 +45,9 @@ impl Color {
         }
     }
 }
+// ----------------------------------------------------------------
+// Graphics table
+// ----------------------------------------------------------------
 struct Graphics {
     image_table: HashMap<String, Rc<ImageSurface>>,
     line_width: f64,
@@ -60,6 +66,9 @@ impl Graphics {
         self.fg.blue = blue;
     }
 }
+// ----------------------------------------------------------------
+// Draw table manage
+// ----------------------------------------------------------------
 #[derive(Clone)]
 pub struct DrawTable {
     core: Rc<RefCell<Graphics>>,
@@ -93,6 +102,9 @@ macro_rules! force_event_loop {
         }
     };
 }
+// ----------------------------------------------------------------
+// surface table
+// ----------------------------------------------------------------
 pub fn get_default_surface(draw_table: &DrawTable) -> Rc<ImageSurface> {
     draw_table
         .find(&DEFALUT_CANVAS.to_string())

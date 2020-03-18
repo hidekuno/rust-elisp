@@ -14,6 +14,9 @@ use std::rc::Rc;
 pub const HISTORY_SIZE: usize = 10;
 const HISTORY_COL_SIZE: usize = 32;
 
+//--------------------------------------------------------
+// LISP History table
+//--------------------------------------------------------
 #[derive(Clone)]
 pub struct History {
     menu: gtk::MenuItem,
@@ -72,6 +75,9 @@ impl History {
         false
     }
 }
+//--------------------------------------------------------
+// LISP Source code view
+//--------------------------------------------------------
 #[derive(Clone)]
 pub struct SourceView {
     keyword: Box<gtk::TextTag>,
