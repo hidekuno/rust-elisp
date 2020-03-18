@@ -16,12 +16,12 @@ use lisp::Environment;
 use gtk::prelude::*;
 use std::env;
 use std::fs;
-use std::fs::File;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::draw::draw_clear;
 use crate::draw::get_default_surface;
+use crate::draw::save_png_file;
 use crate::draw::DrawTable;
 use crate::draw::Graffiti;
 use crate::helper::History;
@@ -127,6 +127,9 @@ textview {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
+//--------------------------------------------------------
+// Load LISP programe(https://github.com/hidekuno/picture-language)
+//--------------------------------------------------------
 fn load_demo_program(dir: &str) -> std::io::Result<String> {
     fn get_program_name(vec: Vec<&str>) -> std::io::Result<Option<String>> {
         let mut program: Vec<String> = Vec::new();
@@ -180,6 +183,9 @@ fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) 
     });
     load
 }
+//--------------------------------------------------------
+// Create about dialog
+//--------------------------------------------------------
 fn create_environment_menu(
     env: &Environment,
     window: &gtk::Window,
@@ -207,6 +213,37 @@ fn create_environment_menu(
     });
     mi
 }
+//--------------------------------------------------------
+// Create File dialog
+//--------------------------------------------------------
+fn create_save_as_menu(
+    window: &gtk::Window,
+    status_bar: gtk::Statusbar,
+    draw_table: DrawTable,
+) -> gtk::MenuItem {
+    let mi = gtk::MenuItem::new_with_mnemonic("_Save As");
+
+    // Gtk-WARNING **: Failed to measure available space
+    // I'm researching the cause
+    let dialog =
+        gtk::FileChooserDialog::new(Some("PNG Save"), Some(window), gtk::FileChooserAction::Save);
+    dialog.add_buttons(&[
+        ("Save", gtk::ResponseType::Accept),
+        ("Cancel", gtk::ResponseType::Cancel),
+    ]);
+
+    mi.connect_activate(move |_| {
+        if gtk::ResponseType::Accept == dialog.run() {
+            let message = save_png_file(&draw_table, &dialog.get_filename().unwrap(), true);
+            set_message!(status_bar, message.as_str());
+        }
+        dialog.hide();
+    });
+    mi
+}
+//--------------------------------------------------------
+// Gtk widget initialize
+//--------------------------------------------------------
 pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     gtk::init().expect("Failed to initialize GTK.");
     setup_key_emacs_like();
@@ -324,36 +361,24 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     menu.append(&{
-        let surface = get_default_surface(draw_table);
         let status_bar = status_bar.downgrade();
         let save = gtk::MenuItem::new_with_mnemonic("_Save");
+
+        let draw_table = draw_table.clone();
         save.connect_activate(move |_| {
             let status_bar = status_bar.upgrade().unwrap();
             let mut tmpfile = env::temp_dir();
             tmpfile.push(PNG_SAVE_FILE);
-            if tmpfile.exists() {
-                set_message!(
-                    status_bar,
-                    format!("\"{}\" is exists", tmpfile.to_str().unwrap()).as_str()
-                );
-                return;
-            }
-            let message = format!("Saved \"{}\"", tmpfile.to_str().unwrap());
-            let mut file = match File::create(tmpfile) {
-                Ok(f) => f,
-                Err(e) => {
-                    set_message!(status_bar, &e.to_string().into_boxed_str());
-                    return;
-                }
-            };
-            let msg = match surface.write_to_png(&mut file) {
-                Ok(_) => message,
-                Err(e) => e.to_string(),
-            };
-            set_message!(status_bar, msg.as_str());
+            let message = save_png_file(&draw_table, &tmpfile, false);
+            set_message!(status_bar, message.as_str());
         });
         save
     });
+    menu.append(&create_save_as_menu(
+        &window,
+        status_bar.clone(),
+        draw_table.clone(),
+    ));
     menu.append(&{
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
@@ -465,6 +490,9 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     window.add(&vbox);
     window.show_all();
 }
+//--------------------------------------------------------
+// Lisp code tokenize, parse, eval
+//--------------------------------------------------------
 fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     let canvas = ui.canvas();
     let text_view = ui.text_view();

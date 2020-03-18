@@ -14,6 +14,8 @@ use cairo::{Context, Format, ImageSurface, Matrix};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::f64::consts::PI;
+use std::fs::File;
+use std::path::Path;
 use std::rc::Rc;
 
 const DEFALUT_CANVAS: &str = "canvas";
@@ -238,6 +240,25 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
         force_event_loop!();
     };
     Box::new(draw_arc)
+}
+// ----------------------------------------------------------------
+// save surface(as PNG file)
+// ----------------------------------------------------------------
+pub fn save_png_file(draw_table: &DrawTable, filename: &Path, overwrite: bool) -> String {
+    if filename.exists() && overwrite == false {
+        return format!("\"{}\" is exists", filename.to_str().unwrap());
+    }
+    let mut file = match File::create(filename) {
+        Ok(f) => f,
+        Err(e) => {
+            return e.to_string();
+        }
+    };
+    let surface = get_default_surface(draw_table);
+    return match surface.write_to_png(&mut file) {
+        Ok(_) => format!("Saved \"{}\"", filename.to_str().unwrap()),
+        Err(e) => e.to_string(),
+    };
 }
 // ----------------------------------------------------------------
 // create draw table
