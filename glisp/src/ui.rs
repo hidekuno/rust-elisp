@@ -274,9 +274,7 @@ fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk
         dialog.show_all();
         if gtk::ResponseType::Ok == dialog.run() {
             if let Some(text) = entry.get_text() {
-                if !text.is_empty() {
-                    search_word_highlight(&text_buffer, "search", text.as_str());
-                }
+                search_word_highlight(&text_buffer, "search", text.as_str());
             }
         }
         dialog.hide();

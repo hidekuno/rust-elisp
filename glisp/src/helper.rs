@@ -238,6 +238,9 @@ pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word
     let end = text_buffer.get_end_iter();
     text_buffer.remove_tag(&search_tag, &start, &end);
 
+    if word.is_empty() {
+        return;
+    }
     search_word_iter(&search_tag, text_buffer, &start, &end, word);
     //------------------------------------------------------------------------
     // iter child function
