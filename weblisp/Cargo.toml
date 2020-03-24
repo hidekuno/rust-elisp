@@ -1,12 +1,12 @@
 [package]
 name = "weblisp"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["hidekuno <hidekuno@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 chrono = "0.4"
-elisp = { path = "../elisp", version = "0.8.0", features = ["thread"] }
+elisp = { path = "../elisp", version = "0.8.1", features = ["thread"] }
 log = "*"
 env_logger = "*"
 

@@ -1,11 +1,11 @@
 [package]
 name = "glisp"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["hideki kuno <hidekuno@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-elisp = { path = "../elisp",version = "0.8.0" }
+elisp = { path = "../elisp",version = "0.8.1" }
 gtk = { git = "https://github.com/gtk-rs/gtk.git" }
 gdk = { git = "https://github.com/gtk-rs/gdk.git" }
 glib = { git = "https://github.com/gtk-rs/glib.git" }
