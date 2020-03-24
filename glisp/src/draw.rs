@@ -14,6 +14,8 @@ use cairo::{Context, Format, ImageSurface, Matrix};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::f64::consts::PI;
+use std::fs::File;
+use std::path::Path;
 use std::rc::Rc;
 
 const DEFALUT_CANVAS: &str = "canvas";
@@ -26,6 +28,9 @@ pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
 pub type DrawArc = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 
+// ----------------------------------------------------------------
+// Color table
+// ----------------------------------------------------------------
 struct Color {
     red: f64,
     green: f64,
@@ -40,6 +45,9 @@ impl Color {
         }
     }
 }
+// ----------------------------------------------------------------
+// Graphics table
+// ----------------------------------------------------------------
 struct Graphics {
     image_table: HashMap<String, Rc<ImageSurface>>,
     line_width: f64,
@@ -58,6 +66,9 @@ impl Graphics {
         self.fg.blue = blue;
     }
 }
+// ----------------------------------------------------------------
+// Draw table manage
+// ----------------------------------------------------------------
 #[derive(Clone)]
 pub struct DrawTable {
     core: Rc<RefCell<Graphics>>,
@@ -91,6 +102,9 @@ macro_rules! force_event_loop {
         }
     };
 }
+// ----------------------------------------------------------------
+// surface table
+// ----------------------------------------------------------------
 pub fn get_default_surface(draw_table: &DrawTable) -> Rc<ImageSurface> {
     draw_table
         .find(&DEFALUT_CANVAS.to_string())
@@ -238,6 +252,25 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
         force_event_loop!();
     };
     Box::new(draw_arc)
+}
+// ----------------------------------------------------------------
+// save surface(as PNG file)
+// ----------------------------------------------------------------
+pub fn save_png_file(draw_table: &DrawTable, filename: &Path, overwrite: bool) -> String {
+    if filename.exists() && overwrite == false {
+        return format!("\"{}\" is exists", filename.to_str().unwrap());
+    }
+    let mut file = match File::create(filename) {
+        Ok(f) => f,
+        Err(e) => {
+            return e.to_string();
+        }
+    };
+    let surface = get_default_surface(draw_table);
+    return match surface.write_to_png(&mut file) {
+        Ok(_) => format!("Saved \"{}\"", filename.to_str().unwrap()),
+        Err(e) => e.to_string(),
+    };
 }
 // ----------------------------------------------------------------
 // create draw table

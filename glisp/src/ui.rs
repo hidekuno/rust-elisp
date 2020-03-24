@@ -15,15 +15,15 @@ use lisp::Environment;
 
 use gtk::prelude::*;
 use std::env;
-use std::fs;
-use std::fs::File;
-use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::draw::draw_clear;
 use crate::draw::get_default_surface;
+use crate::draw::save_png_file;
 use crate::draw::DrawTable;
 use crate::draw::Graffiti;
+use crate::helper::load_demo_program;
+use crate::helper::search_word_highlight;
 use crate::helper::History;
 use crate::helper::SourceView;
 use crate::helper::HISTORY_SIZE;
@@ -39,9 +39,11 @@ const DRAW_CLEAR_KEYCODE: u32 = 108;
 
 #[cfg(feature = "animation")]
 const MOTION_DELAY: i32 = 70;
-
 const STOP_ERROR_CODE: &str = "E9000";
 
+//--------------------------------------------------------
+// Control widget table
+//--------------------------------------------------------
 #[derive(Clone)]
 struct ControlWidget {
     canvas: gtk::DrawingArea,
@@ -80,10 +82,16 @@ macro_rules! set_message {
         $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
     };
 }
+//--------------------------------------------------------
+// Drawing Area clear
+//--------------------------------------------------------
 fn clear_canvas(draw_table: &DrawTable, canvas: &gtk::DrawingArea) {
     draw_clear(draw_table);
     canvas.queue_draw();
 }
+//--------------------------------------------------------
+// Setting keystroke like Emacs
+//--------------------------------------------------------
 fn setup_key_emacs_like() {
     // https://gist.github.com/shelling/663759
     let style = "
@@ -127,43 +135,9 @@ textview {
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
 }
-fn load_demo_program(dir: &str) -> std::io::Result<String> {
-    fn get_program_name(vec: Vec<&str>) -> std::io::Result<Option<String>> {
-        let mut program: Vec<String> = Vec::new();
-        let mut path = PathBuf::new();
-
-        path.push(match env::var("HOME") {
-            Ok(v) => v,
-            Err(_) => "/root".into(),
-        });
-        for dir in vec {
-            path.push(dir);
-        }
-        if false == path.as_path().exists() {
-            return Ok(None);
-        }
-        for entry in fs::read_dir(path)? {
-            let dir = entry?;
-            let path = dir.path();
-            let f = path.to_str().unwrap();
-            if f.ends_with(".scm") {
-                program.push(format!("(load-file \"{}\")", f));
-            }
-        }
-        program.sort();
-        Ok(Some(program.join("\n")))
-    }
-    for v in vec![vec!["picture-language", dir], vec![dir]] {
-        match get_program_name(v) {
-            Ok(s) => match s {
-                Some(s) => return Ok(s),
-                None => continue,
-            },
-            Err(e) => return Err(e),
-        }
-    }
-    Ok("".into())
-}
+//--------------------------------------------------------
+// SICP Program
+//--------------------------------------------------------
 fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) -> gtk::MenuItem {
     let load = gtk::MenuItem::new_with_mnemonic(menu);
     let ui = ui.clone();
@@ -180,6 +154,9 @@ fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) 
     });
     load
 }
+//--------------------------------------------------------
+// Create about dialog
+//--------------------------------------------------------
 fn create_environment_menu(
     env: &Environment,
     window: &gtk::Window,
@@ -188,11 +165,10 @@ fn create_environment_menu(
 ) -> gtk::MenuItem {
     let mi = gtk::MenuItem::new_with_mnemonic(menu);
     let env = env.clone();
-    let window = window.downgrade();
 
     let dialog = gtk::Dialog::new();
     dialog.set_title(menu);
-    dialog.set_transient_for(Some(&window.upgrade().unwrap()));
+    dialog.set_transient_for(Some(window));
     dialog.add_button("Ok", gtk::ResponseType::Ok.into());
 
     mi.connect_activate(move |_| {
@@ -207,6 +183,65 @@ fn create_environment_menu(
     });
     mi
 }
+//--------------------------------------------------------
+// Create File dialog
+//--------------------------------------------------------
+fn create_save_as_menu(
+    window: &gtk::Window,
+    status_bar: &gtk::Statusbar,
+    draw_table: &DrawTable,
+) -> gtk::MenuItem {
+    let mi = gtk::MenuItem::new_with_mnemonic("_Save As");
+
+    // Gtk-WARNING **: Failed to measure available space
+    // I'm researching the cause
+    let dialog =
+        gtk::FileChooserDialog::new(Some("PNG Save"), Some(window), gtk::FileChooserAction::Save);
+    dialog.add_buttons(&[
+        ("Save", gtk::ResponseType::Accept),
+        ("Cancel", gtk::ResponseType::Cancel),
+    ]);
+
+    let status_bar = status_bar.clone();
+    let draw_table = draw_table.clone();
+    mi.connect_activate(move |_| {
+        if gtk::ResponseType::Accept == dialog.run() {
+            let message = save_png_file(&draw_table, &dialog.get_filename().unwrap(), true);
+            set_message!(status_bar, message.as_str());
+        }
+        dialog.hide();
+    });
+    mi
+}
+//--------------------------------------------------------
+// Create about dialog
+//--------------------------------------------------------
+fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk::MenuItem {
+    let mi = gtk::MenuItem::new_with_mnemonic("Search");
+
+    let dialog = gtk::Dialog::new();
+    dialog.set_title("Search");
+    dialog.set_transient_for(Some(window));
+    dialog.add_button("Ok", gtk::ResponseType::Ok.into());
+
+    let entry = gtk::SearchEntry::new();
+    let content_area = dialog.get_content_area();
+    content_area.add(&entry);
+
+    mi.connect_activate(move |_| {
+        dialog.show_all();
+        if gtk::ResponseType::Ok == dialog.run() {
+            if let Some(text) = entry.get_text() {
+                search_word_highlight(&text_buffer, "search", text.as_str());
+            }
+        }
+        dialog.hide();
+    });
+    mi
+}
+//--------------------------------------------------------
+// Gtk widget initialize
+//--------------------------------------------------------
 pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     gtk::init().expect("Failed to initialize GTK.");
     setup_key_emacs_like();
@@ -324,36 +359,20 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let menu = gtk::Menu::new();
     let file = gtk::MenuItem::new_with_mnemonic("_File");
     menu.append(&{
-        let surface = get_default_surface(draw_table);
         let status_bar = status_bar.downgrade();
         let save = gtk::MenuItem::new_with_mnemonic("_Save");
+
+        let draw_table = draw_table.clone();
         save.connect_activate(move |_| {
             let status_bar = status_bar.upgrade().unwrap();
             let mut tmpfile = env::temp_dir();
             tmpfile.push(PNG_SAVE_FILE);
-            if tmpfile.exists() {
-                set_message!(
-                    status_bar,
-                    format!("\"{}\" is exists", tmpfile.to_str().unwrap()).as_str()
-                );
-                return;
-            }
-            let message = format!("Saved \"{}\"", tmpfile.to_str().unwrap());
-            let mut file = match File::create(tmpfile) {
-                Ok(f) => f,
-                Err(e) => {
-                    set_message!(status_bar, &e.to_string().into_boxed_str());
-                    return;
-                }
-            };
-            let msg = match surface.write_to_png(&mut file) {
-                Ok(_) => message,
-                Err(e) => e.to_string(),
-            };
-            set_message!(status_bar, msg.as_str());
+            let message = save_png_file(&draw_table, &tmpfile, false);
+            set_message!(status_bar, message.as_str());
         });
         save
     });
+    menu.append(&create_save_as_menu(&window, &status_bar, &draw_table));
     menu.append(&{
         let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
         let env = env.clone();
@@ -403,6 +422,15 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     });
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
+
+    let search = gtk::MenuItem::new_with_mnemonic("_Search");
+    let menu = gtk::Menu::new();
+    menu.append(&create_search_menu(
+        &window,
+        text_view.get_buffer().expect("Couldn't get window"),
+    ));
+    search.set_submenu(Some(&menu));
+    menu_bar.append(&search);
 
     let load = gtk::MenuItem::new_with_mnemonic("_Load");
     let menu = gtk::Menu::new();
@@ -465,6 +493,9 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     window.add(&vbox);
     window.show_all();
 }
+//--------------------------------------------------------
+// Lisp code tokenize, parse, eval
+//--------------------------------------------------------
 fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     let canvas = ui.canvas();
     let text_view = ui.text_view();

@@ -9,11 +9,17 @@ extern crate gtk;
 use gtk::prelude::*;
 use std::cell::RefCell;
 use std::collections::LinkedList;
+use std::env;
+use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 pub const HISTORY_SIZE: usize = 10;
 const HISTORY_COL_SIZE: usize = 32;
 
+//--------------------------------------------------------
+// LISP History table
+//--------------------------------------------------------
 #[derive(Clone)]
 pub struct History {
     menu: gtk::MenuItem,
@@ -72,6 +78,9 @@ impl History {
         false
     }
 }
+//--------------------------------------------------------
+// LISP Source code view
+//--------------------------------------------------------
 #[derive(Clone)]
 pub struct SourceView {
     keyword: Box<gtk::TextTag>,
@@ -232,6 +241,9 @@ pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word
     let end = text_buffer.get_end_iter();
     text_buffer.remove_tag(&search_tag, &start, &end);
 
+    if word.is_empty() {
+        return;
+    }
     search_word_iter(&search_tag, text_buffer, &start, &end, word);
     //------------------------------------------------------------------------
     // iter child function
@@ -249,4 +261,44 @@ pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word
             search_word_iter(word_tag, text_buffer, &match_end, end, word);
         }
     }
+}
+//--------------------------------------------------------
+// Load LISP programe(https://github.com/hidekuno/picture-language)
+//--------------------------------------------------------
+pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
+    fn get_program_name(vec: Vec<&str>) -> std::io::Result<Option<String>> {
+        let mut program: Vec<String> = Vec::new();
+        let mut path = PathBuf::new();
+
+        path.push(match env::var("HOME") {
+            Ok(v) => v,
+            Err(_) => "/root".into(),
+        });
+        for dir in vec {
+            path.push(dir);
+        }
+        if false == path.as_path().exists() {
+            return Ok(None);
+        }
+        for entry in fs::read_dir(path)? {
+            let dir = entry?;
+            let path = dir.path();
+            let f = path.to_str().unwrap();
+            if f.ends_with(".scm") {
+                program.push(format!("(load-file \"{}\")", f));
+            }
+        }
+        program.sort();
+        Ok(Some(program.join("\n")))
+    }
+    for v in vec![vec!["picture-language", dir], vec![dir]] {
+        match get_program_name(v) {
+            Ok(s) => match s {
+                Some(s) => return Ok(s),
+                None => continue,
+            },
+            Err(e) => return Err(e),
+        }
+    }
+    Ok("".into())
 }
