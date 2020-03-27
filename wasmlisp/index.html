@@ -11,6 +11,27 @@
           margin: 10px auto;
           color: white;
       }
+      #sicp {
+          padding: 5px 10px;
+          border: none;
+          background: wheat;
+          margin: 10px auto;
+          color: black;
+      }
+      #demo {
+          padding: 5px 10px;
+          border: none;
+          background: wheat;
+          margin: 10px auto;
+          color: black;
+      }
+      #album {
+          padding: 5px 10px;
+          border: none;
+          background: wheat;
+          margin: 10px auto;
+          color: black;
+      }
       #codearea {
         display: none;
       }
@@ -26,6 +47,14 @@
         height: 110px;
         width:  720px;
         text-align: left;
+      }
+      .inline-block1 {
+        display: inline-block;
+        padding: 10px 10px;
+      }
+      .inline-block2 {
+        display: inline-block;
+        width: 300px;
       }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ace.js"></script>
@@ -44,8 +73,13 @@
     <center><canvas id="drawingarea" width="720px" height="560px"></canvas></center>
     <center><div id="editor"></div></center>
     <center><textarea id="codearea"></textarea></center>
-    <center><button id="eval" type="button">Eval Lisp Code</button></center>
-
+    <center>
+      <div class="inline-block1"><button id="sicp" type="button">Download SICP</button></div>
+      <div class="inline-block1"><button id="demo" type="button">Demo</button></div>
+      <div class="inline-block1"><button id="album" type="button">Album</button></div>
+      <div class="inline-block2"></div>
+      <div class="inline-block1"><button id="eval" type="button">Eval Lisp Code</button></div>
+    </center>
     <script src="./index.js"></script>
   </body>
 </html>
