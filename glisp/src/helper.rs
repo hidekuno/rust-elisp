@@ -13,6 +13,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::io::{Error, ErrorKind};
 
 pub const HISTORY_SIZE: usize = 10;
 const HISTORY_COL_SIZE: usize = 32;
@@ -300,5 +301,5 @@ pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
             Err(e) => return Err(e),
         }
     }
-    Ok("".into())
+    Err(Error::new(ErrorKind::Other, "Not Installed Scheme Program"))
 }
