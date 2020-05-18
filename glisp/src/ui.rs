@@ -231,9 +231,8 @@ fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk
     mi.connect_activate(move |_| {
         dialog.show_all();
         if gtk::ResponseType::Ok == dialog.run() {
-            if let Some(text) = entry.get_text() {
-                search_word_highlight(&text_buffer, "search", text.as_str());
-            }
+            let text = entry.get_text();
+            search_word_highlight(&text_buffer, "search", text.as_str());
         }
         dialog.hide();
     });
