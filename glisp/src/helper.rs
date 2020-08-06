@@ -11,9 +11,9 @@ use std::cell::RefCell;
 use std::collections::LinkedList;
 use std::env;
 use std::fs;
+use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::io::{Error, ErrorKind};
 
 pub const HISTORY_SIZE: usize = 10;
 const HISTORY_COL_SIZE: usize = 32;
@@ -30,7 +30,7 @@ pub struct History {
 impl History {
     pub fn new(n: usize) -> Self {
         History {
-            menu: gtk::MenuItem::new_with_mnemonic("_History"),
+            menu: gtk::MenuItem::with_mnemonic("_History"),
             children: Rc::new(RefCell::new(LinkedList::new())),
             max_item: n,
         }
@@ -41,9 +41,9 @@ impl History {
     pub fn push(&self, exp: &String, tb: &gtk::TextBuffer) {
         let s = String::from(exp).replace("\n", " ");
         let c = if let Some(ref v) = s.get(0..HISTORY_COL_SIZE) {
-            gtk::MenuItem::new_with_mnemonic(format!("{} ..", v).as_str())
+            gtk::MenuItem::with_mnemonic(format!("{} ..", v).as_str())
         } else {
-            gtk::MenuItem::new_with_mnemonic(s.as_str())
+            gtk::MenuItem::with_mnemonic(s.as_str())
         };
         let exp_ = exp.clone();
         let exp_ = exp_.into_boxed_str();

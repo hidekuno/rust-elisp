@@ -139,7 +139,7 @@ textview {
 // SICP Program
 //--------------------------------------------------------
 fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) -> gtk::MenuItem {
-    let load = gtk::MenuItem::new_with_mnemonic(menu);
+    let load = gtk::MenuItem::with_mnemonic(menu);
     let ui = ui.clone();
     load.connect_activate(move |_| match load_demo_program(pdir) {
         Ok(v) => {
@@ -163,7 +163,7 @@ fn create_environment_menu(
     menu: &'static str,
     f: fn(&Environment) -> String,
 ) -> gtk::MenuItem {
-    let mi = gtk::MenuItem::new_with_mnemonic(menu);
+    let mi = gtk::MenuItem::with_mnemonic(menu);
     let env = env.clone();
 
     let dialog = gtk::Dialog::new();
@@ -191,7 +191,7 @@ fn create_save_as_menu(
     status_bar: &gtk::Statusbar,
     draw_table: &DrawTable,
 ) -> gtk::MenuItem {
-    let mi = gtk::MenuItem::new_with_mnemonic("_Save As");
+    let mi = gtk::MenuItem::with_mnemonic("_Save As");
 
     // Gtk-WARNING **: Failed to measure available space
     // I'm researching the cause
@@ -217,7 +217,7 @@ fn create_save_as_menu(
 // Create about dialog
 //--------------------------------------------------------
 fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk::MenuItem {
-    let mi = gtk::MenuItem::new_with_mnemonic("Search");
+    let mi = gtk::MenuItem::with_mnemonic("Search");
 
     let dialog = gtk::Dialog::new();
     dialog.set_title("Search");
@@ -335,11 +335,13 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         let draw_table = draw_table.clone();
         text_view.connect_key_press_event(move |_, key| {
             if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
-                match key.get_keyval() {
-                    EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
-                    DRAW_CLEAR_KEYCODE => clear_canvas(&draw_table, ui.canvas()),
-                    TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
-                    _ => {}
+                if let Some(c) = key.get_keyval().to_unicode() {
+                    match c as u32 {
+                        EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
+                        DRAW_CLEAR_KEYCODE => clear_canvas(&draw_table, ui.canvas()),
+                        TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
+                        _ => {}
+                    }
                 }
             }
             Inhibit(false)
@@ -356,10 +358,10 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     let menu_bar = gtk::MenuBar::new();
     let menu = gtk::Menu::new();
-    let file = gtk::MenuItem::new_with_mnemonic("_File");
+    let file = gtk::MenuItem::with_mnemonic("_File");
     menu.append(&{
         let status_bar = status_bar.downgrade();
-        let save = gtk::MenuItem::new_with_mnemonic("_Save");
+        let save = gtk::MenuItem::with_mnemonic("_Save");
 
         let draw_table = draw_table.clone();
         save.connect_activate(move |_| {
@@ -373,7 +375,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     });
     menu.append(&create_save_as_menu(&window, &status_bar, &draw_table));
     menu.append(&{
-        let quit = gtk::MenuItem::new_with_mnemonic("_Quit");
+        let quit = gtk::MenuItem::with_mnemonic("_Quit");
         let env = env.clone();
         quit.connect_activate(move |_| {
             env.set_force_stop(true);
@@ -385,10 +387,10 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     file.set_submenu(Some(&menu));
     menu_bar.append(&file);
 
-    let edit = gtk::MenuItem::new_with_mnemonic("_Edit");
+    let edit = gtk::MenuItem::with_mnemonic("_Edit");
     let menu = gtk::Menu::new();
     menu.append(&{
-        let eval = gtk::MenuItem::new_with_mnemonic("_Eval");
+        let eval = gtk::MenuItem::with_mnemonic("_Eval");
         let env = env.clone();
         let ui = ui.clone();
         let history = history.clone();
@@ -398,7 +400,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         eval
     });
     menu.append(&{
-        let clear = gtk::MenuItem::new_with_mnemonic("_Draw Clear");
+        let clear = gtk::MenuItem::with_mnemonic("_Draw Clear");
         let draw_table = draw_table.clone();
         // https://doc.rust-lang.org/std/rc/struct.Rc.html#method.downgrade
         let canvas = canvas.downgrade();
@@ -411,7 +413,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         clear
     });
     menu.append(&{
-        let clear = gtk::MenuItem::new_with_mnemonic("_Code Clear");
+        let clear = gtk::MenuItem::with_mnemonic("_Code Clear");
         let text_buffer = text_view.get_buffer().expect("Couldn't get window");
 
         clear.connect_activate(move |_| {
@@ -422,7 +424,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     edit.set_submenu(Some(&menu));
     menu_bar.append(&edit);
 
-    let search = gtk::MenuItem::new_with_mnemonic("_Search");
+    let search = gtk::MenuItem::with_mnemonic("_Search");
     let menu = gtk::Menu::new();
     menu.append(&create_search_menu(
         &window,
@@ -431,7 +433,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     search.set_submenu(Some(&menu));
     menu_bar.append(&search);
 
-    let load = gtk::MenuItem::new_with_mnemonic("_Load");
+    let load = gtk::MenuItem::with_mnemonic("_Load");
     let menu = gtk::Menu::new();
     menu.append(&create_demo_program_menu("_SICP", "sicp", &ui));
     menu.append(&create_demo_program_menu("_Fractal", "fractal", &ui));
@@ -446,7 +448,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     // Function List
     //--------------------------------------------------------
-    let help = gtk::MenuItem::new_with_mnemonic("Help");
+    let help = gtk::MenuItem::with_mnemonic("Help");
     let menu = gtk::Menu::new();
     menu.append(&create_environment_menu(
         env,
