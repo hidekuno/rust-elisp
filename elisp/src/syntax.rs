@@ -113,7 +113,7 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(RsCode::E1007, exp.len()));
     }
     // @@@ env.create();
-    let mut param = Environment::new_next(env);
+    let mut param = Environment::with_parent(env);
     let mut idx = 1;
     let mut name = String::from("lambda");
 

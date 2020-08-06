@@ -29,7 +29,7 @@ impl Environment {
             globals: Rc::new(RefCell::new(GlobalTbl::new())),
         }
     }
-    pub fn new_next(parent: &Environment) -> Self {
+    pub fn with_parent(parent: &Environment) -> Self {
         Environment {
             core: Rc::new(RefCell::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
