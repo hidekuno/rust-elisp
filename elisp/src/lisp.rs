@@ -447,7 +447,7 @@ impl RsFunction {
             return Err(create_error_value!(RsCode::E1007, exp.len()));
         }
         // @@@ env.create();
-        let env = Environment::new_next(&self.closure_env);
+        let env = Environment::with_parent(&self.closure_env);
         for (i, s) in self.param.iter().enumerate() {
             env.regist(s.to_string(), exp[i].clone());
         }
