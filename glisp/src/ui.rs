@@ -506,7 +506,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     #[cfg(feature = "animation")]
     let sid = {
         let canvas = canvas.downgrade();
-        gtk::timeout_add(MOTION_DELAY as u32, move || {
+        glib::timeout_add_local(MOTION_DELAY as u32, move || {
             let canvas = canvas.upgrade().unwrap();
             canvas.queue_draw();
             glib::Continue(true)
