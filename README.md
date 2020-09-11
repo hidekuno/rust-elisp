@@ -13,14 +13,6 @@ RustによるLisp(subset版)の実装
 - SICPの図形言語プログラムが動作するところまで確認した。
     - https://github.com/hidekuno/picture-language
 
-## 開発環境
-| Item   | Ver. |Remarks|
-|--------|--------|--------|
-| OS     | CentOS7 | draw系を使わなければ特になし|
-| rust   | 1.39.0|1.35以下ではglispでコンパイルエラーになる|
-| Gtk+   | 3.22.30||
-| rust-gtk |0.7.1|https://github.com/gtk-rs/gtk|
-
 ## 構成
 | crate   | instructions |
 |--------|--------|
