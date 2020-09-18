@@ -16,6 +16,7 @@ use lisp::Environment;
 use gtk::prelude::*;
 use std::env;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::draw::draw_clear;
 use crate::draw::get_default_surface;
@@ -38,7 +39,7 @@ const TEXT_CLEAR_KEYCODE: u32 = 117;
 const DRAW_CLEAR_KEYCODE: u32 = 108;
 
 #[cfg(feature = "animation")]
-const MOTION_DELAY: i32 = 70;
+const MOTION_DELAY: u64 = 70;
 const STOP_ERROR_CODE: &str = "E9000";
 
 //--------------------------------------------------------
@@ -506,7 +507,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     #[cfg(feature = "animation")]
     let sid = {
         let canvas = canvas.downgrade();
-        glib::timeout_add_local(MOTION_DELAY as u32, move || {
+        glib::timeout_add_local(Duration::from_millis(MOTION_DELAY), move || {
             let canvas = canvas.upgrade().unwrap();
             canvas.queue_draw();
             glib::Continue(true)
