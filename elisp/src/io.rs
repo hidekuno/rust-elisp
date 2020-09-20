@@ -17,7 +17,7 @@ use crate::create_error_value;
 use crate::buildin::BuildInTable;
 use crate::lisp::{eval, repl};
 use crate::lisp::{Environment, Expression, ResultExpression};
-use crate::lisp::{RsCode, RsError};
+use crate::lisp::{ErrCode, Error};
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -29,35 +29,35 @@ where
 }
 fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = eval(&exp[1], env)?;
     if let Expression::String(s) = v {
         if false == Path::new(&s).exists() {
-            return Err(create_error!(RsCode::E1014));
+            return Err(create_error!(ErrCode::E1014));
         }
         let file = match File::open(s) {
-            Err(e) => return Err(create_error_value!(RsCode::E1014, e)),
+            Err(e) => return Err(create_error_value!(ErrCode::E1014, e)),
             Ok(file) => file,
         };
         let meta = match file.metadata() {
-            Err(e) => return Err(create_error_value!(RsCode::E9999, e)),
+            Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             Ok(meta) => meta,
         };
         if true == meta.is_dir() {
-            return Err(create_error!(RsCode::E1016));
+            return Err(create_error!(ErrCode::E1016));
         }
         let mut stream = BufReader::new(file);
         match repl(&mut stream, env, true) {
-            Err(e) => return Err(create_error_value!(RsCode::E9999, e)),
+            Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             Ok(_) => return Ok(Expression::Nil()),
         }
     }
-    Err(create_error!(RsCode::E1015))
+    Err(create_error!(ErrCode::E1015))
 }
 fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
         let v = eval(e, env)?;
@@ -71,7 +71,7 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 1 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     print!("\n");
     Ok(Expression::Nil())

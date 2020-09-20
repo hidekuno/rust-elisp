@@ -14,7 +14,7 @@ use crate::create_error_value;
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
-use crate::lisp::{RsCode, RsError};
+use crate::lisp::{ErrCode, Error};
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -51,40 +51,40 @@ fn charcmp(
     f: fn(x: char, y: char) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: [char; 2] = [' '; 2];
 
     for (i, e) in exp[1 as usize..].iter().enumerate() {
         v[i] = match eval(e, env)? {
             Expression::Char(c) => c,
-            _ => return Err(create_error!(RsCode::E1019)),
+            _ => return Err(create_error!(ErrCode::E1019)),
         }
     }
     Ok(Expression::Boolean(f(v[0], v[1])))
 }
 fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let i = match eval(&exp[1], env)? {
         Expression::Integer(i) => i,
-        _ => return Err(create_error!(RsCode::E1002)),
+        _ => return Err(create_error!(ErrCode::E1002)),
     };
     let i = i as u32;
     if let Some(c) = char::from_u32(i) {
         Ok(Expression::Char(c))
     } else {
-        Err(create_error!(RsCode::E1019))
+        Err(create_error!(ErrCode::E1019))
     }
 }
 fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let c = match eval(&exp[1], env)? {
         Expression::Char(c) => c,
-        _ => return Err(create_error!(RsCode::E1019)),
+        _ => return Err(create_error!(ErrCode::E1019)),
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))

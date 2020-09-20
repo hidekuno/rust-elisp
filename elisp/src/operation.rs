@@ -13,7 +13,7 @@ use crate::create_error_value;
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
-use crate::lisp::{RsCode, RsError};
+use crate::lisp::{ErrCode, Error};
 
 use crate::number::Number;
 
@@ -54,14 +54,14 @@ fn calc(
     let mut first: bool = true;
 
     if 2 >= exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
         let param = match eval(e, env)? {
             Expression::Float(v) => Number::Float(v),
             Expression::Integer(v) => Number::Integer(v),
             Expression::Rational(v) => Number::Rational(v),
-            _ => return Err(create_error!(RsCode::E1003)),
+            _ => return Err(create_error!(ErrCode::E1003)),
         };
         if first == true {
             result = param;
@@ -82,7 +82,7 @@ fn cmp(
     f: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: [Number; 2] = [Number::Integer(0); 2];
 
@@ -91,7 +91,7 @@ fn cmp(
             Expression::Float(f) => Number::Float(f),
             Expression::Integer(i) => Number::Integer(i),
             Expression::Rational(r) => Number::Rational(r),
-            _ => return Err(create_error!(RsCode::E1003)),
+            _ => return Err(create_error!(ErrCode::E1003)),
         }
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
@@ -102,29 +102,29 @@ fn divide(
     f: fn(x: &i64, y: &i64) -> i64,
 ) -> ResultExpression {
     if exp.len() != 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
     match (a, b) {
         (Expression::Integer(x), Expression::Integer(y)) => {
             if y == 0 {
-                Err(create_error!(RsCode::E1013))
+                Err(create_error!(ErrCode::E1013))
             } else {
                 Ok(Expression::Integer(f(&x, &y)))
             }
         }
-        (_, _) => Err(create_error!(RsCode::E1002)),
+        (_, _) => Err(create_error!(ErrCode::E1002)),
     }
 }
 fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut x: [i64; 2] = [0; 2];
     for (i, e) in exp[1 as usize..].iter().enumerate() {
         x[i] = match eval(e, env)? {
             Expression::Integer(v) => v,
-            _ => return Err(create_error!(RsCode::E1002)),
+            _ => return Err(create_error!(ErrCode::E1002)),
         };
     }
     Ok(Expression::Integer(if x[1] >= 0 {
@@ -138,12 +138,12 @@ fn bit(exp: &[Expression], env: &Environment, f: fn(x: i64, y: i64) -> i64) -> R
     let mut first: bool = true;
 
     if 2 >= exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
         let param = match eval(e, env)? {
             Expression::Integer(v) => v,
-            _ => return Err(create_error!(RsCode::E1002)),
+            _ => return Err(create_error!(ErrCode::E1002)),
         };
         if first == true {
             result = param;
@@ -156,11 +156,11 @@ fn bit(exp: &[Expression], env: &Environment, f: fn(x: i64, y: i64) -> i64) -> R
 }
 fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        Err(create_error_value!(RsCode::E1007, exp.len()))
+        Err(create_error_value!(ErrCode::E1007, exp.len()))
     } else {
         match eval(&exp[1], env)? {
             Expression::Integer(v) => Ok(Expression::Integer(!v)),
-            _ => Err(create_error!(RsCode::E1002)),
+            _ => Err(create_error!(ErrCode::E1002)),
         }
     }
 }

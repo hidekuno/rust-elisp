@@ -9,12 +9,12 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::buildin::{create_function, BuildInTable};
-use crate::lisp::{BasicBuiltIn, Expression, ResultExpression, RsFunction};
+use crate::lisp::{BasicBuiltIn, Expression, Function, ResultExpression};
 //========================================================================
 type ExtFunction = dyn Fn(&[Expression], &Environment) -> ResultExpression;
 type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
-pub type FunctionRc = Rc<RsFunction>;
+pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
 
 #[derive(Clone)]
@@ -35,10 +35,10 @@ impl Environment {
             globals: parent.globals.clone(),
         }
     }
-    pub fn create_func(func: RsFunction) -> Expression {
+    pub fn create_func(func: Function) -> Expression {
         Expression::Function(Rc::new(func))
     }
-    pub fn create_tail_recursion(func: RsFunction) -> Expression {
+    pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Rc::new(func))
     }
     pub fn regist(&self, key: String, exp: Expression) {
