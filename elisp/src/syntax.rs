@@ -13,7 +13,7 @@ use crate::create_error;
 use crate::create_error_value;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
-use crate::lisp::{RsCode, RsError, RsFunction};
+use crate::lisp::{ErrCode, Error, Function};
 use crate::util::eqv;
 
 pub fn create_function<T>(b: &mut T)
@@ -38,7 +38,7 @@ where
     b.regist("force", force);
     b.regist("quote", |exp, _env| {
         if exp.len() != 2 {
-            Err(create_error_value!(RsCode::E1007, exp.len()))
+            Err(create_error_value!(ErrCode::E1007, exp.len()))
         } else {
             Ok(exp[1].clone())
         }
@@ -46,11 +46,11 @@ where
 }
 fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::Symbol(v) = &exp[1] {
         if exp.len() != 3 {
-            return Err(create_error_value!(RsCode::E1007, exp.len()));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let se = eval(&exp[2], env)?;
         env.regist(v.to_string(), se);
@@ -59,7 +59,7 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::List(l) = &exp[1] {
         if l.len() < 1 {
-            return Err(create_error_value!(RsCode::E1007, l.len()));
+            return Err(create_error_value!(ErrCode::E1007, l.len()));
         }
         if let Expression::Symbol(s) = &l[0] {
             let mut param: Vec<Expression> = Vec::new();
@@ -68,13 +68,13 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
                     Expression::Symbol(_) => {
                         param.push(n.clone());
                     }
-                    _ => return Err(create_error!(RsCode::E1004)),
+                    _ => return Err(create_error!(ErrCode::E1004)),
                 }
             }
 
             let mut f = exp.to_vec();
             f[1] = Expression::List(param);
-            let mut func = RsFunction::new(&f, s.to_string(), env.clone());
+            let mut func = Function::new(&f, s.to_string(), env.clone());
             if env.is_tail_recursion() == true {
                 func.set_tail_recurcieve();
             }
@@ -82,27 +82,27 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
 
             Ok(Expression::Symbol(s.to_string()))
         } else {
-            Err(create_error!(RsCode::E1004))
+            Err(create_error!(ErrCode::E1004))
         }
     } else {
-        Err(create_error!(RsCode::E1004))
+        Err(create_error!(ErrCode::E1004))
     }
 }
 fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = &exp[1] {
         for e in l {
             match e {
                 Expression::Symbol(_) => {}
-                _ => return Err(create_error!(RsCode::E1004)),
+                _ => return Err(create_error!(ErrCode::E1004)),
             }
         }
     } else {
-        return Err(create_error!(RsCode::E1005));
+        return Err(create_error!(ErrCode::E1005));
     }
-    Ok(Environment::create_func(RsFunction::new(
+    Ok(Environment::create_func(Function::new(
         exp,
         String::from("lambda"),
         env.clone(),
@@ -110,7 +110,7 @@ fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     // @@@ env.create();
     let mut param = Environment::with_parent(env);
@@ -130,21 +130,21 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         for plist in l {
             if let Expression::List(p) = plist {
                 if p.len() != 2 {
-                    return Err(create_error_value!(RsCode::E1007, p.len()));
+                    return Err(create_error_value!(ErrCode::E1007, p.len()));
                 }
                 if let Expression::Symbol(s) = &p[0] {
                     param_list.push(Expression::Symbol(s.clone()));
                     param_value_list.push(p[1].clone());
                 } else {
-                    return Err(create_error!(RsCode::E1004));
+                    return Err(create_error!(ErrCode::E1004));
                 }
             } else {
-                return Err(create_error!(RsCode::E1005));
+                return Err(create_error!(ErrCode::E1005));
             }
         }
         idx += 1;
     } else {
-        return Err(create_error!(RsCode::E1005));
+        return Err(create_error!(ErrCode::E1005));
     }
 
     // Setup Function
@@ -152,7 +152,7 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     vec.push(Expression::String(name.to_string()));
     vec.push(Expression::List(param_list));
     vec.extend_from_slice(&exp[idx as usize..]);
-    let mut f = RsFunction::new(&vec[..], name.to_string(), param.clone());
+    let mut f = Function::new(&vec[..], name.to_string(), param.clone());
 
     // Setup label name let
     if let Expression::Symbol(s) = &exp[1] {
@@ -169,23 +169,23 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::Symbol(s) = &exp[1] {
         if let Some(_) = env.find(s) {
             let v = eval(&exp[2], env)?;
             env.update(s, v);
         } else {
-            return Err(create_error_value!(RsCode::E1008, s));
+            return Err(create_error_value!(ErrCode::E1008, s));
         }
         Ok(Expression::Symbol(s.to_string()))
     } else {
-        Err(create_error!(RsCode::E1004))
+        Err(create_error!(ErrCode::E1004))
     }
 }
 fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::Boolean(b) = eval(&exp[1], env)? {
         if b == true {
@@ -196,12 +196,12 @@ fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
             Ok(Expression::Nil())
         }
     } else {
-        Err(create_error!(RsCode::E1001))
+        Err(create_error!(ErrCode::E1001))
     }
 }
 fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
         if let Expression::Boolean(b) = eval(e, env)? {
@@ -209,14 +209,14 @@ fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
                 return Ok(Expression::Boolean(b));
             }
         } else {
-            return Err(create_error!(RsCode::E1001));
+            return Err(create_error!(ErrCode::E1001));
         }
     }
     Ok(Expression::Boolean(true))
 }
 fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
         if let Expression::Boolean(b) = eval(e, env)? {
@@ -224,23 +224,23 @@ fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
                 return Ok(Expression::Boolean(b));
             }
         } else {
-            return Err(create_error!(RsCode::E1001));
+            return Err(create_error!(ErrCode::E1001));
         }
     }
     Ok(Expression::Boolean(false))
 }
 fn not(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
         Expression::Boolean(b) => Ok(Expression::Boolean(!b)),
-        _ => Err(create_error!(RsCode::E1001)),
+        _ => Err(create_error!(ErrCode::E1001)),
     }
 }
 fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
         if let Expression::List(l) = e {
@@ -263,18 +263,18 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
                     }
                 }
             } else {
-                return Err(create_error!(RsCode::E1012));
+                return Err(create_error!(ErrCode::E1012));
             }
             return begin(&l, env);
         } else {
-            return Err(create_error!(RsCode::E1005));
+            return Err(create_error!(ErrCode::E1005));
         }
     }
     Ok(Expression::Nil())
 }
 fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut param: Vec<Expression> = Vec::new();
     param.push(Expression::Nil());
@@ -290,7 +290,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                 match &l[0] {
                     Expression::Symbol(s) => {
                         if s != "else" {
-                            return Err(create_error!(RsCode::E1017));
+                            return Err(create_error!(ErrCode::E1017));
                         }
                         if 1 < l.len() {
                             return begin(&l, env);
@@ -306,10 +306,10 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                             }
                         }
                     }
-                    _ => return Err(create_error!(RsCode::E1017)),
+                    _ => return Err(create_error!(ErrCode::E1017)),
                 }
             } else {
-                return Err(create_error!(RsCode::E1005));
+                return Err(create_error!(ErrCode::E1005));
             }
         }
     }
@@ -317,7 +317,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn begin(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut ret = Expression::Nil();
     for e in &exp[1 as usize..] {
@@ -327,7 +327,7 @@ fn begin(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = eval(&exp[2], env)? {
         let mut se: Vec<Expression> = Vec::new();
@@ -335,18 +335,18 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
         se.extend_from_slice(&l);
         eval(&Expression::List(se), env)
     } else {
-        Err(create_error_value!(RsCode::E1005, exp.len()))
+        Err(create_error_value!(ErrCode::E1005, exp.len()))
     }
 }
 fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     Ok(Expression::Promise(Box::new(exp[1].clone()), env.clone()))
 }
 fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = eval(&exp[1], env)?;
     if let Expression::Promise(p, pe) = v {

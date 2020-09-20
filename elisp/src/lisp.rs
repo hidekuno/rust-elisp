@@ -27,7 +27,7 @@ use crate::env_single::{ExtFunctionRc, FunctionRc};
 pub type Environment = crate::env_single::Environment;
 //========================================================================
 #[derive(Clone, Debug)]
-pub enum RsCode {
+pub enum ErrCode {
     E0001,
     E0002,
     E0003,
@@ -56,84 +56,84 @@ pub enum RsCode {
     E9000,
     E9999,
 }
-impl RsCode {
+impl ErrCode {
     pub fn as_str(&self) -> &'static str {
         return match self {
-            RsCode::E0001 => "E0001",
-            RsCode::E0002 => "E0002",
-            RsCode::E0003 => "E0003",
-            RsCode::E0004 => "E0004",
-            RsCode::E1001 => "E1001",
-            RsCode::E1002 => "E1002",
-            RsCode::E1003 => "E1003",
-            RsCode::E1004 => "E1004",
-            RsCode::E1005 => "E1005",
-            RsCode::E1006 => "E1006",
-            RsCode::E1007 => "E1007",
-            RsCode::E1008 => "E1008",
-            RsCode::E1009 => "E1009",
-            RsCode::E1010 => "E1010",
-            RsCode::E1011 => "E1011",
-            RsCode::E1012 => "E1012",
-            RsCode::E1013 => "E1013",
-            RsCode::E1014 => "E1014",
-            RsCode::E1015 => "E1015",
-            RsCode::E1016 => "E1016",
-            RsCode::E1017 => "E1017",
-            RsCode::E1018 => "E1018",
-            RsCode::E1019 => "E1019",
-            RsCode::E1020 => "E1020",
-            RsCode::E1021 => "E1021",
-            RsCode::E9000 => "E9000",
-            RsCode::E9999 => "E9999",
+            ErrCode::E0001 => "E0001",
+            ErrCode::E0002 => "E0002",
+            ErrCode::E0003 => "E0003",
+            ErrCode::E0004 => "E0004",
+            ErrCode::E1001 => "E1001",
+            ErrCode::E1002 => "E1002",
+            ErrCode::E1003 => "E1003",
+            ErrCode::E1004 => "E1004",
+            ErrCode::E1005 => "E1005",
+            ErrCode::E1006 => "E1006",
+            ErrCode::E1007 => "E1007",
+            ErrCode::E1008 => "E1008",
+            ErrCode::E1009 => "E1009",
+            ErrCode::E1010 => "E1010",
+            ErrCode::E1011 => "E1011",
+            ErrCode::E1012 => "E1012",
+            ErrCode::E1013 => "E1013",
+            ErrCode::E1014 => "E1014",
+            ErrCode::E1015 => "E1015",
+            ErrCode::E1016 => "E1016",
+            ErrCode::E1017 => "E1017",
+            ErrCode::E1018 => "E1018",
+            ErrCode::E1019 => "E1019",
+            ErrCode::E1020 => "E1020",
+            ErrCode::E1021 => "E1021",
+            ErrCode::E9000 => "E9000",
+            ErrCode::E9999 => "E9999",
         };
     }
 }
-impl PartialEq<RsCode> for RsCode {
-    fn eq(&self, other: &RsCode) -> bool {
+impl PartialEq<ErrCode> for ErrCode {
+    fn eq(&self, other: &ErrCode) -> bool {
         self.as_str() == other.as_str()
     }
 }
 lazy_static! {
     static ref ERRMSG_TBL: HashMap<&'static str, &'static str> = {
         let mut e: HashMap<&'static str, &'static str> = HashMap::new();
-        e.insert(RsCode::E0001.as_str(), "Unexpected EOF while reading");
-        e.insert(RsCode::E0002.as_str(), "Unexpected ')' while reading");
-        e.insert(RsCode::E0003.as_str(), "Extra close parenthesis `)'");
-        e.insert(RsCode::E0004.as_str(), "Charactor syntax error");
-        e.insert(RsCode::E1001.as_str(), "Not Boolean");
-        e.insert(RsCode::E1002.as_str(), "Not Integer");
-        e.insert(RsCode::E1003.as_str(), "Not Number");
-        e.insert(RsCode::E1004.as_str(), "Not Symbol");
-        e.insert(RsCode::E1005.as_str(), "Not List");
-        e.insert(RsCode::E1006.as_str(), "Not Function");
-        e.insert(RsCode::E1007.as_str(), "Not Enough Parameter Counts");
-        e.insert(RsCode::E1008.as_str(), "Undefine variable");
-        e.insert(RsCode::E1009.as_str(), "Not Enough Data Type");
-        e.insert(RsCode::E1010.as_str(), "Not Promise");
-        e.insert(RsCode::E1011.as_str(), "Not Enough List Length");
-        e.insert(RsCode::E1012.as_str(), "Not Cond Gramar");
-        e.insert(RsCode::E1013.as_str(), "Calculate A Division By Zero");
-        e.insert(RsCode::E1014.as_str(), "Not Found Program File");
-        e.insert(RsCode::E1015.as_str(), "Not String");
-        e.insert(RsCode::E1016.as_str(), "Not Program File");
-        e.insert(RsCode::E1017.as_str(), "Not Case Gramar");
-        e.insert(RsCode::E1018.as_str(), "Not Format Gramar");
-        e.insert(RsCode::E1019.as_str(), "Not Char");
-        e.insert(RsCode::E1020.as_str(), "Not Rat");
-        e.insert(RsCode::E1021.as_str(), "Out Of Range");
-        e.insert(RsCode::E9000.as_str(), "Forced stop");
-        e.insert(RsCode::E9999.as_str(), "System Panic");
+        e.insert(ErrCode::E0001.as_str(), "Unexpected EOF while reading");
+        e.insert(ErrCode::E0002.as_str(), "Unexpected ')' while reading");
+        e.insert(ErrCode::E0003.as_str(), "Extra close parenthesis `)'");
+        e.insert(ErrCode::E0004.as_str(), "Charactor syntax error");
+        e.insert(ErrCode::E1001.as_str(), "Not Boolean");
+        e.insert(ErrCode::E1002.as_str(), "Not Integer");
+        e.insert(ErrCode::E1003.as_str(), "Not Number");
+        e.insert(ErrCode::E1004.as_str(), "Not Symbol");
+        e.insert(ErrCode::E1005.as_str(), "Not List");
+        e.insert(ErrCode::E1006.as_str(), "Not Function");
+        e.insert(ErrCode::E1007.as_str(), "Not Enough Parameter Counts");
+        e.insert(ErrCode::E1008.as_str(), "Undefine variable");
+        e.insert(ErrCode::E1009.as_str(), "Not Enough Data Type");
+        e.insert(ErrCode::E1010.as_str(), "Not Promise");
+        e.insert(ErrCode::E1011.as_str(), "Not Enough List Length");
+        e.insert(ErrCode::E1012.as_str(), "Not Cond Gramar");
+        e.insert(ErrCode::E1013.as_str(), "Calculate A Division By Zero");
+        e.insert(ErrCode::E1014.as_str(), "Not Found Program File");
+        e.insert(ErrCode::E1015.as_str(), "Not String");
+        e.insert(ErrCode::E1016.as_str(), "Not Program File");
+        e.insert(ErrCode::E1017.as_str(), "Not Case Gramar");
+        e.insert(ErrCode::E1018.as_str(), "Not Format Gramar");
+        e.insert(ErrCode::E1019.as_str(), "Not Char");
+        e.insert(ErrCode::E1020.as_str(), "Not Rat");
+        e.insert(ErrCode::E1021.as_str(), "Out Of Range");
+        e.insert(ErrCode::E9000.as_str(), "Forced stop");
+        e.insert(ErrCode::E9999.as_str(), "System Panic");
         e
     };
 }
-pub struct RsError {
-    pub code: RsCode,
+pub struct Error {
+    pub code: ErrCode,
     pub line: u32,
     pub file: &'static str,
     pub value: Option<String>,
 }
-impl RsError {
+impl Error {
     pub fn get_code(&self) -> String {
         String::from(self.code.as_str())
     }
@@ -159,7 +159,7 @@ impl RsError {
 #[macro_export]
 macro_rules! create_error {
     ($e: expr) => {
-        RsError {
+        Error {
             code: $e,
             line: line!(),
             file: file!(),
@@ -170,7 +170,7 @@ macro_rules! create_error {
 #[macro_export]
 macro_rules! create_error_value {
     ($e: expr, $v: expr) => {
-        RsError {
+        Error {
             code: $e,
             line: line!(),
             file: file!(),
@@ -185,7 +185,7 @@ macro_rules! print_error {
     };
 }
 //========================================================================
-pub type ResultExpression = Result<Expression, RsError>;
+pub type ResultExpression = Result<Expression, Error>;
 pub type BasicBuiltIn = fn(&[Expression], &Environment) -> ResultExpression;
 //========================================================================
 #[derive(Clone)]
@@ -377,14 +377,14 @@ impl ToString for Expression {
     }
 }
 #[derive(Clone)]
-pub struct RsFunction {
+pub struct Function {
     param: Vec<String>,
     body: Vec<Expression>,
     name: String,
     closure_env: Environment,
     tail_recurcieve: bool,
 }
-impl RsFunction {
+impl Function {
     pub fn new(sexp: &[Expression], name: String, closure_env: Environment) -> Self {
         let mut param: Vec<String> = Vec::new();
 
@@ -397,7 +397,7 @@ impl RsFunction {
         }
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
-        RsFunction {
+        Function {
             param: param,
             body: vec,
             name: name,
@@ -418,7 +418,7 @@ impl RsFunction {
     }
     pub fn set_param(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
-            return Err(create_error_value!(RsCode::E1007, exp.len()));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
@@ -433,7 +433,7 @@ impl RsFunction {
     }
     pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
-            return Err(create_error_value!(RsCode::E1007, exp.len()));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
@@ -444,7 +444,7 @@ impl RsFunction {
     }
     pub fn execute_noeval(&self, exp: &[Expression]) -> ResultExpression {
         if self.param.len() != exp.len() {
-            return Err(create_error_value!(RsCode::E1007, exp.len()));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         // @@@ env.create();
         let env = Environment::with_parent(&self.closure_env);
@@ -582,7 +582,7 @@ pub fn repl(
         match do_core_logic(&program.join(" "), env) {
             Ok(n) => println!("{}", n.to_string()),
             Err(e) => {
-                if RsCode::E9000.as_str() == e.get_code() {
+                if ErrCode::E9000.as_str() == e.get_code() {
                     env.set_force_stop(false);
                 }
                 print_error!(e);
@@ -762,13 +762,13 @@ fn tokenize(program: &String) -> Vec<String> {
 }
 fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.len() == 0 {
-        return Err(create_error!(RsCode::E0001));
+        return Err(create_error!(ErrCode::E0001));
     }
 
     let token = &tokens[0];
     if "(" == token {
         if tokens.len() <= 1 {
-            return Err(create_error!(RsCode::E0001));
+            return Err(create_error!(ErrCode::E0001));
         }
         let mut list: Vec<Expression> = Vec::new();
 
@@ -784,16 +784,16 @@ fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpr
 
             *count += c;
             if tokens.len() <= *count as usize {
-                return Err(create_error!(RsCode::E0002));
+                return Err(create_error!(ErrCode::E0002));
             }
         }
         Ok(Expression::List(list))
     } else if ")" == token {
-        Err(create_error!(RsCode::E0003))
+        Err(create_error!(ErrCode::E0003))
     } else {
         // string check ex. <rust-elisp> "abc
         if (token == "\"") || (token.starts_with("\"") && !token.ends_with("\"")) {
-            return Err(create_error!(RsCode::E0004));
+            return Err(create_error!(ErrCode::E0004));
         }
         atom(&token, env)
     }
@@ -829,7 +829,7 @@ fn atom(token: &String, env: &Environment) -> ResultExpression {
         match Rat::from(&token) {
             Ok(n) => Expression::Rational(n),
             Err(n) => {
-                if n.code != RsCode::E1020 {
+                if n.code != ErrCode::E1020 {
                     return Err(create_error!(n.code));
                 }
                 Expression::Symbol(token.to_string())
@@ -856,13 +856,13 @@ macro_rules! ret_clone_if_atom {
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     if env.is_force_stop() {
-        return Err(create_error!(RsCode::E9000));
+        return Err(create_error!(ErrCode::E9000));
     }
     ret_clone_if_atom!(sexp);
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
             Some(v) => Ok(v),
-            None => Err(create_error_value!(RsCode::E1008, val)),
+            None => Err(create_error_value!(ErrCode::E1008, val)),
         }
     } else if let Expression::List(v) = sexp {
         if v.len() == 0 {
@@ -876,7 +876,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                 Expression::Function(f) => f.execute(&v[..], env),
                 Expression::BuildInFunction(_, f) => f(&v[..], env),
                 Expression::BuildInFunctionExt(f) => f(&v[..], env),
-                _ => Err(create_error!(RsCode::E1006)),
+                _ => Err(create_error!(ErrCode::E1006)),
             },
         };
     } else if let Expression::BuildInFunction(_, _) = sexp {
@@ -884,6 +884,6 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     } else if let Expression::BuildInFunctionExt(_) = sexp {
         Ok(sexp.clone())
     } else {
-        Err(create_error!(RsCode::E1009))
+        Err(create_error!(ErrCode::E1009))
     }
 }

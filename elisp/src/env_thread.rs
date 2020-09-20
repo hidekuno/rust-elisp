@@ -10,13 +10,13 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::buildin::{create_function, BuildInTable};
-use crate::lisp::{BasicBuiltIn, Expression, ResultExpression, RsFunction};
+use crate::lisp::{BasicBuiltIn, Expression, Function, ResultExpression};
 //========================================================================
 type ExtFunction =
     Box<dyn Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static>;
 type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
-pub type FunctionRc = Arc<RsFunction>;
+pub type FunctionRc = Arc<Function>;
 pub type ExtFunctionRc = Arc<ExtFunction>;
 //========================================================================
 #[derive(Clone)]
@@ -37,10 +37,10 @@ impl Environment {
             globals: parent.globals.clone(),
         }
     }
-    pub fn create_func(func: RsFunction) -> Expression {
+    pub fn create_func(func: Function) -> Expression {
         Expression::Function(Arc::new(func))
     }
-    pub fn create_tail_recursion(func: RsFunction) -> Expression {
+    pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Arc::new(func))
     }
     pub fn regist(&self, key: String, exp: Expression) {

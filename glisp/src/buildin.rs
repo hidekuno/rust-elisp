@@ -29,9 +29,9 @@ use elisp::create_error_value;
 use elisp::lisp;
 
 use lisp::Environment;
+use lisp::ErrCode;
+use lisp::Error;
 use lisp::Expression;
-use lisp::RsCode;
-use lisp::RsError;
 
 use cairo::ImageSurface;
 use std::cell::RefCell;
@@ -46,7 +46,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         let draw_table = draw_table.clone();
         env.add_builtin_ext_func("draw-clear", move |exp, _| {
             if exp.len() != 1 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             draw_clear(&draw_table);
             Ok(Expression::Nil())
@@ -60,7 +60,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     env.add_builtin_ext_func("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
-            return Err(create_error!(RsCode::E1007));
+            return Err(create_error!(ErrCode::E1007));
         }
         let mut loc: [f64; N] = [0.0; N];
         let mut iter = exp[1 as usize..].iter();
@@ -69,7 +69,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 if let Expression::Float(f) = lisp::eval(e, env)? {
                     loc[i] = f;
                 } else {
-                    return Err(create_error!(RsCode::E1003));
+                    return Err(create_error!(ErrCode::E1003));
                 }
             }
         }
@@ -84,23 +84,23 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         let draw_table = draw_table.clone();
         env.add_builtin_ext_func("create-image-from-png", move |exp, env| {
             if exp.len() != 3 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             let symbol = match lisp::eval(&exp[1], env)? {
                 Expression::String(s) => s,
-                _ => return Err(create_error!(RsCode::E1015)),
+                _ => return Err(create_error!(ErrCode::E1015)),
             };
             let filename = match lisp::eval(&exp[2], env)? {
                 Expression::String(s) => s,
-                _ => return Err(create_error!(RsCode::E1015)),
+                _ => return Err(create_error!(ErrCode::E1015)),
             };
             let mut file = match File::open(filename) {
                 Ok(f) => f,
-                Err(e) => return Err(create_error_value!(RsCode::E9999, e)),
+                Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
             let surface = match ImageSurface::create_from_png(&mut file) {
                 Ok(s) => s,
-                Err(e) => return Err(create_error_value!(RsCode::E9999, e)),
+                Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
             draw_table.regist(symbol, Rc::new(surface));
             Ok(Expression::Nil())
@@ -115,11 +115,11 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         let draw_table = draw_table.clone();
         env.add_builtin_ext_func("draw-image", move |exp, env| {
             if exp.len() != 8 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             let symbol = match lisp::eval(&exp[1], env)? {
                 Expression::String(s) => s,
-                _ => return Err(create_error!(RsCode::E1015)),
+                _ => return Err(create_error!(ErrCode::E1015)),
             };
             const N: usize = 6;
             let mut ctm: [f64; N] = [0.0; N];
@@ -129,15 +129,15 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                     if let Expression::Float(f) = lisp::eval(e, env)? {
                         ctm[i] = f;
                     } else {
-                        return Err(create_error!(RsCode::E1003));
+                        return Err(create_error!(ErrCode::E1003));
                     }
                 } else {
-                    return Err(create_error!(RsCode::E1007));
+                    return Err(create_error!(ErrCode::E1007));
                 }
             }
             let img = match draw_table.find(&symbol) {
                 Some(v) => v.clone(),
-                None => return Err(create_error!(RsCode::E1008)),
+                None => return Err(create_error!(ErrCode::E1008)),
             };
             draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &img);
             Ok(Expression::Nil())
@@ -172,19 +172,19 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     let draw_string = create_draw_string(draw_table);
     env.add_builtin_ext_func("draw-string", move |exp, env| {
         if exp.len() != 5 {
-            return Err(create_error!(RsCode::E1007));
+            return Err(create_error!(ErrCode::E1007));
         }
         const N: usize = 3;
         let mut prm: [f64; N] = [0.0; N];
         for (i, e) in exp[1 as usize..4 as usize].iter().enumerate() {
             prm[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
-                _ => return Err(create_error!(RsCode::E1003)),
+                _ => return Err(create_error!(ErrCode::E1003)),
             };
         }
         let s = match lisp::eval(&exp[4], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(RsCode::E1015)),
+            _ => return Err(create_error!(ErrCode::E1015)),
         };
         draw_string(prm[0], prm[1], prm[2], s);
         Ok(Expression::Nil())
@@ -196,7 +196,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     let draw_string = create_draw_string(draw_table);
     env.add_builtin_ext_func("draw-eval", move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(RsCode::E1007));
+            return Err(create_error!(ErrCode::E1007));
         }
         let e = lisp::eval(&exp[1], env)?;
 
@@ -235,14 +235,14 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     let draw_arc = create_draw_arc(draw_table);
     env.add_builtin_ext_func("draw-arc", move |exp, env| {
         if exp.len() != 5 {
-            return Err(create_error!(RsCode::E1007));
+            return Err(create_error!(ErrCode::E1007));
         }
         const N: usize = 4;
         let mut prm: [f64; N] = [0.0; N];
         for (i, e) in exp[1 as usize..].iter().enumerate() {
             prm[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
-                _ => return Err(create_error!(RsCode::E1003)),
+                _ => return Err(create_error!(ErrCode::E1003)),
             };
         }
         draw_arc(prm[0], prm[1], prm[2], prm[3]);
@@ -281,11 +281,11 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         let draw_table = RefCell::new(draw_table.clone());
         env.add_builtin_ext_func("set-line-width", move |exp, env| {
             if exp.len() != 2 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             let w = match lisp::eval(&exp[1], env)? {
                 Expression::Float(f) => f,
-                _ => return Err(create_error!(RsCode::E1003)),
+                _ => return Err(create_error!(ErrCode::E1003)),
             };
             draw_table.borrow_mut().set_line_width(w);
             Ok(Expression::Nil())
@@ -297,7 +297,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     {
         env.add_builtin_ext_func("screen-width", move |exp, _env| {
             if exp.len() != 1 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             Ok(Expression::Float(DRAW_WIDTH as f64))
         });
@@ -308,7 +308,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     {
         env.add_builtin_ext_func("screen-height", move |exp, _env| {
             if exp.len() != 1 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             Ok(Expression::Float(DRAW_HEIGHT as f64))
         });
@@ -328,22 +328,22 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             let x = *v;
             env.add_builtin_ext_func(f, move |exp, _env| {
                 if exp.len() != 1 {
-                    return Err(create_error!(RsCode::E1007));
+                    return Err(create_error!(ErrCode::E1007));
                 }
                 Ok(Expression::Integer(x as i64))
             });
         }
     }
-    fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), RsError> {
+    fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Error> {
         if exp.len() != 4 {
-            return Err(create_error!(RsCode::E1007));
+            return Err(create_error!(ErrCode::E1007));
         }
         const N: usize = 3;
         let mut rgb: [f64; N] = [0.0; N];
         for (i, e) in exp[1 as usize..].iter().enumerate() {
             rgb[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
-                _ => return Err(create_error!(RsCode::E1003)),
+                _ => return Err(create_error!(ErrCode::E1003)),
             };
         }
         Ok((rgb[0], rgb[1], rgb[2]))
@@ -353,17 +353,17 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         env: &Environment,
         draw_table: &DrawTable,
         f: fn(&ImageSurface) -> i32,
-    ) -> Result<f64, RsError> {
+    ) -> Result<f64, Error> {
         if exp.len() != 2 {
-            return Err(create_error!(RsCode::E1007));
+            return Err(create_error!(ErrCode::E1007));
         }
         let symbol = match lisp::eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(RsCode::E1015)),
+            _ => return Err(create_error!(ErrCode::E1015)),
         };
         let img = match (*draw_table).find(&symbol) {
             Some(v) => v.clone(),
-            None => return Err(create_error!(RsCode::E1008)),
+            None => return Err(create_error!(ErrCode::E1008)),
         };
         Ok(f(&img) as f64)
     }
@@ -375,11 +375,11 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
     fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
         env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
             if exp.len() != 2 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             let c = match lisp::eval(&exp[1], env)? {
                 Expression::Integer(c) => c,
-                _ => return Err(create_error!(RsCode::E1002)),
+                _ => return Err(create_error!(ErrCode::E1002)),
             };
 
             fractal.do_demo(c as i32);
@@ -397,11 +397,11 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
         let fractal = RefCell::new(fractal);
         env.add_builtin_ext_func(f, move |exp, env| {
             if exp.len() != 2 {
-                return Err(create_error!(RsCode::E1007));
+                return Err(create_error!(ErrCode::E1007));
             }
             let c = match lisp::eval(&exp[1], env)? {
                 Expression::Integer(c) => c,
-                _ => return Err(create_error!(RsCode::E1002)),
+                _ => return Err(create_error!(ErrCode::E1002)),
             };
             fractal.borrow_mut().do_demo(c as i32);
             Ok(Expression::Nil())

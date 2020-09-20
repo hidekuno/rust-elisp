@@ -16,6 +16,8 @@ use lisp::Environment;
 use gtk::prelude::*;
 use std::env;
 use std::rc::Rc;
+
+#[cfg(feature = "animation")]
 use std::time::Duration;
 
 use crate::draw::draw_clear;

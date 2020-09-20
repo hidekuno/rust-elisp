@@ -16,7 +16,7 @@ use crate::create_error_value;
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
-use crate::lisp::{RsCode, RsError};
+use crate::lisp::{ErrCode, Error};
 use crate::number::Rat;
 
 const SAMPLE_INT: i64 = 10_000_000_000_000;
@@ -70,31 +70,31 @@ where
     b.regist("rand-list", rand_list);
     b.regist("expt", expt);
 }
-fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, RsError> {
+fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, Error> {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
         Expression::Float(f) => Ok(f),
         Expression::Integer(i) => Ok(i as f64),
         Expression::Rational(r) => Ok(r.div_float()),
-        _ => Err(create_error!(RsCode::E1003)),
+        _ => Err(create_error!(ErrCode::E1003)),
     }
 }
 fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     Ok(match eval(&exp[1], env)? {
         Expression::Float(v) => Expression::Float(v.abs()),
         Expression::Integer(v) => Expression::Integer(v.abs()),
         Expression::Rational(v) => Expression::Rational(v.abs()),
-        _ => return Err(create_error!(RsCode::E1003)),
+        _ => return Err(create_error!(ErrCode::E1003)),
     })
 }
 fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if 1 < exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut rng = rand::thread_rng();
     let x: i64 = rng.gen();
@@ -102,7 +102,7 @@ fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
 }
 fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::Integer(i) = eval(&exp[1], env)? {
         let mut rng = rand::thread_rng();
@@ -113,18 +113,18 @@ fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
         Ok(Expression::List(vec))
     } else {
-        Err(create_error!(RsCode::E1002))
+        Err(create_error!(ErrCode::E1002))
     }
 }
 fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
         Expression::Float(x) => match eval(&exp[2], env)? {
             Expression::Float(y) => Ok(Expression::Float(x.powf(y))),
             Expression::Integer(y) => Ok(Expression::Float(x.powf(y as f64))),
-            _ => Err(create_error!(RsCode::E1003)),
+            _ => Err(create_error!(ErrCode::E1003)),
         },
         Expression::Integer(x) => match eval(&exp[2], env)? {
             Expression::Float(y) => Ok(Expression::Float((x as f64).powf(y))),
@@ -135,9 +135,9 @@ fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
                     Ok(Expression::Rational(Rat::new(1, x.pow(y.abs() as u32))))
                 }
             }
-            _ => Err(create_error!(RsCode::E1003)),
+            _ => Err(create_error!(ErrCode::E1003)),
         },
-        _ => Err(create_error!(RsCode::E1003)),
+        _ => Err(create_error!(ErrCode::E1003)),
     }
 }
 #[cfg(test)]

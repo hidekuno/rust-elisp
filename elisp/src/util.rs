@@ -15,7 +15,7 @@ use crate::create_error_value;
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
-use crate::lisp::{RsCode, RsError};
+use crate::lisp::{ErrCode, Error};
 use crate::number::Number;
 
 pub fn create_function<T>(b: &mut T)
@@ -57,28 +57,28 @@ where
 }
 pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     eval(&exp[1], env)
 }
 fn odd_even(exp: &[Expression], env: &Environment, f: fn(i64) -> bool) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
         Expression::Integer(i) => Ok(Expression::Boolean(f(i))),
-        _ => return Err(create_error!(RsCode::E1002)),
+        _ => return Err(create_error!(ErrCode::E1002)),
     }
 }
 fn is_sign(exp: &[Expression], env: &Environment, f: fn(&Number) -> bool) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = match eval(&exp[1], env)? {
         Expression::Float(f) => Number::Float(f),
         Expression::Integer(i) => Number::Integer(i),
         Expression::Rational(r) => Number::Rational(r),
-        _ => return Err(create_error!(RsCode::E1003)),
+        _ => return Err(create_error!(ErrCode::E1003)),
     };
     Ok(Expression::Boolean(f(&v)))
 }
@@ -88,7 +88,7 @@ fn is_type(
     f: fn(e: &Expression) -> bool,
 ) -> ResultExpression {
     if 2 != exp.len() {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = eval(&exp[1], env)?;
     Ok(Expression::Boolean(f(&v)))
@@ -96,19 +96,19 @@ fn is_type(
 fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
     //srfi-98
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
         Expression::String(s) => match env::var(s) {
             Ok(v) => Ok(Expression::String(v)),
             Err(_) => Ok(Expression::Boolean(false)),
         },
-        _ => Err(create_error!(RsCode::E1015)),
+        _ => Err(create_error!(ErrCode::E1015)),
     }
 }
 fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
 
     let start = Instant::now();
@@ -120,7 +120,7 @@ fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
-        return Err(create_error_value!(RsCode::E1007, exp.len()));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
 
