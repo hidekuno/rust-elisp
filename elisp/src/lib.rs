@@ -144,6 +144,7 @@ mod error_tests {
         assert_eq!(do_lisp("("), "E0001");
         assert_eq!(do_lisp(")"), "E0003");
         assert_eq!(do_lisp("(list (+ 1 2) 3"), "E0002");
+        assert_eq!(do_lisp("(10 20)"), "E1006");
     }
     #[test]
     fn atom() {
