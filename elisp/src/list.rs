@@ -242,7 +242,11 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
     }
     let (to, from, step) = (param[0] + param[1], param[1], param[2]);
-    let mut l = Vec::with_capacity(to as usize);
+    let mut l = if to > 16 {
+        Vec::with_capacity(to as usize)
+    } else {
+        Vec::new()
+    };
     let mut v = from;
     for _ in from..to {
         l.push(Expression::Integer(v));
@@ -496,6 +500,7 @@ mod tests {
         assert_eq!(do_lisp("(iota 1 10)"), "(10)");
         assert_eq!(do_lisp("(iota 10 1 2)"), "(1 3 5 7 9 11 13 15 17 19)");
         assert_eq!(do_lisp("(iota 10 1 -1)"), "(1 0 -1 -2 -3 -4 -5 -6 -7 -8)");
+        assert_eq!(do_lisp("(iota -10 0 1)"), "()");
     }
     #[test]
     fn map() {
