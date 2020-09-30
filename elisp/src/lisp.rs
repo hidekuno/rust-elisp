@@ -17,14 +17,45 @@ use log::{debug, error, info, warn};
 use crate::number::Rat;
 
 #[cfg(feature = "thread")]
-use crate::env_thread::{ExtFunctionRc, FunctionRc};
+use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
+#[cfg(feature = "thread")]
+#[macro_export]
+macro_rules! referlence_list {
+    ($e: expr) => {
+        $e
+    };
+}
+#[cfg(feature = "thread")]
+#[macro_export]
+macro_rules! mut_list {
+    ($e: expr) => {
+        $e
+    };
+}
+
 #[cfg(not(feature = "thread"))]
-use crate::env_single::{ExtFunctionRc, FunctionRc};
+use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
+
+#[cfg(not(feature = "thread"))]
+#[macro_export]
+macro_rules! referlence_list {
+    ($e: expr) => {
+        $e.borrow();
+    };
+}
+
+#[cfg(not(feature = "thread"))]
+#[macro_export]
+macro_rules! mut_list {
+    ($e: expr) => {
+        $e.borrow_mut();
+    };
+}
 //========================================================================
 #[derive(Clone, Debug)]
 pub enum ErrCode {
@@ -194,7 +225,7 @@ pub enum Expression {
     Float(f64),
     Char(char),
     Boolean(bool),
-    List(Vec<Expression>),
+    List(ListRc),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
     String(String),
@@ -317,6 +348,7 @@ impl Expression {
         let mut el = false;
         for e in exp {
             if let Expression::List(l) = e {
+                let l = &*(referlence_list!(l));
                 s.push_str(Expression::list_string(&l[..]).as_str());
                 el = true;
             } else {
@@ -363,7 +395,10 @@ impl ToString for Expression {
             Expression::Boolean(v) => (if *v { TRUE } else { FALSE }).to_string(),
             Expression::Symbol(v) => v.to_string(),
             Expression::String(v) => format!("\"{}\"", v),
-            Expression::List(v) => Expression::list_string(&v[..]),
+            Expression::List(v) => {
+                let l = &*(referlence_list!(v));
+                return Expression::list_string(&l[..]);
+            }
             Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
             Expression::Function(_) => "Function".into(),
             Expression::BuildInFunction(_, _) => "BuildIn Function".into(),
@@ -388,8 +423,9 @@ impl Function {
     pub fn new(sexp: &[Expression], name: String, closure_env: Environment) -> Self {
         let mut param: Vec<String> = Vec::new();
 
-        if let Expression::List(val) = &sexp[1] {
-            for n in val {
+        if let Expression::List(l) = &sexp[1] {
+            let l = &*(referlence_list!(l));
+            for n in l {
                 if let Expression::Symbol(s) = n {
                     param.push(s.to_string());
                 }
@@ -405,11 +441,25 @@ impl Function {
             tail_recurcieve: false,
         }
     }
+
+    #[cfg(feature = "thread")]
     pub fn set_tail_recurcieve(&mut self) {
         let mut vec = self.body.clone();
         self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice(), &mut vec);
 
         if self.tail_recurcieve == true {
+            self.body = vec;
+        }
+    }
+    #[cfg(not(feature = "thread"))]
+    pub fn set_tail_recurcieve(&mut self) {
+        let vec = self.body.clone();
+
+        if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice(), &vec) {
+            self.tail_recurcieve = true;
+
+            let mut l = mut_list!(l);
+            l[0] = Environment::create_tail_recursion(self.clone());
             self.body = vec;
         }
     }
@@ -470,6 +520,7 @@ impl Function {
         }
         Ok(ret)
     }
+    #[cfg(feature = "thread")]
     fn parse_tail_recurcieve(&self, exp: &[Expression], body: &mut Vec<Expression>) -> bool {
         let (mut n, mut tail) = (0, false);
 
@@ -516,6 +567,59 @@ impl Function {
             return true;
         }
         return false;
+    }
+    #[cfg(not(feature = "thread"))]
+    fn parse_tail_recurcieve(&self, exp: &[Expression], body: &Vec<Expression>) -> Option<ListRc> {
+        let (mut n, mut tail) = (0, false);
+
+        let mut vec: Option<ListRc> = None;
+
+        for (i, e) in exp.iter().enumerate() {
+            if let Expression::List(l) = e {
+                let l = &*(referlence_list!(l));
+                if 1 >= l.len() {
+                    continue;
+                }
+                if let Expression::BuildInFunction(s, _) = &l[0] {
+                    match s.as_str() {
+                        "if" | "cond" => {
+                            if let Expression::List(ref v) = body[0] {
+                                return self.parse_tail_recurcieve(&l[1..], &referlence_list!(v));
+                            }
+                        }
+                        "begin" => {
+                            if let Expression::List(ref v) = body[i + 1] {
+                                return self.parse_tail_recurcieve(&l[1..], &referlence_list!(v));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if let Expression::Symbol(s) = &l[0] {
+                    if *s == self.name {
+                        // check tail
+                        if (exp.len() - 1) == i {
+                            if let Expression::List(ref v) = body[i + 1] {
+                                if n == 0 {
+                                    vec = Some(v.clone());
+                                }
+                                tail = true;
+                            }
+                        }
+                        n = n + 1;
+                    } else if *s == "else" {
+                        if let Expression::List(ref v) = body[i + 1] {
+                            return self.parse_tail_recurcieve(&l[1..], &referlence_list!(v));
+                        }
+                    }
+                }
+            }
+        }
+        // check calling times
+        if n == 1 && tail {
+            return vec;
+        }
+        return None;
     }
 }
 //========================================================================
@@ -787,7 +891,7 @@ fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpr
                 return Err(create_error!(ErrCode::E0002));
             }
         }
-        Ok(Expression::List(list))
+        Ok(Environment::create_list(list))
     } else if ")" == token {
         Err(create_error!(ErrCode::E0003))
     } else {
@@ -864,7 +968,8 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
             Some(v) => Ok(v),
             None => Err(create_error_value!(ErrCode::E1008, val)),
         }
-    } else if let Expression::List(v) = sexp {
+    } else if let Expression::List(val) = sexp {
+        let v = &*(referlence_list!(val));
         if v.len() == 0 {
             return Ok(sexp.clone());
         }

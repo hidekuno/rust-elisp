@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::vec::Vec;
 
 use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::{BasicBuiltIn, Expression, Function, ResultExpression};
@@ -18,6 +19,7 @@ type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<Function>;
 pub type ExtFunctionRc = Arc<ExtFunction>;
+pub type ListRc = Vec<Expression>;
 //========================================================================
 #[derive(Clone)]
 pub struct Environment {
@@ -39,6 +41,9 @@ impl Environment {
     }
     pub fn create_func(func: Function) -> Expression {
         Expression::Function(Arc::new(func))
+    }
+    pub fn create_list(l: Vec<Expression>) -> Expression {
+        Expression::List(l)
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Arc::new(func))

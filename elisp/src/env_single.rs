@@ -7,6 +7,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::vec::Vec;
 
 use crate::buildin::{create_function, BuildInTable};
 use crate::lisp::{BasicBuiltIn, Expression, Function, ResultExpression};
@@ -16,6 +17,7 @@ type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
+pub type ListRc = Rc<RefCell<Vec<Expression>>>;
 
 #[derive(Clone)]
 pub struct Environment {
@@ -37,6 +39,9 @@ impl Environment {
     }
     pub fn create_func(func: Function) -> Expression {
         Expression::Function(Rc::new(func))
+    }
+    pub fn create_list(l: Vec<Expression>) -> Expression {
+        Expression::List(Rc::new(RefCell::new(l)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Rc::new(func))

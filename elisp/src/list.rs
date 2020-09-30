@@ -10,6 +10,8 @@ use std::vec::Vec;
 
 use crate::create_error;
 use crate::create_error_value;
+use crate::mut_list;
+use crate::referlence_list;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
@@ -40,13 +42,14 @@ where
     b.regist("reduce", reduce);
     b.regist("for-each", for_each);
     b.regist("list-ref", list_ref);
+    b.regist("list-set!", list_set);
 }
 fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
     for e in &exp[1 as usize..] {
         list.push(eval(e, env)?);
     }
-    Ok(Expression::List(list))
+    Ok(Environment::create_list(list))
 }
 fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -60,15 +63,17 @@ fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error!(ErrCode::E1011));
     }
     let v = eval(&exp[2], env)?;
-
-    Ok(Expression::List(vec![v; n as usize]))
+    Ok(Environment::create_list(vec![v; n as usize]))
 }
 fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::List(l) => Ok(Expression::Boolean(l.len() == 0)),
+        Expression::List(l) => {
+            let l = &*(referlence_list!(l));
+            Ok(Expression::Boolean(l.len() == 0))
+        }
         _ => Ok(Expression::Boolean(false)),
     }
 }
@@ -77,6 +82,7 @@ fn length(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = eval(&exp[1], env)? {
+        let l = &*(referlence_list!(l));
         Ok(Expression::Integer(l.len() as i64))
     } else {
         Err(create_error!(ErrCode::E1005))
@@ -88,6 +94,7 @@ fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     match eval(&exp[1], env)? {
         Expression::List(l) => {
+            let l = &*(referlence_list!(l));
             if l.len() <= 0 {
                 return Err(create_error!(ErrCode::E1011));
             }
@@ -102,11 +109,14 @@ fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::List(l) => match l.len() {
-            0 => Err(create_error!(ErrCode::E1011)),
-            1 => Ok(Expression::List(Vec::new())),
-            _ => Ok(Expression::List(l[1 as usize..].to_vec())),
-        },
+        Expression::List(l) => {
+            let l = &*(referlence_list!(l));
+            match l.len() {
+                0 => Err(create_error!(ErrCode::E1011)),
+                1 => Ok(Environment::create_list(Vec::new())),
+                _ => Ok(Environment::create_list(l[1 as usize..].to_vec())),
+            }
+        }
         Expression::Pair(_car, cdr) => Ok((*cdr).clone()),
         _ => Err(create_error!(ErrCode::E1005)),
     }
@@ -116,6 +126,7 @@ fn cadr(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = eval(&exp[1], env)? {
+        let l = &*(referlence_list!(l));
         if l.len() <= 1 {
             return Err(create_error!(ErrCode::E1011));
         }
@@ -131,11 +142,12 @@ fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
     let car = eval(&exp[1], env)?;
     let cdr = eval(&exp[2], env)?;
 
-    if let Expression::List(mut l) = cdr {
+    if let Expression::List(l) = cdr {
+        let mut l = mut_list!(l);
         let mut v: Vec<Expression> = Vec::new();
         v.push(car);
         v.append(&mut l);
-        Ok(Expression::List(v))
+        Ok(Environment::create_list(v))
     } else {
         Ok(Expression::Pair(Box::new(car), Box::new(cdr)))
     }
@@ -147,11 +159,14 @@ fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut v: Vec<Expression> = Vec::new();
     for e in &exp[1 as usize..] {
         match eval(e, env)? {
-            Expression::List(mut l) => v.append(&mut l),
+            Expression::List(l) => {
+                let mut l = mut_list!(l);
+                v.append(&mut l);
+            }
             _ => return Err(create_error!(ErrCode::E1005)),
         }
     }
-    Ok(Expression::List(v))
+    Ok(Environment::create_list(v))
 }
 fn take_drop(
     exp: &[Expression],
@@ -165,6 +180,9 @@ fn take_drop(
         Expression::List(l) => l,
         _ => return Err(create_error!(ErrCode::E1005)),
     };
+
+    let l = referlence_list!(l);
+
     let n = match eval(&exp[2], env)? {
         Expression::Integer(n) => n,
         _ => return Err(create_error!(ErrCode::E1002)),
@@ -175,7 +193,7 @@ fn take_drop(
     let mut vec = Vec::new();
     vec.extend_from_slice(f(&l, n as usize));
 
-    Ok(Expression::List(vec))
+    Ok(Environment::create_list(vec))
 }
 fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -186,8 +204,10 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::List(l) => l,
         _ => return Err(create_error!(ErrCode::E1005)),
     };
+
+    let l = &*(referlence_list!(l));
     let mut vec = Vec::new();
-    for e in &l {
+    for e in l {
         if true == Expression::eq_integer(e, &other)
             || true == Expression::eq_float(e, &other)
             || true == Expression::eq_rat(e, &other)
@@ -200,17 +220,20 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
         vec.push(e.clone());
     }
-    Ok(Expression::List(vec))
+    Ok(Environment::create_list(vec))
 }
 fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::List(l) => match l.len() {
-            0 => Err(create_error!(ErrCode::E1011)),
-            _ => Ok(l[l.len() - 1].clone()),
-        },
+        Expression::List(l) => {
+            let l = &*(referlence_list!(l));
+            match l.len() {
+                0 => Err(create_error!(ErrCode::E1011)),
+                _ => Ok(l[l.len() - 1].clone()),
+            }
+        }
         Expression::Pair(car, _) => Ok(*car.clone()),
         _ => Err(create_error!(ErrCode::E1005)),
     }
@@ -221,9 +244,10 @@ fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     match eval(&exp[1], env)? {
         Expression::List(l) => {
-            let mut v = l.clone();
-            v.reverse();
-            Ok(Expression::List(v))
+            let l = &*(referlence_list!(l));
+            let mut l = l.to_vec();
+            l.reverse();
+            Ok(Environment::create_list(l))
         }
         _ => Err(create_error!(ErrCode::E1005)),
     }
@@ -252,7 +276,7 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
         l.push(Expression::Integer(v));
         v += step;
     }
-    Ok(Expression::List(l))
+    Ok(Environment::create_list(l))
 }
 fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -261,11 +285,13 @@ fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
     match eval(&exp[1], env)? {
         Expression::Function(f) => match eval(&exp[2], env)? {
             Expression::List(l) => {
+                let l = &*(referlence_list!(l));
+
                 let mut result: Vec<Expression> = Vec::new();
                 for e in l {
                     result.push(f.execute_noeval(&[e.clone()].to_vec())?);
                 }
-                Ok(Expression::List(result))
+                Ok(Environment::create_list(result))
             }
             _ => Err(create_error!(ErrCode::E1005)),
         },
@@ -279,8 +305,9 @@ fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
     match eval(&exp[1], env)? {
         Expression::Function(f) => match eval(&exp[2], env)? {
             Expression::List(l) => {
+                let l = &*(referlence_list!(l));
                 let mut result: Vec<Expression> = Vec::new();
-                for e in &l {
+                for e in l {
                     match f.execute_noeval(&[e.clone()].to_vec())? {
                         Expression::Boolean(b) => {
                             if b {
@@ -290,7 +317,7 @@ fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
                         _ => return Err(create_error!(ErrCode::E1001)),
                     }
                 }
-                Ok(Expression::List(result))
+                Ok(Environment::create_list(result))
             }
             _ => Err(create_error!(ErrCode::E1005)),
         },
@@ -303,6 +330,7 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[3], env)? {
+            let l = &*(referlence_list!(l));
             if l.len() == 0 {
                 return eval(&exp[2], env);
             }
@@ -325,6 +353,7 @@ fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::Function(f) = eval(&exp[1], env)? {
         if let Expression::List(l) = eval(&exp[2], env)? {
+            let l = &*(referlence_list!(l));
             for e in l {
                 f.execute_noeval(&[e.clone()].to_vec())?;
             }
@@ -341,19 +370,48 @@ fn list_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::List(l) => match eval(&exp[2], env)? {
-            Expression::Integer(i) => {
-                if i < 0 || l.len() <= i as usize {
-                    Err(create_error!(ErrCode::E1011))
-                } else {
-                    Ok(l[i as usize].clone())
+        Expression::List(l) => {
+            let l = referlence_list!(l);
+            match eval(&exp[2], env)? {
+                Expression::Integer(i) => {
+                    if i < 0 || l.len() <= i as usize {
+                        Err(create_error!(ErrCode::E1011))
+                    } else {
+                        Ok(l[i as usize].clone())
+                    }
                 }
+                _ => Err(create_error!(ErrCode::E1002)),
             }
-            _ => Err(create_error!(ErrCode::E1002)),
-        },
+        }
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
+fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 4 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+
+    let i = match eval(&exp[2], env)? {
+        Expression::Integer(i) => i,
+        _ => {
+            return Err(create_error!(ErrCode::E1002));
+        }
+    };
+    match eval(&exp[1], env)? {
+        Expression::List(r) => {
+            let mut l = mut_list!(r);
+
+            if i < 0 || l.len() <= i as usize {
+                return Err(create_error!(ErrCode::E1011));
+            }
+            l[i as usize] = eval(&exp[3], env)?;
+            //            Ok(Expression::List(r.clone()))
+            Ok(Expression::Nil())
+        }
+        _ => Err(create_error!(ErrCode::E1005)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::lisp;

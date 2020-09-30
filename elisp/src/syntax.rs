@@ -14,6 +14,7 @@ use crate::create_error_value;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error, Function};
+use crate::referlence_list;
 use crate::util::eqv;
 
 pub fn create_function<T>(b: &mut T)
@@ -58,6 +59,7 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Ok(Expression::Symbol(v.to_string()));
     }
     if let Expression::List(l) = &exp[1] {
+        let l = &*(referlence_list!(l));
         if l.len() < 1 {
             return Err(create_error_value!(ErrCode::E1007, l.len()));
         }
@@ -73,7 +75,7 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
 
             let mut f = exp.to_vec();
-            f[1] = Expression::List(param);
+            f[1] = Environment::create_list(param);
             let mut func = Function::new(&f, s.to_string(), env.clone());
             if env.is_tail_recursion() == true {
                 func.set_tail_recurcieve();
@@ -93,6 +95,7 @@ fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = &exp[1] {
+        let l = &*(referlence_list!(l));
         for e in l {
             match e {
                 Expression::Symbol(_) => {}
@@ -127,8 +130,10 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     param_value_list.push(Expression::String(String::from("dummy")));
 
     if let Expression::List(l) = &exp[idx] {
+        let l = &*(referlence_list!(l));
         for plist in l {
             if let Expression::List(p) = plist {
+                let p = &*(referlence_list!(p));
                 if p.len() != 2 {
                     return Err(create_error_value!(ErrCode::E1007, p.len()));
                 }
@@ -150,7 +155,7 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     // Setup Function
     let mut vec = Vec::new();
     vec.push(Expression::String(name.to_string()));
-    vec.push(Expression::List(param_list));
+    vec.push(Environment::create_list(param_list));
     vec.extend_from_slice(&exp[idx as usize..]);
     let mut f = Function::new(&vec[..], name.to_string(), param.clone());
 
@@ -244,6 +249,7 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     for e in &exp[1 as usize..] {
         if let Expression::List(l) = e {
+            let l = &*(referlence_list!(l));
             let mut iter = l.iter();
 
             if let Some(e) = iter.next() {
@@ -284,6 +290,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 3 <= exp.len() {
         for e in &exp[2 as usize..] {
             if let Expression::List(l) = e {
+                let l = &*(referlence_list!(l));
                 if l.len() == 0 {
                     continue;
                 }
@@ -297,6 +304,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                         }
                     }
                     Expression::List(c) => {
+                        let c = &*(referlence_list!(c));
                         for e in c {
                             param[2] = eval(&e, env)?;
                             if let Expression::Boolean(b) = eqv(&param, env)? {
@@ -330,10 +338,12 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = eval(&exp[2], env)? {
+        let l = &*(referlence_list!(l));
+
         let mut se: Vec<Expression> = Vec::new();
         se.push(exp[1].clone());
         se.extend_from_slice(&l);
-        eval(&Expression::List(se), env)
+        eval(&Environment::create_list(se), env)
     } else {
         Err(create_error_value!(ErrCode::E1005, exp.len()))
     }
