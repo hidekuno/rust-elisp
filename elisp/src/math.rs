@@ -111,7 +111,7 @@ fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
             let x: i64 = rng.gen();
             vec.push(Expression::Integer(x.abs() / SAMPLE_INT));
         }
-        Ok(Expression::List(vec))
+        Ok(Environment::create_list(vec))
     } else {
         Err(create_error!(ErrCode::E1002))
     }

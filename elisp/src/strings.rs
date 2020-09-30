@@ -9,6 +9,8 @@ use log::{debug, error, info, warn};
 
 use crate::create_error;
 use crate::create_error_value;
+use crate::referlence_list;
+
 use std::vec::Vec;
 
 use crate::buildin::BuildInTable;
@@ -176,6 +178,8 @@ fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::List(l) => l,
         _ => return Err(create_error!(ErrCode::E1005)),
     };
+
+    let l = &*(referlence_list!(l));
     let mut v = String::new();
 
     for e in l.into_iter() {
@@ -198,7 +202,7 @@ fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     for c in s.as_str().chars() {
         l.push(Expression::Char(c));
     }
-    Ok(Expression::List(l))
+    Ok(Environment::create_list(l))
 }
 fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 4 != exp.len() {
