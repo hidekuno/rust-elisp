@@ -844,4 +844,20 @@ mod error_tests {
         assert_eq!(do_lisp("(list-ref (iota 10) -1)"), "E1011");
         assert_eq!(do_lisp("(list-ref (iota 10) 10)"), "E1011");
     }
+    #[test]
+    #[cfg(not(feature = "thread"))]
+    fn list_set() {
+        assert_eq!(do_lisp("(list-set!)"), "E1007");
+        assert_eq!(do_lisp("(list-set! (iota 10))"), "E1007");
+        assert_eq!(do_lisp("(list-set! (iota 10) 1 2 3)"), "E1007");
+
+        assert_eq!(do_lisp("(list-set! 10 0 -1)"), "E1005");
+        assert_eq!(do_lisp("(list-set! (iota 10) #t 0)"), "E1002");
+
+        assert_eq!(do_lisp("(list-set! a 0 #t)"), "E1008");
+        assert_eq!(do_lisp("(list-set! (iota 10) 0 a)"), "E1008");
+
+        assert_eq!(do_lisp("(list-set! (iota 10) -1 0)"), "E1011");
+        assert_eq!(do_lisp("(list-set! (iota 10) 10 0)"), "E1011");
+    }
 }
