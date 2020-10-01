@@ -157,6 +157,10 @@ pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
             Expression::Char(y) => Ok(Expression::Boolean(x == y)),
             _ => Ok(Expression::Boolean(false)),
         },
+        Expression::String(x) => match b {
+            Expression::String(y) => Ok(Expression::Boolean(x == y)),
+            _ => Ok(Expression::Boolean(false)),
+        },
         _ => Ok(Expression::Boolean(false)),
     }
 }
@@ -278,6 +282,8 @@ mod tests {
         assert_eq!(do_lisp("(eq? #\\a #\\a)"), "#t");
         assert_eq!(do_lisp("(eq? #\\a #\\b)"), "#f");
         assert_eq!(do_lisp("(eq? #\\space #\\space)"), "#t");
+        assert_eq!(do_lisp("(eq? \"abc\" \"abc\")"), "#t");
+        assert_eq!(do_lisp("(eq? \"abc\" \"abc1\")"), "#f");
     }
     #[test]
     fn identity() {
