@@ -301,15 +301,21 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                         }
                         if 1 < l.len() {
                             return begin(&l, env);
+                        } else {
+                            return Ok(Expression::Integer(0));
                         }
                     }
-                    Expression::List(c) => {
-                        let c = &*(referlence_list!(c));
+                    Expression::List(r) => {
+                        let c = &*(referlence_list!(r));
                         for e in c {
                             param[2] = eval(&e, env)?;
                             if let Expression::Boolean(b) = eqv(&param, env)? {
                                 if b == true {
-                                    return begin(&l, env);
+                                    if 1 < l.len() {
+                                        return begin(&l, env);
+                                    } else {
+                                        return Ok(Expression::List(r.clone()));
+                                    }
                                 }
                             }
                         }
@@ -501,7 +507,8 @@ mod tests {
         assert_eq!(do_lisp("(case 10)"), "nil");
         assert_eq!(do_lisp("(case 10 ((1 2) \"A\"))"), "nil");
         assert_eq!(do_lisp("(case 10 (else 20))"), "20");
-        assert_eq!(do_lisp("(case 10 (else))"), "nil");
+        assert_eq!(do_lisp("(case 10 (else))"), "0");
+        assert_eq!(do_lisp("(case 1 ((1 2)))"), "(1 2)");
 
         let env = lisp::Environment::new();
         do_lisp_env("(define a 100)", &env);
