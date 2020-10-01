@@ -143,10 +143,10 @@ fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
     let cdr = eval(&exp[2], env)?;
 
     if let Expression::List(l) = cdr {
-        let mut l = mut_list!(l);
+        let l = referlence_list!(l);
         let mut v: Vec<Expression> = Vec::new();
         v.push(car);
-        v.append(&mut l);
+        v.append(&mut l.to_vec());
         Ok(Environment::create_list(v))
     } else {
         Ok(Expression::Pair(Box::new(car), Box::new(cdr)))
@@ -160,8 +160,8 @@ fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
     for e in &exp[1 as usize..] {
         match eval(e, env)? {
             Expression::List(l) => {
-                let mut l = mut_list!(l);
-                v.append(&mut l);
+                let l = referlence_list!(l);
+                v.append(&mut l.to_vec());
             }
             _ => return Err(create_error!(ErrCode::E1005)),
         }
@@ -483,6 +483,13 @@ mod tests {
         assert_eq!(do_lisp("(cons  1 1.5)"), "(1 . 1.5)");
         assert_eq!(do_lisp("(cons 1 (list 2))"), "(1 2)");
         assert_eq!(do_lisp("(cons (list 1)(list 2))"), "((1) 2)");
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (iota 10))", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_eq!(do_lisp_env("(cons #t a)", &env), "(#t 0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("a", &env), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4 5 6 7 8 9)");
     }
     #[test]
     fn append() {
@@ -493,6 +500,16 @@ mod tests {
             "((10) 2 3)"
         );
         assert_eq!(do_lisp("(append (iota 5) (list 100))"), "(0 1 2 3 4 100)");
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (iota 5))", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_eq!(
+            do_lisp_env("(append (iota 5 5) a)", &env),
+            "(5 6 7 8 9 0 1 2 3 4)"
+        );
+        assert_eq!(do_lisp_env("a", &env), "(0 1 2 3 4)");
+        assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4)");
     }
     #[test]
     fn take() {
