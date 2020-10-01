@@ -657,6 +657,16 @@ mod tests {
         assert_eq!(do_lisp("(list-ref '(#\\a #\\b #\\c) 1)"), "#\\b");
         assert_eq!(do_lisp("(list-ref (list (list 0 1) 1 2 3) 0)"), "(0 1)");
     }
+    #[test]
+    #[cfg(not(feature = "thread"))]
+    fn list_set() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 1 2 3 4 5))", &env);
+        do_lisp_env("(define b a)", &env);
+        do_lisp_env("(list-set! a 0 100)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(100 2 3 4 5)");
+        assert_eq!(do_lisp_env("b", &env), "(100 2 3 4 5)");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -833,5 +843,21 @@ mod error_tests {
 
         assert_eq!(do_lisp("(list-ref (iota 10) -1)"), "E1011");
         assert_eq!(do_lisp("(list-ref (iota 10) 10)"), "E1011");
+    }
+    #[test]
+    #[cfg(not(feature = "thread"))]
+    fn list_set() {
+        assert_eq!(do_lisp("(list-set!)"), "E1007");
+        assert_eq!(do_lisp("(list-set! (iota 10))"), "E1007");
+        assert_eq!(do_lisp("(list-set! (iota 10) 1 2 3)"), "E1007");
+
+        assert_eq!(do_lisp("(list-set! 10 0 -1)"), "E1005");
+        assert_eq!(do_lisp("(list-set! (iota 10) #t 0)"), "E1002");
+
+        assert_eq!(do_lisp("(list-set! a 0 #t)"), "E1008");
+        assert_eq!(do_lisp("(list-set! (iota 10) 0 a)"), "E1008");
+
+        assert_eq!(do_lisp("(list-set! (iota 10) -1 0)"), "E1011");
+        assert_eq!(do_lisp("(list-set! (iota 10) 10 0)"), "E1011");
     }
 }
