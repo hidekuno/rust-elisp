@@ -610,8 +610,12 @@ mod tests {
             do_lisp("(map (lambda (n) (* n 10)) (iota 10 1))"),
             "(10 20 30 40 50 60 70 80 90 100)"
         );
+        assert_eq!(do_lisp("(map list (list 1 2 3))"), "((1)(2)(3))");
         assert_eq!(do_lisp("(map (lambda (n) (car n)) (list))"), "()");
-
+        assert_eq!(
+            do_lisp("(map car (list (list 1 2 3)(list 4 5 6) (list 7 8 9)))"),
+            "(1 4 7)"
+        );
         assert_eq!(
             do_lisp("(map (lambda (n) (car n)) (list (list 1)(list 2)(list 3)))"),
             "(1 2 3)"
@@ -650,6 +654,11 @@ mod tests {
         assert_eq!(
             do_lisp("(filter (lambda (n) (not (= 0 (modulo n 2)))) (iota 10 1))"),
             "(1 3 5 7 9)"
+        );
+        assert_eq!(do_lisp("(filter odd? (iota 10))",), "(1 3 5 7 9)");
+        assert_eq!(
+            do_lisp("(filter integer? (list (list 1 2 3) #f 10))"),
+            "(10)"
         );
 
         let env = lisp::Environment::new();
