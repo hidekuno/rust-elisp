@@ -422,10 +422,15 @@ fn do_list_proc(
                 let mut sexp: Vec<Expression> = Vec::new();
                 sexp.push(callable.clone());
 
-                let mut ql: Vec<Expression> = Vec::new();
-                ql.push(quote.clone());
-                ql.push(e.clone());
-                sexp.push(Environment::create_list(ql));
+                match e {
+                    Expression::List(_) | Expression::Symbol(_) => {
+                        let mut ql: Vec<Expression> = Vec::new();
+                        ql.push(quote.clone());
+                        ql.push(e.clone());
+                        sexp.push(Environment::create_list(ql));
+                    }
+                    _ => sexp.push(e.clone()),
+                }
                 func(sexp, env, &mut result, e)?;
             }
             return Ok(Environment::create_list(result));
