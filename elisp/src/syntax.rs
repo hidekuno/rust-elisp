@@ -345,10 +345,24 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::List(l) = eval(&exp[2], env)? {
         let l = &*(referlence_list!(l));
-
+        let quote = Expression::BuildInFunction(
+            "quote".to_string(),
+            env.get_builtin_func("quote").unwrap(),
+        );
         let mut se: Vec<Expression> = Vec::new();
         se.push(exp[1].clone());
-        se.extend_from_slice(&l);
+
+        for e in l {
+            match e {
+                Expression::List(l) => {
+                    let mut ql: Vec<Expression> = Vec::new();
+                    ql.push(quote.clone());
+                    ql.push(Expression::List(l.clone()));
+                    se.push(Environment::create_list(ql));
+                }
+                _ => se.push(e.clone()),
+            }
+        }
         eval(&Environment::create_list(se), env)
     } else {
         Err(create_error_value!(ErrCode::E1005, exp.len()))
@@ -575,7 +589,14 @@ mod tests {
         assert_eq!(do_lisp("(apply - (list 5 3 2))"), "0");
         assert_eq!(do_lisp("(apply (lambda (a b) (+ a b)) (list 1 2))"), "3");
         assert_eq!(do_lisp("(apply + (iota 10))"), "45");
-
+        assert_eq!(
+            do_lisp("(apply append (list (list 1 2 3)(list 4 5 6)))"),
+            "(1 2 3 4 5 6)"
+        );
+        assert_eq!(
+            do_lisp("(apply (lambda (a) (map (lambda (n) (* n n)) a)) (list (list 1 2 3)))"),
+            "(1 4 9)"
+        );
         let env = lisp::Environment::new();
         do_lisp_env("(define (hoge x y)(* x y))", &env);
         assert_eq!(do_lisp_env("(apply hoge (list 3 4))", &env), "12");
