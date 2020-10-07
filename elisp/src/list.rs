@@ -279,90 +279,81 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Environment::create_list(l))
 }
 fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    fn func(
+        sexp: Vec<Expression>,
+        env: &Environment,
+        result: &mut Vec<Expression>,
+        _e: &Expression,
+    ) -> ResultExpression {
+        result.push(eval(&Environment::create_list(sexp), env)?);
+        return Ok(Expression::Nil());
     }
-    match eval(&exp[1], env)? {
-        Expression::Function(f) => match eval(&exp[2], env)? {
-            Expression::List(l) => {
-                let l = &*(referlence_list!(l));
 
-                let mut result: Vec<Expression> = Vec::new();
-                for e in l {
-                    result.push(f.execute_noeval(&[e.clone()].to_vec())?);
-                }
-                Ok(Environment::create_list(result))
-            }
-            _ => Err(create_error!(ErrCode::E1005)),
-        },
-        _ => Err(create_error!(ErrCode::E1006)),
-    }
+    return do_list_proc(exp, env, func);
 }
 fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
+    fn func(
+        sexp: Vec<Expression>,
+        env: &Environment,
+        result: &mut Vec<Expression>,
+        e: &Expression,
+    ) -> ResultExpression {
+        match eval(&Environment::create_list(sexp), env)? {
+            Expression::Boolean(b) => {
+                if b {
+                    result.push(e.clone());
+                }
+            }
+            _ => return Err(create_error!(ErrCode::E1001)),
+        }
+        return Ok(Expression::Nil());
+    }
+    return do_list_proc(exp, env, func);
+}
+fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    match eval(&exp[1], env)? {
-        Expression::Function(f) => match eval(&exp[2], env)? {
-            Expression::List(l) => {
-                let l = &*(referlence_list!(l));
-                let mut result: Vec<Expression> = Vec::new();
-                for e in l {
-                    match f.execute_noeval(&[e.clone()].to_vec())? {
-                        Expression::Boolean(b) => {
-                            if b {
-                                result.push(e.clone());
-                            }
-                        }
-                        _ => return Err(create_error!(ErrCode::E1001)),
-                    }
-                }
-                Ok(Environment::create_list(result))
+
+    let callable = eval(&exp[1], env)?;
+
+    match eval(&exp[2], env)? {
+        Expression::List(l) => {
+            let l = &*(referlence_list!(l));
+
+            for e in l {
+                let mut sexp: Vec<Expression> = Vec::new();
+                sexp.push(callable.clone());
+                sexp.push(e.clone());
+                eval(&Environment::create_list(sexp), env)?;
             }
-            _ => Err(create_error!(ErrCode::E1005)),
-        },
-        _ => Err(create_error!(ErrCode::E1006)),
+            Ok(Expression::Nil())
+        }
+        _ => Err(create_error!(ErrCode::E1005)),
     }
 }
 fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::Function(f) = eval(&exp[1], env)? {
-        if let Expression::List(l) = eval(&exp[3], env)? {
-            let l = &*(referlence_list!(l));
-            if l.len() == 0 {
-                return eval(&exp[2], env);
-            }
-            let mut result = l[0].clone();
-            // not carfully length,  safety
-            for e in &l[1 as usize..] {
-                result = f.execute_noeval(&[result.clone(), e.clone()].to_vec())?;
-            }
-            Ok(result)
-        } else {
-            Err(create_error!(ErrCode::E1005))
+    let callable = eval(&exp[1], env)?;
+    let quote =
+        Expression::BuildInFunction("quote".to_string(), env.get_builtin_func("quote").unwrap());
+
+    if let Expression::List(l) = eval(&exp[3], env)? {
+        let l = &*(referlence_list!(l));
+        if l.len() == 0 {
+            return eval(&exp[2], env);
         }
-    } else {
-        Err(create_error!(ErrCode::E1006))
-    }
-}
-fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    if let Expression::Function(f) = eval(&exp[1], env)? {
-        if let Expression::List(l) = eval(&exp[2], env)? {
-            let l = &*(referlence_list!(l));
-            for e in l {
-                f.execute_noeval(&[e.clone()].to_vec())?;
-            }
-        } else {
-            return Err(create_error!(ErrCode::E1005));
+        let mut result = l[0].clone();
+        // not carfully length,  safety
+        for e in &l[1 as usize..] {
+            let sexp = make_evaled_list(&quote, &callable, e, &Some(result));
+            result = eval(&Environment::create_list(sexp), env)?;
         }
-        Ok(Expression::Nil())
+        Ok(result)
     } else {
-        Err(create_error!(ErrCode::E1006))
+        Err(create_error!(ErrCode::E1005))
     }
 }
 fn list_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -407,6 +398,76 @@ fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
             l[i as usize] = eval(&exp[3], env)?;
             //            Ok(Expression::List(r.clone()))
             Ok(Expression::Nil())
+        }
+        _ => Err(create_error!(ErrCode::E1005)),
+    }
+}
+fn make_evaled_list(
+    quote: &Expression,
+    callable: &Expression,
+    exp: &Expression,
+    result: &Option<Expression>,
+) -> Vec<Expression> {
+    let mut sexp: Vec<Expression> = Vec::new();
+
+    fn set_evaled_list_inner(sexp: &mut Vec<Expression>, quote: &Expression, exp: &Expression) {
+        let mut ql: Vec<Expression> = Vec::new();
+        ql.push(quote.clone());
+        ql.push(exp.clone());
+        sexp.push(Environment::create_list(ql));
+    }
+
+    sexp.push(callable.clone());
+
+    if let Some(e) = result {
+        match e {
+            Expression::List(_) | Expression::Symbol(_) => {
+                set_evaled_list_inner(&mut sexp, quote, e);
+            }
+            _ => sexp.push(e.clone()),
+        }
+    }
+    match exp {
+        Expression::List(_) | Expression::Symbol(_) => {
+            set_evaled_list_inner(&mut sexp, quote, exp);
+        }
+        _ => sexp.push(exp.clone()),
+    }
+    sexp
+}
+fn do_list_proc(
+    exp: &[Expression],
+    env: &Environment,
+    func: fn(Vec<Expression>, &Environment, &mut Vec<Expression>, &Expression) -> ResultExpression,
+) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let callable = eval(&exp[1], env)?;
+    let quote =
+        Expression::BuildInFunction("quote".to_string(), env.get_builtin_func("quote").unwrap());
+    match eval(&exp[2], env)? {
+        Expression::List(l) => {
+            let l = &*(referlence_list!(l));
+
+            let mut result: Vec<Expression> = Vec::new();
+
+            for e in l {
+                let mut sexp: Vec<Expression> = Vec::new();
+                sexp.push(callable.clone());
+
+                match e {
+                    Expression::List(_) | Expression::Symbol(_) => {
+                        let mut ql: Vec<Expression> = Vec::new();
+                        ql.push(quote.clone());
+                        ql.push(e.clone());
+                        sexp.push(Environment::create_list(ql));
+                    }
+                    _ => sexp.push(e.clone()),
+                }
+                func(sexp, env, &mut result, e)?;
+            }
+            return Ok(Environment::create_list(result));
         }
         _ => Err(create_error!(ErrCode::E1005)),
     }
@@ -583,8 +644,12 @@ mod tests {
             do_lisp("(map (lambda (n) (* n 10)) (iota 10 1))"),
             "(10 20 30 40 50 60 70 80 90 100)"
         );
+        assert_eq!(do_lisp("(map list (list 1 2 3))"), "((1)(2)(3))");
         assert_eq!(do_lisp("(map (lambda (n) (car n)) (list))"), "()");
-
+        assert_eq!(
+            do_lisp("(map car (list (list 1 2 3)(list 4 5 6) (list 7 8 9)))"),
+            "(1 4 7)"
+        );
         assert_eq!(
             do_lisp("(map (lambda (n) (car n)) (list (list 1)(list 2)(list 3)))"),
             "(1 2 3)"
@@ -624,6 +689,11 @@ mod tests {
             do_lisp("(filter (lambda (n) (not (= 0 (modulo n 2)))) (iota 10 1))"),
             "(1 3 5 7 9)"
         );
+        assert_eq!(do_lisp("(filter odd? (iota 10))",), "(1 3 5 7 9)");
+        assert_eq!(
+            do_lisp("(filter integer? (list (list 1 2 3) #f 10))"),
+            "(10)"
+        );
 
         let env = lisp::Environment::new();
         do_lisp_env("(define a 100)", &env);
@@ -657,6 +727,8 @@ mod tests {
             do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &env),
             "600"
         );
+        assert_eq!(do_lisp("(reduce 0 (list) (list))"), "()");
+        assert_eq!(do_lisp("(reduce + 10 (list 1 2 3))"), "6");
     }
     #[test]
     fn for_each() {
@@ -814,7 +886,7 @@ mod error_tests {
             "E1007"
         );
         assert_eq!(do_lisp("(map 1 2 3)"), "E1007");
-        assert_eq!(do_lisp("(map (iota 10) (lambda (n) n))"), "E1006");
+        assert_eq!(do_lisp("(map (iota 10) (iota 10))"), "E1006");
         assert_eq!(do_lisp("(map  (lambda (n) n) 10)"), "E1005");
     }
     #[test]
@@ -826,7 +898,7 @@ mod error_tests {
             do_lisp("(filter (lambda (a b) (= 0 a))(iota 10 1))"),
             "E1007"
         );
-        assert_eq!(do_lisp("(filter (iota 10) (lambda (n) n))"), "E1006");
+        assert_eq!(do_lisp("(filter (iota 10) (iota 10))"), "E1006");
         assert_eq!(do_lisp("(filter (lambda (n) n) 10)"), "E1005");
         assert_eq!(do_lisp("(filter (lambda (n) n) (iota 4))"), "E1001");
     }
@@ -835,7 +907,6 @@ mod error_tests {
         assert_eq!(do_lisp("(reduce)"), "E1007");
         assert_eq!(do_lisp("(reduce (lambda (n) n))"), "E1007");
         assert_eq!(do_lisp("(reduce 1 2 3 4)"), "E1007");
-        assert_eq!(do_lisp("(reduce 0 (list) (list))"), "E1006");
         assert_eq!(do_lisp("(reduce (lambda (n) n) 10 10)"), "E1005");
         assert_eq!(do_lisp("(reduce (lambda (n) n) 0 (iota 4))"), "E1007");
     }
@@ -844,7 +915,7 @@ mod error_tests {
         assert_eq!(do_lisp("(for-each)"), "E1007");
         assert_eq!(do_lisp("(for-each (lambda (n) n))"), "E1007");
         assert_eq!(do_lisp("(for-each 1 2 3)"), "E1007");
-        assert_eq!(do_lisp("(for-each (list) (list))"), "E1006");
+        assert_eq!(do_lisp("(for-each 10 (list 1))"), "E1006");
         assert_eq!(do_lisp("(for-each (lambda (n) n) 10)"), "E1005");
     }
     #[test]

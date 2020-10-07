@@ -977,6 +977,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
             Expression::BuildInFunction(_, f) => f(&v[..], env),
             Expression::BuildInFunctionExt(f) => f(&v[..], env),
             Expression::TailRecursion(f) => f.set_param(&v[..], env),
+            Expression::Function(f) => f.execute(&v[..], env),
             _ => match eval(&v[0], env)? {
                 Expression::Function(f) => f.execute(&v[..], env),
                 Expression::BuildInFunction(_, f) => f(&v[..], env),
