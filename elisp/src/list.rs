@@ -336,23 +336,24 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::Function(f) = eval(&exp[1], env)? {
-        if let Expression::List(l) = eval(&exp[3], env)? {
-            let l = &*(referlence_list!(l));
-            if l.len() == 0 {
-                return eval(&exp[2], env);
-            }
-            let mut result = l[0].clone();
-            // not carfully length,  safety
-            for e in &l[1 as usize..] {
-                result = f.execute_noeval(&[result.clone(), e.clone()].to_vec())?;
-            }
-            Ok(result)
-        } else {
-            Err(create_error!(ErrCode::E1005))
+    let callable = eval(&exp[1], env)?;
+    let quote =
+        Expression::BuildInFunction("quote".to_string(), env.get_builtin_func("quote").unwrap());
+
+    if let Expression::List(l) = eval(&exp[3], env)? {
+        let l = &*(referlence_list!(l));
+        if l.len() == 0 {
+            return eval(&exp[2], env);
         }
+        let mut result = l[0].clone();
+        // not carfully length,  safety
+        for e in &l[1 as usize..] {
+            let sexp = make_evaled_list(&quote, &callable, e, &Some(result));
+            result = eval(&Environment::create_list(sexp), env)?;
+        }
+        Ok(result)
     } else {
-        Err(create_error!(ErrCode::E1006))
+        Err(create_error!(ErrCode::E1005))
     }
 }
 fn list_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -400,6 +401,39 @@ fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
         _ => Err(create_error!(ErrCode::E1005)),
     }
+}
+fn make_evaled_list(
+    quote: &Expression,
+    callable: &Expression,
+    exp: &Expression,
+    result: &Option<Expression>,
+) -> Vec<Expression> {
+    let mut sexp: Vec<Expression> = Vec::new();
+
+    fn set_evaled_list_inner(sexp: &mut Vec<Expression>, quote: &Expression, exp: &Expression) {
+        let mut ql: Vec<Expression> = Vec::new();
+        ql.push(quote.clone());
+        ql.push(exp.clone());
+        sexp.push(Environment::create_list(ql));
+    }
+
+    sexp.push(callable.clone());
+
+    if let Some(e) = result {
+        match e {
+            Expression::List(_) | Expression::Symbol(_) => {
+                set_evaled_list_inner(&mut sexp, quote, e);
+            }
+            _ => sexp.push(e.clone()),
+        }
+    }
+    match exp {
+        Expression::List(_) | Expression::Symbol(_) => {
+            set_evaled_list_inner(&mut sexp, quote, exp);
+        }
+        _ => sexp.push(exp.clone()),
+    }
+    sexp
 }
 fn do_list_proc(
     exp: &[Expression],
@@ -693,6 +727,8 @@ mod tests {
             do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &env),
             "600"
         );
+        assert_eq!(do_lisp("(reduce 0 (list) (list))"), "()");
+        assert_eq!(do_lisp("(reduce + 10 (list 1 2 3))"), "6");
     }
     #[test]
     fn for_each() {
@@ -871,7 +907,6 @@ mod error_tests {
         assert_eq!(do_lisp("(reduce)"), "E1007");
         assert_eq!(do_lisp("(reduce (lambda (n) n))"), "E1007");
         assert_eq!(do_lisp("(reduce 1 2 3 4)"), "E1007");
-        assert_eq!(do_lisp("(reduce 0 (list) (list))"), "E1006");
         assert_eq!(do_lisp("(reduce (lambda (n) n) 10 10)"), "E1005");
         assert_eq!(do_lisp("(reduce (lambda (n) n) 0 (iota 4))"), "E1007");
     }
