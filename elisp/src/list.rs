@@ -453,18 +453,7 @@ fn do_list_proc(
             let mut result: Vec<Expression> = Vec::new();
 
             for e in l {
-                let mut sexp: Vec<Expression> = Vec::new();
-                sexp.push(callable.clone());
-
-                match e {
-                    Expression::List(_) | Expression::Symbol(_) => {
-                        let mut ql: Vec<Expression> = Vec::new();
-                        ql.push(quote.clone());
-                        ql.push(e.clone());
-                        sexp.push(Environment::create_list(ql));
-                    }
-                    _ => sexp.push(e.clone()),
-                }
+                let sexp = make_evaled_list(&quote, &callable, e, &None);
                 func(sexp, env, &mut result, e)?;
             }
             return Ok(Environment::create_list(result));
