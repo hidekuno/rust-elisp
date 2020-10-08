@@ -14,6 +14,7 @@ use crate::create_error_value;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error, Function};
+use crate::list::make_evaled_list;
 use crate::referlence_list;
 use crate::util::eqv;
 
@@ -37,13 +38,14 @@ where
     b.regist("apply", apply);
     b.regist("delay", delay);
     b.regist("force", force);
-    b.regist("quote", |exp, _env| {
-        if exp.len() != 2 {
-            Err(create_error_value!(ErrCode::E1007, exp.len()))
-        } else {
-            Ok(exp[1].clone())
-        }
-    });
+    b.regist("quote", quote);
+}
+pub fn quote(exp: &[Expression], _env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        Err(create_error_value!(ErrCode::E1007, exp.len()))
+    } else {
+        Ok(exp[1].clone())
+    }
 }
 fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 3 {
@@ -345,25 +347,9 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::List(l) = eval(&exp[2], env)? {
         let l = &*(referlence_list!(l));
-        let quote = Expression::BuildInFunction(
-            "quote".to_string(),
-            env.get_builtin_func("quote").unwrap(),
-        );
-        let mut se: Vec<Expression> = Vec::new();
-        se.push(exp[1].clone());
+        let sexp = make_evaled_list(&exp[1], &l, &None);
 
-        for e in l {
-            match e {
-                Expression::List(l) => {
-                    let mut ql: Vec<Expression> = Vec::new();
-                    ql.push(quote.clone());
-                    ql.push(Expression::List(l.clone()));
-                    se.push(Environment::create_list(ql));
-                }
-                _ => se.push(e.clone()),
-            }
-        }
-        eval(&Environment::create_list(se), env)
+        eval(&Environment::create_list(sexp), env)
     } else {
         Err(create_error_value!(ErrCode::E1005, exp.len()))
     }

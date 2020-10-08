@@ -17,6 +17,7 @@ use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
+use crate::syntax::quote;
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -337,8 +338,6 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let callable = eval(&exp[1], env)?;
-    let quote =
-        Expression::BuildInFunction("quote".to_string(), env.get_builtin_func("quote").unwrap());
 
     if let Expression::List(l) = eval(&exp[3], env)? {
         let l = &*(referlence_list!(l));
@@ -348,7 +347,7 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
         let mut result = l[0].clone();
         // not carfully length,  safety
         for e in &l[1 as usize..] {
-            let sexp = make_evaled_list(&quote, &callable, e, &Some(result));
+            let sexp = make_evaled_list(&callable, &[e.clone()], &Some(result));
             result = eval(&Environment::create_list(sexp), env)?;
         }
         Ok(result)
@@ -402,17 +401,16 @@ fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn make_evaled_list(
-    quote: &Expression,
+pub fn make_evaled_list(
     callable: &Expression,
-    exp: &Expression,
+    exp: &[Expression],
     result: &Option<Expression>,
 ) -> Vec<Expression> {
     let mut sexp: Vec<Expression> = Vec::new();
 
-    fn set_evaled_list_inner(sexp: &mut Vec<Expression>, quote: &Expression, exp: &Expression) {
+    fn set_evaled_list_inner(sexp: &mut Vec<Expression>, exp: &Expression) {
         let mut ql: Vec<Expression> = Vec::new();
-        ql.push(quote.clone());
+        ql.push(Expression::BuildInFunction("quote".to_string(), quote));
         ql.push(exp.clone());
         sexp.push(Environment::create_list(ql));
     }
@@ -422,16 +420,18 @@ fn make_evaled_list(
     if let Some(e) = result {
         match e {
             Expression::List(_) | Expression::Symbol(_) => {
-                set_evaled_list_inner(&mut sexp, quote, e);
+                set_evaled_list_inner(&mut sexp, &e);
             }
             _ => sexp.push(e.clone()),
         }
     }
-    match exp {
-        Expression::List(_) | Expression::Symbol(_) => {
-            set_evaled_list_inner(&mut sexp, quote, exp);
+    for e in exp {
+        match e {
+            Expression::List(_) | Expression::Symbol(_) => {
+                set_evaled_list_inner(&mut sexp, &e);
+            }
+            _ => sexp.push(e.clone()),
         }
-        _ => sexp.push(exp.clone()),
     }
     sexp
 }
@@ -444,8 +444,7 @@ fn do_list_proc(
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let callable = eval(&exp[1], env)?;
-    let quote =
-        Expression::BuildInFunction("quote".to_string(), env.get_builtin_func("quote").unwrap());
+
     match eval(&exp[2], env)? {
         Expression::List(l) => {
             let l = &*(referlence_list!(l));
@@ -453,7 +452,7 @@ fn do_list_proc(
             let mut result: Vec<Expression> = Vec::new();
 
             for e in l {
-                let sexp = make_evaled_list(&quote, &callable, e, &None);
+                let sexp = make_evaled_list(&callable, &[e.clone()], &None);
                 func(sexp, env, &mut result, e)?;
             }
             return Ok(Environment::create_list(result));
