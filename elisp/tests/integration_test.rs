@@ -348,11 +348,11 @@ fn trigonometric() {
         "0.49999999999999994"
     );
     assert_eq!(
-        do_lisp_env("(get-angle 0 0.5 0 0.8660254037844387)", &env),
-        "60.00000000000001"
+        do_lisp_env("(round(get-angle 0 0.5 0 0.8660254037844387))", &env),
+        "60"
     );
     assert_eq!(
-        do_lisp_env("(get-angle2 0 0.5 0 0.8660254037844387)", &env),
-        "60.00000000000001"
+        do_lisp_env("(round(get-angle2 0 0.5 0 0.8660254037844387))", &env),
+        "60"
     );
 }
