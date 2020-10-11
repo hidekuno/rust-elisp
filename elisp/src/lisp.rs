@@ -490,16 +490,10 @@ impl Function {
         for e in &exp[1 as usize..] {
             vec.push(eval(e, env)?);
         }
-        return self.execute_noeval(&vec);
-    }
-    pub fn execute_noeval(&self, exp: &[Expression]) -> ResultExpression {
-        if self.param.len() != exp.len() {
-            return Err(create_error_value!(ErrCode::E1007, exp.len()));
-        }
         // @@@ env.create();
         let env = Environment::with_parent(&self.closure_env);
         for (i, s) in self.param.iter().enumerate() {
-            env.regist(s.to_string(), exp[i].clone());
+            env.regist(s.to_string(), vec[i].clone());
         }
         // execute!
         let mut ret = Expression::Nil();
