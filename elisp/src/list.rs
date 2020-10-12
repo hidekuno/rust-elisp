@@ -323,10 +323,10 @@ fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
             let l = &*(referlence_list!(l));
 
             for e in l {
-                let mut sexp: Vec<Expression> = Vec::new();
-                sexp.push(callable.clone());
-                sexp.push(e.clone());
-                eval(&Environment::create_list(sexp), env)?;
+                eval(
+                    &Environment::create_list(make_evaled_list(&callable, &[e.clone()], &None)),
+                    env,
+                )?;
             }
             Ok(Expression::Nil())
         }
@@ -347,8 +347,10 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
         let mut result = l[0].clone();
         // not carfully length,  safety
         for e in &l[1 as usize..] {
-            let sexp = make_evaled_list(&callable, &[e.clone()], &Some(result));
-            result = eval(&Environment::create_list(sexp), env)?;
+            result = eval(
+                &Environment::create_list(make_evaled_list(&callable, &[e.clone()], &Some(result))),
+                env,
+            )?;
         }
         Ok(result)
     } else {
@@ -452,8 +454,12 @@ fn do_list_proc(
             let mut result: Vec<Expression> = Vec::new();
 
             for e in l {
-                let sexp = make_evaled_list(&callable, &[e.clone()], &None);
-                func(sexp, env, &mut result, e)?;
+                func(
+                    make_evaled_list(&callable, &[e.clone()], &None),
+                    env,
+                    &mut result,
+                    e,
+                )?;
             }
             return Ok(Environment::create_list(result));
         }
