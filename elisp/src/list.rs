@@ -495,6 +495,7 @@ mod tests {
             "((1 2 3)(1 2 3)(1 2 3)(1 2 3))"
         );
         assert_eq!(do_lisp("(make-list 8 'a)"), "(a a a a a a a a)");
+        assert_eq!(do_lisp("(make-list 0 'a)"), "()");
     }
     #[test]
     fn null_f() {
