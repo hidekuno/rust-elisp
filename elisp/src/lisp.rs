@@ -6,7 +6,7 @@
 */
 use std::collections::HashMap;
 use std::io::BufRead;
-use std::io::BufReader;
+
 use std::io::Write;
 use std::string::ToString;
 use std::vec::Vec;
@@ -616,15 +616,6 @@ const FALSE: &'static str = "#f";
 
 const BACKSLASH: u8 = 0x5c;
 //========================================================================
-pub fn do_interactive() {
-    let mut stream = BufReader::new(std::io::stdin());
-    let env = Environment::new();
-
-    match repl(&mut stream, &env, false) {
-        Err(e) => println!("{}", e),
-        Ok(_) => {}
-    }
-}
 pub fn repl(
     stream: &mut dyn BufRead,
     env: &Environment,
