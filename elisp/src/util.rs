@@ -124,44 +124,16 @@ pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
 
-    match a {
-        Expression::Float(x) => match b {
-            Expression::Float(y) => Ok(Expression::Boolean(x == y)),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        Expression::Integer(x) => match b {
-            Expression::Integer(y) => Ok(Expression::Boolean(x == y)),
-            Expression::Rational(y) => Ok(Expression::Boolean(
-                Number::Integer(x) == Number::Rational(y),
-            )),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        Expression::Rational(x) => match b {
-            Expression::Integer(y) => Ok(Expression::Boolean(
-                Number::Rational(x) == Number::Integer(y),
-            )),
-            Expression::Rational(y) => Ok(Expression::Boolean(
-                Number::Rational(x) == Number::Rational(y),
-            )),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        Expression::Boolean(x) => match b {
-            Expression::Boolean(y) => Ok(Expression::Boolean(x == y)),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        Expression::Symbol(x) => match b {
-            Expression::Symbol(y) => Ok(Expression::Boolean(x == y)),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        Expression::Char(x) => match b {
-            Expression::Char(y) => Ok(Expression::Boolean(x == y)),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        Expression::String(x) => match b {
-            Expression::String(y) => Ok(Expression::Boolean(x == y)),
-            _ => Ok(Expression::Boolean(false)),
-        },
-        _ => Ok(Expression::Boolean(false)),
+    if let (Expression::Integer(x), Expression::Rational(y)) = (&a, &b) {
+        Ok(Expression::Boolean(
+            Number::Integer(*x) == Number::Rational(*y),
+        ))
+    } else if let (Expression::Rational(x), Expression::Integer(y)) = (&a, &b) {
+        Ok(Expression::Boolean(
+            Number::Rational(*x) == Number::Integer(*y),
+        ))
+    } else {
+        Ok(Expression::Boolean(Expression::eq(&a, &b)))
     }
 }
 #[cfg(test)]

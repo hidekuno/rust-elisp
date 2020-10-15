@@ -209,14 +209,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = &*(referlence_list!(l));
     let mut vec = Vec::new();
     for e in l {
-        if true == Expression::eq_integer(e, &other)
-            || true == Expression::eq_float(e, &other)
-            || true == Expression::eq_rat(e, &other)
-            || true == Expression::eq_string(e, &other)
-            || true == Expression::eq_char(e, &other)
-            || true == Expression::eq_boolean(e, &other)
-            || true == Expression::eq_symbol(e, &other)
-        {
+        if true == Expression::eq(e, &other) {
             continue;
         }
         vec.push(e.clone());
