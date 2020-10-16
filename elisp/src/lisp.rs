@@ -929,11 +929,13 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));
     }
-    #[cfg(not(feature = "thread"))]
+
+    #[cfg(feature = "interrupt")]
     if *env.signal.lock().unwrap() == true {
         *env.signal.lock().unwrap() = false;
         return Err(create_error!(ErrCode::E9000));
     }
+
     ret_clone_if_atom!(sexp);
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
