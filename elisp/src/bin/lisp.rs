@@ -7,12 +7,6 @@
 extern crate elisp;
 extern crate env_logger;
 
-#[allow(improper_ctypes)]
-#[cfg(not(feature = "thread"))]
-extern "C" {
-    fn signal(sig: u32, cb: extern "C" fn(u32)) -> fn(u32);
-}
-
 use elisp::lisp;
 use std::env;
 use std::error::Error;
@@ -20,18 +14,23 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use elisp::print_error;
-
-#[cfg(not(feature = "thread"))]
-extern "C" fn interrupt(sig: u32) {
-    println!("\nUnhandled signal {}.\nPlease Press Enter.", sig);
-}
-
 #[cfg(feature = "thread")]
 fn set_interrupt(env: &lisp::Environment) {
     let env = env.clone();
 
     ctrlc::set_handler(move || {
         env.set_force_stop(true);
+    })
+    .expect("Error setting Ctrl-C handler");
+}
+
+#[cfg(not(feature = "thread"))]
+fn set_interrupt(env: &lisp::Environment) {
+    let c = env.signal.clone();
+
+    ctrlc::set_handler(move || {
+        let mut c = c.lock().unwrap();
+        *c = true;
     })
     .expect("Error setting Ctrl-C handler");
 }
@@ -43,12 +42,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let env = lisp::Environment::new();
 
     if args.len() < 2 {
-        #[cfg(not(feature = "thread"))]
-        unsafe {
-            signal(2, interrupt);
-        }
-
-        #[cfg(feature = "thread")]
         set_interrupt(&env);
 
         let mut stream = BufReader::new(std::io::stdin());

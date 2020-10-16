@@ -7,6 +7,8 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::vec::Vec;
 
 use crate::buildin::{create_function, BuildInTable};
@@ -23,18 +25,21 @@ pub type ListRc = Rc<RefCell<Vec<Expression>>>;
 pub struct Environment {
     core: EnvTable,
     globals: Rc<RefCell<GlobalTbl>>,
+    pub signal: Arc<Mutex<bool>>,
 }
 impl Environment {
     pub fn new() -> Self {
         Environment {
             core: Rc::new(RefCell::new(SimpleEnv::new(None))),
             globals: Rc::new(RefCell::new(GlobalTbl::new())),
+            signal: Arc::new(Mutex::new(false)),
         }
     }
     pub fn with_parent(parent: &Environment) -> Self {
         Environment {
             core: Rc::new(RefCell::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
+            signal: parent.signal.clone(),
         }
     }
     pub fn create_func(func: Function) -> Expression {
