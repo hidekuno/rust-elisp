@@ -14,6 +14,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 
 use elisp::print_error;
+
 #[cfg(feature = "thread")]
 fn set_interrupt(env: &lisp::Environment) {
     let env = env.clone();
@@ -23,7 +24,6 @@ fn set_interrupt(env: &lisp::Environment) {
     })
     .expect("Error setting Ctrl-C handler");
 }
-
 #[cfg(feature = "interrupt")]
 fn set_interrupt(env: &lisp::Environment) {
     let c = env.signal.clone();
@@ -42,10 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let env = lisp::Environment::new();
 
     if args.len() < 2 {
-        #[cfg(feature = "thread")]
-        set_interrupt(&env);
-
-        #[cfg(feature = "interrupt")]
+        #[cfg(any(feature = "thread", feature = "interrupt"))]
         set_interrupt(&env);
 
         let mut stream = BufReader::new(std::io::stdin());
