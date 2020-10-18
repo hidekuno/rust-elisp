@@ -11,6 +11,34 @@ use std::io::Write;
 use std::string::ToString;
 use std::vec::Vec;
 
+static mut CTRLC: bool = false;
+
+#[allow(improper_ctypes)]
+extern "C" {
+    fn signal(sig: u32, cb: extern "C" fn(u32)) -> fn(u32);
+}
+extern "C" fn interrupt(_sig: u32) {
+    unsafe {
+        CTRLC = true;
+    }
+}
+macro_rules! init_sig_intr {
+    ($e: expr) => {
+        unsafe {
+            signal(2, interrupt);
+        }
+    };
+}
+macro_rules! catch_sig_intr {
+    ($e: expr) => {
+        unsafe {
+            if CTRLC {
+                CTRLC = false;
+                $e.set_force_stop(true);
+            }
+        }
+    };
+}
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
@@ -617,6 +645,8 @@ const FALSE: &'static str = "#f";
 const BACKSLASH: u8 = 0x5c;
 //========================================================================
 pub fn do_interactive() {
+    init_sig_intr!();
+
     let mut stream = BufReader::new(std::io::stdin());
     let env = Environment::new();
 
@@ -935,6 +965,8 @@ macro_rules! ret_clone_if_atom {
     };
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
+    catch_sig_intr!(env);
+
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));
     }
