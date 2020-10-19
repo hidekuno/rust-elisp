@@ -15,6 +15,7 @@ pub mod list;
 pub mod math;
 pub mod number;
 pub mod operation;
+pub mod signal;
 pub mod strings;
 pub mod syntax;
 pub mod util;

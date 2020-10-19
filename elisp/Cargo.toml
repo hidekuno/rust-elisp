@@ -12,3 +12,4 @@ rand = "0.6"
 
 [features]
 thread = []
+signal = []
