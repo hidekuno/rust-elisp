@@ -33,8 +33,11 @@ pub fn catch_sig_intr_status(env: &Environment) {
     }
 }
 
-//  You can execute test only it.
+//  You can execute this test case only it.
 //  cargo test --lib --features signal unix
+//  or
+//  cargo test --lib --features signal -- --test-threads=1
+
 #[cfg(all(test, feature = "signal"))]
 mod tests {
     use super::*;
