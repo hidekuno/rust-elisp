@@ -17,6 +17,7 @@ pub mod number;
 pub mod operation;
 pub mod strings;
 pub mod syntax;
+pub mod unix;
 pub mod util;
 
 #[cfg(not(feature = "thread"))]

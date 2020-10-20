@@ -14,6 +14,9 @@ use std::vec::Vec;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
+#[cfg(feature = "signal")]
+use super::unix::signal::{catch_sig_intr_status, init_sig_intr};
+
 use crate::number::Rat;
 
 #[cfg(feature = "thread")]
@@ -617,6 +620,9 @@ const FALSE: &'static str = "#f";
 const BACKSLASH: u8 = 0x5c;
 //========================================================================
 pub fn do_interactive() {
+    #[cfg(feature = "signal")]
+    init_sig_intr();
+
     let mut stream = BufReader::new(std::io::stdin());
     let env = Environment::new();
 
@@ -935,6 +941,9 @@ macro_rules! ret_clone_if_atom {
     };
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
+    #[cfg(feature = "signal")]
+    catch_sig_intr_status(env);
+
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));
     }
