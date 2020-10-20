@@ -14,9 +14,10 @@ use std::vec::Vec;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use crate::number::Rat;
 #[cfg(feature = "signal")]
-use crate::signal::{catch_sig_intr_status, init_sig_intr};
+use super::unix::signal::{catch_sig_intr_status, init_sig_intr};
+
+use crate::number::Rat;
 
 #[cfg(feature = "thread")]
 use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
