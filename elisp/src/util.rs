@@ -74,12 +74,8 @@ fn is_sign(exp: &[Expression], env: &Environment, f: fn(&Number) -> bool) -> Res
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = match eval(&exp[1], env)? {
-        Expression::Float(f) => Number::Float(f),
-        Expression::Integer(i) => Number::Integer(i),
-        Expression::Rational(r) => Number::Rational(r),
-        _ => return Err(create_error!(ErrCode::E1003)),
-    };
+    let v = Expression::to_number(&eval(&exp[1], env)?)?;
+
     Ok(Expression::Boolean(f(&v)))
 }
 fn is_type(

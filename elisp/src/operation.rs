@@ -21,15 +21,15 @@ pub fn create_function<T>(b: &mut T)
 where
     T: BuildInTable + ?Sized,
 {
-    b.regist("+", |exp, env| calc(exp, env, |x, y| x + y));
-    b.regist("-", |exp, env| calc(exp, env, |x, y| x - y));
-    b.regist("*", |exp, env| calc(exp, env, |x, y| x * y));
-    b.regist("/", |exp, env| calc(exp, env, |x, y| x / y));
+    b.regist("+", |exp, env| calc(exp, env, |x, y| x + y, 0));
+    b.regist("-", |exp, env| calc(exp, env, |x, y| x - y, 0));
+    b.regist("*", |exp, env| calc(exp, env, |x, y| x * y, 1));
+    b.regist("/", |exp, env| calc(exp, env, |x, y| x / y, 1));
     b.regist("max", |exp, env| {
-        calc(exp, env, |x, y| if x > y { x } else { y })
+        select_one(exp, env, |x, y| if x > y { x } else { y })
     });
     b.regist("min", |exp, env| {
-        calc(exp, env, |x, y| if x < y { x } else { y })
+        select_one(exp, env, |x, y| if x < y { x } else { y })
     });
     b.regist("=", |exp, env| cmp(exp, env, |x, y| x == y));
     b.regist("<", |exp, env| cmp(exp, env, |x, y| x < y));
@@ -49,32 +49,38 @@ fn calc(
     exp: &[Expression],
     env: &Environment,
     f: fn(x: Number, y: Number) -> Number,
+    x: i64,
 ) -> ResultExpression {
-    let mut result: Number = Number::Integer(0);
-    let mut first: bool = true;
-
-    if 2 >= exp.len() {
+    if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1 as usize..] {
-        let param = match eval(e, env)? {
-            Expression::Float(v) => Number::Float(v),
-            Expression::Integer(v) => Number::Integer(v),
-            Expression::Rational(v) => Number::Rational(v),
-            _ => return Err(create_error!(ErrCode::E1003)),
-        };
-        if first == true {
-            result = param;
-            first = false;
-            continue;
+    let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
+
+    if 2 == exp.len() {
+        result = f(Number::Integer(x), result);
+    } else {
+        for e in &exp[2 as usize..] {
+            let param = Expression::to_number(&eval(e, env)?)?;
+            result = f(result, param);
         }
+    }
+    Ok(Number::to_expression(&result))
+}
+fn select_one(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: Number, y: Number) -> Number,
+) -> ResultExpression {
+    if 1 >= exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
+
+    for e in &exp[2 as usize..] {
+        let param = Expression::to_number(&eval(e, env)?)?;
         result = f(result, param);
     }
-    match result {
-        Number::Integer(a) => Ok(Expression::Integer(a)),
-        Number::Float(a) => Ok(Expression::Float(a)),
-        Number::Rational(a) => Ok(Expression::Rational(a)),
-    }
+    Ok(Number::to_expression(&result))
 }
 fn cmp(
     exp: &[Expression],
@@ -87,12 +93,7 @@ fn cmp(
     let mut v: [Number; 2] = [Number::Integer(0); 2];
 
     for (i, e) in exp[1 as usize..].iter().enumerate() {
-        v[i] = match eval(e, env)? {
-            Expression::Float(f) => Number::Float(f),
-            Expression::Integer(i) => Number::Integer(i),
-            Expression::Rational(r) => Number::Rational(r),
-            _ => return Err(create_error!(ErrCode::E1003)),
-        }
+        v[i] = Expression::to_number(&eval(e, env)?)?;
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
 }
@@ -137,7 +138,7 @@ fn bit(exp: &[Expression], env: &Environment, f: fn(x: i64, y: i64) -> i64) -> R
     let mut result: i64 = 0;
     let mut first: bool = true;
 
-    if 2 >= exp.len() {
+    if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     for e in &exp[1 as usize..] {
@@ -176,6 +177,7 @@ mod tests {
         assert_eq!(do_lisp("(+ 3 1.5)"), "4.5");
         assert_eq!(do_lisp("(+ (* 1 2)(* 3 4))"), "14");
         assert_eq!(do_lisp("(+ 1/2 1)"), "3/2");
+        assert_eq!(do_lisp("(+ 10)"), "10");
     }
     #[test]
     fn minus() {
@@ -185,6 +187,7 @@ mod tests {
         assert_eq!(do_lisp("(- 6.5 3)"), "3.5");
         assert_eq!(do_lisp("(- (* 3 4)(* 1 2))"), "10");
         assert_eq!(do_lisp("(- 1 1/2)"), "1/2");
+        assert_eq!(do_lisp("(- 10)"), "-10");
     }
     #[test]
     fn multi() {
@@ -194,6 +197,7 @@ mod tests {
         assert_eq!(do_lisp("(* 6 3.5)"), "21");
         assert_eq!(do_lisp("(* (+ 3 4)(+ 1 2))"), "21");
         assert_eq!(do_lisp("(* 1/2 1)"), "1/2");
+        assert_eq!(do_lisp("(* 10)"), "10");
     }
     #[test]
     fn div() {
@@ -211,6 +215,7 @@ mod tests {
         assert_eq!(do_lisp("(/ 0 9)"), "0");
         assert_eq!(do_lisp("(/ 0.0 9)"), "0");
         assert_eq!(do_lisp("(/ (+ 4 4)(+ 2 2))"), "2");
+        assert_eq!(do_lisp("(/ 10)"), "1/10");
     }
     #[test]
     fn max_f() {
@@ -218,6 +223,7 @@ mod tests {
         assert_eq!(do_lisp("(max 10 12 11 1 12)"), "12");
         assert_eq!(do_lisp("(max 10 12 13.5 1 1)"), "13.5");
         assert_eq!(do_lisp("(max 10 123/11 10.5 1 1)"), "123/11");
+        assert_eq!(do_lisp("(max 10)"), "10");
     }
     #[test]
     fn min_f() {
@@ -225,6 +231,7 @@ mod tests {
         assert_eq!(do_lisp("(min 3 12 11 3 12)"), "3");
         assert_eq!(do_lisp("(min 10 12 0.5 1 1)"), "0.5");
         assert_eq!(do_lisp("(min 10 1/11 10.5 1 1)"), "1/11");
+        assert_eq!(do_lisp("(min 10)"), "10");
     }
     #[test]
     fn eq() {
@@ -300,16 +307,19 @@ mod tests {
     fn logand() {
         assert_eq!(do_lisp("(logand 10 2)"), "2");
         assert_eq!(do_lisp("(logand 10 2 3)"), "2");
+        assert_eq!(do_lisp("(logand 10)"), "10");
     }
     #[test]
     fn logior() {
         assert_eq!(do_lisp("(logior 10 2)"), "10");
         assert_eq!(do_lisp("(logior 10 2 3)"), "11");
+        assert_eq!(do_lisp("(logior 10)"), "10");
     }
     #[test]
     fn logxor() {
         assert_eq!(do_lisp("(logxor 10 2)"), "8");
         assert_eq!(do_lisp("(logxor 10 2 2)"), "10");
+        assert_eq!(do_lisp("(logxor 10)"), "10");
     }
     #[test]
     fn lognot() {
@@ -336,39 +346,37 @@ mod error_tests {
     fn plus() {
         assert_eq!(do_lisp("(+ 1 a)"), "E1008");
         assert_eq!(do_lisp("(+ 1 3.4 #t)"), "E1003");
-        assert_eq!(do_lisp("(+ 1)"), "E1007");
+        assert_eq!(do_lisp("(+)"), "E1007");
     }
     #[test]
     fn minus() {
         assert_eq!(do_lisp("(- 6 a)"), "E1008");
         assert_eq!(do_lisp("(- 1 3.4 #t)"), "E1003");
-        assert_eq!(do_lisp("(- 1)"), "E1007");
+        assert_eq!(do_lisp("(-)"), "E1007");
     }
     #[test]
     fn multi() {
         assert_eq!(do_lisp("(* 6 a)"), "E1008");
         assert_eq!(do_lisp("(* 1 3.4 #t)"), "E1003");
-        assert_eq!(do_lisp("(* 1)"), "E1007");
+        assert_eq!(do_lisp("(*)"), "E1007");
     }
     #[test]
     fn div() {
         assert_eq!(do_lisp("(/ 9 a)"), "E1008");
         assert_eq!(do_lisp("(/ 1 3.4 #t)"), "E1003");
-        assert_eq!(do_lisp("(/ 1)"), "E1007");
+        assert_eq!(do_lisp("(/)"), "E1007");
     }
     #[test]
     fn max_f() {
-        assert_eq!(do_lisp("(max 10)"), "E1007");
+        assert_eq!(do_lisp("(max)"), "E1007");
         assert_eq!(do_lisp("(max 9 a)"), "E1008");
         assert_eq!(do_lisp("(max 1 3.4 #t)"), "E1003");
-        assert_eq!(do_lisp("(max 1)"), "E1007");
     }
     #[test]
     fn min_f() {
-        assert_eq!(do_lisp("(min 10)"), "E1007");
+        assert_eq!(do_lisp("(min)"), "E1007");
         assert_eq!(do_lisp("(min 9 a)"), "E1008");
         assert_eq!(do_lisp("(min 1 3.4 #t)"), "E1003");
-        assert_eq!(do_lisp("(min 1)"), "E1007");
     }
     #[test]
     fn eq() {
@@ -413,7 +421,6 @@ mod error_tests {
     #[test]
     fn logand() {
         assert_eq!(do_lisp("(logand)"), "E1007");
-        assert_eq!(do_lisp("(logand 10)"), "E1007");
         assert_eq!(do_lisp("(logand a 1)"), "E1008");
         assert_eq!(do_lisp("(logand 10 a)"), "E1008");
         assert_eq!(do_lisp("(logand 10.5 1)"), "E1002");
@@ -422,7 +429,6 @@ mod error_tests {
     #[test]
     fn logior() {
         assert_eq!(do_lisp("(logior)"), "E1007");
-        assert_eq!(do_lisp("(logior 10)"), "E1007");
         assert_eq!(do_lisp("(logior a 1)"), "E1008");
         assert_eq!(do_lisp("(logior 10 a)"), "E1008");
         assert_eq!(do_lisp("(logior 10.5 1)"), "E1002");
@@ -431,7 +437,6 @@ mod error_tests {
     #[test]
     fn logxor() {
         assert_eq!(do_lisp("(logxor)"), "E1007");
-        assert_eq!(do_lisp("(logxor 10)"), "E1007");
         assert_eq!(do_lisp("(logxor a 1)"), "E1008");
         assert_eq!(do_lisp("(logxor 10 a)"), "E1008");
         assert_eq!(do_lisp("(logxor 10.5 1)"), "E1002");

@@ -16,6 +16,7 @@ use std::ops::Sub;
 use std::string::ToString;
 
 use crate::lisp::ErrCode;
+use crate::lisp::Expression;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -177,6 +178,13 @@ impl Number {
                 Number::Float(b) => fcalc(a.div_float(), b),
                 Number::Rational(b) => rcalc(a, b),
             },
+        }
+    }
+    pub fn to_expression(x: &Number) -> Expression {
+        match x {
+            Number::Integer(a) => Expression::Integer(*a),
+            Number::Float(a) => Expression::Float(*a),
+            Number::Rational(a) => Expression::Rational(*a),
         }
     }
 }

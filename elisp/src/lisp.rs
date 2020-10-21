@@ -17,6 +17,7 @@ use log::{debug, error, info, warn};
 #[cfg(feature = "signal")]
 use super::unix::signal::{catch_sig_intr_status, init_sig_intr};
 
+use crate::number::Number;
 use crate::number::Rat;
 
 #[cfg(feature = "thread")]
@@ -325,6 +326,14 @@ impl Expression {
             }
         }
         false
+    }
+    pub fn to_number(x: &Expression) -> Result<Number, Error> {
+        match x {
+            Expression::Float(v) => Ok(Number::Float(*v)),
+            Expression::Integer(v) => Ok(Number::Integer(*v)),
+            Expression::Rational(v) => Ok(Number::Rational(*v)),
+            _ => return Err(create_error!(ErrCode::E1003)),
+        }
     }
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
