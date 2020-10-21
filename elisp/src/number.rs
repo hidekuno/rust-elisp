@@ -308,6 +308,15 @@ impl PartialOrd for Number {
         Some(Ordering::Equal)
     }
 }
+impl ToString for Number {
+    fn to_string(&self) -> String {
+        return match self {
+            Number::Integer(v) => v.to_string(),
+            Number::Float(v) => v.to_string(),
+            Number::Rational(v) => v.to_string(),
+        };
+    }
+}
 #[test]
 fn test_gcm() {
     assert_eq!(gcm(17, 2), 1);

@@ -136,12 +136,7 @@ fn number_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = match eval(&exp[1], env)? {
-        Expression::Float(f) => Expression::Float(f),
-        Expression::Integer(i) => Expression::Integer(i),
-        Expression::Rational(r) => Expression::Rational(r),
-        _ => return Err(create_error!(ErrCode::E1003)),
-    };
+    let v = Expression::to_number(&eval(&exp[1], env)?)?;
     Ok(Expression::String(v.to_string()))
 }
 fn string_number(exp: &[Expression], env: &Environment) -> ResultExpression {
