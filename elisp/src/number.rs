@@ -16,6 +16,7 @@ use std::ops::Sub;
 use std::string::ToString;
 
 use crate::lisp::ErrCode;
+use crate::lisp::Expression;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -179,6 +180,13 @@ impl Number {
             },
         }
     }
+    pub fn to_expression(x: &Number) -> Expression {
+        match x {
+            Number::Integer(a) => Expression::Integer(*a),
+            Number::Float(a) => Expression::Float(*a),
+            Number::Rational(a) => Expression::Rational(*a),
+        }
+    }
 }
 //impl<T: Add<Output=T>> Add for Number<T> {
 impl Add for Number {
@@ -298,6 +306,15 @@ impl PartialOrd for Number {
     fn partial_cmp(&self, _: &Number) -> Option<Ordering> {
         // This is same as nop
         Some(Ordering::Equal)
+    }
+}
+impl ToString for Number {
+    fn to_string(&self) -> String {
+        return match self {
+            Number::Integer(v) => v.to_string(),
+            Number::Float(v) => v.to_string(),
+            Number::Rational(v) => v.to_string(),
+        };
     }
 }
 #[test]
