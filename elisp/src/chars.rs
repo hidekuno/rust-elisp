@@ -124,7 +124,7 @@ mod tests {
     fn char_ci_eq() {
         assert_eq!(do_lisp("(char-ci=? #\\a #\\A)"), "#t");
         assert_eq!(do_lisp("(char-ci=? #\\A #\\a)"), "#t");
-        assert_eq!(do_lisp("(char=? #\\a #\\B)"), "#f");
+        assert_eq!(do_lisp("(char-ci=? #\\a #\\B)"), "#f");
     }
     #[test]
     fn char_ci_less() {
