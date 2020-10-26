@@ -54,9 +54,6 @@ pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
                 thread::sleep(Duration::from_secs(1));
             }
         }
-        if env.is_force_stop() {
-            break;
-        }
     }
     Ok(())
 }
