@@ -390,7 +390,12 @@ fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Opt
         let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
         let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
             Ok(r) => r.to_string(),
-            Err(e) => e.get_msg(),
+            Err(e) => {
+                if lisp::ErrCode::E9000.as_str() == e.get_code() {
+                    env.set_force_stop(false);
+                }
+                e.get_msg()
+            }
         };
         result.push_str(CRLF);
         (RESPONSE_200, Contents::String(result), Some(MIME_PLAIN.1))
