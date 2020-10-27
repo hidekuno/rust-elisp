@@ -6,6 +6,15 @@
 */
 import('./pkg').catch(console.error);
 
+const demo_code = `(define (draw-line-vect s e)
+(draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)))
+(demo)`;
+
+const animation_demo_code = `(define (draw-line-vect s e)
+(add-timeout (draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)) 10))
+(demo)`;
+
+
 (() => {
 
     let editor = ace.edit("editor");
@@ -36,7 +45,10 @@ import('./pkg').catch(console.error);
         editor.setValue('(load-url "z-learning/wasm-sicp.scm")', -1);
     };
     document.getElementById("demo").onclick = () => {
-        editor.setValue('(demo)', -1);
+        editor.setValue(demo_code, -1);
+    };
+    document.getElementById("anime").onclick = () => {
+        editor.setValue(animation_demo_code, -1);
     };
     document.getElementById("album").onclick = () => {
         editor.setValue('((below(beside rv ps)(beside sd am))(make-image-frame-rectangle "am" 2.2 2.2))', -1);

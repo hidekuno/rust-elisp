@@ -11,21 +11,7 @@
           margin: 10px auto;
           color: white;
       }
-      #sicp {
-          padding: 5px 10px;
-          border: none;
-          background: wheat;
-          margin: 10px auto;
-          color: black;
-      }
-      #demo {
-          padding: 5px 10px;
-          border: none;
-          background: wheat;
-          margin: 10px auto;
-          color: black;
-      }
-      #album {
+      .lisp-source {
           padding: 5px 10px;
           border: none;
           background: wheat;
@@ -74,10 +60,11 @@
     <center><div id="editor"></div></center>
     <center><textarea id="codearea"></textarea></center>
     <center>
-      <div class="inline-block1"><button id="sicp" type="button">Download SICP</button></div>
-      <div class="inline-block1"><button id="demo" type="button">Demo</button></div>
-      <div class="inline-block1"><button id="album" type="button">Album</button></div>
-      <div class="inline-block2"></div>
+      <div class="inline-block1"><button id="sicp"  class="lisp-source" type="button">Download SICP</button></div>
+      <div class="inline-block1"><button id="demo"  class="lisp-source" type="button">Demo</button></div>
+      <div class="inline-block1"><button id="anime" class="lisp-source" type="button">Animation Demo</button></div>
+      <div class="inline-block1"><button id="album" class="lisp-source" type="button">Album</button></div>
+      <div class="inline-block1"></div>
       <div class="inline-block1"><button id="eval" type="button">Eval Lisp Code</button></div>
     </center>
     <script src="./index.js"></script>
