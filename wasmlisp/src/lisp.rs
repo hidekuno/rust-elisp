@@ -4,6 +4,8 @@
 
    1. howto test)
       wasm-pack test --headless --chrome -- --lib
+       or
+      wasm-pack test --headless --firefox -- --lib
 
    2. build & run)
       wasm-pack build
@@ -45,6 +47,8 @@ use web_sys::{
 };
 const SCHEME_URL: &'static str =
     "https://raw.githubusercontent.com/hidekuno/picture-language/master";
+
+const LINE_WIDTH: f64 = 0.8;
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -120,6 +124,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     // ex. (draw-line 10.0 10.0 100.0 100.0)
     //--------------------------------------------------------
     let ctx = context.clone();
+    ctx.set_line_width(LINE_WIDTH);
     env.add_builtin_ext_func("draw-line", move |exp, env| {
         const N: usize = 4;
         if exp.len() != (N + 1) {
@@ -137,7 +142,6 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             }
         }
         ctx.begin_path();
-        ctx.set_line_width(0.8);
         ctx.move_to(loc[0], loc[1]);
         ctx.line_to(loc[2], loc[3]);
         ctx.close_path();
@@ -397,6 +401,80 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         timeout.forget();
         Ok(Expression::Nil())
     });
+    //--------------------------------------------------------
+    // Set foreground
+    // ex. (set-foreground "blue")
+    //--------------------------------------------------------
+    let ctx = context.clone();
+    env.add_builtin_ext_func("set-foreground", move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let color = match eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!(ErrCode::E1015)),
+        };
+        ctx.set_stroke_style(&JsValue::from(color));
+        Ok(Expression::Nil())
+    });
+    //--------------------------------------------------------
+    // Set background
+    // ex. (set-background "black")
+    //--------------------------------------------------------
+    let c = canvas.clone();
+    let ctx = context.clone();
+    env.add_builtin_ext_func("set-background", move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let color = match eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!(ErrCode::E1015)),
+        };
+        ctx.set_fill_style(&JsValue::from(color));
+        ctx.fill_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
+
+        Ok(Expression::Nil())
+    });
+    //--------------------------------------------------------
+    // Set line width
+    // ex. (set-line-width 1.0)
+    //--------------------------------------------------------
+    let ctx = context.clone();
+    env.add_builtin_ext_func("set-line-width", move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let width = match eval(&exp[1], env)? {
+            Expression::Float(f) => f,
+            _ => return Err(create_error!(ErrCode::E1003)),
+        };
+        ctx.set_line_width(width);
+        Ok(Expression::Nil())
+    });
+
+    //--------------------------------------------------------
+    // Draw arc
+    // ex. (draw-arc 75.0 75.0 50.0 0.0)
+    //--------------------------------------------------------
+    let ctx = context.clone();
+    env.add_builtin_ext_func("draw-arc", move |exp, env| {
+        if exp.len() != 5 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        const N: usize = 4;
+        let mut prm: [f64; N] = [0.0; N];
+        for (i, e) in exp[1 as usize..].iter().enumerate() {
+            prm[i] = match lisp::eval(e, env)? {
+                Expression::Float(f) => f,
+                _ => return Err(create_error!(ErrCode::E1003)),
+            };
+        }
+        ctx.begin_path();
+        ctx.arc(prm[0], prm[1], prm[2], prm[3], std::f64::consts::PI * 2.0).unwrap();
+        ctx.stroke();
+        Ok(Expression::Nil())
+    });
 }
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
     let mut opts = RequestInit::new();
@@ -441,6 +519,9 @@ mod tests {
     const PS_URL: &'static str =
         "https://coverartarchive.org/release-group/fdd96703-7b21-365e-bdea-38029fbeb84e/front-250.jpg";
 
+    const CANVAS_WIDTH: u32 = 720;
+    const CANVAS_HEIGHT: u32 = 560;
+
     wasm_bindgen_test_configure!(run_in_browser);
 
     fn do_lisp_env(program: &str, env: &Environment) -> String {
@@ -460,8 +541,8 @@ mod tests {
             .unwrap();
 
         canvas.set_id("drawingarea");
-        canvas.set_width(720);
-        canvas.set_height(560);
+        canvas.set_width(CANVAS_WIDTH);
+        canvas.set_height(CANVAS_HEIGHT);
         document.body().unwrap().append_child(&canvas).unwrap();
         document
     }
@@ -494,14 +575,14 @@ mod tests {
         let document = create_document();
         let env = Environment::new();
         build_lisp_function(&env, &document);
-        assert_eq!(do_lisp_env("(screen-width)", &env), "720");
+        assert_eq!(do_lisp_env("(screen-width)", &env), CANVAS_WIDTH.to_string());
     }
     #[wasm_bindgen_test]
     fn screen_height() {
         let document = create_document();
         let env = Environment::new();
         build_lisp_function(&env, &document);
-        assert_eq!(do_lisp_env("(screen-height)", &env), "560");
+        assert_eq!(do_lisp_env("(screen-height)", &env), CANVAS_HEIGHT.to_string());
     }
     #[wasm_bindgen_test]
     fn load_image() {
@@ -575,6 +656,46 @@ mod tests {
         build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10)", &env), "nil");
     }
+    #[wasm_bindgen_test]
+    fn set_foreground() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(
+            do_lisp_env("(set-foreground \"blue\")", &env),
+            "nil"
+        );
+    }
+    #[wasm_bindgen_test]
+    fn set_background() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(
+            do_lisp_env("(set-background \"black\")", &env),
+            "nil"
+        );
+    }
+    #[wasm_bindgen_test]
+    fn set_line_width() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(
+            do_lisp_env("(set-line-width 1.0)", &env),
+            "nil"
+        );
+    }
+    #[wasm_bindgen_test]
+    fn draw_arc() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(
+            do_lisp_env("(draw-arc 75.0 75.0 50.0 0.0)", &env),
+            "nil"
+        );
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -584,6 +705,9 @@ mod error_tests {
 
     const IMG_URL: &'static str =
         "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
+
+    const CANVAS_WIDTH: u32 = 720;
+    const CANVAS_HEIGHT: u32 = 560;
 
     wasm_bindgen_test_configure!(run_in_browser);
     fn do_lisp_env(program: &str, env: &Environment) -> String {
@@ -603,8 +727,8 @@ mod error_tests {
             .unwrap();
 
         canvas.set_id("drawingarea");
-        canvas.set_width(720);
-        canvas.set_height(560);
+        canvas.set_width(CANVAS_WIDTH);
+        canvas.set_height(CANVAS_HEIGHT);
         document.body().unwrap().append_child(&canvas).unwrap();
         document
     }
@@ -752,5 +876,47 @@ mod error_tests {
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10 10)", &env), "E1007");
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) #t)", &env), "E1002");
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 0)", &env), "E1021");
+    }
+        #[wasm_bindgen_test]
+    fn set_foreground() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+
+        assert_eq!(do_lisp_env("(set-foreground)", &env),"E1007");
+        assert_eq!(do_lisp_env("(set-foreground \"black\" \"black\")", &env),"E1007");
+        assert_eq!(do_lisp_env("(set-foreground #t)", &env),"E1015");
+    }
+    #[wasm_bindgen_test]
+    fn set_background() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+
+        assert_eq!(do_lisp_env("(set-background)", &env),"E1007");
+        assert_eq!(do_lisp_env("(set-background \"black\" \"black\")", &env),"E1007");
+        assert_eq!(do_lisp_env("(set-background #t)", &env),"E1015");
+    }
+    #[wasm_bindgen_test]
+    fn set_line_width() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+
+        assert_eq!(do_lisp_env("(set-line-width)", &env),"E1007");
+        assert_eq!(do_lisp_env("(set-line-width 1.0 1.0)", &env),"E1007");
+        assert_eq!(do_lisp_env("(set-line-width #t)", &env),"E1003");
+    }
+    #[wasm_bindgen_test]
+    fn draw_arc() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+
+        assert_eq!(do_lisp_env("(draw-arc)", &env),"E1007");
+        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 0.02 0.0 1.0)", &env),"E1007");
+        assert_eq!(do_lisp_env("(draw-arc #t 0.65 0.02 0.0)", &env),"E1003");
+        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 0.02 #t)", &env),"E1003");
+        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 #t 0.0)", &env),"E1003");
     }
 }
