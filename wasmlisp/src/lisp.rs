@@ -475,6 +475,43 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         ctx.stroke();
         Ok(Expression::Nil())
     });
+
+    //--------------------------------------------------------
+    // Set string
+    // ex. (draw-string "hello,world" 0.0 10.0)
+    //--------------------------------------------------------
+    let ctx = context.clone();
+    env.add_builtin_ext_func("draw-string", move |exp, env| {
+        if exp.len() < 4 && 5 < exp.len() {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let text = match eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!(ErrCode::E1015)),
+        };
+        const N: usize = 2;
+        let mut prm: [f64; N] = [0.0; N];
+        for (i, e) in exp[2 as usize..4].iter().enumerate() {
+            prm[i] = match lisp::eval(e, env)? {
+                Expression::Float(f) => f,
+                _ => return Err(create_error!(ErrCode::E1003)),
+            };
+        }
+        let font = if exp.len() == 5 {
+            let s = match lisp::eval(&exp[4],env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!(ErrCode::E1015)),
+            };
+            s
+        } else {
+            "bold 20px sans-serif".to_string()
+        };
+        //ex) "italic bold 20px sans-serif"
+        ctx.set_font(&font);
+        ctx.fill_text(&text,prm[0],prm[1]).unwrap();
+
+        Ok(Expression::Nil())
+    });
 }
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
     let mut opts = RequestInit::new();
