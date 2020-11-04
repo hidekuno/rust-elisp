@@ -477,10 +477,10 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     });
 
     //--------------------------------------------------------
-    // Set string
+    // Draw string
     // ex. (draw-string "hello,world" 0.0 10.0)
     //--------------------------------------------------------
-    let ctx = context.clone();
+    let draw_string = create_draw_string(&context);
     env.add_builtin_ext_func("draw-string", move |exp, env| {
         if exp.len() < 4 || 5 < exp.len() {
             return Err(create_error!(ErrCode::E1007));
@@ -507,11 +507,43 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             "bold 20px sans-serif".to_string()
         };
         //ex) "italic bold 20px sans-serif"
-        ctx.set_font(&font);
-        ctx.fill_text(&text,prm[0],prm[1]).unwrap();
-
+        draw_string(text,prm[0],prm[1],font);
         Ok(Expression::Nil())
     });
+    //--------------------------------------------------------
+    // Draw string
+    // ex. (draw-string "hello,world" 0.0 10.0)
+    //--------------------------------------------------------
+    let draw_string = create_draw_string(&context);
+    env.add_builtin_ext_func("draw-eval", move |exp, env| {
+
+        if exp.len() != 2 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let result = match lisp::eval(&exp[1], env) {
+            Ok(r) => {
+                r.to_string()
+            }
+            Err(e) => {
+                e.get_msg()
+            }
+        };
+        draw_string(result,30.0,30.0,"bold 20px sans-serif".to_string());
+        Ok(Expression::Nil())
+    });
+}
+// ----------------------------------------------------------------
+// create new cairo from imagetable, and draw string
+// ----------------------------------------------------------------
+pub fn create_draw_string(context: &CanvasRenderingContext2d)
+                          -> Box<dyn Fn(String, f64, f64, String) + 'static> {
+
+    let ctx = context.clone();
+    let draw_string = move |s: String, x, y, f:String| {
+        ctx.set_font(&f);
+        ctx.fill_text(&s, x, y).unwrap();
+    };
+    Box::new(draw_string)
 }
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
     let mut opts = RequestInit::new();
@@ -746,6 +778,13 @@ mod tests {
             do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0 \"italic bold 20px sans-serif\")", &env),
             "nil"
         );
+    }
+    #[wasm_bindgen_test]
+    fn draw_eval() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(do_lisp_env("(draw-eval (iota 20))", &env), "nil");
     }
 }
 #[cfg(test)]
@@ -997,5 +1036,14 @@ mod error_tests {
             do_lisp_env("(draw-string \"Hello,World\" 20.0 #t \"italic bold 20px sans-serif\")", &env),
             "E1003"
         );
+    }
+    #[wasm_bindgen_test]
+    fn draw_eval() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+
+        assert_eq!(do_lisp_env("(draw-eval)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-eval (iota 20) 10)", &env), "E1007");
     }
 }
