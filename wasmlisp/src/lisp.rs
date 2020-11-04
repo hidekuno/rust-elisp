@@ -482,7 +482,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     let ctx = context.clone();
     env.add_builtin_ext_func("draw-string", move |exp, env| {
-        if exp.len() < 4 && 5 < exp.len() {
+        if exp.len() < 4 || 5 < exp.len() {
             return Err(create_error!(ErrCode::E1007));
         }
         let text = match eval(&exp[1], env)? {
@@ -733,6 +733,20 @@ mod tests {
             "nil"
         );
     }
+    #[wasm_bindgen_test]
+    fn draw_string() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0)", &env),
+            "nil"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0 \"italic bold 20px sans-serif\")", &env),
+            "nil"
+        );
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -955,5 +969,33 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-arc #t 0.65 0.02 0.0)", &env),"E1003");
         assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 0.02 #t)", &env),"E1003");
         assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 #t 0.0)", &env),"E1003");
+    }
+    #[wasm_bindgen_test]
+    fn draw_string() {
+        let document = create_document();
+        let env = Environment::new();
+        build_lisp_function(&env, &document);
+        assert_eq!(do_lisp_env("(draw-string)", &env),"E1007");
+        assert_eq!(do_lisp_env("(draw-string \"Hello,World\" 20.0)", &env),"E1007");
+        assert_eq!(
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0 \"italic bold 20px sans-serif\" 10.0)", &env),
+            "E1007"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-string 10.0 20.0 20.0 \"italic bold 20px sans-serif\")", &env),
+            "E1015"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0 10.0)", &env),
+            "E1015"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-string \"Hello,World\" #t 20.0 \"italic bold 20px sans-serif\")", &env),
+            "E1003"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 #t \"italic bold 20px sans-serif\")", &env),
+            "E1003"
+        );
     }
 }
