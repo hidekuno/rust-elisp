@@ -163,6 +163,8 @@ mod tests {
             do_lisp_env("(draw-arc 0.04 0.50 \"日本語\" 0.04)", &env),
             "E1003"
         );
+        assert_eq!(do_lisp_env("(draw-arc #t 0.65 0.02 0.0)", &env), "E1003");
+        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 0.02 #t)", &env), "E1003");
     }
     #[test]
     fn test_06_error_check() {

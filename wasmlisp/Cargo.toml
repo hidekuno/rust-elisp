@@ -1,6 +1,6 @@
 [package]
 name = "wasmlisp"
-version = "0.8.1"
+version = "0.8.3"
 authors = ["hidekuno <hidekuno@gmail.com>"]
 edition = "2018"
 description = "A Lisp Interpreter with Web Assembly"
@@ -10,10 +10,10 @@ repository = "https://github.com/hidekuno/rust-elisp"
 crate-type = ["cdylib"]
 
 [dependencies]
-elisp = { path = "../elisp",version = "0.8.1" }
+elisp = { path = "../elisp",version = "0.8.3" }
 wasm-bindgen = "0.2"
 js-sys = "0.3.30"
-wasm-bindgen-test = "0.2"
+wasm-bindgen-test = "0.3"
 wasm-bindgen-futures = "0.4.4"
 
 [dependencies.web-sys]
