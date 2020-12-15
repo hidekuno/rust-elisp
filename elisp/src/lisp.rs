@@ -794,6 +794,31 @@ fn tokenize(program: &String) -> Vec<String> {
     let mut i = 0;
     let vc = program.as_bytes();
 
+    macro_rules! set_symbol_name {
+        ($token: expr, $l: expr, $i: expr,  $c: expr, $vc: expr) => {
+            $token.symbol_name.push($c);
+            if $l - $c.len_utf8() == $i {
+                // ex. <rust-elisp> abc
+                $token.push_if_quote($token.symbol_name.to_string());
+            } else {
+                // ex. <rust-elisp> abc def ghi
+                match $vc[$i + $c.len_utf8()] as char {
+                    ' ' | '\r' | '\n' | '\t' => {
+                        $token.push_if_quote(token.symbol_name.to_string());
+                        $token.symbol_name.clear();
+                    }
+                    '(' | ')' => {
+                        if token.symbol_name != "#\\" {
+                            $token.push_if_quote(token.symbol_name.to_string());
+                            $token.symbol_name.clear();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        };
+    }
+
     //A String is a wrapper over a Vec<u8>.(https://doc.rust-lang.org/book/ch08-02-strings.html)
     for c in program.as_str().chars() {
         if token.string_mode {
@@ -805,6 +830,8 @@ fn tokenize(program: &String) -> Vec<String> {
                     token.string_mode = false;
                 }
             }
+        } else if token.symbol_name.starts_with("#\\") == true {
+            set_symbol_name!(token, program.len(), i, c, vc);
         } else {
             match c {
                 '\'' => {
@@ -829,20 +856,7 @@ fn tokenize(program: &String) -> Vec<String> {
                 }
                 ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
-                    token.symbol_name.push(c);
-                    if program.len() - c.len_utf8() == i {
-                        // ex. <rust-elisp> abc
-                        token.push_if_quote(token.symbol_name.to_string());
-                    } else {
-                        // ex. <rust-elisp> abc def ghi
-                        match vc[i + c.len_utf8()] as char {
-                            '(' | ')' | ' ' | '\r' | '\n' | '\t' => {
-                                token.push_if_quote(token.symbol_name.to_string());
-                                token.symbol_name.clear();
-                            }
-                            _ => {}
-                        }
-                    }
+                    set_symbol_name!(token, program.len(), i, c, vc);
                 }
             }
         }
@@ -853,6 +867,7 @@ fn tokenize(program: &String) -> Vec<String> {
     if token.string_mode {
         token.push_if_quote(program.get(from..i).unwrap().to_string());
     }
+    debug!("{:?}", token.tokens);
     return token.tokens();
 }
 fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {

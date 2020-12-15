@@ -50,6 +50,10 @@ mod tests {
         assert_eq!(do_lisp("#t"), "#t");
         assert_eq!(do_lisp("#f"), "#f");
         assert_eq!(do_lisp("#\\a"), "#\\a");
+        assert_eq!(do_lisp("#\\'"), "#\\'");
+        assert_eq!(do_lisp("#\\("), "#\\(");
+        assert_eq!(do_lisp("#\\)"), "#\\)");
+        assert_eq!(do_lisp("#\\\""), "#\\\"");
         assert_eq!(do_lisp("\"abc\""), "\"abc\"");
         assert_eq!(do_lisp("#\\space"), "#\\space");
         assert_eq!(do_lisp("#\\tab"), "#\\tab");
