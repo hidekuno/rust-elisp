@@ -744,7 +744,7 @@ pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
 }
 struct TokenState {
     tokens: Vec<String>,
-    symbol_name: String,
+    name: String,
     left: i32,
     right: i32,
     string_mode: bool,
@@ -754,7 +754,7 @@ impl TokenState {
     fn new() -> Self {
         TokenState {
             tokens: Vec::new(),
-            symbol_name: String::new(),
+            name: String::new(),
             left: 0,
             right: 0,
             string_mode: false,
@@ -794,23 +794,23 @@ fn tokenize(program: &String) -> Vec<String> {
     let mut i = 0;
     let vc = program.as_bytes();
 
-    macro_rules! set_symbol_name {
+    macro_rules! set_token_name {
         ($token: expr, $l: expr, $i: expr,  $c: expr, $vc: expr) => {
-            $token.symbol_name.push($c);
+            $token.name.push($c);
             if $l - $c.len_utf8() == $i {
                 // ex. <rust-elisp> abc
-                $token.push_if_quote($token.symbol_name.to_string());
+                $token.push_if_quote($token.name.to_string());
             } else {
                 // ex. <rust-elisp> abc def ghi
                 match $vc[$i + $c.len_utf8()] as char {
                     ' ' | '\r' | '\n' | '\t' => {
-                        $token.push_if_quote(token.symbol_name.to_string());
-                        $token.symbol_name.clear();
+                        $token.push_if_quote(token.name.to_string());
+                        $token.name.clear();
                     }
                     '(' | ')' => {
-                        if token.symbol_name != "#\\" {
-                            $token.push_if_quote(token.symbol_name.to_string());
-                            $token.symbol_name.clear();
+                        if token.name != "#\\" {
+                            $token.push_if_quote(token.name.to_string());
+                            $token.name.clear();
                         }
                     }
                     _ => {}
@@ -830,8 +830,8 @@ fn tokenize(program: &String) -> Vec<String> {
                     token.string_mode = false;
                 }
             }
-        } else if token.symbol_name.starts_with("#\\") == true {
-            set_symbol_name!(token, program.len(), i, c, vc);
+        } else if token.name.starts_with("#\\") == true {
+            set_token_name!(token, program.len(), i, c, vc);
         } else {
             match c {
                 '\'' => {
@@ -856,7 +856,7 @@ fn tokenize(program: &String) -> Vec<String> {
                 }
                 ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
-                    set_symbol_name!(token, program.len(), i, c, vc);
+                    set_token_name!(token, program.len(), i, c, vc);
                 }
             }
         }
