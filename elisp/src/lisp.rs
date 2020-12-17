@@ -749,6 +749,7 @@ struct TokenState {
     right: i32,
     string_mode: bool,
     quote_mode: bool,
+    idx: usize,
 }
 impl TokenState {
     fn new() -> Self {
@@ -759,6 +760,7 @@ impl TokenState {
             right: 0,
             string_mode: false,
             quote_mode: false,
+            idx: 0,
         }
     }
     fn push(&mut self, s: String) {
@@ -791,26 +793,24 @@ impl TokenState {
 fn tokenize(program: &String) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
-    let mut i = 0;
-    let vc = program.as_bytes();
 
     macro_rules! set_token_name {
-        ($token: expr, $l: expr, $i: expr,  $c: expr, $vc: expr) => {
-            $token.name.push($c);
-            if $l - $c.len_utf8() == $i {
+        ($c: expr) => {
+            token.name.push($c);
+            if program.len() - $c.len_utf8() == token.idx {
                 // ex. <rust-elisp> abc
-                $token.push_if_quote($token.name.to_string());
+                token.push_if_quote(token.name.to_string());
             } else {
                 // ex. <rust-elisp> abc def ghi
-                match $vc[$i + $c.len_utf8()] as char {
+                match program.as_bytes()[token.idx + $c.len_utf8()] as char {
                     ' ' | '\r' | '\n' | '\t' => {
-                        $token.push_if_quote(token.name.to_string());
-                        $token.name.clear();
+                        token.push_if_quote(token.name.to_string());
+                        token.name.clear();
                     }
                     '(' | ')' => {
                         if token.name != "#\\" {
-                            $token.push_if_quote(token.name.to_string());
-                            $token.name.clear();
+                            token.push_if_quote(token.name.to_string());
+                            token.name.clear();
                         }
                     }
                     _ => {}
@@ -820,25 +820,25 @@ fn tokenize(program: &String) -> Vec<String> {
     }
 
     //A String is a wrapper over a Vec<u8>.(https://doc.rust-lang.org/book/ch08-02-strings.html)
-    for c in program.as_str().chars() {
+    for c in program.chars() {
         if token.string_mode {
             if c == '"' {
                 // ex. <rust-elisp> "abc \""
-                if vc[i - 1] != BACKSLASH {
-                    let ls = program.get(from..(i + 1)).unwrap();
+                if program.as_bytes()[token.idx - 1] != BACKSLASH {
+                    let ls = program.get(from..(token.idx + 1)).unwrap();
                     token.push_if_quote(ls.to_string());
                     token.string_mode = false;
                 }
             }
         } else if token.name.starts_with("#\\") == true {
-            set_token_name!(token, program.len(), i, c, vc);
+            set_token_name!(c);
         } else {
             match c {
                 '\'' => {
                     token.set_quote();
                 }
                 '"' => {
-                    from = i;
+                    from = token.idx;
                     token.string_mode = true;
                 }
                 '(' => {
@@ -856,16 +856,16 @@ fn tokenize(program: &String) -> Vec<String> {
                 }
                 ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
-                    set_token_name!(token, program.len(), i, c, vc);
+                    set_token_name!(c);
                 }
             }
         }
-        i += c.len_utf8();
+        token.idx += c.len_utf8();
     }
 
     // For Occur charactor syntax error ex. <rust-elisp> "abc
     if token.string_mode {
-        token.push_if_quote(program.get(from..i).unwrap().to_string());
+        token.push_if_quote(program.get(from..token.idx).unwrap().to_string());
     }
     debug!("{:?}", token.tokens);
     return token.tokens();
