@@ -6,14 +6,18 @@
 */
 import('./pkg').catch(console.error);
 
-const demo_code = `(define (draw-line-vect s e)
-(draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)))
+const demo_code = `(draw-clear)
+(define (draw-line-vect s e)
+  (draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)))
 (demo)`;
 
-const animation_demo_code = `(define (draw-line-vect s e)
-(add-timeout (draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)) 10))
+const animation_demo_code = `(draw-clear)
+(define (draw-line-vect s e)
+  (add-timeout (draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)) 10))
 (demo)`;
 
+const album_image_code = `(draw-clear)
+((below(beside rv ps)(beside sd am))(make-image-frame-rectangle "am" 2.2 2.2))`;
 
 (() => {
 
@@ -51,6 +55,6 @@ const animation_demo_code = `(define (draw-line-vect s e)
         editor.setValue(animation_demo_code, -1);
     };
     document.getElementById("album").onclick = () => {
-        editor.setValue('((below(beside rv ps)(beside sd am))(make-image-frame-rectangle "am" 2.2 2.2))', -1);
+        editor.setValue(album_image_code, -1);
     };
 })();
