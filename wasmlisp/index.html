@@ -5,18 +5,21 @@
     <title>Rust elisp web assembly</title>
     <style>
       #eval {
-          padding: 5px 10px;
-          border: none;
-          background: slategrey;
-          margin: 10px auto;
-          color: white;
+        padding: 5px 10px;
+        border: none;
+        background: slategrey;
+        margin: 10px auto;
+        color: white;
       }
       .lisp-source {
-          padding: 5px 10px;
-          border: none;
-          background: wheat;
-          margin: 10px auto;
-          color: black;
+        padding: 5px 10px;
+        border: none;
+        background: wheat;
+        margin: 10px auto;
+        color: black;
+      }
+      #sicp {
+        background: #e0efff;
       }
       #codearea {
         display: none;
@@ -36,11 +39,48 @@
       }
       .inline-block1 {
         display: inline-block;
-        padding: 10px 10px;
+        padding: 5px 5px;
+        position: relative;
       }
       .inline-block2 {
         display: inline-block;
-        width: 300px;
+        width: 100px;
+      }
+      .balloon {
+        display: none;
+        position: absolute;
+        padding: 8px;
+        -webkit-border-radius: 8px;
+        -moz-border-radius: 8px;
+        border-radius: 8px;
+        background: #333;
+        color: #fff;
+        font-size: 50%;
+        width: 150px;
+        text-align: left;
+      }
+      .balloon:before {
+        content: " ";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -10px;
+        border: solid transparent;
+        border-color: rgba(51, 51, 51, 0);
+        border-bottom-color: #333;
+        border-width: 10px;
+        pointer-events: none;
+        transform: rotateZ(180deg);
+      }
+      .lisp-source:hover + p.balloon {
+        display: inline-block;
+        top: -60px;
+        left: -60px;
+      }
+      #sicp:hover + p.balloon {
+        display: inline-block;
+        top: -60px;
+        left: 0px;
       }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ace.js"></script>
@@ -60,11 +100,22 @@
     <center><div id="editor"></div></center>
     <center><textarea id="codearea"></textarea></center>
     <center>
-      <div class="inline-block1"><button id="sicp"  class="lisp-source" type="button">Download SICP</button></div>
-      <div class="inline-block1"><button id="demo"  class="lisp-source" type="button">Demo</button></div>
-      <div class="inline-block1"><button id="anime" class="lisp-source" type="button">Animation Demo</button></div>
-      <div class="inline-block1"><button id="album" class="lisp-source" type="button">Album</button></div>
-      <div class="inline-block1"></div>
+      <div class="inline-block1">
+        <button id="sicp"  class="lisp-source" type="button">Download SICP</button>
+        <p class="balloon">After click this button,<br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1"><button id="demo"  class="lisp-source" type="button">Demo</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="anime" class="lisp-source" type="button">Animation Demo</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="album" class="lisp-source" type="button">Album</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block2"></div>
       <div class="inline-block1"><button id="eval" type="button">Eval Lisp Code</button></div>
     </center>
     <script src="./index.js"></script>
