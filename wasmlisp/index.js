@@ -17,7 +17,8 @@ const animation_demo_code = `(draw-clear)
 (demo)`;
 
 const album_image_code = `(draw-clear)
-((below(beside rv ps)(beside sd am))(make-image-frame-rectangle "am" 2.2 2.2))`;
+((square-limit (below(beside rv ps)(beside sd am)) 0)
+               (make-image-frame-rectangle "am" 2.2 2.2))`;
 
 (() => {
 
