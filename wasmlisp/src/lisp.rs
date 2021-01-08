@@ -35,7 +35,9 @@ use lisp::Expression;
 use lisp::ErrCode;
 use lisp::Error;
 
+use std::cell::RefCell;
 use std::io::Cursor;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;
@@ -50,6 +52,9 @@ const SCHEME_URL: &'static str =
 
 const LINE_WIDTH: f64 = 0.8;
 
+//--------------------------------------------------------
+// entry point
+//--------------------------------------------------------
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
     let document = web_sys::window().unwrap().document().unwrap();
@@ -92,6 +97,22 @@ pub fn start() -> Result<(), JsValue> {
     console_log!("Hello World from Rust");
     Ok(())
 }
+//--------------------------------------------------------
+// Graphics (ex. background color)
+//--------------------------------------------------------
+struct Graphics {
+    bg: Option<JsValue>,
+}
+impl Graphics {
+    fn new() -> Graphics {
+        Graphics {
+            bg: None,
+        }
+    }
+}
+//--------------------------------------------------------
+// lisp functions
+//--------------------------------------------------------
 fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     let canvas = document
         .get_element_by_id("drawingarea")
@@ -107,16 +128,25 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         .dyn_into::<CanvasRenderingContext2d>()
         .unwrap();
 
+    let graphics = Rc::new(RefCell::new(Graphics::new()));
+
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
     let c = canvas.clone();
     let ctx = context.clone();
+    let g = graphics.clone();
     env.add_builtin_ext_func("draw-clear", move |exp, _| {
+
         if exp.len() != 1 {
             return Err(create_error!(ErrCode::E1007));
         }
-        ctx.clear_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
+        if let Some(color) = &g.borrow().bg {
+            ctx.set_fill_style(&color);
+            ctx.fill_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
+        } else {
+            ctx.clear_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
+        }
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -423,6 +453,7 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     let c = canvas.clone();
     let ctx = context.clone();
+    let g = graphics.clone();
     env.add_builtin_ext_func("set-background", move |exp, env| {
         if exp.len() != 2 {
             return Err(create_error!(ErrCode::E1007));
@@ -431,7 +462,10 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             Expression::String(s) => s,
             _ => return Err(create_error!(ErrCode::E1015)),
         };
-        ctx.set_fill_style(&JsValue::from(color));
+        let js = JsValue::from(color);
+        ctx.set_fill_style(&js);
+        g.borrow_mut().bg = Some(js);
+
         ctx.fill_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
 
         Ok(Expression::Nil())
@@ -545,6 +579,9 @@ pub fn create_draw_string(context: &CanvasRenderingContext2d)
     };
     Box::new(draw_string)
 }
+// ----------------------------------------------------------------
+// load scheme program
+// ----------------------------------------------------------------
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
     let mut opts = RequestInit::new();
     opts.method("GET");
