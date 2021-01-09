@@ -46,9 +46,11 @@ pub struct Rat {
 impl Rat {
     pub fn new(n: i64, d: i64) -> Rat {
         let l = gcm(n, d);
+        let sign = if n * d < 0 { -1 } else { 1 };
+
         Rat {
-            numer: n / l,
-            denom: d / l,
+            numer: (n.wrapping_abs() / l) * sign,
+            denom: d.wrapping_abs() / l,
         }
     }
     pub fn div_float(&self) -> f64 {
@@ -624,6 +626,13 @@ mod tests {
     use crate::do_lisp;
 
     #[test]
+    fn test_sing_rational() {
+        assert_eq!(do_lisp("(/ -1 3)"), "-1/3");
+        assert_eq!(do_lisp("(/ 1 -3)"), "-1/3");
+        assert_eq!(do_lisp("(/ -1 -3)"), "1/3");
+        assert_eq!(do_lisp("(+ (/ -1 3)(/ 1 3))"), "0");
+    }
+    #[test]
     fn test_add_rational() {
         assert_eq!(do_lisp("(+ 1 1/2)"), "3/2");
         assert_eq!(do_lisp("(+ 2.5 1/4)"), "2.75");
@@ -664,7 +673,6 @@ mod tests {
         assert_eq!(do_lisp("(= 3/2 1.5)"), "#t");
         assert_eq!(do_lisp("(= 4/8 2/4)"), "#t");
     }
-
     #[test]
     fn test_lt_rational() {
         assert_eq!(do_lisp("(< 3 7/2)"), "#t");
@@ -672,7 +680,6 @@ mod tests {
         assert_eq!(do_lisp("(< 6/2 4)"), "#t");
         assert_eq!(do_lisp("(< 4/8 3/4)"), "#t");
     }
-
     #[test]
     fn test_le_rational() {
         assert_eq!(do_lisp("(<= 3 7/2)"), "#t");
@@ -686,7 +693,6 @@ mod tests {
         assert_eq!(do_lisp("(<= 3/2 1.5)"), "#t");
         assert_eq!(do_lisp("(<= 4/8 2/4)"), "#t");
     }
-
     #[test]
     fn test_gt_rational() {
         assert_eq!(do_lisp("(> 7/2 3)"), "#t");
