@@ -289,6 +289,18 @@ impl Expression {
             _ => false,
         }
     }
+    pub fn is_symbol(exp: &Expression) -> bool {
+        match exp {
+            Expression::Symbol(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_boolean(exp: &Expression) -> bool {
+        match exp {
+            Expression::Boolean(_) => true,
+            _ => false,
+        }
+    }
     pub fn eq(x: &Expression, y: &Expression) -> bool {
         if let (Expression::Integer(a), Expression::Integer(b)) = (x, y) {
             if a == b {
@@ -492,19 +504,16 @@ impl Function {
         // execute!
         let mut ret = Expression::Nil();
         for e in &self.body {
-            loop {
+            ret = loop {
                 match eval(e, &env)? {
                     Expression::TailLoop() => {
                         if self.tail_recurcieve {
                             continue;
                         }
                     }
-                    v => {
-                        ret = v;
-                    }
+                    v => break v,
                 }
-                break;
-            }
+            };
         }
         Ok(ret)
     }
