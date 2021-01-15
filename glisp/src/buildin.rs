@@ -294,45 +294,39 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     // ex. (screen-width)
     //--------------------------------------------------------
-    {
-        env.add_builtin_ext_func("screen-width", move |exp, _env| {
-            if exp.len() != 1 {
-                return Err(create_error!(ErrCode::E1007));
-            }
-            Ok(Expression::Float(DRAW_WIDTH as f64))
-        });
-    }
+    env.add_builtin_ext_func("screen-width", move |exp, _env| {
+        if exp.len() != 1 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        Ok(Expression::Float(DRAW_WIDTH as f64))
+    });
     //--------------------------------------------------------
     // ex. (screen-height)
     //--------------------------------------------------------
-    {
-        env.add_builtin_ext_func("screen-height", move |exp, _env| {
-            if exp.len() != 1 {
-                return Err(create_error!(ErrCode::E1007));
-            }
-            Ok(Expression::Float(DRAW_HEIGHT as f64))
-        });
-    }
+    env.add_builtin_ext_func("screen-height", move |exp, _env| {
+        if exp.len() != 1 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        Ok(Expression::Float(DRAW_HEIGHT as f64))
+    });
     //--------------------------------------------------------
     // ex. (gtk-major-version)
     // ex. (gtk-minor-version)
     // ex. (gtk-micro-version)
     //--------------------------------------------------------
-    {
-        let version_tbl = [
-            ("gtk-major-version", gtk::get_major_version()),
-            ("gtk-minor-version", gtk::get_minor_version()),
-            ("gtk-micro-version", gtk::get_micro_version()),
-        ];
-        for (f, v) in version_tbl.iter() {
-            let x = *v;
-            env.add_builtin_ext_func(f, move |exp, _env| {
-                if exp.len() != 1 {
-                    return Err(create_error!(ErrCode::E1007));
-                }
-                Ok(Expression::Integer(x as i64))
-            });
-        }
+    let version_tbl = [
+        ("gtk-major-version", gtk::get_major_version()),
+        ("gtk-minor-version", gtk::get_minor_version()),
+        ("gtk-micro-version", gtk::get_micro_version()),
+    ];
+    for (f, v) in version_tbl.iter() {
+        let x = *v;
+        env.add_builtin_ext_func(f, move |exp, _env| {
+            if exp.len() != 1 {
+                return Err(create_error!(ErrCode::E1007));
+            }
+            Ok(Expression::Integer(x as i64))
+        });
     }
     fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Error> {
         if exp.len() != 4 {

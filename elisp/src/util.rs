@@ -49,6 +49,12 @@ where
     b.regist("number?", |exp, env| {
         is_type(exp, env, Expression::is_number)
     });
+    b.regist("boolean?", |exp, env| {
+        is_type(exp, env, Expression::is_boolean)
+    });
+    b.regist("symbol?", |exp, env| {
+        is_type(exp, env, Expression::is_symbol)
+    });
     b.regist("time", time_f);
     b.regist("eq?", eqv);
     b.regist("eqv?", eqv);
@@ -221,6 +227,18 @@ mod tests {
         assert_eq!(do_lisp("(number? \"a\")"), "#f");
     }
     #[test]
+    fn symbol_f() {
+        assert_eq!(do_lisp("(symbol? 'a)"), "#t");
+        assert_eq!(do_lisp("(symbol? \"a\")"), "#f");
+        assert_eq!(do_lisp("(symbol? 10)"), "#f");
+    }
+    #[test]
+    fn boolean_f() {
+        assert_eq!(do_lisp("(boolean? #t)"), "#t");
+        assert_eq!(do_lisp("(boolean? #f)"), "#t");
+        assert_eq!(do_lisp("(boolean? 10)"), "#f");
+    }
+    #[test]
     fn procedure_f() {
         assert_eq!(do_lisp("(procedure? (lambda (n)n))"), "#t");
         assert_eq!(do_lisp("(procedure? +)"), "#t");
@@ -353,6 +371,19 @@ mod error_tests {
         assert_eq!(do_lisp("(number? 10 20)"), "E1007");
         assert_eq!(do_lisp("(number? a)"), "E1008");
     }
+    #[test]
+    fn symbol_f() {
+        assert_eq!(do_lisp("(symbol?)"), "E1007");
+        assert_eq!(do_lisp("(symbol? 10 20)"), "E1007");
+        assert_eq!(do_lisp("(symbol? a)"), "E1008");
+    }
+    #[test]
+    fn boolean_f() {
+        assert_eq!(do_lisp("(boolean?)"), "E1007");
+        assert_eq!(do_lisp("(boolean? 10 20)"), "E1007");
+        assert_eq!(do_lisp("(boolean? a)"), "E1008");
+    }
+
     #[test]
     fn procedure_f() {
         assert_eq!(do_lisp("(procedure?)"), "E1007");
