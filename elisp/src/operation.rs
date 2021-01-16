@@ -42,6 +42,13 @@ where
     b.regist("logior", |exp, env| bit(exp, env, |x, y| x | y));
     b.regist("logxor", |exp, env| bit(exp, env, |x, y| x ^ y));
     b.regist("lognot", lognot);
+    b.regist("logcount", |exp, env| {
+        bitcount(exp, env, |v, i| (1 & (v >> i)) > 0)
+    });
+    b.regist("integer-length", |exp, env| {
+        bitcount(exp, env, |v, i| (v >> i) > 0)
+    });
+
     b.regist("modulo", |exp, env| divide(exp, env, |x, y| x % y));
     b.regist("quotient", |exp, env| divide(exp, env, |x, y| x / y));
 }
@@ -161,6 +168,31 @@ fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         match eval(&exp[1], env)? {
             Expression::Integer(v) => Ok(Expression::Integer(!v)),
+            _ => Err(create_error!(ErrCode::E1002)),
+        }
+    }
+}
+fn bitcount(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: i64, y: i64) -> bool,
+) -> ResultExpression {
+    if exp.len() != 2 {
+        Err(create_error_value!(ErrCode::E1007, exp.len()))
+    } else {
+        match eval(&exp[1], env)? {
+            Expression::Integer(v) => {
+                let x = if v >= 0 { v } else { !v };
+
+                let mut n = 0;
+                for i in 0..64 {
+                    if f(x, i) {
+                        n += 1;
+                    }
+                }
+
+                Ok(Expression::Integer(n))
+            }
             _ => Err(create_error!(ErrCode::E1002)),
         }
     }
@@ -326,6 +358,26 @@ mod tests {
         assert_eq!(do_lisp("(lognot 10)"), "-11");
     }
     #[test]
+    fn logcount() {
+        assert_eq!(do_lisp("(logcount 0)"), "0");
+        assert_eq!(do_lisp("(logcount 11)"), "3");
+        assert_eq!(do_lisp("(logcount 18)"), "2");
+        assert_eq!(do_lisp("(logcount -1)"), "0");
+        assert_eq!(do_lisp("(logcount -2)"), "1");
+        assert_eq!(do_lisp("(logcount -256)"), "8");
+        assert_eq!(do_lisp("(logcount -257)"), "1");
+    }
+    #[test]
+    fn integer_length() {
+        assert_eq!(do_lisp("(integer-length 0)"), "0");
+        assert_eq!(do_lisp("(integer-length 11)"), "4");
+        assert_eq!(do_lisp("(integer-length 18)"), "5");
+        assert_eq!(do_lisp("(integer-length -1)"), "0");
+        assert_eq!(do_lisp("(integer-length -2)"), "1");
+        assert_eq!(do_lisp("(integer-length -256)"), "8");
+        assert_eq!(do_lisp("(integer-length -257)"), "9");
+    }
+    #[test]
     fn modulo() {
         assert_eq!(do_lisp("(modulo 11 3)"), "2");
         assert_eq!(do_lisp("(modulo 11 (+ 1 2))"), "2");
@@ -448,6 +500,20 @@ mod error_tests {
         assert_eq!(do_lisp("(lognot 10 10)"), "E1007");
         assert_eq!(do_lisp("(lognot a)"), "E1008");
         assert_eq!(do_lisp("(lognot 1.5)"), "E1002");
+    }
+    #[test]
+    fn logcount() {
+        assert_eq!(do_lisp("(logcount)"), "E1007");
+        assert_eq!(do_lisp("(logcount 10 10)"), "E1007");
+        assert_eq!(do_lisp("(logcount a)"), "E1008");
+        assert_eq!(do_lisp("(logcount 1.5)"), "E1002");
+    }
+    #[test]
+    fn integer_length() {
+        assert_eq!(do_lisp("(integer-length)"), "E1007");
+        assert_eq!(do_lisp("(integer-length 10 10)"), "E1007");
+        assert_eq!(do_lisp("(integer-length a)"), "E1008");
+        assert_eq!(do_lisp("(integer-length 1.5)"), "E1002");
     }
     #[test]
     fn modulo() {
