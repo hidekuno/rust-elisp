@@ -182,6 +182,8 @@ fn bitcount(
     } else {
         match eval(&exp[1], env)? {
             Expression::Integer(v) => {
+                // https://practical-scheme.net/gauche/man/gauche-refe/Numbers.html
+                // (If n is negative, returns the number of 0’s in the bits of 2’s complement)
                 let x = if v >= 0 { v } else { !v };
 
                 let mut n = 0;
