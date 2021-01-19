@@ -44,6 +44,9 @@ where
     b.regist("char-alphabetic?", |exp, env| {
         is_char_kind(exp, env, |x| x.is_alphabetic())
     });
+    b.regist("char-numeric?", |exp, env| {
+        is_char_kind(exp, env, |x| x.is_numeric())
+    });
 
     b.regist("integer->char", integer_char);
     b.regist("char->integer", char_integer);
@@ -170,6 +173,13 @@ mod tests {
         assert_eq!(do_lisp("(char-alphabetic? #\\9)"), "#f");
     }
     #[test]
+    fn char_numeric() {
+        assert_eq!(do_lisp("(char-numeric? #\\0)"), "#t");
+        assert_eq!(do_lisp("(char-numeric? #\\9)"), "#t");
+        assert_eq!(do_lisp("(char-numeric? #\\a)"), "#f");
+        assert_eq!(do_lisp("(char-numeric? #\\A)"), "#f");
+    }
+    #[test]
     fn integer_char() {
         assert_eq!(do_lisp("(integer->char 65)"), "#\\A");
         assert_eq!(do_lisp("(integer->char 23665)"), "#\\山");
@@ -280,6 +290,13 @@ mod error_tests {
         assert_eq!(do_lisp("(char-alphabetic? #\\0 #\\9)"), "E1007");
         assert_eq!(do_lisp("(char-alphabetic? a)"), "E1008");
         assert_eq!(do_lisp("(char-alphabetic? 10)"), "E1019");
+    }
+    #[test]
+    fn char_numeric() {
+        assert_eq!(do_lisp("(char-numeric?)"), "E1007");
+        assert_eq!(do_lisp("(char-numeric? #\\0 #\\9)"), "E1007");
+        assert_eq!(do_lisp("(char-numeric? a)"), "E1008");
+        assert_eq!(do_lisp("(char-numeric? 10)"), "E1019");
     }
     #[test]
     fn integer_char() {
