@@ -41,6 +41,9 @@ where
     b.regist("char-ci>=?", |exp, env| {
         charcmp(exp, env, |x, y| x.to_lowercase().ge(y.to_lowercase()))
     });
+    b.regist("char-alphabetic?", |exp, env| {
+        is_char_kind(exp, env, |x| x.is_alphabetic())
+    });
 
     b.regist("integer->char", integer_char);
     b.regist("char->integer", char_integer);
@@ -63,6 +66,17 @@ fn charcmp(
     }
     Ok(Expression::Boolean(f(v[0], v[1])))
 }
+fn is_char_kind(exp: &[Expression], env: &Environment, f: fn(x: char) -> bool) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let c = match eval(&exp[1], env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!(ErrCode::E1019)),
+    };
+    Ok(Expression::Boolean(f(c)))
+}
+
 fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -147,6 +161,13 @@ mod tests {
         assert_eq!(do_lisp("(char-ci>=? #\\C #\\a)"), "#t");
         assert_eq!(do_lisp("(char-ci>=? #\\C #\\C)"), "#t");
         assert_eq!(do_lisp("(char-ci>=? #\\a #\\C)"), "#f");
+    }
+    #[test]
+    fn char_alphabetic() {
+        assert_eq!(do_lisp("(char-alphabetic? #\\a)"), "#t");
+        assert_eq!(do_lisp("(char-alphabetic? #\\A)"), "#t");
+        assert_eq!(do_lisp("(char-alphabetic? #\\0)"), "#f");
+        assert_eq!(do_lisp("(char-alphabetic? #\\9)"), "#f");
     }
     #[test]
     fn integer_char() {
@@ -252,6 +273,13 @@ mod error_tests {
         assert_eq!(do_lisp("(char-ci>=? #\\a 10)"), "E1019");
         assert_eq!(do_lisp("(char-ci>=? 10 #\\a)"), "E1019");
         assert_eq!(do_lisp("(char-ci>=? #\\a a)"), "E1008");
+    }
+    #[test]
+    fn char_alphabetic() {
+        assert_eq!(do_lisp("(char-alphabetic?)"), "E1007");
+        assert_eq!(do_lisp("(char-alphabetic? #\\0 #\\9)"), "E1007");
+        assert_eq!(do_lisp("(char-alphabetic? a)"), "E1008");
+        assert_eq!(do_lisp("(char-alphabetic? 10)"), "E1019");
     }
     #[test]
     fn integer_char() {
