@@ -438,7 +438,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
 
     let load = gtk::MenuItem::with_mnemonic("_Load");
     let menu = gtk::Menu::new();
-    menu.append(&create_demo_program_menu("_SICP", "sicp", &ui));
+    menu.append(&create_demo_program_menu("_SICP", "sicp.scm", &ui));
     menu.append(&create_demo_program_menu("_Fractal", "fractal", &ui));
     load.set_submenu(Some(&menu));
     menu_bar.append(&load);

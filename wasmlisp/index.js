@@ -47,7 +47,7 @@ const album_image_code = `(draw-clear)
     };
 
     document.getElementById("sicp").onclick = () => {
-        editor.setValue('(load-url "z-learning/wasm-sicp.scm")', -1);
+        editor.setValue('(load-url "wasm-sicp.scm")', -1);
     };
     document.getElementById("demo").onclick = () => {
         editor.setValue(demo_code, -1);

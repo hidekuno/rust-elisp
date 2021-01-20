@@ -47,8 +47,15 @@ use web_sys::{
     CanvasRenderingContext2d, Document, Element, Event, HtmlCanvasElement, HtmlImageElement,
     HtmlTextAreaElement, Request, RequestInit, RequestMode, Response,
 };
+
+#[cfg(not(feature = "develop"))]
 const SCHEME_URL: &'static str =
     "https://raw.githubusercontent.com/hidekuno/picture-language/master";
+
+// wasm-pack build -- --features develop
+#[cfg(feature = "develop")]
+const SCHEME_URL: &'static str =
+    "https://raw.githubusercontent.com/hidekuno/picture-language/develop";
 
 const LINE_WIDTH: f64 = 0.8;
 

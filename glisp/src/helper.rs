@@ -281,16 +281,24 @@ pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
         if false == path.as_path().exists() {
             return Ok(None);
         }
-        for entry in fs::read_dir(path)? {
-            let dir = entry?;
-            let path = dir.path();
+
+        if true == path.is_file() {
             let f = path.to_str().unwrap();
-            if f.ends_with(".scm") {
-                program.push(format!("(load-file \"{}\")", f));
+            Ok(Some(format!("(load-file \"{}\")", f)))
+        } else if true == path.is_dir() {
+            for entry in fs::read_dir(path)? {
+                let dir = entry?;
+                let path = dir.path();
+                let f = path.to_str().unwrap();
+                if f.ends_with(".scm") {
+                    program.push(format!("(load-file \"{}\")", f));
+                }
             }
+            program.sort();
+            Ok(Some(program.join("\n")))
+        } else {
+            Ok(None)
         }
-        program.sort();
-        Ok(Some(program.join("\n")))
     }
     for v in vec![vec!["picture-language", dir], vec![dir]] {
         match get_program_name(v) {
