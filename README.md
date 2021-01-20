@@ -30,6 +30,7 @@ RustによるLisp(subset版)の実装
 ### macOS
 ```
 docker pull hidekuno/rust-elisp
+xhost +
 docker run --name glisp -e DISPLAY=docker.for.mac.localhost:0 hidekuno/rust-elisp /root/glisp
 ```
 
