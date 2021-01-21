@@ -362,11 +362,14 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
             _ => return Err(create_error!(ErrCode::E1015)),
         };
         let env_ = env.clone();
+        let program = scm.to_string();
         let closure = Closure::wrap(Box::new(move |v: JsValue| {
             if let Some(s) = v.as_string() {
                 let mut cur = Cursor::new(s.into_bytes());
                 if let Err(e) = repl(&mut cur, &env_, true) {
-                    console_log!("load-url {:?}", e);
+                    console_log!("load-url {} {:?}", program, e);
+                } else {
+                    console_log!("load-url {}", program);
                 }
             }
         }) as Box<dyn FnMut(_)>);
@@ -377,12 +380,12 @@ fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         } else {
             let env_ = env.clone();
             let e = exp[2].clone();
-            let eval = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &env_) {
-                Ok(v) => console_log!("load-url: {}", v.to_string()),
-                Err(e) => console_log!("load-url: {}", e.get_code()),
+            let c = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &env_) {
+                Ok(v) => console_log!("load-url-2 {}", v.to_string()),
+                Err(e) => console_log!("load-url-2 {}", e.get_code()),
             }) as Box<dyn FnMut(_)>);
-            let _promise = promise.then(&closure).then(&eval);
-            eval.forget();
+            let _promise = promise.then(&closure).then(&c);
+            c.forget();
         }
         closure.forget();
 
