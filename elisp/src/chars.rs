@@ -59,6 +59,15 @@ where
 
     b.regist("integer->char", integer_char);
     b.regist("char->integer", char_integer);
+
+    b.regist("char-upcase", |exp, env| {
+        //convert_char(exp, env, |x| x.to_ascii_uppercase())
+        convert_char(exp, env, |x| x.to_uppercase().collect::<Vec<char>>()[0])
+    });
+    b.regist("char-downcase", |exp, env| {
+        //convert_char(exp, env, |x| x.to_ascii_lowercase())
+        convert_char(exp, env, |x| x.to_lowercase().collect::<Vec<char>>()[0])
+    });
 }
 fn charcmp(
     exp: &[Expression],
@@ -114,6 +123,16 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))
+}
+fn convert_char(exp: &[Expression], env: &Environment, f: fn(x: char) -> char) -> ResultExpression {
+    if 2 != exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let c = match eval(&exp[1], env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!(ErrCode::E1019)),
+    };
+    Ok(Expression::Char(f(c)))
 }
 #[cfg(test)]
 mod tests {
@@ -223,6 +242,20 @@ mod tests {
     fn char_integer() {
         assert_eq!(do_lisp("(char->integer #\\A)"), "65");
         assert_eq!(do_lisp("(char->integer #\\山)"), "23665");
+    }
+    #[test]
+    fn char_upcase() {
+        assert_eq!(do_lisp("(char-upcase #\\a)"), "#\\A");
+        assert_eq!(do_lisp("(char-upcase #\\A)"), "#\\A");
+        assert_eq!(do_lisp("(char-upcase #\\0)"), "#\\0");
+        assert_eq!(do_lisp("(char-upcase #\\9)"), "#\\9");
+    }
+    #[test]
+    fn char_downcase() {
+        assert_eq!(do_lisp("(char-downcase #\\a)"), "#\\a");
+        assert_eq!(do_lisp("(char-downcase #\\A)"), "#\\a");
+        assert_eq!(do_lisp("(char-downcase #\\0)"), "#\\0");
+        assert_eq!(do_lisp("(char-downcase #\\9)"), "#\\9");
     }
 }
 #[cfg(test)]
@@ -368,5 +401,19 @@ mod error_tests {
         assert_eq!(do_lisp("(char->integer #\\a #\\b)"), "E1007");
         assert_eq!(do_lisp("(char->integer 999)"), "E1019");
         assert_eq!(do_lisp("(char->integer a)"), "E1008");
+    }
+    #[test]
+    fn char_upcase() {
+        assert_eq!(do_lisp("(char-upcase)"), "E1007");
+        assert_eq!(do_lisp("(char-upcase #\\0 #\\9)"), "E1007");
+        assert_eq!(do_lisp("(char-upcase a)"), "E1008");
+        assert_eq!(do_lisp("(char-upcase 10)"), "E1019");
+    }
+    #[test]
+    fn char_downcase() {
+        assert_eq!(do_lisp("(char-downcase)"), "E1007");
+        assert_eq!(do_lisp("(char-downcase #\\0 #\\9)"), "E1007");
+        assert_eq!(do_lisp("(char-downcase a)"), "E1008");
+        assert_eq!(do_lisp("(char-downcase 10)"), "E1019");
     }
 }
