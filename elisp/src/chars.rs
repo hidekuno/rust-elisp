@@ -50,6 +50,12 @@ where
     b.regist("char-whitespace?", |exp, env| {
         is_char_kind(exp, env, |x| x.is_whitespace())
     });
+    b.regist("char-upper-case?", |exp, env| {
+        is_char_kind(exp, env, |x| x.is_uppercase())
+    });
+    b.regist("char-lower-case?", |exp, env| {
+        is_char_kind(exp, env, |x| x.is_lowercase())
+    });
 
     b.regist("integer->char", integer_char);
     b.regist("char->integer", char_integer);
@@ -177,11 +183,6 @@ mod tests {
     }
     #[test]
     fn char_numeric() {
-        assert_eq!(do_lisp("(char-whitespace? #\\space)"), "#t");
-        assert_eq!(do_lisp("(char-whitespace? #\\tab)"), "#t");
-        assert_eq!(do_lisp("(char-whitespace? #\\newline)"), "#t");
-        assert_eq!(do_lisp("(char-whitespace? #\\return)"), "#t");
-
         assert_eq!(do_lisp("(char-numeric? #\\0)"), "#t");
         assert_eq!(do_lisp("(char-numeric? #\\9)"), "#t");
         assert_eq!(do_lisp("(char-numeric? #\\a)"), "#f");
@@ -189,10 +190,29 @@ mod tests {
     }
     #[test]
     fn char_whitespace() {
+        assert_eq!(do_lisp("(char-whitespace? #\\space)"), "#t");
+        assert_eq!(do_lisp("(char-whitespace? #\\tab)"), "#t");
+        assert_eq!(do_lisp("(char-whitespace? #\\newline)"), "#t");
+        assert_eq!(do_lisp("(char-whitespace? #\\return)"), "#t");
+
         assert_eq!(do_lisp("(char-whitespace? #\\0)"), "#f");
         assert_eq!(do_lisp("(char-whitespace? #\\9)"), "#f");
         assert_eq!(do_lisp("(char-whitespace? #\\a)"), "#f");
         assert_eq!(do_lisp("(char-whitespace? #\\A)"), "#f");
+    }
+    #[test]
+    fn char_upper_case() {
+        assert_eq!(do_lisp("(char-upper-case? #\\A)"), "#t");
+        assert_eq!(do_lisp("(char-upper-case? #\\a)"), "#f");
+        assert_eq!(do_lisp("(char-upper-case? #\\0)"), "#f");
+        assert_eq!(do_lisp("(char-upper-case? #\\9)"), "#f");
+    }
+    #[test]
+    fn char_lower_case() {
+        assert_eq!(do_lisp("(char-lower-case? #\\a)"), "#t");
+        assert_eq!(do_lisp("(char-lower-case? #\\A)"), "#f");
+        assert_eq!(do_lisp("(char-lower-case? #\\0)"), "#f");
+        assert_eq!(do_lisp("(char-lower-case? #\\9)"), "#f");
     }
     #[test]
     fn integer_char() {
@@ -319,6 +339,20 @@ mod error_tests {
         assert_eq!(do_lisp("(char-whitespace? #\\0 #\\9)"), "E1007");
         assert_eq!(do_lisp("(char-whitespace? a)"), "E1008");
         assert_eq!(do_lisp("(char-whitespace? 10)"), "E1019");
+    }
+    #[test]
+    fn char_upper_case() {
+        assert_eq!(do_lisp("(char-upper-case?)"), "E1007");
+        assert_eq!(do_lisp("(char-upper-case? #\\0 #\\9)"), "E1007");
+        assert_eq!(do_lisp("(char-upper-case? a)"), "E1008");
+        assert_eq!(do_lisp("(char-upper-case? 10)"), "E1019");
+    }
+    #[test]
+    fn char_lower_case() {
+        assert_eq!(do_lisp("(char-lower-case?)"), "E1007");
+        assert_eq!(do_lisp("(char-lower-case? #\\0 #\\9)"), "E1007");
+        assert_eq!(do_lisp("(char-lower-case? a)"), "E1008");
+        assert_eq!(do_lisp("(char-lower-case? 10)"), "E1019");
     }
     #[test]
     fn integer_char() {
