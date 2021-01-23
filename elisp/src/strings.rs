@@ -61,6 +61,9 @@ where
     b.regist("symbol->string", symbol_string);
     b.regist("string->symbol", string_symbol);
     b.regist("make-string", make_string);
+
+    b.regist("string-split", string_split);
+    b.regist("string-join", string_join);
 }
 fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -274,6 +277,51 @@ fn make_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::String(s))
 }
+fn string_split(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 3 != exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        _ => return Err(create_error!(ErrCode::E1015)),
+    };
+    let c = match eval(&exp[2], env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!(ErrCode::E1019)),
+    };
+
+    let v = s
+        .split(c)
+        .map(|s| Expression::String(String::from(s)))
+        .collect::<Vec<_>>();
+
+    Ok(Environment::create_list(v))
+}
+fn string_join(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 3 != exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+    let l = &*(referlence_list!(l));
+
+    let s = match eval(&exp[2], env)? {
+        Expression::String(s) => s,
+        _ => return Err(create_error!(ErrCode::E1015)),
+    };
+
+    let mut v: Vec<String> = Vec::new();
+    for e in l {
+        let s = match e {
+            Expression::String(s) => s,
+            _ => return Err(create_error!(ErrCode::E1015)),
+        };
+        v.push(s.to_string());
+    }
+    Ok(Expression::String(v.join(&s)))
+}
 #[cfg(test)]
 mod tests {
     use crate::lisp;
@@ -413,6 +461,36 @@ mod tests {
     fn make_string() {
         assert_eq!(do_lisp("(make-string 4 #\\a)"), "\"aaaa\"");
         assert_eq!(do_lisp("(make-string 4 #\\山)"), "\"山山山山\"");
+    }
+    #[test]
+    fn string_split() {
+        assert_eq!(
+            do_lisp("(string-split  \"abc:def:g\"  #\\:)"),
+            "(\"abc\" \"def\" \"g\")"
+        );
+        assert_eq!(do_lisp("(string-split  \"abcdef\"  #\\,)"), "(\"abcdef\")");
+        assert_eq!(
+            do_lisp("(string-split  \",abcdef\"  #\\,)"),
+            "(\"\" \"abcdef\")"
+        );
+        assert_eq!(
+            do_lisp("(string-split  \"abcdef,\"  #\\,)"),
+            "(\"abcdef\" \"\")"
+        );
+        assert_eq!(do_lisp("(string-split  \"\"  #\\,)"), "(\"\")");
+    }
+    #[test]
+    fn string_join() {
+        assert_eq!(
+            do_lisp("(string-join '(\"a\" \"b\" \"c\" \"d\" \"e\") \":\")"),
+            "\"a:b:c:d:e\""
+        );
+        assert_eq!(
+            do_lisp("(string-join '(\"a\" \"b\" \"c\" \"d\" \"e\") \"::\")"),
+            "\"a::b::c::d::e\""
+        );
+        assert_eq!(do_lisp("(string-join '(\"a\") \"::\")"), "\"a\"");
+        assert_eq!(do_lisp("(string-join '(\"\") \"::\")"), "\"\"");
     }
 }
 #[cfg(test)]
@@ -613,5 +691,30 @@ mod error_tests {
         assert_eq!(do_lisp("(make-string -1 #\\a)"), "E1021");
         assert_eq!(do_lisp("(make-string 4 a)"), "E1008");
         assert_eq!(do_lisp("(make-string 4 #t)"), "E1019");
+    }
+    #[test]
+    fn string_split() {
+        assert_eq!(do_lisp("(string-split)"), "E1007");
+        assert_eq!(do_lisp("(string-split 1 2 3)"), "E1007");
+        assert_eq!(do_lisp("(string-split #\\a #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-split \"\" \"\")"), "E1019");
+        assert_eq!(do_lisp("(string-split a #\\a)"), "E1008");
+        assert_eq!(do_lisp("(string-split \"\" a)"), "E1008");
+    }
+    #[test]
+    fn string_join() {
+        assert_eq!(do_lisp("(string-join)"), "E1007");
+        assert_eq!(do_lisp("(string-join 1 2 3)"), "E1007");
+        assert_eq!(do_lisp("(string-join  #\\a (list \"\" \"\"))"), "E1005");
+        assert_eq!(
+            do_lisp("(string-join (list 1 \"a\" \"b\")  \",\")"),
+            "E1015"
+        );
+        assert_eq!(do_lisp("(string-join (list \"a\" \"b\" 1) \",\")"), "E1015");
+        assert_eq!(do_lisp("(string-join a #\\a)"), "E1008");
+        assert_eq!(
+            do_lisp("(string-join (list \"a\" \"b\"  \"c\") a)"),
+            "E1008"
+        );
     }
 }
