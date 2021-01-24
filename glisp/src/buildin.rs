@@ -9,7 +9,7 @@ extern crate elisp;
 extern crate gtk;
 
 use super::fractal::dragon::Dragon;
-use super::fractal::hilvert::Hilvert;
+use super::fractal::hilbert::Hilbert;
 use super::fractal::koch::Koch;
 use super::fractal::sierpinski::Sierpinski;
 use super::fractal::tree::Tree;
@@ -412,5 +412,5 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
         env,
     );
     make_lisp_function(Box::new(Dragon::new(create_draw_line(draw_table, N))), env);
-    make_lisp_function_mut(Hilvert::new(create_draw_line(draw_table, N)), env);
+    make_lisp_function_mut(Hilbert::new(create_draw_line(draw_table, N)), env);
 }

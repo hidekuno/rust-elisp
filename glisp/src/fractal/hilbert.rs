@@ -23,13 +23,13 @@ impl Coord {
         }
     }
 }
-pub struct Hilvert {
+pub struct Hilbert {
     lgth: f64,
     draw_line: DrawLine,
 }
-impl Hilvert {
+impl Hilbert {
     pub fn new(draw_line: DrawLine) -> Self {
-        Hilvert {
+        Hilbert {
             lgth: 0.0,
             draw_line: draw_line,
         }
@@ -116,9 +116,9 @@ impl Hilvert {
         }
     }
 }
-impl FractalMut for Hilvert {
+impl FractalMut for Hilbert {
     fn get_func_name(&self) -> &'static str {
-        "draw-hilvert"
+        "draw-hilbert"
     }
     fn do_demo(&mut self, c: i32) {
         let width = 1.0;

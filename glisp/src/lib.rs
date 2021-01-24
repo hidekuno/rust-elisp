@@ -69,7 +69,7 @@ mod tests {
         assert_eq!(do_lisp_env("(draw-tree 2)", &env), "nil");
         assert_eq!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
         assert_eq!(do_lisp_env("(draw-dragon 2)", &env), "nil");
-        assert_eq!(do_lisp_env("(draw-hilvert 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-hilbert 2)", &env), "nil");
 
         assert_eq!(do_lisp_env("(set-background 0.0 0.0 0.0)", &env), "nil");
         assert_eq!(do_lisp_env("(set-foreground 0.0 1.0 0.0)", &env), "nil");
@@ -301,9 +301,9 @@ mod tests {
     #[test]
     fn test_13_error_check() {
         let env = init();
-        assert_eq!(do_lisp_env("(draw-hilvert)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-hilvert 10 20)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-hilvert 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-hilbert)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-hilbert 10 20)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-hilbert 10.5)", &env), "E1002");
     }
     #[test]
     fn test_14_error_check() {
