@@ -174,12 +174,13 @@ fn create_environment_menu(
     dialog.set_transient_for(Some(window));
     dialog.add_button("Ok", gtk::ResponseType::Ok.into());
 
-    mi.connect_activate(move |_| {
-        let label = gtk::Label::new(Some(f(&env).as_str()));
-        label.set_selectable(true);
+    let label = gtk::Label::new(None);
+    label.set_selectable(true);
+    let content_area = dialog.get_content_area();
+    content_area.add(&label);
 
-        let content_area = dialog.get_content_area();
-        content_area.add(&label);
+    mi.connect_activate(move |_| {
+        label.set_text(f(&env).as_str());
         dialog.show_all();
         dialog.run();
         dialog.hide();
