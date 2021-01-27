@@ -42,19 +42,19 @@ where
         charcmp(exp, env, |x, y| x.to_lowercase().ge(y.to_lowercase()))
     });
     b.regist("char-alphabetic?", |exp, env| {
-        is_char_kind(exp, env, |x| x.is_alphabetic())
+        char_kind(exp, env, |x| Expression::Boolean(x.is_alphabetic()))
     });
     b.regist("char-numeric?", |exp, env| {
-        is_char_kind(exp, env, |x| x.is_numeric())
+        char_kind(exp, env, |x| Expression::Boolean(x.is_numeric()))
     });
     b.regist("char-whitespace?", |exp, env| {
-        is_char_kind(exp, env, |x| x.is_whitespace())
+        char_kind(exp, env, |x| Expression::Boolean(x.is_whitespace()))
     });
     b.regist("char-upper-case?", |exp, env| {
-        is_char_kind(exp, env, |x| x.is_uppercase())
+        char_kind(exp, env, |x| Expression::Boolean(x.is_uppercase()))
     });
     b.regist("char-lower-case?", |exp, env| {
-        is_char_kind(exp, env, |x| x.is_lowercase())
+        char_kind(exp, env, |x| Expression::Boolean(x.is_lowercase()))
     });
 
     b.regist("integer->char", integer_char);
@@ -62,11 +62,15 @@ where
 
     b.regist("char-upcase", |exp, env| {
         //convert_char(exp, env, |x| x.to_ascii_uppercase())
-        convert_char(exp, env, |x| x.to_uppercase().collect::<Vec<char>>()[0])
+        char_kind(exp, env, |x| {
+            Expression::Char(x.to_uppercase().collect::<Vec<char>>()[0])
+        })
     });
     b.regist("char-downcase", |exp, env| {
         //convert_char(exp, env, |x| x.to_ascii_lowercase())
-        convert_char(exp, env, |x| x.to_lowercase().collect::<Vec<char>>()[0])
+        char_kind(exp, env, |x| {
+            Expression::Char(x.to_lowercase().collect::<Vec<char>>()[0])
+        })
     });
 }
 fn charcmp(
@@ -87,7 +91,11 @@ fn charcmp(
     }
     Ok(Expression::Boolean(f(v[0], v[1])))
 }
-fn is_char_kind(exp: &[Expression], env: &Environment, f: fn(x: char) -> bool) -> ResultExpression {
+fn char_kind(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(x: char) -> Expression,
+) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -95,9 +103,8 @@ fn is_char_kind(exp: &[Expression], env: &Environment, f: fn(x: char) -> bool) -
         Expression::Char(c) => c,
         _ => return Err(create_error!(ErrCode::E1019)),
     };
-    Ok(Expression::Boolean(f(c)))
+    Ok(f(c))
 }
-
 fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -123,16 +130,6 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))
-}
-fn convert_char(exp: &[Expression], env: &Environment, f: fn(x: char) -> char) -> ResultExpression {
-    if 2 != exp.len() {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    let c = match eval(&exp[1], env)? {
-        Expression::Char(c) => c,
-        _ => return Err(create_error!(ErrCode::E1019)),
-    };
-    Ok(Expression::Char(f(c)))
 }
 #[cfg(test)]
 mod tests {
