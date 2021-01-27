@@ -356,3 +356,64 @@ fn trigonometric() {
         "60"
     );
 }
+#[test]
+fn bsearch() {
+    let env = lisp::Environment::new();
+    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/bsearch.scm\"))"
+                , &env);
+    assert_eq!(
+        do_lisp_env(
+            "(bsearch (filter (lambda (n) (odd? n)) (iota 100)) 1)",
+            &env
+        ),
+        "0"
+    );
+    assert_eq!(
+        do_lisp_env(
+            "(bsearch (filter (lambda (n) (odd? n)) (iota 100)) 3)",
+            &env
+        ),
+        "1"
+    );
+    assert_eq!(
+        do_lisp_env(
+            "(bsearch (filter (lambda (n) (odd? n)) (iota 100)) 97)",
+            &env
+        ),
+        "48"
+    );
+    assert_eq!(
+        do_lisp_env(
+            "(bsearch (filter (lambda (n) (odd? n)) (iota 100)) 100)",
+            &env
+        ),
+        "#f"
+    );
+}
+#[test]
+fn base64() {
+    let env = lisp::Environment::new();
+    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/base64.scm\"))"
+                , &env);
+    assert_eq!(
+        do_lisp_env("(base64-encode \"Hello,World\")", &env),
+        "\"SGVsbG8sV29ybGQ=\""
+    );
+    assert_eq!(
+        do_lisp_env("(base64-decode \"SGVsbG8sV29ybGQ=\")", &env),
+        "\"Hello,World\""
+    );
+}
+#[test]
+fn zeller() {
+    let env = lisp::Environment::new();
+    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/zeller.scm\"))"
+                , &env);
+
+    for n in 1..7 {
+        assert_eq!(
+            do_lisp_env(&format!("(get-day-of-week 2021 8 {})", n).to_owned(), &env),
+            (n - 1).to_string()
+        );
+    }
+}
