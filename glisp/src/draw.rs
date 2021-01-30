@@ -6,11 +6,14 @@
 */
 extern crate cairo;
 extern crate elisp;
+extern crate gdk_pixbuf;
 extern crate gtk;
 
 use crate::ui::DRAW_HEIGHT;
 use crate::ui::DRAW_WIDTH;
 use cairo::{Context, Format, ImageSurface, Matrix};
+use gdk::prelude::GdkContextExt;
+use gdk_pixbuf::Pixbuf;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -22,7 +25,7 @@ const DEFALUT_LINE_WIDTH: f64 = 0.001;
 const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
 const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
 
-pub type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &ImageSurface) + 'static>;
+pub type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &dyn ImageData) + 'static>;
 pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
 pub type DrawArc = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
@@ -48,7 +51,7 @@ impl Color {
 // Graphics table
 // ----------------------------------------------------------------
 struct Graphics {
-    image_table: HashMap<String, Rc<ImageSurface>>,
+    image_table: HashMap<String, Rc<dyn ImageData>>,
     line_width: f64,
     fg: Color,
     bg: Color,
@@ -74,10 +77,10 @@ pub struct DrawTable {
     surface: Rc<ImageSurface>,
 }
 impl DrawTable {
-    pub fn regist(&self, key: String, surface: Rc<ImageSurface>) {
+    pub fn regist(&self, key: String, surface: Rc<dyn ImageData>) {
         self.core.borrow_mut().image_table.insert(key, surface);
     }
-    pub fn find(&self, key: &String) -> Option<Rc<ImageSurface>> {
+    pub fn find(&self, key: &String) -> Option<Rc<dyn ImageData>> {
         match self.core.borrow().image_table.get(key) {
             Some(v) => Some(v.clone()),
             None => None,
@@ -96,13 +99,51 @@ impl DrawTable {
         self.surface.clone()
     }
 }
-#[cfg(feature = "animation")]
-macro_rules! force_event_loop {
-    () => {
-        while gtk::events_pending() {
-            gtk::main_iteration_do(true);
-        }
-    };
+// ----------------------------------------------------------------
+// Image data
+// ----------------------------------------------------------------
+pub trait ImageData {
+    fn get_width(&self) -> f64;
+    fn get_height(&self) -> f64;
+    fn set_context_image(&self, cr: &Context);
+}
+pub struct ImageSurfaceWrapper {
+    surface: ImageSurface,
+}
+impl ImageSurfaceWrapper {
+    pub fn new(surface: ImageSurface) -> ImageSurfaceWrapper {
+        ImageSurfaceWrapper { surface: surface }
+    }
+}
+impl ImageData for ImageSurfaceWrapper {
+    fn get_width(&self) -> f64 {
+        self.surface.get_width() as f64
+    }
+    fn get_height(&self) -> f64 {
+        self.surface.get_height() as f64
+    }
+    fn set_context_image(&self, cr: &Context) {
+        cr.set_source_surface(&self.surface, 0.0, 0.0);
+    }
+}
+pub struct PixbufWrapper {
+    pixbuf: Pixbuf,
+}
+impl PixbufWrapper {
+    pub fn new(pixbuf: Pixbuf) -> PixbufWrapper {
+        PixbufWrapper { pixbuf: pixbuf }
+    }
+}
+impl ImageData for PixbufWrapper {
+    fn get_width(&self) -> f64 {
+        self.pixbuf.get_width() as f64
+    }
+    fn get_height(&self) -> f64 {
+        self.pixbuf.get_height() as f64
+    }
+    fn set_context_image(&self, cr: &Context) {
+        cr.set_source_pixbuf(&self.pixbuf, 0.0, 0.0);
+    }
 }
 // ----------------------------------------------------------------
 // rakugaki
@@ -131,6 +172,17 @@ impl Graffiti {
         self.cr.line_to(x, y);
         self.cr.stroke();
     }
+}
+// ----------------------------------------------------------------
+// animation macro
+// ----------------------------------------------------------------
+#[cfg(feature = "animation")]
+macro_rules! force_event_loop {
+    () => {
+        while gtk::events_pending() {
+            gtk::main_iteration_do(true);
+        }
+    };
 }
 // ----------------------------------------------------------------
 // screen clear
@@ -185,10 +237,11 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
 // ----------------------------------------------------------------
 pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
     let surface = draw_table.get_default_surface();
-    let draw_image = move |x0, y0, x1, y1, xorg, yorg, img: &ImageSurface| {
+    let draw_image = move |x0, y0, x1, y1, xorg, yorg, img: &dyn ImageData| {
         let cr = Context::new(&*surface);
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
+
         let matrix = Matrix {
             xx: x0 / img.get_width() as f64,
             yx: y0 / img.get_height() as f64,
@@ -198,8 +251,10 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
             y0: yorg,
         };
         cr.transform(matrix);
-        cr.set_source_surface(&*img, 0.0, 0.0);
+
+        img.set_context_image(&cr);
         cr.paint();
+
         #[cfg(feature = "animation")]
         force_event_loop!();
     };
