@@ -18,7 +18,6 @@ use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
 
-const DEFALUT_CANVAS: &str = "canvas";
 const DEFALUT_LINE_WIDTH: f64 = 0.001;
 const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
 const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
@@ -72,6 +71,7 @@ impl Graphics {
 #[derive(Clone)]
 pub struct DrawTable {
     core: Rc<RefCell<Graphics>>,
+    surface: Rc<ImageSurface>,
 }
 impl DrawTable {
     pub fn regist(&self, key: String, surface: Rc<ImageSurface>) {
@@ -92,8 +92,10 @@ impl DrawTable {
     pub fn set_line_width(&mut self, w: f64) {
         self.core.borrow_mut().line_width = w;
     }
+    pub fn get_default_surface(&self) -> Rc<ImageSurface> {
+        self.surface.clone()
+    }
 }
-
 #[cfg(feature = "animation")]
 macro_rules! force_event_loop {
     () => {
@@ -103,15 +105,6 @@ macro_rules! force_event_loop {
     };
 }
 // ----------------------------------------------------------------
-// surface table
-// ----------------------------------------------------------------
-pub fn get_default_surface(draw_table: &DrawTable) -> Rc<ImageSurface> {
-    draw_table
-        .find(&DEFALUT_CANVAS.to_string())
-        .unwrap()
-        .clone()
-}
-// ----------------------------------------------------------------
 // rakugaki
 // ----------------------------------------------------------------
 pub struct Graffiti {
@@ -119,7 +112,7 @@ pub struct Graffiti {
 }
 impl Graffiti {
     pub fn new(draw_table: &DrawTable) -> Self {
-        let surface = get_default_surface(draw_table);
+        let surface = draw_table.get_default_surface();
         Graffiti {
             cr: Context::new(&*surface),
         }
@@ -143,7 +136,7 @@ impl Graffiti {
 // screen clear
 // ----------------------------------------------------------------
 pub fn draw_clear(draw_table: &DrawTable) {
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
     let cr = &Context::new(&*surface);
     cr.transform(Matrix {
         xx: 1.0,
@@ -161,7 +154,7 @@ pub fn draw_clear(draw_table: &DrawTable) {
 // create new cairo from imagetable, and draw line
 // ----------------------------------------------------------------
 pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine {
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
     let cr = Context::new(&*surface);
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
 
@@ -191,7 +184,7 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
 // create new cairo from imagetable, and draw image
 // ----------------------------------------------------------------
 pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
     let draw_image = move |x0, y0, x1, y1, xorg, yorg, img: &ImageSurface| {
         let cr = Context::new(&*surface);
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
@@ -216,7 +209,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
 // create new cairo from imagetable, and draw string
 // ----------------------------------------------------------------
 pub fn create_draw_string(draw_table: &DrawTable) -> DrawString {
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
 
     let draw_table = draw_table.clone();
     let draw_string = move |x, y, f, s: String| {
@@ -238,7 +231,7 @@ pub fn create_draw_string(draw_table: &DrawTable) -> DrawString {
 // create new cairo from imagetable, and draw arc
 // ----------------------------------------------------------------
 pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
     let draw_table = draw_table.clone();
 
     let draw_arc = move |x, y, r, a| {
@@ -266,7 +259,7 @@ pub fn save_png_file(draw_table: &DrawTable, filename: &Path, overwrite: bool) -
             return e.to_string();
         }
     };
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
     return match surface.write_to_png(&mut file) {
         Ok(_) => format!("Saved \"{}\"", filename.to_str().unwrap()),
         Err(e) => e.to_string(),
@@ -276,8 +269,6 @@ pub fn save_png_file(draw_table: &DrawTable, filename: &Path, overwrite: bool) -
 // create draw table
 // ----------------------------------------------------------------
 pub fn create_draw_table() -> DrawTable {
-    let mut image_table = HashMap::new();
-
     let surface = ImageSurface::create(Format::ARgb32, DRAW_WIDTH, DRAW_HEIGHT)
         .expect("Can't create surface");
     let fg = Color::new(DEFALUT_FG_COLOR.0, DEFALUT_FG_COLOR.1, DEFALUT_FG_COLOR.2);
@@ -301,14 +292,13 @@ pub fn create_draw_table() -> DrawTable {
     cr.set_line_width(0.01);
     cr.stroke();
 
-    image_table.insert(DEFALUT_CANVAS.to_string(), Rc::new(surface));
-
     DrawTable {
         core: Rc::new(RefCell::new(Graphics {
-            image_table: image_table,
+            image_table: HashMap::new(),
             line_width: DEFALUT_LINE_WIDTH,
             fg: fg,
             bg: bg,
         })),
+        surface: Rc::new(surface),
     }
 }
