@@ -20,6 +20,17 @@ pub mod lisp;
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
 
+extern crate elisp;
+extern crate wasm_bindgen_test;
+extern crate web_sys;
+
+use crate::lisp::build_lisp_function;
+use elisp::lisp::do_core_logic;
+use elisp::lisp::Environment;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_test::*;
+use web_sys::{Document, HtmlCanvasElement};
+
 #[wasm_bindgen]
 extern "C" {
     pub fn alert(s: &str);
@@ -40,20 +51,42 @@ macro_rules! console_log {
 }
 
 #[cfg(test)]
+const CANVAS_WIDTH: u32 = 720;
+
+#[cfg(test)]
+const CANVAS_HEIGHT: u32 = 560;
+
+#[cfg(test)]
+const IMG_URL: &'static str =
+    "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
+
+#[cfg(test)]
+fn do_lisp_env(program: &str, env: &Environment) -> String {
+    match do_core_logic(&program.into(), env) {
+        Ok(v) => v.to_string(),
+        Err(e) => e.get_code(),
+    }
+}
+#[cfg(test)]
+fn create_document() -> Document {
+    let document = web_sys::window().unwrap().document().unwrap();
+    document.create_element("body").unwrap();
+
+    let canvas = document
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .unwrap();
+
+    canvas.set_id("drawingarea");
+    canvas.set_width(CANVAS_WIDTH);
+    canvas.set_height(CANVAS_HEIGHT);
+    document.body().unwrap().append_child(&canvas).unwrap();
+    document
+}
+#[cfg(test)]
 mod tests {
-    extern crate elisp;
-    extern crate wasm_bindgen_test;
-    extern crate web_sys;
-
-    use crate::lisp::build_lisp_function;
-    use elisp::lisp::do_core_logic;
-    use elisp::lisp::Environment;
-    use wasm_bindgen::JsCast;
-    use wasm_bindgen_test::*;
-    use web_sys::{Document, HtmlCanvasElement};
-
-    const IMG_URL: &'static str =
-        "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
+    use super::*;
 
     const SD_URL: &'static str =
         "https://coverartarchive.org/release-group/9b1acd78-3d19-37bb-8ca0-5816d44da439/front-250.jpg";
@@ -64,33 +97,8 @@ mod tests {
     const PS_URL: &'static str =
         "https://coverartarchive.org/release-group/fdd96703-7b21-365e-bdea-38029fbeb84e/front-250.jpg";
 
-    const CANVAS_WIDTH: u32 = 720;
-    const CANVAS_HEIGHT: u32 = 560;
-
     wasm_bindgen_test_configure!(run_in_browser);
 
-    fn do_lisp_env(program: &str, env: &Environment) -> String {
-        match do_core_logic(&program.into(), env) {
-            Ok(v) => v.to_string(),
-            Err(e) => e.get_code(),
-        }
-    }
-    fn create_document() -> Document {
-        let document = web_sys::window().unwrap().document().unwrap();
-        document.create_element("body").unwrap();
-
-        let canvas = document
-            .create_element("canvas")
-            .unwrap()
-            .dyn_into::<HtmlCanvasElement>()
-            .unwrap();
-
-        canvas.set_id("drawingarea");
-        canvas.set_width(CANVAS_WIDTH);
-        canvas.set_height(CANVAS_HEIGHT);
-        document.body().unwrap().append_child(&canvas).unwrap();
-        document
-    }
     #[wasm_bindgen_test]
     fn draw_clear() {
         let document = create_document();
@@ -262,44 +270,10 @@ mod tests {
 }
 #[cfg(test)]
 mod error_tests {
-    extern crate wasm_bindgen_test;
-    use wasm_bindgen::JsCast;
-    use wasm_bindgen_test::*;
-
-    use crate::lisp::build_lisp_function;
-    use elisp::lisp::do_core_logic;
-    use elisp::lisp::Environment;
-    use web_sys::{Document, HtmlCanvasElement};
-
-    const IMG_URL: &'static str =
-        "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
-
-    const CANVAS_WIDTH: u32 = 720;
-    const CANVAS_HEIGHT: u32 = 560;
+    use super::*;
 
     wasm_bindgen_test_configure!(run_in_browser);
-    fn do_lisp_env(program: &str, env: &Environment) -> String {
-        match do_core_logic(&program.into(), env) {
-            Ok(v) => v.to_string(),
-            Err(e) => e.get_code(),
-        }
-    }
-    fn create_document() -> Document {
-        let document = web_sys::window().unwrap().document().unwrap();
-        document.create_element("body").unwrap();
 
-        let canvas = document
-            .create_element("canvas")
-            .unwrap()
-            .dyn_into::<HtmlCanvasElement>()
-            .unwrap();
-
-        canvas.set_id("drawingarea");
-        canvas.set_width(CANVAS_WIDTH);
-        canvas.set_height(CANVAS_HEIGHT);
-        document.body().unwrap().append_child(&canvas).unwrap();
-        document
-    }
     #[wasm_bindgen_test]
     fn draw_clear() {
         let document = create_document();
