@@ -21,7 +21,6 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::draw::draw_clear;
-use crate::draw::get_default_surface;
 use crate::draw::save_png_file;
 use crate::draw::DrawTable;
 use crate::draw::Graffiti;
@@ -282,7 +281,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let canvas = ui.canvas();
     canvas.set_size_request(DRAW_WIDTH, DRAW_HEIGHT);
 
-    let surface = get_default_surface(draw_table);
+    let surface = draw_table.get_default_surface();
     canvas.connect_draw(move |_, cr| {
         cr.set_source_surface(&*surface, 0.0, 0.0);
         cr.paint();
