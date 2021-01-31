@@ -48,7 +48,7 @@ fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
             return Err(create_error!(ErrCode::E1016));
         }
         let mut stream = BufReader::new(file);
-        match repl(&mut stream, env, true) {
+        match repl(&mut stream, env, None) {
             Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             Ok(_) => return Ok(Expression::Nil()),
         }
