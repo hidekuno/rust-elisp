@@ -16,6 +16,13 @@ extern crate elisp;
 use elisp::lisp::Environment;
 
 #[cfg(test)]
+fn do_lisp_env(program: &str, env: &Environment) -> String {
+    match elisp::lisp::do_core_logic(&program.into(), env) {
+        Ok(v) => v.to_string(),
+        Err(e) => e.get_code(),
+    }
+}
+#[cfg(test)]
 fn init() -> Environment {
     use buildin::{build_demo_function, build_lisp_function};
     use draw::create_draw_table;
@@ -25,14 +32,6 @@ fn init() -> Environment {
     build_lisp_function(&env, &draw_table);
     build_demo_function(&env, &draw_table);
     env
-}
-
-#[cfg(test)]
-fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
-    match lisp::do_core_logic(&program.into(), env) {
-        Ok(v) => v.to_string(),
-        Err(e) => e.get_code(),
-    }
 }
 #[cfg(test)]
 fn create_png_file(kind: &str) -> String {
