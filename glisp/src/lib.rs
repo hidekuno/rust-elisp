@@ -11,27 +11,22 @@ pub mod helper;
 pub mod ui;
 
 extern crate elisp;
-use elisp::lisp;
-use elisp::lisp::Environment;
-
-use buildin::{build_demo_function, build_lisp_function};
-use draw::create_draw_table;
-
-use std::fs::File;
-use std::io::Write;
-use std::iter::Iterator;
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(test)]
-fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
-    match lisp::do_core_logic(&program.into(), env) {
+use elisp::lisp::Environment;
+
+#[cfg(test)]
+fn do_lisp_env(program: &str, env: &Environment) -> String {
+    match elisp::lisp::do_core_logic(&program.into(), env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
     }
 }
 #[cfg(test)]
 fn init() -> Environment {
+    use buildin::{build_demo_function, build_lisp_function};
+    use draw::create_draw_table;
+
     let env = Environment::new();
     let draw_table = create_draw_table();
     build_lisp_function(&env, &draw_table);
@@ -40,6 +35,10 @@ fn init() -> Environment {
 }
 #[cfg(test)]
 fn create_png_file(kind: &str) -> String {
+    use std::fs::File;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     let png = format!(
         "/tmp/hoge_{}_{}.png",
         SystemTime::now()
@@ -63,6 +62,7 @@ fn create_png_file(kind: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     #[test]
     fn draw_clear() {
@@ -261,6 +261,9 @@ mod error_tests {
     }
     #[test]
     fn create_image_from_png() {
+        use std::fs::File;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
         let env = init();
         let png = format!(
             "/tmp/hoge_{}_2.png",
