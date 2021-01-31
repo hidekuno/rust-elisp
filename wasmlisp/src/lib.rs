@@ -20,6 +20,10 @@ pub mod lisp;
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
 
+extern crate elisp;
+extern crate wasm_bindgen_test;
+extern crate web_sys;
+
 #[wasm_bindgen]
 extern "C" {
     pub fn alert(s: &str);
@@ -40,20 +44,52 @@ macro_rules! console_log {
 }
 
 #[cfg(test)]
+use elisp::lisp::Environment;
+
+#[cfg(test)]
+use wasm_bindgen::JsCast;
+
+#[cfg(test)]
+use web_sys::{Document, HtmlCanvasElement};
+
+#[cfg(test)]
+const CANVAS_WIDTH: u32 = 720;
+
+#[cfg(test)]
+const CANVAS_HEIGHT: u32 = 560;
+
+#[cfg(test)]
+const IMG_URL: &'static str =
+    "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
+
+#[cfg(test)]
+fn do_lisp_env(program: &str, env: &Environment) -> String {
+    match elisp::lisp::do_core_logic(&program.into(), env) {
+        Ok(v) => v.to_string(),
+        Err(e) => e.get_code(),
+    }
+}
+#[cfg(test)]
+fn create_document() -> Document {
+    let document = web_sys::window().unwrap().document().unwrap();
+    document.create_element("body").unwrap();
+
+    let canvas = document
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .unwrap();
+
+    canvas.set_id("drawingarea");
+    canvas.set_width(CANVAS_WIDTH);
+    canvas.set_height(CANVAS_HEIGHT);
+    document.body().unwrap().append_child(&canvas).unwrap();
+    document
+}
+#[cfg(test)]
 mod tests {
-    extern crate elisp;
-    extern crate wasm_bindgen_test;
-    extern crate web_sys;
-
-    use crate::lisp::build_lisp_function;
-    use elisp::lisp::do_core_logic;
-    use elisp::lisp::Environment;
-    use wasm_bindgen::JsCast;
+    use super::*;
     use wasm_bindgen_test::*;
-    use web_sys::{Document, HtmlCanvasElement};
-
-    const IMG_URL: &'static str =
-        "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
 
     const SD_URL: &'static str =
         "https://coverartarchive.org/release-group/9b1acd78-3d19-37bb-8ca0-5816d44da439/front-250.jpg";
@@ -64,45 +100,20 @@ mod tests {
     const PS_URL: &'static str =
         "https://coverartarchive.org/release-group/fdd96703-7b21-365e-bdea-38029fbeb84e/front-250.jpg";
 
-    const CANVAS_WIDTH: u32 = 720;
-    const CANVAS_HEIGHT: u32 = 560;
-
     wasm_bindgen_test_configure!(run_in_browser);
 
-    fn do_lisp_env(program: &str, env: &Environment) -> String {
-        match do_core_logic(&program.into(), env) {
-            Ok(v) => v.to_string(),
-            Err(e) => e.get_code(),
-        }
-    }
-    fn create_document() -> Document {
-        let document = web_sys::window().unwrap().document().unwrap();
-        document.create_element("body").unwrap();
-
-        let canvas = document
-            .create_element("canvas")
-            .unwrap()
-            .dyn_into::<HtmlCanvasElement>()
-            .unwrap();
-
-        canvas.set_id("drawingarea");
-        canvas.set_width(CANVAS_WIDTH);
-        canvas.set_height(CANVAS_HEIGHT);
-        document.body().unwrap().append_child(&canvas).unwrap();
-        document
-    }
     #[wasm_bindgen_test]
     fn draw_clear() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(draw-clear)", &env), "nil");
     }
     #[wasm_bindgen_test]
     fn draw_line() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(
             do_lisp_env("(draw-line 10.0 10.0 100.0 100.0)", &env),
             "nil"
@@ -112,14 +123,14 @@ mod tests {
     fn gtk_major_version() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(gtk-major-version)", &env), "-1");
     }
     #[wasm_bindgen_test]
     fn screen_width() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(
             do_lisp_env("(screen-width)", &env),
             CANVAS_WIDTH.to_string()
@@ -129,7 +140,7 @@ mod tests {
     fn screen_height() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(
             do_lisp_env("(screen-height)", &env),
             CANVAS_HEIGHT.to_string()
@@ -139,7 +150,7 @@ mod tests {
     fn load_image() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(
             do_lisp_env(
                 format!("(load-image \"roger\" \"{}\")", IMG_URL).as_str(),
@@ -152,7 +163,7 @@ mod tests {
     fn draw_image() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         do_lisp_env(
             format!("(load-image \"roger\" \"{}\")", SD_URL).as_str(),
             &env,
@@ -166,7 +177,7 @@ mod tests {
     fn image_width() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         do_lisp_env(
             format!("(load-image \"roger\" \"{}\")", RV_URL).as_str(),
             &env,
@@ -178,7 +189,7 @@ mod tests {
     fn image_height() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         do_lisp_env(
             format!("(load-image \"roger\" \"{}\")", PS_URL).as_str(),
             &env,
@@ -190,7 +201,7 @@ mod tests {
     fn load_url() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(
             do_lisp_env("(load-url \"sicp/abstract-data.scm\")", &env),
             "nil"
@@ -204,42 +215,42 @@ mod tests {
     fn add_timeout() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10)", &env), "nil");
     }
     #[wasm_bindgen_test]
     fn set_foreground() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(set-foreground \"blue\")", &env), "nil");
     }
     #[wasm_bindgen_test]
     fn set_background() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(set-background \"black\")", &env), "nil");
     }
     #[wasm_bindgen_test]
     fn set_line_width() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(set-line-width 1.0)", &env), "nil");
     }
     #[wasm_bindgen_test]
     fn draw_arc() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(draw-arc 75.0 75.0 50.0 0.0)", &env), "nil");
     }
     #[wasm_bindgen_test]
     fn draw_string() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(
             do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0)", &env),
             "nil"
@@ -256,62 +267,29 @@ mod tests {
     fn draw_eval() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(draw-eval (iota 20))", &env), "nil");
     }
 }
 #[cfg(test)]
 mod error_tests {
-    extern crate wasm_bindgen_test;
-    use wasm_bindgen::JsCast;
+    use super::*;
     use wasm_bindgen_test::*;
 
-    use crate::lisp::build_lisp_function;
-    use elisp::lisp::do_core_logic;
-    use elisp::lisp::Environment;
-    use web_sys::{Document, HtmlCanvasElement};
-
-    const IMG_URL: &'static str =
-        "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
-
-    const CANVAS_WIDTH: u32 = 720;
-    const CANVAS_HEIGHT: u32 = 560;
-
     wasm_bindgen_test_configure!(run_in_browser);
-    fn do_lisp_env(program: &str, env: &Environment) -> String {
-        match do_core_logic(&program.into(), env) {
-            Ok(v) => v.to_string(),
-            Err(e) => e.get_code(),
-        }
-    }
-    fn create_document() -> Document {
-        let document = web_sys::window().unwrap().document().unwrap();
-        document.create_element("body").unwrap();
 
-        let canvas = document
-            .create_element("canvas")
-            .unwrap()
-            .dyn_into::<HtmlCanvasElement>()
-            .unwrap();
-
-        canvas.set_id("drawingarea");
-        canvas.set_width(CANVAS_WIDTH);
-        canvas.set_height(CANVAS_HEIGHT);
-        document.body().unwrap().append_child(&canvas).unwrap();
-        document
-    }
     #[wasm_bindgen_test]
     fn draw_clear() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(draw-clear 1)", &env), "E1007");
     }
     #[wasm_bindgen_test]
     fn draw_line() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(draw-line)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
         assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
@@ -322,28 +300,28 @@ mod error_tests {
     fn gtk_major_version() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(gtk-major-version 1)", &env), "E1007");
     }
     #[wasm_bindgen_test]
     fn screen_width() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(screen-width 1)", &env), "E1007");
     }
     #[wasm_bindgen_test]
     fn screen_height() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(screen-height 1)", &env), "E1007");
     }
     #[wasm_bindgen_test]
     fn load_image() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(load-image)", &env), "E1007");
         assert_eq!(do_lisp_env("(load-image  \"sample\")", &env), "E1007");
         assert_eq!(
@@ -360,7 +338,7 @@ mod error_tests {
     fn draw_image() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         do_lisp_env(
             format!("(load-image \"sample\" \"{}\")", IMG_URL).as_str(),
             &env,
@@ -392,7 +370,7 @@ mod error_tests {
     fn image_width() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         do_lisp_env(
             format!("(load-image \"sample\" \"{}\")", IMG_URL).as_str(),
             &env,
@@ -409,7 +387,7 @@ mod error_tests {
     fn image_height() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         do_lisp_env(
             format!("(load-image \"sample\" \"{}\")", IMG_URL).as_str(),
             &env,
@@ -426,7 +404,7 @@ mod error_tests {
     fn load_url() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(load-url)", &env), "E1007");
         assert_eq!(
             do_lisp_env("(load-url \"sicp/abstract-data.scm\" 10 12)", &env),
@@ -439,7 +417,7 @@ mod error_tests {
     fn add_timeout() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(add-timeout)", &env), "E1007");
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10 10)", &env), "E1007");
         assert_eq!(do_lisp_env("(add-timeout (+ 1 1) #t)", &env), "E1002");
@@ -449,7 +427,7 @@ mod error_tests {
     fn set_foreground() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
 
         assert_eq!(do_lisp_env("(set-foreground)", &env), "E1007");
         assert_eq!(
@@ -462,7 +440,7 @@ mod error_tests {
     fn set_background() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
 
         assert_eq!(do_lisp_env("(set-background)", &env), "E1007");
         assert_eq!(
@@ -475,7 +453,7 @@ mod error_tests {
     fn set_line_width() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
 
         assert_eq!(do_lisp_env("(set-line-width)", &env), "E1007");
         assert_eq!(do_lisp_env("(set-line-width 1.0 1.0)", &env), "E1007");
@@ -485,7 +463,7 @@ mod error_tests {
     fn draw_arc() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
 
         assert_eq!(do_lisp_env("(draw-arc)", &env), "E1007");
         assert_eq!(
@@ -500,7 +478,7 @@ mod error_tests {
     fn draw_string() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
         assert_eq!(do_lisp_env("(draw-string)", &env), "E1007");
         assert_eq!(
             do_lisp_env("(draw-string \"Hello,World\" 20.0)", &env),
@@ -543,7 +521,7 @@ mod error_tests {
     fn draw_eval() {
         let document = create_document();
         let env = Environment::new();
-        build_lisp_function(&env, &document);
+        lisp::build_lisp_function(&env, &document);
 
         assert_eq!(do_lisp_env("(draw-eval)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-eval (iota 20) 10)", &env), "E1007");
