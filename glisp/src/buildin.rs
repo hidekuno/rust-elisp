@@ -6,6 +6,7 @@
 */
 extern crate cairo;
 extern crate elisp;
+extern crate gdk_pixbuf;
 extern crate gtk;
 
 use super::fractal::dragon::Dragon;
@@ -21,6 +22,9 @@ use crate::draw::create_draw_line;
 use crate::draw::create_draw_string;
 use crate::draw::draw_clear;
 use crate::draw::DrawTable;
+use crate::draw::ImageData;
+use crate::draw::ImageSurfaceWrapper;
+use crate::draw::PixbufWrapper;
 use crate::ui::DRAW_HEIGHT;
 use crate::ui::DRAW_WIDTH;
 
@@ -34,6 +38,7 @@ use lisp::Error;
 use lisp::Expression;
 
 use cairo::ImageSurface;
+use gdk_pixbuf::Pixbuf;
 use std::cell::RefCell;
 use std::fs::File;
 use std::rc::Rc;
@@ -102,7 +107,33 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 Ok(s) => s,
                 Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
-            draw_table.regist(symbol, Rc::new(surface));
+            draw_table.regist(symbol, Rc::new(ImageSurfaceWrapper::new(surface)));
+            Ok(Expression::Nil())
+        });
+    }
+    //--------------------------------------------------------
+    // Load image
+    // ex. (load-image "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
+    //--------------------------------------------------------
+    {
+        let draw_table = draw_table.clone();
+        env.add_builtin_ext_func("load-image", move |exp, env| {
+            if exp.len() != 3 {
+                return Err(create_error!(ErrCode::E1007));
+            }
+            let symbol = match lisp::eval(&exp[1], env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!(ErrCode::E1015)),
+            };
+            let filename = match lisp::eval(&exp[2], env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!(ErrCode::E1015)),
+            };
+            let pix = match Pixbuf::from_file(&filename) {
+                Ok(p) => p,
+                Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
+            };
+            draw_table.regist(symbol, Rc::new(PixbufWrapper::new(pix)));
             Ok(Expression::Nil())
         });
     }
@@ -139,7 +170,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 Some(v) => v.clone(),
                 None => return Err(create_error!(ErrCode::E1008)),
             };
-            draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &img);
+            draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &*img);
             Ok(Expression::Nil())
         });
     }
@@ -346,7 +377,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         exp: &[Expression],
         env: &Environment,
         draw_table: &DrawTable,
-        f: fn(&ImageSurface) -> i32,
+        f: fn(&dyn ImageData) -> f64,
     ) -> Result<f64, Error> {
         if exp.len() != 2 {
             return Err(create_error!(ErrCode::E1007));
@@ -359,7 +390,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             Some(v) => v.clone(),
             None => return Err(create_error!(ErrCode::E1008)),
         };
-        Ok(f(&img) as f64)
+        Ok(f(&*img))
     }
 }
 pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
