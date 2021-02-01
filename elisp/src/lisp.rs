@@ -644,7 +644,7 @@ pub fn do_interactive() {
     let mut stream = BufReader::new(std::io::stdin());
     let env = Environment::new();
 
-    match repl(&mut stream, &env, false) {
+    match repl(&mut stream, &env, Some(PROMPT)) {
         Err(e) => println!("{}", e),
         Ok(_) => {}
     }
@@ -652,35 +652,38 @@ pub fn do_interactive() {
 pub fn repl(
     stream: &mut dyn BufRead,
     env: &Environment,
-    batch: bool,
+    prompt: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = String::new();
     let mut program: Vec<String> = Vec::new();
-    let mut w = std::io::stdout();
-    let mut prompt = PROMPT;
 
-    loop {
-        if !batch {
-            print!("{}", prompt);
+    'outer: loop {
+        if let Some(p) = prompt {
+            print!("{}", p);
+            std::io::stdout().flush().unwrap();
         }
-        w.flush().unwrap();
-        buffer.clear();
-        let n = stream.read_line(&mut buffer)?;
-        if n == 0 {
+        loop {
+            buffer.clear();
+            let n = stream.read_line(&mut buffer)?;
+            if n == 0 {
+                break 'outer;
+            }
+            if program.len() == 0 {
+                if buffer.trim() == QUIT {
+                    println!("Bye");
+                    break 'outer;
+                } else if buffer.trim() == "" {
+                    continue 'outer;
+                }
+            }
+            if buffer.as_bytes()[0] as char == ';' {
+                continue;
+            }
+            program.push(buffer.trim().to_string());
+            if false == count_parenthesis(program.join(" ")) {
+                continue;
+            }
             break;
-        }
-        if buffer.trim() == QUIT {
-            println!("Bye");
-            break;
-        } else if buffer.trim() == "" {
-            continue;
-        } else if buffer.as_bytes()[0] as char == ';' {
-            continue;
-        }
-        program.push(buffer.trim().to_string());
-        if false == count_parenthesis(program.join(" ")) {
-            prompt = "";
-            continue;
         }
         debug!("{}", program.iter().cloned().collect::<String>());
         match do_core_logic(&program.join(" "), env) {
@@ -693,7 +696,6 @@ pub fn repl(
             }
         }
         program.clear();
-        prompt = PROMPT;
     }
     Ok(())
 }

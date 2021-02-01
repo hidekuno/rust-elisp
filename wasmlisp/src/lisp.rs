@@ -303,7 +303,7 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         let closure = Closure::wrap(Box::new(move |v: JsValue| {
             if let Some(s) = v.as_string() {
                 let mut cur = Cursor::new(s.into_bytes());
-                if let Err(e) = repl(&mut cur, &env_, true) {
+                if let Err(e) = repl(&mut cur, &env_, None) {
                     console_log!("load-url {} {:?}", program, e);
                 } else {
                     console_log!("load-url {}", program);
