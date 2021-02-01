@@ -662,7 +662,7 @@ pub fn repl(
             print!("{}", p);
             std::io::stdout().flush().unwrap();
         }
-        loop {
+        let lisp = loop {
             buffer.clear();
             let n = stream.read_line(&mut buffer)?;
             if n == 0 {
@@ -680,13 +680,14 @@ pub fn repl(
                 continue;
             }
             program.push(buffer.trim().to_string());
-            if false == count_parenthesis(program.join(" ")) {
+            let lisp = program.join(" ");
+            if false == count_parenthesis(&lisp) {
                 continue;
             }
-            break;
-        }
+            break lisp;
+        };
         debug!("{}", program.iter().cloned().collect::<String>());
-        match do_core_logic(&program.join(" "), env) {
+        match do_core_logic(&lisp, env) {
             Ok(n) => println!("{}", n.to_string()),
             Err(e) => {
                 if ErrCode::E9000.as_str() == e.get_code() {
@@ -699,7 +700,7 @@ pub fn repl(
     }
     Ok(())
 }
-fn count_parenthesis(program: String) -> bool {
+pub fn count_parenthesis(program: &String) -> bool {
     let mut left = 0;
     let mut right = 0;
     let mut search = true;
@@ -801,7 +802,7 @@ impl TokenState {
         self.tokens
     }
 }
-fn tokenize(program: &String) -> Vec<String> {
+pub fn tokenize(program: &String) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
 
@@ -881,7 +882,7 @@ fn tokenize(program: &String) -> Vec<String> {
     debug!("{:?}", token.tokens);
     return token.tokens();
 }
-fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {
+pub fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.len() == 0 {
         return Err(create_error!(ErrCode::E0001));
     }

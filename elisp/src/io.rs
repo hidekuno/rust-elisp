@@ -8,14 +8,16 @@
 use log::{debug, error, info, warn};
 
 use std::fs::File;
+use std::io::BufRead;
 use std::io::BufReader;
+use std::io::Write;
 use std::path::Path;
 
 use crate::create_error;
 use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
-use crate::lisp::{eval, repl};
+use crate::lisp::{count_parenthesis, eval, parse, repl, tokenize};
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 
@@ -26,6 +28,12 @@ where
     b.regist("load-file", load_file);
     b.regist("display", display);
     b.regist("newline", newline);
+    b.regist("read", |exp, env| {
+        read(exp, env, &mut BufReader::new(std::io::stdin()))
+    });
+    b.regist("read-char", |exp, env| {
+        read_char(exp, env, &mut BufReader::new(std::io::stdin()))
+    });
 }
 fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -66,6 +74,7 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
         } else {
             print!("{} ", v.to_string());
         }
+        std::io::stdout().flush().unwrap();
     }
     Ok(Expression::Nil())
 }
@@ -76,12 +85,70 @@ fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
     print!("\n");
     Ok(Expression::Nil())
 }
+fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+
+    let mut buffer = String::new();
+    let mut expression: Vec<String> = Vec::new();
+
+    let result = loop {
+        buffer.clear();
+        let n = match stream.read_line(&mut buffer) {
+            Ok(n) => n,
+            Err(_) => return Err(create_error!(ErrCode::E9999)),
+        };
+        if n == 1 {
+            continue;
+        }
+        expression.push(buffer.trim().to_string());
+        let lisp = expression.join(" ");
+
+        if false == count_parenthesis(&lisp) {
+            continue;
+        }
+        let token = tokenize(&lisp);
+        break parse(&token, &mut 1, env);
+    };
+    result
+}
+fn read_char(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+
+    let mut buffer = String::new();
+    let mut exp_char = "#\\".to_string();
+
+    let n = match stream.read_line(&mut buffer) {
+        Ok(n) => n,
+        Err(_) => return Err(create_error!(ErrCode::E9999)),
+    };
+    if n == 0 {
+        exp_char.push_str("newline");
+    } else {
+        if let Some(c) = buffer.chars().next() {
+            if c == ' ' {
+                exp_char.push_str("space");
+            } else {
+                exp_char.push(c);
+            }
+        } else {
+            return Err(create_error!(ErrCode::E9999));
+        }
+    }
+    parse(&vec![exp_char], &mut 1, env)
+}
 #[cfg(test)]
 mod tests {
+    use crate::io;
     use crate::lisp;
     use crate::{do_lisp, do_lisp_env};
+    use lisp::Expression;
     use std::env;
     use std::fs::File;
+    use std::io::Cursor;
     use std::io::Write;
     use std::path::Path;
 
@@ -120,6 +187,24 @@ mod tests {
     fn newline() {
         assert_eq!(do_lisp("(newline)"), "nil");
     }
+    #[test]
+    fn read() {
+        let mut cur = Cursor::new("abcdef".as_bytes());
+        let env = lisp::Environment::new();
+        match io::read(&vec![Expression::Nil()], &env, &mut cur) {
+            Ok(s) => assert_eq!(s.to_string(), "abcdef"),
+            Err(_) => {}
+        }
+    }
+    #[test]
+    fn read_char() {
+        let mut cur = Cursor::new("a".as_bytes());
+        let env = lisp::Environment::new();
+        match io::read_char(&vec![Expression::Nil()], &env, &mut cur) {
+            Ok(s) => assert_eq!(s.to_string(), "#\\a"),
+            Err(_) => {}
+        }
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -142,5 +227,13 @@ mod error_tests {
     #[test]
     fn newline() {
         assert_eq!(do_lisp("(newline 123)"), "E1007");
+    }
+    #[test]
+    fn read() {
+        assert_eq!(do_lisp("(read 123)"), "E1007");
+    }
+    #[test]
+    fn read_char() {
+        assert_eq!(do_lisp("(read-char 123)"), "E1007");
     }
 }
