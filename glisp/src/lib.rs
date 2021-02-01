@@ -148,6 +148,26 @@ mod tests {
         assert_eq!(do_lisp_env("(image-height \"sample\")", &env), "1");
     }
     #[test]
+    fn load_image() {
+        let env = init();
+        let png = create_png_file("3");
+        assert_eq!(
+            do_lisp_env(
+                format!("(load-image \"sample\" \"{}\")", png).as_str(),
+                &env,
+            ),
+            "nil"
+        );
+        std::fs::remove_file(png).unwrap();
+
+        assert_eq!(
+            do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
+            "nil"
+        );
+        assert_eq!(do_lisp_env("(image-width \"sample\")", &env), "1");
+        assert_eq!(do_lisp_env("(image-height \"sample\")", &env), "1");
+    }
+    #[test]
     fn screen_width() {
         let env = init();
         assert_eq!(do_lisp_env("(screen-width)", &env), "720");
@@ -341,6 +361,26 @@ mod error_tests {
         assert_eq!(do_lisp_env("(image-height 10)", &env), "E1015");
         assert_eq!(do_lisp_env("(image-height a)", &env), "E1008");
         std::fs::remove_file(png).unwrap();
+    }
+    #[test]
+    fn load_image() {
+        let env = init();
+        // create-image-from-png check
+        assert_eq!(do_lisp_env("(load-image)", &env), "E1007");
+        assert_eq!(do_lisp_env("(load-image \"sample\")", &env), "E1007");
+        assert_eq!(
+            do_lisp_env("(load-image 10 \"/tmp/hoge.png\")", &env),
+            "E1015"
+        );
+        assert_eq!(do_lisp_env("(load-image \"sample\" 20)", &env), "E1015");
+        let png = "/etc/shadow";
+        assert_eq!(
+            do_lisp_env(
+                format!("(load-image \"sample\" \"{}\")", png).as_str(),
+                &env
+            ),
+            "E9999"
+        );
     }
     #[test]
     fn draw_koch() {
