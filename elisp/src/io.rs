@@ -71,6 +71,8 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
         let v = eval(e, env)?;
         if let Expression::Char(c) = v {
             print!("{} ", c);
+        } else if let Expression::String(s) = v {
+            print!("{} ", s);
         } else {
             print!("{} ", v.to_string());
         }
