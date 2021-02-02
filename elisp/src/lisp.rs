@@ -461,7 +461,7 @@ impl Function {
     pub fn set_tail_recurcieve(&mut self) {
         let vec = self.body.clone();
 
-        if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice(), &vec) {
+        if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice()) {
             self.tail_recurcieve = true;
 
             let mut l = mut_list!(l);
@@ -534,6 +534,9 @@ impl Function {
                             }
                         }
                         "begin" => {
+                            if i == body.len() - 1 {
+                                break;
+                            }
                             if let Expression::List(ref mut v) = body[i + 1] {
                                 return self.parse_tail_recurcieve(&l[1..], v);
                             }
@@ -544,6 +547,7 @@ impl Function {
                 if let Expression::Symbol(s) = &l[0] {
                     if *s == self.name {
                         // check tail
+                        debug!("set tail_recurcieve {}", s);
                         if (exp.len() - 1) == i {
                             if let Expression::List(ref mut v) = body[i + 1] {
                                 v[0] = Environment::create_tail_recursion(self.clone());
@@ -566,7 +570,7 @@ impl Function {
         return false;
     }
     #[cfg(not(feature = "thread"))]
-    fn parse_tail_recurcieve(&self, exp: &[Expression], body: &Vec<Expression>) -> Option<ListRc> {
+    fn parse_tail_recurcieve(&self, exp: &[Expression]) -> Option<ListRc> {
         let (mut n, mut tail) = (0, false);
 
         let mut vec: Option<ListRc> = None;
@@ -580,23 +584,19 @@ impl Function {
                 if let Expression::BuildInFunction(s, _) = &l[0] {
                     match s.as_str() {
                         "if" | "cond" => {
-                            if let Expression::List(ref v) = body[0] {
-                                return self.parse_tail_recurcieve(&l[1..], &referlence_list!(v));
-                            }
+                            return self.parse_tail_recurcieve(&l[1..]);
                         }
                         "begin" => {
-                            if let Expression::List(ref v) = body[i + 1] {
-                                return self.parse_tail_recurcieve(&l[1..], &referlence_list!(v));
-                            }
+                            return self.parse_tail_recurcieve(&l[1..]);
                         }
                         _ => {}
                     }
-                }
-                if let Expression::Symbol(s) = &l[0] {
+                } else if let Expression::Symbol(s) = &l[0] {
                     if *s == self.name {
                         // check tail
+                        debug!("set tail_recurcieve {}", s);
                         if (exp.len() - 1) == i {
-                            if let Expression::List(ref v) = body[i + 1] {
+                            if let Expression::List(ref v) = exp[i] {
                                 if n == 0 {
                                     vec = Some(v.clone());
                                 }
@@ -605,9 +605,7 @@ impl Function {
                         }
                         n = n + 1;
                     } else if *s == "else" {
-                        if let Expression::List(ref v) = body[i + 1] {
-                            return self.parse_tail_recurcieve(&l[1..], &referlence_list!(v));
-                        }
+                        return self.parse_tail_recurcieve(&l[1..]);
                     }
                 }
             }
