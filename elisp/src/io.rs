@@ -20,6 +20,7 @@ use crate::buildin::BuildInTable;
 use crate::lisp::{count_parenthesis, eval, parse, repl, tokenize};
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
+use crate::lisp::{NEWLINE, SPACE, TAB};
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -120,24 +121,32 @@ fn read_char(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) ->
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
 
-    let mut buffer = String::new();
-    let mut exp_char = "#\\".to_string();
+    let mut buffer = [0; 4];
+    let mut exp_char = String::new();
 
-    let n = match stream.read_line(&mut buffer) {
+    // pub trait BufRead: Read {
+    //    ...
+    // }
+    let n = match stream.read(&mut buffer) {
         Ok(n) => n,
         Err(_) => return Err(create_error!(ErrCode::E9999)),
     };
     if n == 0 {
-        exp_char.push_str("newline");
+        exp_char.push_str(NEWLINE.1);
     } else {
-        if let Some(c) = buffer.chars().next() {
-            if c == ' ' {
-                exp_char.push_str("space");
-            } else {
-                exp_char.push(c);
+        let s = match std::str::from_utf8(&buffer) {
+            Ok(s) => s,
+            Err(_) => return Err(create_error!(ErrCode::E9999)),
+        };
+        if let Some(c) = s.chars().next() {
+            match c {
+                ' ' => exp_char.push_str(SPACE.1),
+                '\t' => exp_char.push_str(TAB.1),
+                _ => {
+                    exp_char.push_str("#\\");
+                    exp_char.push(buffer[0] as char);
+                }
             }
-        } else {
-            return Err(create_error!(ErrCode::E9999));
         }
     }
     parse(&vec![exp_char], &mut 1, env)
@@ -154,6 +163,14 @@ mod tests {
     use std::io::Write;
     use std::path::Path;
 
+    fn read_char_test(data: &str) -> String {
+        let mut cur = Cursor::new(data.as_bytes());
+        let env = lisp::Environment::new();
+        match io::read_char(&vec![Expression::Nil()], &env, &mut cur) {
+            Ok(s) => s.to_string(),
+            Err(_) => "error".to_string(),
+        }
+    }
     #[test]
     #[allow(unused_must_use)]
     fn load_file() {
@@ -200,12 +217,10 @@ mod tests {
     }
     #[test]
     fn read_char() {
-        let mut cur = Cursor::new("a".as_bytes());
-        let env = lisp::Environment::new();
-        match io::read_char(&vec![Expression::Nil()], &env, &mut cur) {
-            Ok(s) => assert_eq!(s.to_string(), "#\\a"),
-            Err(_) => {}
-        }
+        assert_eq!(read_char_test("a"), "#\\a");
+        assert_eq!(read_char_test("\n"), "#\\newline");
+        assert_eq!(read_char_test("\t"), "#\\tab");
+        assert_eq!(read_char_test(" "), "#\\space");
     }
 }
 #[cfg(test)]

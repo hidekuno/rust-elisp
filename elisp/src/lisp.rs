@@ -626,11 +626,11 @@ const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
 const FORCE_STOP: &str = "(force-stop)";
 
-struct ControlChar(u8, &'static str);
-const SPACE: ControlChar = ControlChar(0x20, "#\\space");
-const TAB: ControlChar = ControlChar(0x09, "#\\tab");
-const NEWLINE: ControlChar = ControlChar(0x0A, "#\\newline");
-const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
+pub struct ControlChar(pub u8, pub &'static str);
+pub const SPACE: ControlChar = ControlChar(0x20, "#\\space");
+pub const TAB: ControlChar = ControlChar(0x09, "#\\tab");
+pub const NEWLINE: ControlChar = ControlChar(0x0A, "#\\newline");
+pub const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
 
 const TRUE: &'static str = "#t";
 const FALSE: &'static str = "#f";
