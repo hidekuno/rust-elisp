@@ -447,31 +447,6 @@ impl Function {
             tail_recurcieve: false,
         }
     }
-
-    #[cfg(feature = "thread")]
-    pub fn set_tail_recurcieve(&mut self) {
-        let mut vec = self.body.clone();
-        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice(), &mut vec);
-
-        if self.tail_recurcieve == true {
-            self.body = vec;
-        }
-    }
-    #[cfg(not(feature = "thread"))]
-    pub fn set_tail_recurcieve(&mut self) {
-        let vec = self.body.clone();
-
-        if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice()) {
-            self.tail_recurcieve = true;
-
-            let mut l = mut_list!(l);
-            l[0] = Environment::create_tail_recursion(self.clone());
-            self.body = vec;
-        }
-    }
-    pub fn get_tail_recurcieve(&self) -> bool {
-        return self.tail_recurcieve;
-    }
     pub fn set_param(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -518,6 +493,15 @@ impl Function {
         Ok(ret)
     }
     #[cfg(feature = "thread")]
+    pub fn set_tail_recurcieve(&mut self) {
+        let mut vec = self.body.clone();
+        self.tail_recurcieve = self.parse_tail_recurcieve(self.body.as_slice(), &mut vec);
+
+        if self.tail_recurcieve == true {
+            self.body = vec;
+        }
+    }
+    #[cfg(feature = "thread")]
     fn parse_tail_recurcieve(&self, exp: &[Expression], body: &mut Vec<Expression>) -> bool {
         let (mut n, mut tail) = (0, false);
 
@@ -529,7 +513,7 @@ impl Function {
                 if let Expression::BuildInFunction(s, _) = &l[0] {
                     match s.as_str() {
                         "if" | "cond" => {
-                            if let Expression::List(ref mut v) = body[0] {
+                            if let Expression::List(ref mut v) = body[i] {
                                 return self.parse_tail_recurcieve(&l[1..], v);
                             }
                         }
@@ -543,8 +527,7 @@ impl Function {
                         }
                         _ => {}
                     }
-                }
-                if let Expression::Symbol(s) = &l[0] {
+                } else if let Expression::Symbol(s) = &l[0] {
                     if *s == self.name {
                         // check tail
                         debug!("set tail_recurcieve {}", s);
@@ -569,10 +552,21 @@ impl Function {
         }
         return false;
     }
+    pub fn get_tail_recurcieve(&self) -> bool {
+        return self.tail_recurcieve;
+    }
+    #[cfg(not(feature = "thread"))]
+    pub fn set_tail_recurcieve(&mut self) {
+        if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice()) {
+            self.tail_recurcieve = true;
+
+            let mut l = mut_list!(l);
+            l[0] = Environment::create_tail_recursion(self.clone());
+        }
+    }
     #[cfg(not(feature = "thread"))]
     fn parse_tail_recurcieve(&self, exp: &[Expression]) -> Option<ListRc> {
         let (mut n, mut tail) = (0, false);
-
         let mut vec: Option<ListRc> = None;
 
         for (i, e) in exp.iter().enumerate() {
