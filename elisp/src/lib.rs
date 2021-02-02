@@ -139,6 +139,26 @@ mod tests {
         do_lisp_env("(  tail-recursion-on )", &env);
         assert!(env.is_tail_recursion() == true);
     }
+    #[test]
+    fn tail_recurcieve_4() {
+        let env = lisp::Environment::new();
+        assert_eq!(
+            do_lisp_env(
+                "(let loop ((i 0))(define a 100)(cond ((<= 100 i) i)(else (loop (+ i 1)))))",
+                &env
+            ),
+            "100"
+        );
+        assert_eq!(
+            do_lisp_env(
+                "(let loop ((i 0))(list 10)(cond ((<= 10 i) i)(else (loop (+ i 1)))))",
+                &env
+            ),
+            "10"
+        );
+        assert_eq!(do_lisp_env("(let loop ((i 0))(define c 10))", &env), "c");
+        assert_eq!(do_lisp_env("(let loop ((i 0))(begin 1000))", &env), "1000");
+    }
 }
 #[cfg(test)]
 mod error_tests {
