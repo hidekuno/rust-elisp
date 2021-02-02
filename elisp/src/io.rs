@@ -8,16 +8,19 @@
 use log::{debug, error, info, warn};
 
 use std::fs::File;
+use std::io::BufRead;
 use std::io::BufReader;
+use std::io::Write;
 use std::path::Path;
 
 use crate::create_error;
 use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
-use crate::lisp::{eval, repl};
+use crate::lisp::{count_parenthesis, eval, parse, repl, tokenize};
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
+use crate::lisp::{NEWLINE, SPACE, TAB};
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -26,6 +29,12 @@ where
     b.regist("load-file", load_file);
     b.regist("display", display);
     b.regist("newline", newline);
+    b.regist("read", |exp, env| {
+        read(exp, env, &mut BufReader::new(std::io::stdin()))
+    });
+    b.regist("read-char", |exp, env| {
+        read_char(exp, env, &mut BufReader::new(std::io::stdin()))
+    });
 }
 fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -63,9 +72,12 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
         let v = eval(e, env)?;
         if let Expression::Char(c) = v {
             print!("{} ", c);
+        } else if let Expression::String(s) = v {
+            print!("{} ", s);
         } else {
             print!("{} ", v.to_string());
         }
+        std::io::stdout().flush().unwrap();
     }
     Ok(Expression::Nil())
 }
@@ -76,15 +88,89 @@ fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
     print!("\n");
     Ok(Expression::Nil())
 }
+fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+
+    let mut buffer = String::new();
+    let mut expression: Vec<String> = Vec::new();
+
+    let result = loop {
+        buffer.clear();
+        let n = match stream.read_line(&mut buffer) {
+            Ok(n) => n,
+            Err(_) => return Err(create_error!(ErrCode::E9999)),
+        };
+        if n == 1 {
+            continue;
+        }
+        expression.push(buffer.trim().to_string());
+        let lisp = expression.join(" ");
+
+        if false == count_parenthesis(&lisp) {
+            continue;
+        }
+        let token = tokenize(&lisp);
+        break parse(&token, &mut 1, env);
+    };
+    result
+}
+fn read_char(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+
+    let mut buffer = [0; 4];
+    let mut exp_char = String::new();
+
+    // pub trait BufRead: Read {
+    //    ...
+    // }
+    let n = match stream.read(&mut buffer) {
+        Ok(n) => n,
+        Err(_) => return Err(create_error!(ErrCode::E9999)),
+    };
+    if n == 0 {
+        exp_char.push_str(NEWLINE.1);
+    } else {
+        let s = match std::str::from_utf8(&buffer) {
+            Ok(s) => s,
+            Err(_) => return Err(create_error!(ErrCode::E9999)),
+        };
+        if let Some(c) = s.chars().next() {
+            match c {
+                ' ' => exp_char.push_str(SPACE.1),
+                '\t' => exp_char.push_str(TAB.1),
+                _ => {
+                    exp_char.push_str("#\\");
+                    exp_char.push(buffer[0] as char);
+                }
+            }
+        }
+    }
+    parse(&vec![exp_char], &mut 1, env)
+}
 #[cfg(test)]
 mod tests {
+    use crate::io;
     use crate::lisp;
     use crate::{do_lisp, do_lisp_env};
+    use lisp::Expression;
     use std::env;
     use std::fs::File;
+    use std::io::Cursor;
     use std::io::Write;
     use std::path::Path;
 
+    fn read_char_test(data: &str) -> String {
+        let mut cur = Cursor::new(data.as_bytes());
+        let env = lisp::Environment::new();
+        match io::read_char(&vec![Expression::Nil()], &env, &mut cur) {
+            Ok(s) => s.to_string(),
+            Err(_) => "error".to_string(),
+        }
+    }
     #[test]
     #[allow(unused_must_use)]
     fn load_file() {
@@ -120,6 +206,22 @@ mod tests {
     fn newline() {
         assert_eq!(do_lisp("(newline)"), "nil");
     }
+    #[test]
+    fn read() {
+        let mut cur = Cursor::new("abcdef".as_bytes());
+        let env = lisp::Environment::new();
+        match io::read(&vec![Expression::Nil()], &env, &mut cur) {
+            Ok(s) => assert_eq!(s.to_string(), "abcdef"),
+            Err(_) => {}
+        }
+    }
+    #[test]
+    fn read_char() {
+        assert_eq!(read_char_test("a"), "#\\a");
+        assert_eq!(read_char_test("\n"), "#\\newline");
+        assert_eq!(read_char_test("\t"), "#\\tab");
+        assert_eq!(read_char_test(" "), "#\\space");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -142,5 +244,13 @@ mod error_tests {
     #[test]
     fn newline() {
         assert_eq!(do_lisp("(newline 123)"), "E1007");
+    }
+    #[test]
+    fn read() {
+        assert_eq!(do_lisp("(read 123)"), "E1007");
+    }
+    #[test]
+    fn read_char() {
+        assert_eq!(do_lisp("(read-char 123)"), "E1007");
     }
 }
