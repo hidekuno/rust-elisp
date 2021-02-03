@@ -693,6 +693,24 @@ mod tests {
             "(a b c (d e f (g h i)))"
         );
     }
+    #[test]
+    fn do_f() {
+        assert_eq!(do_lisp("(do ((i 0 (+ i 1)))((= i 10) i))"), "10");
+        assert_eq!(
+            do_lisp("(do ((i 0 (+ i 1))(j 0 (+ i j)))((= i 10) j)(display j)(newline))"),
+            "45"
+        );
+        assert_eq!(
+            do_lisp("(do ((a '(0 1 2 3 4) (cdr a))(b 0 (+ b (car a))))((null? a) b)(display (car a))(newline))"),
+            "10"
+        );
+        let env = lisp::Environment::new();
+        do_lisp_env("(define x 100)", &env);
+        assert_eq!(
+            do_lisp_env("(do ((i 0 (+ i 1)))((= i 10) x)(set! x (+ i x)))", &env),
+            "145"
+        );
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -730,6 +748,7 @@ mod error_tests {
     }
     #[test]
     fn let_f() {
+        assert_eq!(do_lisp("(let)"), "E1007");
         assert_eq!(do_lisp("(let loop)"), "E1007");
         assert_eq!(do_lisp("(let ((i 0 10)) (+ i 10))"), "E1007");
         assert_eq!(do_lisp("(let ((100 10)) (+ i 10))"), "E1004");
@@ -817,5 +836,20 @@ mod error_tests {
     fn quote() {
         assert_eq!(do_lisp("(quote)"), "E1007");
         assert_eq!(do_lisp("(quote 1 2)"), "E1007");
+    }
+    #[test]
+    fn do_f() {
+        assert_eq!(do_lisp("(do)"), "E1007");
+        assert_eq!(do_lisp("(do 1 2)"), "E1005");
+        assert_eq!(do_lisp("(do () 1)"), "E1007");
+        assert_eq!(do_lisp("(do (a) 1)"), "E1005");
+        assert_eq!(do_lisp("(do (()) 1)"), "E1007");
+        assert_eq!(do_lisp("(do ((10 1 1)) 1)"), "E1004");
+
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) 10)"), "E1005");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (10))"), "E1007");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (10 10))"), "E1001");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (#f 10) a)"), "E1008");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (#t a) 10)"), "E1008");
     }
 }
