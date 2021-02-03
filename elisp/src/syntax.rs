@@ -39,6 +39,8 @@ where
     b.regist("delay", delay);
     b.regist("force", force);
     b.regist("quote", quote);
+
+    b.regist("do", do_f);
 }
 pub fn quote(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -351,7 +353,7 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
 
         eval(&Environment::create_list(sexp), env)
     } else {
-        Err(create_error_value!(ErrCode::E1005, exp.len()))
+        Err(create_error!(ErrCode::E1005))
     }
 }
 fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -370,6 +372,83 @@ fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         Ok(v)
     }
+}
+fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let l = if let Expression::List(l) = &exp[1] {
+        l
+    } else {
+        return Err(create_error!(ErrCode::E1005));
+    };
+    let l = &*(referlence_list!(l));
+    if l.len() < 1 {
+        return Err(create_error_value!(ErrCode::E1007, l.len()));
+    }
+
+    let local_env = Environment::with_parent(&env);
+    let mut param = Vec::<String>::new();
+    let mut update = Vec::<Expression>::new();
+
+    for e in l {
+        let f = if let Expression::List(f) = &e {
+            f
+        } else {
+            return Err(create_error!(ErrCode::E1005));
+        };
+        let f = &*(referlence_list!(f));
+        if f.len() != 3 {
+            return Err(create_error_value!(ErrCode::E1007, f.len()));
+        }
+        if let Expression::Symbol(s) = &f[0] {
+            local_env.regist(s.to_string(), eval(&f[1], env)?);
+            param.push(s.to_string());
+        } else {
+            return Err(create_error!(ErrCode::E1004));
+        }
+        update.push(f[2].clone());
+    }
+
+    let l = if let Expression::List(l) = &exp[2] {
+        l
+    } else {
+        return Err(create_error!(ErrCode::E1005));
+    };
+    let l = &*(referlence_list!(l));
+    if l.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, l.len()));
+    }
+    let mut cond = Vec::<Expression>::new();
+    for c in l {
+        cond.push(c.clone());
+    }
+
+    let v = loop {
+        // eval condition
+        if let Expression::Boolean(b) = eval(&cond[0], &local_env)? {
+            if true == b {
+                let v = eval(&cond[1], &local_env)?;
+                break v;
+            }
+        } else {
+            return Err(create_error!(ErrCode::E1001));
+        }
+        // eval body
+        for i in 3..exp.len() {
+            eval(&exp[i], &local_env)?;
+        }
+
+        // eval step
+        let mut result = Vec::<Expression>::new();
+        for u in &update {
+            result.push(eval(&u, &local_env)?);
+        }
+        for (i, v) in result.into_iter().enumerate() {
+            local_env.regist(param[i].clone(), v);
+        }
+    };
+    Ok(v)
 }
 #[cfg(test)]
 mod tests {
