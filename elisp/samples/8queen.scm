@@ -5,7 +5,7 @@
 ;
 ; hidekuno@gmail.com
 
-(define (conflict col row board)
+(define (conflict? col row board)
   (let loop ((x board) (y (- col 1)))
     (cond ((null? x) #f)
           ((or 
@@ -24,9 +24,9 @@
     (cond ((null? x)
            (print-path path))
           (else
-           (cond ((not (conflict (length path) (car x) path))
+           (cond ((not (conflict? (length path) (car x) path))
                   (8queen (delete (car x) xlist)
                          (cons (car x) path))))
            (loop (cdr x))))))
 
-(8queen (iota 8 1)(list))
+

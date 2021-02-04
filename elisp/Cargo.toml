@@ -10,6 +10,11 @@ log = "*"
 env_logger = "*"
 rand = "0.6"
 
+[dev-dependencies]
+surf = "1.0.3"
+serde = { version = "1.0", features = ["derive"] }
+async-std = { version = "1.5.0", features = ["attributes"] }
+
 [features]
 thread = []
 signal = []
