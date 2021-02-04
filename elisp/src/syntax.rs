@@ -39,6 +39,8 @@ where
     b.regist("delay", delay);
     b.regist("force", force);
     b.regist("quote", quote);
+
+    b.regist("do", do_f);
 }
 pub fn quote(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -351,7 +353,7 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
 
         eval(&Environment::create_list(sexp), env)
     } else {
-        Err(create_error_value!(ErrCode::E1005, exp.len()))
+        Err(create_error!(ErrCode::E1005))
     }
 }
 fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -370,6 +372,83 @@ fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         Ok(v)
     }
+}
+fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let l = if let Expression::List(l) = &exp[1] {
+        l
+    } else {
+        return Err(create_error!(ErrCode::E1005));
+    };
+    let l = &*(referlence_list!(l));
+    if l.len() < 1 {
+        return Err(create_error_value!(ErrCode::E1007, l.len()));
+    }
+
+    let local_env = Environment::with_parent(&env);
+    let mut param = Vec::<String>::new();
+    let mut update = Vec::<Expression>::new();
+
+    for e in l {
+        let f = if let Expression::List(f) = &e {
+            f
+        } else {
+            return Err(create_error!(ErrCode::E1005));
+        };
+        let f = &*(referlence_list!(f));
+        if f.len() != 3 {
+            return Err(create_error_value!(ErrCode::E1007, f.len()));
+        }
+        if let Expression::Symbol(s) = &f[0] {
+            local_env.regist(s.to_string(), eval(&f[1], env)?);
+            param.push(s.to_string());
+        } else {
+            return Err(create_error!(ErrCode::E1004));
+        }
+        update.push(f[2].clone());
+    }
+
+    let l = if let Expression::List(l) = &exp[2] {
+        l
+    } else {
+        return Err(create_error!(ErrCode::E1005));
+    };
+    let l = &*(referlence_list!(l));
+    if l.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, l.len()));
+    }
+    let mut cond = Vec::<Expression>::new();
+    for c in l {
+        cond.push(c.clone());
+    }
+
+    let v = loop {
+        // eval condition
+        if let Expression::Boolean(b) = eval(&cond[0], &local_env)? {
+            if true == b {
+                let v = eval(&cond[1], &local_env)?;
+                break v;
+            }
+        } else {
+            return Err(create_error!(ErrCode::E1001));
+        }
+        // eval body
+        for i in 3..exp.len() {
+            eval(&exp[i], &local_env)?;
+        }
+
+        // eval step
+        let mut result = Vec::<Expression>::new();
+        for u in &update {
+            result.push(eval(&u, &local_env)?);
+        }
+        for (i, v) in result.into_iter().enumerate() {
+            local_env.regist(param[i].clone(), v);
+        }
+    };
+    Ok(v)
 }
 #[cfg(test)]
 mod tests {
@@ -614,6 +693,24 @@ mod tests {
             "(a b c (d e f (g h i)))"
         );
     }
+    #[test]
+    fn do_f() {
+        assert_eq!(do_lisp("(do ((i 0 (+ i 1)))((= i 10) i))"), "10");
+        assert_eq!(
+            do_lisp("(do ((i 0 (+ i 1))(j 0 (+ i j)))((= i 10) j)(display j)(newline))"),
+            "45"
+        );
+        assert_eq!(
+            do_lisp("(do ((a '(0 1 2 3 4) (cdr a))(b 0 (+ b (car a))))((null? a) b)(display (car a))(newline))"),
+            "10"
+        );
+        let env = lisp::Environment::new();
+        do_lisp_env("(define x 100)", &env);
+        assert_eq!(
+            do_lisp_env("(do ((i 0 (+ i 1)))((= i 10) x)(set! x (+ i x)))", &env),
+            "145"
+        );
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -651,6 +748,7 @@ mod error_tests {
     }
     #[test]
     fn let_f() {
+        assert_eq!(do_lisp("(let)"), "E1007");
         assert_eq!(do_lisp("(let loop)"), "E1007");
         assert_eq!(do_lisp("(let ((i 0 10)) (+ i 10))"), "E1007");
         assert_eq!(do_lisp("(let ((100 10)) (+ i 10))"), "E1004");
@@ -738,5 +836,20 @@ mod error_tests {
     fn quote() {
         assert_eq!(do_lisp("(quote)"), "E1007");
         assert_eq!(do_lisp("(quote 1 2)"), "E1007");
+    }
+    #[test]
+    fn do_f() {
+        assert_eq!(do_lisp("(do)"), "E1007");
+        assert_eq!(do_lisp("(do 1 2)"), "E1005");
+        assert_eq!(do_lisp("(do () 1)"), "E1007");
+        assert_eq!(do_lisp("(do (a) 1)"), "E1005");
+        assert_eq!(do_lisp("(do (()) 1)"), "E1007");
+        assert_eq!(do_lisp("(do ((10 1 1)) 1)"), "E1004");
+
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) 10)"), "E1005");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (10))"), "E1007");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (10 10))"), "E1001");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (#f 10) a)"), "E1008");
+        assert_eq!(do_lisp("(do ((i 0 (+ 1))) (#t a) 10)"), "E1008");
     }
 }
