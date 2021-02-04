@@ -25,7 +25,7 @@ RustによるLisp(subset版)の実装
 ## 動かし方
 ### 動作条件
 - dockerが動いていること
-- Xサーバ(macの場合、XQuartz)が動いていること
+- Xサーバ(macの場合、XQuartz 2.7.11)が動いていること
 
 ### macOS
 ```
