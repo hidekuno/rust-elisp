@@ -25,43 +25,13 @@ use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
-#[cfg(feature = "thread")]
-#[macro_export]
-macro_rules! referlence_list {
-    ($e: expr) => {{
-        debug!("lock {}:{}", file!(), line!());
-        let v = $e.lock().unwrap();
-        v.to_vec()
-    }};
-}
-#[cfg(feature = "thread")]
-#[macro_export]
-macro_rules! mut_list {
-    ($e: expr) => {
-        $e.lock().unwrap();
-    };
-}
-
 #[cfg(not(feature = "thread"))]
 use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
-#[cfg(not(feature = "thread"))]
-#[macro_export]
-macro_rules! referlence_list {
-    ($e: expr) => {
-        $e.borrow();
-    };
-}
-
-#[cfg(not(feature = "thread"))]
-#[macro_export]
-macro_rules! mut_list {
-    ($e: expr) => {
-        $e.borrow_mut();
-    };
-}
+use crate::mut_list;
+use crate::referlence_list;
 //========================================================================
 #[derive(Clone, Debug)]
 pub enum ErrCode {
@@ -528,9 +498,10 @@ impl Function {
                 } else if let Expression::Symbol(s) = &l[0] {
                     if *s == self.name {
                         // check tail
-                        debug!("set tail_recurcieve {}", s);
                         if (exp.len() - 1) == i {
+                            debug!("set tail_recurcieve {}", s);
                             if let Expression::List(ref v) = exp[i] {
+                                // check calling times
                                 vec = if n == 0 { Some(v.clone()) } else { None };
                             }
                         }
@@ -541,7 +512,6 @@ impl Function {
                 }
             }
         }
-        // check calling times
         return vec;
     }
 }

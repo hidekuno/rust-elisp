@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::RwLock;
 use std::vec::Vec;
 
 use crate::buildin::{create_function, BuildInTable};
@@ -19,8 +20,32 @@ type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<Function>;
 pub type ExtFunctionRc = Arc<ExtFunction>;
-pub type ListRc = Arc<Mutex<Vec<Expression>>>;
+pub type ListRc = Arc<RwLock<Vec<Expression>>>;
 //========================================================================
+#[macro_export]
+macro_rules! referlence_list {
+    // Arc<Mutex<Vec<Expression>>> is slowly(30%)
+    //
+    // ($e: expr) => {{
+    //     debug!("lock {}:{}", file!(), line!());
+    //     let v = $e.lock().unwrap();
+    //     v.to_vec()
+    // }};
+    ($e: expr) => {
+        $e.read().unwrap()
+    };
+}
+#[macro_export]
+macro_rules! mut_list {
+    // Case of Arc<Mutex<Vec<Expression>>>
+    //
+    // ($e: expr) => {{
+    //     $e.lock().unwrap()
+    // }};
+    ($e: expr) => {
+        $e.write().unwrap()
+    };
+}
 #[derive(Clone)]
 pub struct Environment {
     core: EnvTable,
@@ -43,7 +68,7 @@ impl Environment {
         Expression::Function(Arc::new(func))
     }
     pub fn create_list(l: Vec<Expression>) -> Expression {
-        Expression::List(Arc::new(Mutex::new(l)))
+        Expression::List(Arc::new(RwLock::new(l)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Arc::new(func))
