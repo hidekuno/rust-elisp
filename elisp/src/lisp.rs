@@ -503,7 +503,7 @@ impl Function {
     }
     #[cfg(feature = "thread")]
     fn parse_tail_recurcieve(&self, exp: &[Expression], body: &mut Vec<Expression>) -> bool {
-        let (mut n, mut tail) = (0, false);
+        let mut n = 0;
 
         for (i, e) in exp.iter().enumerate() {
             if let Expression::List(l) = e {
@@ -534,7 +534,6 @@ impl Function {
                         if (exp.len() - 1) == i {
                             if let Expression::List(ref mut v) = body[i + 1] {
                                 v[0] = Environment::create_tail_recursion(self.clone());
-                                tail = true;
                             }
                         }
                         n = n + 1;
@@ -547,10 +546,7 @@ impl Function {
             }
         }
         // check calling times
-        if n == 1 && tail {
-            return true;
-        }
-        return false;
+        return n == 1;
     }
     pub fn get_tail_recurcieve(&self) -> bool {
         return self.tail_recurcieve;
@@ -566,7 +562,7 @@ impl Function {
     }
     #[cfg(not(feature = "thread"))]
     fn parse_tail_recurcieve(&self, exp: &[Expression]) -> Option<ListRc> {
-        let (mut n, mut tail) = (0, false);
+        let mut n = 0;
         let mut vec: Option<ListRc> = None;
 
         for (i, e) in exp.iter().enumerate() {
@@ -591,10 +587,7 @@ impl Function {
                         debug!("set tail_recurcieve {}", s);
                         if (exp.len() - 1) == i {
                             if let Expression::List(ref v) = exp[i] {
-                                if n == 0 {
-                                    vec = Some(v.clone());
-                                }
-                                tail = true;
+                                vec = if n == 0 { Some(v.clone()) } else { None };
                             }
                         }
                         n = n + 1;
@@ -605,10 +598,7 @@ impl Function {
             }
         }
         // check calling times
-        if n == 1 && tail {
-            return vec;
-        }
-        return None;
+        return vec;
     }
 }
 //========================================================================
