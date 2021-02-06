@@ -19,7 +19,7 @@ type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<Function>;
 pub type ExtFunctionRc = Arc<ExtFunction>;
-pub type ListRc = Vec<Expression>;
+pub type ListRc = Arc<Mutex<Vec<Expression>>>;
 //========================================================================
 #[derive(Clone)]
 pub struct Environment {
@@ -43,7 +43,7 @@ impl Environment {
         Expression::Function(Arc::new(func))
     }
     pub fn create_list(l: Vec<Expression>) -> Expression {
-        Expression::List(l)
+        Expression::List(Arc::new(Mutex::new(l)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Arc::new(func))
