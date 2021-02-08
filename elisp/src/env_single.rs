@@ -19,6 +19,19 @@ pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
 pub type ListRc = Rc<RefCell<Vec<Expression>>>;
 
+#[macro_export]
+macro_rules! referlence_list {
+    ($e: expr) => {
+        $e.borrow();
+    };
+}
+#[macro_export]
+macro_rules! mut_list {
+    ($e: expr) => {
+        $e.borrow_mut();
+    };
+}
+
 #[derive(Clone)]
 pub struct Environment {
     core: EnvTable,

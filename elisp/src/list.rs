@@ -209,7 +209,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = &*(referlence_list!(l));
     let mut vec = Vec::new();
     for e in l {
-        if true == Expression::eq(e, &other) {
+        if true == Expression::eq(&e, &other) {
             continue;
         }
         vec.push(e.clone());
@@ -390,7 +390,7 @@ fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
                 return Err(create_error!(ErrCode::E1011));
             }
             l[i as usize] = eval(&exp[3], env)?;
-            //            Ok(Expression::List(r.clone()))
+
             Ok(Expression::Nil())
         }
         _ => Err(create_error!(ErrCode::E1005)),
@@ -735,7 +735,6 @@ mod tests {
         assert_eq!(do_lisp("(list-ref (list (list 0 1) 1 2 3) 0)"), "(0 1)");
     }
     #[test]
-    #[cfg(not(feature = "thread"))]
     fn list_set() {
         let env = lisp::Environment::new();
         do_lisp_env("(define a (list 1 2 3 4 5))", &env);
@@ -921,7 +920,6 @@ mod error_tests {
         assert_eq!(do_lisp("(list-ref (iota 10) 10)"), "E1011");
     }
     #[test]
-    #[cfg(not(feature = "thread"))]
     fn list_set() {
         assert_eq!(do_lisp("(list-set!)"), "E1007");
         assert_eq!(do_lisp("(list-set! (iota 10))"), "E1007");
