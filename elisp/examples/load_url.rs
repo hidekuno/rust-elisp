@@ -40,6 +40,10 @@ pub fn build_lisp_function(env: &Environment) {
         } else {
             return Err(create_error!(ErrCode::E1015));
         };
+        if url.starts_with("http://") == false && url.starts_with("https://") == false {
+            return Err(create_error!(ErrCode::E1021));
+        }
+
         let lisp = match load_url(&url) {
             Err(e) => {
                 println!("{:?}", e);

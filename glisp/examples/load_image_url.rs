@@ -6,7 +6,7 @@
     (load-image-url "rb" "https://images-fe.ssl-images-amazon.com/images/I/51TCtM6EVWL._AC_UL160_.jpg")
     (draw-clear)
     (draw-image "rb" 0.0 0.0
-            (/ (image-width "rb") (screen-width) 1.0) 0.0 
+            (/ (image-width "rb") (screen-width) 1.0) 0.0
             0.0 (/ (image-height "rb")(screen-height) 1.0))
 
    hidekuno@gmail.com
@@ -61,12 +61,16 @@ fn build_example_function(app: &Application) {
             Expression::String(s) => s,
             _ => return Err(create_error!(ErrCode::E1015)),
         };
-        
+
         let url = if let Expression::String(s) = eval(&exp[2],env)? {
             s
         } else {
             return Err(create_error!(ErrCode::E1015));
         };
+        if url.starts_with("http://") == false && url.starts_with("https://") == false {
+            return Err(create_error!(ErrCode::E1021));
+        }
+
         let img = match load_url(&url) {
             Err(e) => {
                 println!("{:?}", e);
@@ -111,7 +115,7 @@ fn build_draw_ui(app: &Application) {
     build_lisp_function(app.env, app.draw_table);
     build_demo_function(app.env, app.draw_table);
     build_example_function(app);
-    
+
     scheme_gtk(app.env, app.draw_table);
     gtk::main();
 }
