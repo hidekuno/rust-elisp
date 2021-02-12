@@ -13,10 +13,11 @@ cairo-rs = { git = "https://github.com/gtk-rs/cairo.git" , features = ["png"] }
 gdk-pixbuf = { git = "https://github.com/gtk-rs/gdk-pixbuf.git" }
 
 [dev-dependencies]
-surf = "1.0.3"
+surf = "2.1.0"
 serde = { version = "1.0", features = ["derive"] }
 async-std = { version = "1.5.0", features = ["attributes"] }
 gio = { git = "https://github.com/gtk-rs/gio.git" }
 
 [features]
 animation = []
+redirect =  []

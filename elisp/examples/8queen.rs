@@ -9,17 +9,20 @@
 extern crate elisp;
 extern crate surf;
 
-use surf::http::StatusCode;
-use elisp::lisp;
 use std::io;
-use lisp::Environment;
-use lisp::repl;
+use surf::http::StatusCode;
 use async_std::task;
 
-const PROGRAM_URL: &'static str = "https://raw.githubusercontent.com/hidekuno/rust-elisp/master/elisp/samples/8queen.scm";
+use elisp::lisp;
+use lisp::Environment;
+use lisp::repl;
+
+const PROGRAM_URL: &'static str =
+    "https://raw.githubusercontent.com/hidekuno/rust-elisp/master/elisp/samples/8queen.scm";
 const TEST_CODE: &'static str = "(8queen (iota 8 1) '())";
 
-fn load_url() -> Result<(String,StatusCode), Box<dyn std::error::Error + Send + Sync + 'static>> {
+fn load_url() -> Result<(String,StatusCode),
+                        Box<dyn std::error::Error + Send + Sync + 'static>> {
     task::block_on(
         async {
             let mut res = surf::get(PROGRAM_URL).await?;

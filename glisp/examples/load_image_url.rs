@@ -42,10 +42,25 @@ use draw::DrawTable;
 use draw::PixbufWrapper;
 use ui::scheme_gtk;
 
-fn load_url(url: &String) -> Result<(Vec<u8>,StatusCode), Box<dyn std::error::Error + Send + Sync + 'static>> {
+#[cfg(not(feature = "redirect"))]
+fn load_url(url: &String) -> Result<(Vec<u8>,StatusCode),
+                                    Box<dyn std::error::Error + Send + Sync + 'static>> {
     task::block_on(
         async {
             let mut res = surf::get(url).await?;
+            let body = res.body_bytes().await?;
+            Ok((body, res.status()))
+        }
+    )
+}
+#[cfg(feature = "redirect")]
+fn load_url(url: &String) -> Result<(Vec<u8>,StatusCode),
+                                    Box<dyn std::error::Error + Send + Sync + 'static>> {
+    task::block_on(
+        async {
+            let req = surf::get(url);
+            let client = surf::client().with(surf::middleware::Redirect::new(5));
+            let mut res = client.send(req).await?;
             let body = res.body_bytes().await?;
             Ok((body, res.status()))
         }
@@ -79,7 +94,6 @@ fn build_example_function(app: &Application) {
             Ok(s) => {
                 if s.1 != 200 {
                     println!("{}", s.1);
-                    // Not Support 3xx (ex. 302,307)
                     return Err(create_error!(ErrCode::E9999));
                 }
                 s.0
