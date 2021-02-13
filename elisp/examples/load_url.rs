@@ -9,19 +9,21 @@
 extern crate elisp;
 extern crate surf;
 
-use crate::elisp::create_error;
-use surf::http::StatusCode;
-use elisp::lisp;
 use std::io;
+use surf::http::StatusCode;
+use async_std::task;
+
+use crate::elisp::create_error;
+use elisp::lisp;
 use lisp::Environment;
 use lisp::ErrCode;
 use lisp::Expression;
 use lisp::Error;
 use lisp::repl;
 use lisp::eval;
-use async_std::task;
 
-fn load_url(url: &String) -> Result<(String,StatusCode), Box<dyn std::error::Error + Send + Sync + 'static>> {
+fn load_url(url: &String) -> Result<(String,StatusCode),
+                                    Box<dyn std::error::Error + Send + Sync + 'static>> {
     task::block_on(
         async {
             let mut res = surf::get(url).await?;
@@ -40,6 +42,10 @@ pub fn build_lisp_function(env: &Environment) {
         } else {
             return Err(create_error!(ErrCode::E1015));
         };
+        if url.starts_with("http://") == false && url.starts_with("https://") == false {
+            return Err(create_error!(ErrCode::E1021));
+        }
+
         let lisp = match load_url(&url) {
             Err(e) => {
                 println!("{:?}", e);
