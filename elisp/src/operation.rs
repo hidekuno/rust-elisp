@@ -51,6 +51,7 @@ where
 
     b.regist("modulo", |exp, env| divide(exp, env, |x, y| x % y));
     b.regist("quotient", |exp, env| divide(exp, env, |x, y| x / y));
+    b.regist("twos-exponent", twos_exponent);
 }
 fn calc(
     exp: &[Expression],
@@ -198,6 +199,28 @@ fn bitcount(
             _ => Err(create_error!(ErrCode::E1002)),
         }
     }
+}
+fn twos_exponent(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let v = match eval(&exp[1], env)? {
+        Expression::Integer(v) => v,
+        _ => return Err(create_error!(ErrCode::E1002)),
+    };
+    if 0 >= v {
+        return Ok(Expression::Boolean(false));
+    }
+    let m = 1;
+    for i in 0..63 {
+        if v == (m << i) {
+            return Ok(Expression::Integer(i));
+        }
+        if v < (m << i) {
+            break;
+        }
+    }
+    Ok(Expression::Boolean(false))
 }
 #[cfg(test)]
 mod tests {
@@ -391,6 +414,17 @@ mod tests {
         assert_eq!(do_lisp("(quotient 11 (+ 1 2))"), "3");
         assert_eq!(do_lisp("(quotient 3 5)"), "0");
     }
+    #[test]
+    fn twos_exponent() {
+        assert_eq!(do_lisp("(twos-exponent -1)"), "#f");
+        assert_eq!(do_lisp("(twos-exponent 0)"), "#f");
+        assert_eq!(do_lisp("(twos-exponent 1)"), "0");
+        assert_eq!(do_lisp("(twos-exponent 2)"), "1");
+        assert_eq!(do_lisp("(twos-exponent 9)"), "#f");
+        assert_eq!(do_lisp("(twos-exponent 10)"), "#f");
+        assert_eq!(do_lisp("(twos-exponent 16)"), "4");
+        assert_eq!(do_lisp("(twos-exponent 9223372036854775807)"), "#f");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -530,5 +564,11 @@ mod error_tests {
         assert_eq!(do_lisp("(quotient 10 0)"), "E1013");
         assert_eq!(do_lisp("(quotient 13 5.5)"), "E1002");
         assert_eq!(do_lisp("(quotient 10 a)"), "E1008");
+    }
+    #[test]
+    fn twos_exponent() {
+        assert_eq!(do_lisp("(twos-exponent)"), "E1007");
+        assert_eq!(do_lisp("(twos-exponent #f)"), "E1002");
+        assert_eq!(do_lisp("(twos-exponent a)"), "E1008");
     }
 }
