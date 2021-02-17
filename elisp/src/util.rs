@@ -60,6 +60,7 @@ where
     b.regist("eqv?", eqv);
     b.regist("identity", identity);
     b.regist("get-environment-variable", get_env);
+    b.regist("native-endian", native_endian);
 }
 pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -137,6 +138,18 @@ pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         Ok(Expression::Boolean(Expression::eq(&a, &b)))
     }
+}
+fn native_endian(exp: &[Expression], _env: &Environment) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    if cfg!(target_endian = "big") {
+        return Ok(Expression::Symbol("big-endian".to_string()));
+    }
+    if cfg!(target_endian = "little") {
+        return Ok(Expression::Symbol("little-endian".to_string()));
+    }
+    Err(create_error!(ErrCode::E9999))
 }
 #[cfg(test)]
 mod tests {
@@ -292,6 +305,16 @@ mod tests {
             format!("\"{}\"", env::var("HOME").unwrap())
         );
     }
+    #[test]
+    fn native_endian() {
+        let x: u32 = 1;
+        if x == x.to_le() {
+            assert_eq!(do_lisp("(native-endian)"), "little-endian");
+        }
+        if x == x.to_be() {
+            assert_eq!(do_lisp("(native-endian)"), "big-endian");
+        }
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -423,5 +446,9 @@ mod error_tests {
         );
         assert_eq!(do_lisp("(get-environment-variable a)"), "E1008");
         assert_eq!(do_lisp("(get-environment-variable #t)"), "E1015");
+    }
+    #[test]
+    fn native_endian() {
+        assert_eq!(do_lisp("(native-endian 1)"), "E1007");
     }
 }
