@@ -45,7 +45,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
     use std::collections::HashMap;
 
     #[test]
@@ -54,23 +53,12 @@ mod tests {
             create_function(b);
         }
 
-        #[cfg(not(feature = "thread"))]
         impl BuildInTable for HashMap<&'static str, BasicBuiltIn> {
             fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
                 self.insert(symbol, func);
             }
         }
-
-        #[cfg(feature = "thread")]
-        impl BuildInTable for BTreeMap<&'static str, BasicBuiltIn> {
-            fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
-                self.insert(symbol, func);
-            }
-        }
-
-        let mut b = BTreeMap::new();
         let mut h = HashMap::new();
-        create_function_dyn_dispatch(&mut b);
         create_function_dyn_dispatch(&mut h);
     }
 }
