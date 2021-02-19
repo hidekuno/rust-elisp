@@ -89,3 +89,47 @@ impl SimpleEnv {
         }
     }
 }
+#[test]
+fn global_tbl() {
+    let g = GlobalTbl::new();
+    assert_eq!(g.tail_recursion, true);
+    assert_eq!(g.force_stop, false);
+    assert_eq!(g.builtin_tbl.len() > 0, true);
+    assert_eq!(g.builtin_tbl_ext.len(), 0);
+}
+#[test]
+fn simple_env() {
+    let mut s = SimpleEnv::new(None);
+    assert_eq!(
+        if let Some(_) = s.parent {
+            "exists"
+        } else {
+            "None"
+        },
+        "None"
+    );
+    s.regist("x".to_string(), Expression::Integer(10));
+    assert_eq!(
+        if let Some(x) = s.find(&"x".to_string()) {
+            match x {
+                Expression::Integer(y) => y,
+                _ => -1,
+            }
+        } else {
+            -1
+        },
+        10
+    );
+    s.update(&"x".to_string(), Expression::Integer(20));
+    assert_eq!(
+        if let Some(x) = s.find(&"x".to_string()) {
+            match x {
+                Expression::Integer(y) => y,
+                _ => -1,
+            }
+        } else {
+            -1
+        },
+        20
+    );
+}
