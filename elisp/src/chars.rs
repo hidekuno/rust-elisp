@@ -72,6 +72,9 @@ where
             Expression::Char(x.to_lowercase().collect::<Vec<char>>()[0])
         })
     });
+
+    b.regist("digit->integer", |exp, env| digit(exp, env, digit_integer));
+    b.regist("integer->digit", |exp, env| digit(exp, env, integer_digit));
 }
 fn charcmp(
     exp: &[Expression],
@@ -130,6 +133,50 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))
+}
+fn digit(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
+) -> ResultExpression {
+    if 2 > exp.len() || 3 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let r = if exp.len() == 3 {
+        match eval(&exp[2], env)? {
+            Expression::Integer(i) => i,
+            _ => return Err(create_error!(ErrCode::E1002)),
+        }
+    } else {
+        10
+    };
+    // radix must be between 2 and 36 about scheme
+    // rust, 0 and 36
+    if 2 > r || 36 < r {
+        Err(create_error!(ErrCode::E1021))
+    } else {
+        f(&exp[1], env, r as u32)
+    }
+}
+fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+    let c = match eval(exp, env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!(ErrCode::E1019)),
+    };
+    match c.to_digit(r as u32) {
+        Some(i) => Ok(Expression::Integer(i as i64)),
+        None => Ok(Expression::Boolean(false)),
+    }
+}
+fn integer_digit(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+    let i = match eval(exp, env)? {
+        Expression::Integer(c) => c,
+        _ => return Err(create_error!(ErrCode::E1002)),
+    };
+    match char::from_digit(i as u32, r as u32) {
+        Some(c) => Ok(Expression::Char(c)),
+        None => Ok(Expression::Boolean(false)),
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -253,6 +300,32 @@ mod tests {
         assert_eq!(do_lisp("(char-downcase #\\A)"), "#\\a");
         assert_eq!(do_lisp("(char-downcase #\\0)"), "#\\0");
         assert_eq!(do_lisp("(char-downcase #\\9)"), "#\\9");
+    }
+    #[test]
+    fn digit_integer() {
+        assert_eq!(do_lisp("(digit->integer #\\0)"), "0");
+        assert_eq!(do_lisp("(digit->integer #\\8)"), "8");
+        assert_eq!(do_lisp("(digit->integer #\\9 10)"), "9");
+        assert_eq!(do_lisp("(digit->integer #\\7 8)"), "7");
+        assert_eq!(do_lisp("(digit->integer #\\a 16)"), "10");
+        assert_eq!(do_lisp("(digit->integer #\\f 16)"), "15");
+
+        assert_eq!(do_lisp("(digit->integer #\\a 10)"), "#f");
+        assert_eq!(do_lisp("(digit->integer #\\8 8)"), "#f");
+        assert_eq!(do_lisp("(digit->integer #\\g 16)"), "#f");
+    }
+    #[test]
+    fn integer_digit() {
+        assert_eq!(do_lisp("(integer->digit 0)"), "#\\0");
+        assert_eq!(do_lisp("(integer->digit 8)"), "#\\8");
+        assert_eq!(do_lisp("(integer->digit 9 10)"), "#\\9");
+        assert_eq!(do_lisp("(integer->digit 7 8)"), "#\\7");
+        assert_eq!(do_lisp("(integer->digit 13 16)"), "#\\d");
+        assert_eq!(do_lisp("(integer->digit 15 16)"), "#\\f");
+
+        assert_eq!(do_lisp("(integer->digit 10 10)"), "#f");
+        assert_eq!(do_lisp("(integer->digit 8 8)"), "#f");
+        assert_eq!(do_lisp("(integer->digit 16 16)"), "#f");
     }
 }
 #[cfg(test)]
@@ -412,5 +485,23 @@ mod error_tests {
         assert_eq!(do_lisp("(char-downcase #\\0 #\\9)"), "E1007");
         assert_eq!(do_lisp("(char-downcase a)"), "E1008");
         assert_eq!(do_lisp("(char-downcase 10)"), "E1019");
+    }
+    #[test]
+    fn digit_integer() {
+        assert_eq!(do_lisp("(digit->integer)"), "E1007");
+        assert_eq!(do_lisp("(digit->integer 1 2 3)"), "E1007");
+        assert_eq!(do_lisp("(digit->integer #\\8 #t)"), "E1002");
+        assert_eq!(do_lisp("(digit->integer #\\8 1)"), "E1021");
+        assert_eq!(do_lisp("(digit->integer #\\8 37)"), "E1021");
+        assert_eq!(do_lisp("(digit->integer 10 10)"), "E1019");
+    }
+    #[test]
+    fn integer_digit() {
+        assert_eq!(do_lisp("(integer->digit)"), "E1007");
+        assert_eq!(do_lisp("(integer->digit 1 2 3)"), "E1007");
+        assert_eq!(do_lisp("(integer->digit 8 #t)"), "E1002");
+        assert_eq!(do_lisp("(integer->digit 8 1)"), "E1021");
+        assert_eq!(do_lisp("(integer->digit 8 37)"), "E1021");
+        assert_eq!(do_lisp("(integer->digit #\\8 10)"), "E1002");
     }
 }
