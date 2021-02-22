@@ -1,9 +1,7 @@
-FROM centos:centos7 as builder
+FROM node:stretch as builder
 MAINTAINER hidekuno@gmail.com
 
-RUN yum update -y && yum install -y epel-release && yum install -y npm git gcc openssl openssl-devel |true
 ENV HOME /root
-
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH $PATH:$HOME/.cargo/bin
 RUN rustup target add wasm32-unknown-unknown && cargo install wasm-pack
