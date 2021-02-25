@@ -25,6 +25,7 @@ where
 {
     b.regist("format", format_f);
 
+    b.regist("string", string);
     b.regist("string=?", |exp, env| strcmp(exp, env, |x, y| x == y));
     b.regist("string<?", |exp, env| strcmp(exp, env, |x, y| x < y));
     b.regist("string>?", |exp, env| strcmp(exp, env, |x, y| x > y));
@@ -64,6 +65,13 @@ where
 
     b.regist("string-split", string_split);
     b.regist("string-join", string_join);
+
+    b.regist("string-scan", |exp, env| {
+        string_scan(exp, env, StringScan::Left)
+    });
+    b.regist("string-scan-right", |exp, env| {
+        string_scan(exp, env, StringScan::Right)
+    });
 }
 fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -90,6 +98,16 @@ fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         },
     };
     Ok(Expression::String(s))
+}
+fn string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let c = match eval(&exp[1], env)? {
+        Expression::Char(c) => c,
+        _ => return Err(create_error!(ErrCode::E1019)),
+    };
+    Ok(Expression::String(c.to_string()))
 }
 fn strcmp(
     exp: &[Expression],
@@ -322,6 +340,36 @@ fn string_join(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::String(v.join(&s)))
 }
+enum StringScan {
+    Left,
+    Right,
+}
+fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> ResultExpression {
+    fn resolv_scan(x: Option<usize>) -> ResultExpression {
+        match x {
+            Some(i) => Ok(Expression::Integer(i as i64)),
+            None => Ok(Expression::Boolean(false)),
+        }
+    }
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let p = match eval(&exp[1], env)? {
+        Expression::String(p) => p,
+        _ => return Err(create_error!(ErrCode::E1015)),
+    };
+    match eval(&exp[2], env)? {
+        Expression::Char(c) => match direct {
+            StringScan::Left => resolv_scan(p.find(c)),
+            StringScan::Right => resolv_scan(p.rfind(c)),
+        },
+        Expression::String(s) => match direct {
+            StringScan::Left => resolv_scan(p.find(&s)),
+            StringScan::Right => resolv_scan(p.rfind(&s)),
+        },
+        _ => Err(create_error!(ErrCode::E1009)),
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::lisp;
@@ -342,6 +390,13 @@ mod tests {
         do_lisp_env("(define a \"~D\")", &env);
         do_lisp_env("(define b 100)", &env);
         assert_eq!(do_lisp_env("(format a b)", &env), "\"100\"");
+    }
+    #[test]
+    fn string() {
+        assert_eq!(do_lisp("(string #\\a)"), "\"a\"");
+        assert_eq!(do_lisp("(string #\\A)"), "\"A\"");
+        assert_eq!(do_lisp("(string #\\0)"), "\"0\"");
+        assert_eq!(do_lisp("(string #\\9)"), "\"9\"");
     }
     #[test]
     fn string_eq() {
@@ -492,6 +547,22 @@ mod tests {
         assert_eq!(do_lisp("(string-join '(\"a\") \"::\")"), "\"a\"");
         assert_eq!(do_lisp("(string-join '(\"\") \"::\")"), "\"\"");
     }
+    #[test]
+    fn string_scan() {
+        assert_eq!(do_lisp("(string-scan \"abracadabra\" \"ada\")"), "5");
+        assert_eq!(do_lisp("(string-scan \"abracadabra\" #\\c)"), "4");
+        assert_eq!(do_lisp("(string-scan \"abracadabra\" \"aba\")"), "#f");
+        assert_eq!(do_lisp("(string-scan \"abracadabra\" #\\z)"), "#f");
+        assert_eq!(do_lisp("(string-scan \"1122\" #\\2)"), "2");
+    }
+    #[test]
+    fn string_scan_right() {
+        assert_eq!(do_lisp("(string-scan-right \"abracadabra\" \"ada\")"), "5");
+        assert_eq!(do_lisp("(string-scan-right \"abracadabra\" #\\c)"), "4");
+        assert_eq!(do_lisp("(string-scan-right \"abracadabra\" \"aba\")"), "#f");
+        assert_eq!(do_lisp("(string-scan-right \"abracadabra\" #\\z)"), "#f");
+        assert_eq!(do_lisp("(string-scan-right \"1122\" #\\2)"), "3");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -506,6 +577,14 @@ mod error_tests {
         assert_eq!(do_lisp("(format \"~A\" #f)"), "E1002");
         assert_eq!(do_lisp("(format \"~A\" 10)"), "E1018");
     }
+    #[test]
+    fn string() {
+        assert_eq!(do_lisp("(string)"), "E1007");
+        assert_eq!(do_lisp("(string 1 2)"), "E1007");
+        assert_eq!(do_lisp("(string 10)"), "E1019");
+        assert_eq!(do_lisp("(string a)"), "E1008");
+    }
+
     #[test]
     fn string_eq() {
         assert_eq!(do_lisp("(string=?)"), "E1007");
@@ -716,5 +795,31 @@ mod error_tests {
             do_lisp("(string-join (list \"a\" \"b\"  \"c\") a)"),
             "E1008"
         );
+    }
+    #[test]
+    fn string_scan() {
+        assert_eq!(do_lisp("(string-scan)"), "E1007");
+        assert_eq!(do_lisp("(string-scan \"abracadabra\")"), "E1007");
+        assert_eq!(
+            do_lisp("(string-scan \"abracadabra\" \"aba\" \"aba\")"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-scan 10  #\\z)"), "E1015");
+        assert_eq!(do_lisp("(string-scan \"abracadabra\" 10)"), "E1009");
+        assert_eq!(do_lisp("(string-scan a #\\2)"), "E1008");
+        assert_eq!(do_lisp("(string-scan \"1122\" a)"), "E1008");
+    }
+    #[test]
+    fn string_scan_right() {
+        assert_eq!(do_lisp("(string-scan-right)"), "E1007");
+        assert_eq!(do_lisp("(string-scan-right \"abracadabra\")"), "E1007");
+        assert_eq!(
+            do_lisp("(string-scan-right \"abracadabra\" \"aba\" \"aba\")"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-scan-right 10  #\\z)"), "E1015");
+        assert_eq!(do_lisp("(string-scan-right \"abracadabra\" 10)"), "E1009");
+        assert_eq!(do_lisp("(string-scan-right a #\\2)"), "E1008");
+        assert_eq!(do_lisp("(string-scan-right \"1122\" a)"), "E1008");
     }
 }
