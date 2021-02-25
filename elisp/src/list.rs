@@ -32,9 +32,11 @@ where
     b.regist("cadr", cadr);
     b.regist("cons", cons);
     b.regist("append", append);
+    b.regist("append!", append_effect);
     b.regist("take", |exp, env| take_drop(exp, env, |l, n| &l[0..n]));
     b.regist("drop", |exp, env| take_drop(exp, env, |l, n| &l[n..]));
     b.regist("delete", delete);
+    b.regist("delete!", delete_effect);
     b.regist("last", last);
     b.regist("reverse", reverse);
     b.regist("iota", iota);
@@ -44,6 +46,8 @@ where
     b.regist("for-each", for_each);
     b.regist("list-ref", list_ref);
     b.regist("list-set!", list_set);
+    b.regist("set-car!", set_car);
+    b.regist("set-cdr!", set_cdr);
 }
 fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
@@ -154,7 +158,7 @@ fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() <= 2 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: Vec<Expression> = Vec::new();
@@ -168,6 +172,27 @@ fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
     }
     Ok(Environment::create_list(v))
+}
+fn append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let rc = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+
+    let mut l = mut_list!(&rc);
+    for e in &exp[2 as usize..] {
+        match eval(e, env)? {
+            Expression::List(v) => {
+                let v = referlence_list!(v);
+                l.append(&mut v.to_vec());
+            }
+            _ => return Err(create_error!(ErrCode::E1005)),
+        }
+    }
+    Ok(Expression::List(rc.clone()))
 }
 fn take_drop(
     exp: &[Expression],
@@ -215,6 +240,28 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
         vec.push(e.clone());
     }
     Ok(Environment::create_list(vec))
+}
+fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let other = eval(&exp[1], env)?;
+    let rc = match eval(&exp[2], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+
+    let mut l = mut_list!(&rc);
+    let mut vec = Vec::new();
+    for e in l.iter() {
+        if true == Expression::eq(&e, &other) {
+            continue;
+        }
+        vec.push(e.clone());
+    }
+    l.clear();
+    l.extend_from_slice(&vec);
+    Ok(Expression::List(rc.clone()))
 }
 fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -459,7 +506,51 @@ fn do_list_proc(
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
+fn set_car(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::List(r) => {
+            let mut l = mut_list!(r);
+            if l.len() <= 0 {
+                return Err(create_error!(ErrCode::E1011));
+            }
+            l[0] = eval(&exp[2], env)?;
+            Ok(Expression::Nil())
+        }
+        _ => Err(create_error!(ErrCode::E1005)),
+    }
+}
+fn set_cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::List(r) => {
+            let mut l = mut_list!(r);
+            if l.len() <= 0 {
+                return Err(create_error!(ErrCode::E1011));
+            }
 
+            let e = eval(&exp[2], env)?;
+            let tmp = l[0].clone();
+            l.clear();
+            l.push(tmp);
+            match e {
+                Expression::List(m) => {
+                    let m = &*(referlence_list!(m));
+                    l.extend_from_slice(m);
+                }
+                _ => {
+                    l.push(e);
+                }
+            }
+            Ok(Expression::Nil())
+        }
+        _ => Err(create_error!(ErrCode::E1005)),
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::lisp;
@@ -561,6 +652,26 @@ mod tests {
         assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4)");
     }
     #[test]
+    fn append_effect() {
+        assert_eq!(do_lisp("(append! (list 1)(list 2))"), "(1 2)");
+        assert_eq!(do_lisp("(append! (list 1)(list 2)(list 3))"), "(1 2 3)");
+        assert_eq!(
+            do_lisp("(append! (list (list 10))(list 2)(list 3))"),
+            "((10) 2 3)"
+        );
+        assert_eq!(do_lisp("(append! (iota 5) (list 100))"), "(0 1 2 3 4 100)");
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (iota 5))", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_eq!(
+            do_lisp_env("(append! a (iota 5 5))", &env),
+            "(0 1 2 3 4 5 6 7 8 9)"
+        );
+        assert_eq!(do_lisp_env("a", &env), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4 5 6 7 8 9)");
+    }
+    #[test]
     fn take() {
         assert_eq!(do_lisp("(take (iota 10) 0)"), "()");
         assert_eq!(do_lisp("(take (iota 10) 1)"), "(0)");
@@ -604,6 +715,32 @@ mod tests {
             do_lisp_env("(delete #t a)", &env),
             "(10 10.5 3/5 \"ABC\" #\\a)"
         );
+    }
+    #[test]
+    fn delete_effect() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 10.5 3/5 \"ABC\" #\\a #t))", &env);
+
+        do_lisp_env("(delete! 10 a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10.5 3/5 \"ABC\" #\\a #t)");
+
+        assert_eq!(
+            do_lisp_env("(delete! 10.5 a)", &env),
+            "(3/5 \"ABC\" #\\a #t)"
+        );
+        assert_eq!(do_lisp_env("(delete! 3/5 a)", &env), "(\"ABC\" #\\a #t)");
+
+        do_lisp_env("(delete! \"ABC\" a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(#\\a #t)");
+
+        do_lisp_env("(delete! #\\a a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(#t)");
+
+        do_lisp_env("(delete! #f a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(#t)");
+
+        do_lisp_env("(delete! #t a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "()");
     }
     #[test]
     fn last() {
@@ -743,6 +880,26 @@ mod tests {
         assert_eq!(do_lisp_env("a", &env), "(100 2 3 4 5)");
         assert_eq!(do_lisp_env("b", &env), "(100 2 3 4 5)");
     }
+    #[test]
+    fn set_car() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 1 2 3 4 5))", &env);
+        do_lisp_env("(set-car! a 100)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(100 2 3 4 5)");
+
+        do_lisp_env("(set-car! a (list 10 20))", &env);
+        assert_eq!(do_lisp_env("a", &env), "((10 20) 2 3 4 5)");
+    }
+    #[test]
+    fn set_cdr() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 1 2 3 4 5))", &env);
+        do_lisp_env("(set-cdr! a 100)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(1 100)");
+
+        do_lisp_env("(set-cdr! a (list 10 20))", &env);
+        assert_eq!(do_lisp_env("a", &env), "(1 10 20)");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -806,9 +963,16 @@ mod error_tests {
     #[test]
     fn append() {
         assert_eq!(do_lisp("(append)"), "E1007");
-        assert_eq!(do_lisp("(append (list 1))"), "E1007");
+        assert_eq!(do_lisp("(append 10)"), "E1005");
         assert_eq!(do_lisp("(append (list 1) 105)"), "E1005");
         assert_eq!(do_lisp("(append (list 1) a)"), "E1008");
+    }
+    #[test]
+    fn append_effect() {
+        assert_eq!(do_lisp("(append!)"), "E1007");
+        assert_eq!(do_lisp("(append! 10)"), "E1005");
+        assert_eq!(do_lisp("(append! (list 1) 105)"), "E1005");
+        assert_eq!(do_lisp("(append! (list 1) a)"), "E1008");
     }
     #[test]
     fn take() {
@@ -839,6 +1003,14 @@ mod error_tests {
         assert_eq!(do_lisp("(delete 10 (list 10 20) 3)"), "E1007");
         assert_eq!(do_lisp("(delete 10 20)"), "E1005");
         assert_eq!(do_lisp("(delete 10 a)"), "E1008");
+    }
+    #[test]
+    fn delete_effect() {
+        assert_eq!(do_lisp("(delete!)"), "E1007");
+        assert_eq!(do_lisp("(delete! 10)"), "E1007");
+        assert_eq!(do_lisp("(delete! 10 (list 10 20) 3)"), "E1007");
+        assert_eq!(do_lisp("(delete! 10 20)"), "E1005");
+        assert_eq!(do_lisp("(delete! 10 a)"), "E1008");
     }
     #[test]
     fn last() {
@@ -933,5 +1105,21 @@ mod error_tests {
 
         assert_eq!(do_lisp("(list-set! (iota 10) -1 0)"), "E1011");
         assert_eq!(do_lisp("(list-set! (iota 10) 10 0)"), "E1011");
+    }
+    #[test]
+    fn set_car() {
+        assert_eq!(do_lisp("(set-car!)"), "E1007");
+        assert_eq!(do_lisp("(set-car! (list 1))"), "E1007");
+        assert_eq!(do_lisp("(set-car! c a)"), "E1008");
+        assert_eq!(do_lisp("(set-car! 10 20)"), "E1005");
+        assert_eq!(do_lisp("(set-car! () 20)"), "E1011");
+    }
+    #[test]
+    fn set_cdr() {
+        assert_eq!(do_lisp("(set-cdr!)"), "E1007");
+        assert_eq!(do_lisp("(set-cdr! (list 1))"), "E1007");
+        assert_eq!(do_lisp("(set-cdr! c a)"), "E1008");
+        assert_eq!(do_lisp("(set-cdr! 100 200)"), "E1005");
+        assert_eq!(do_lisp("(set-cdr! () 20)"), "E1011");
     }
 }
