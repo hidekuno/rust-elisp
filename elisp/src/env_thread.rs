@@ -58,6 +58,12 @@ macro_rules! mut_env {
         $e.lock().unwrap();
     };
 }
+#[macro_export]
+macro_rules! get_ptr {
+    ($e: expr) => {
+        std::sync::Arc::as_ptr($e)
+    };
+}
 
 #[derive(Clone)]
 pub struct Environment {
@@ -89,9 +95,11 @@ impl Environment {
     pub fn regist(&self, key: String, exp: Expression) {
         self.core.lock().unwrap().regist(key, exp);
     }
+    #[inline]
     pub fn find(&self, key: &String) -> Option<Expression> {
         self.core.lock().unwrap().find(key)
     }
+    #[inline]
     pub fn update(&self, key: &String, exp: Expression) {
         self.core.lock().unwrap().update(key, exp);
     }
@@ -128,5 +136,13 @@ impl Environment {
     }
     pub fn is_force_stop(&self) -> bool {
         self.globals.lock().unwrap().force_stop
+    }
+    #[inline]
+    pub fn set_cont(&self, e: &Expression) {
+        self.globals.lock().unwrap().cont = Some(e.clone());
+    }
+    #[inline]
+    pub fn get_cont(&self) -> Option<Expression> {
+        return self.globals.lock().unwrap().cont.clone();
     }
 }

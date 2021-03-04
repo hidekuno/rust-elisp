@@ -30,6 +30,7 @@ pub(crate) struct GlobalTbl {
     pub(crate) builtin_tbl_ext: BTreeMap<&'static str, ExtFunctionRc>,
     pub(crate) tail_recursion: bool,
     pub(crate) force_stop: bool,
+    pub(crate) cont: Option<Expression>,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
@@ -40,6 +41,7 @@ impl GlobalTbl {
             builtin_tbl_ext: BTreeMap::new(),
             tail_recursion: true,
             force_stop: false,
+            cont: None,
         }
     }
 }
