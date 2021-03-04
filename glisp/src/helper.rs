@@ -187,7 +187,7 @@ impl SourceView {
             for word in vec![
                 "define", "lambda", "if", "map", "filter", "reduce", "let", "set!", "and", "or",
                 "not", "cond", "case", "begin", "else", "apply", "delay", "force", "quote",
-                "for-each",
+                "for-each", "call/cc",
             ] {
                 if w.as_str() == word {
                     return true;

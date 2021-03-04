@@ -60,7 +60,7 @@ mod tests {
         assert_eq!(do_lisp("#\\tab"), "#\\tab");
         assert_eq!(do_lisp("#\\newline"), "#\\newline");
         assert_eq!(do_lisp("#\\return"), "#\\return");
-        assert_eq!(do_lisp("+"), "BuildIn Function");
+        assert_eq!(do_lisp("+"), "<+> BuildIn Function");
     }
     #[test]
     fn atom_utf8() {

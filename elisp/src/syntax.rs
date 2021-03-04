@@ -9,8 +9,10 @@ use log::{debug, error, info, warn};
 use std::vec::Vec;
 
 use crate::buildin::BuildInTable;
+use crate::create_continuation;
 use crate::create_error;
 use crate::create_error_value;
+use crate::get_ptr;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error, Function};
@@ -41,6 +43,47 @@ where
     b.regist("quote", quote);
 
     b.regist("do", do_f);
+    b.regist("call/cc", call_cc);
+}
+#[derive(Clone)]
+pub struct Continuation {
+    cont: Expression,
+}
+impl Continuation {
+    pub fn new(cont: Expression) -> Self {
+        // This variable is not used.
+        // Because not support rerun as follows.
+        //
+        // (call/cc (lambda (c) (set! cc c)...
+        // (cc 10)
+        //
+        Continuation { cont: cont }
+    }
+    pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
+        if exp.len() != 2 {
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
+        }
+        if let Expression::List(l) = &self.cont {
+            debug!("Continuation = {:?}", get_ptr!(&l));
+        }
+        Err(create_continuation!(eval(&exp[1], env)?, exp[0].clone()))
+    }
+}
+pub fn call_cc(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    if let Expression::Function(f) = eval(&exp[1], env)? {
+        let e = env.get_cont().unwrap();
+        let c = Continuation::new(e);
+
+        let mut sexp: Vec<Expression> = Vec::new();
+        sexp.push(exp[0].clone());
+        sexp.push(Expression::Continuation(Box::new(c)));
+        return f.execute(&sexp, env);
+    } else {
+        return Err(create_error!(ErrCode::E1006));
+    }
 }
 pub fn quote(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -454,7 +497,70 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
 mod tests {
     use crate::lisp;
     use crate::{do_lisp, do_lisp_env};
-
+    #[test]
+    fn callcc() {
+        let env = lisp::Environment::new();
+        assert_eq!(
+            do_lisp_env("(+ 1 (* 2 (call/cc (lambda (cont) (cont 3)))))", &env),
+            "7"
+        );
+        assert_eq!(
+            do_lisp_env(
+                &("(call/cc (lambda (throw)".to_string()
+                    + "(+ 5 (* 10 (call/cc (lambda (escape)"
+                    + " (* 100 (throw 3))))))))"),
+                &env
+            ),
+            "3"
+        );
+        assert_eq!(
+            do_lisp_env(
+                &("(call/cc (lambda (hoge) (+ 3 (call/cc (lambda (throw)".to_string()
+                    + "(+ 5 (* 10 (call/cc (lambda (escape)"
+                    + "(* 100 (throw 3)))))))))))"),
+                &env
+            ),
+            "6"
+        );
+        assert_eq!(
+            do_lisp_env(
+                &("(call/cc (lambda (throw)".to_string()
+                    + "(+ 5 (* 10 "
+                    + "(call/cc (lambda (escape) (* 100 (escape 3))))))))"),
+                &env
+            ),
+            "35"
+        );
+        assert_eq!(
+            do_lisp_env(
+                &("(call/cc (lambda (hoge) (+ 3 (call/cc (lambda (throw)".to_string()
+                    + "(+ 5 (* 10 "
+                    + "(call/cc (lambda (escape) (* 100 (escape 3)))))))))))"),
+                &env
+            ),
+            "38"
+        );
+        do_lisp_env(
+            &("(define (map-check fn chk ls)".to_string()
+                + "(call/cc (lambda (return) "
+                + "(map (lambda (x) (if (chk x) (return '()) (fn x))) ls))))"),
+            &env,
+        );
+        assert_eq!(
+            do_lisp_env(
+                "(map-check (lambda (x) (* x x)) (lambda (x) (< x 0)) (list 1 2 3 4 5))",
+                &env
+            ),
+            "(1 4 9 16 25)"
+        );
+        assert_eq!(
+            do_lisp_env(
+                "(map-check (lambda (x) (* x x)) (lambda (x) (< x 0)) (list 1 2 3 -1 5))",
+                &env
+            ),
+            "()"
+        );
+    }
     #[test]
     fn define() {
         let env = lisp::Environment::new();
@@ -717,6 +823,13 @@ mod error_tests {
     use crate::lisp;
     use crate::{do_lisp, do_lisp_env};
 
+    #[test]
+    fn callcc() {
+        assert_eq!(do_lisp("(call/cc)"), "E1007");
+        assert_eq!(do_lisp("(call/cc (lambda (c) 10) 10)"), "E1007");
+        assert_eq!(do_lisp("(call/cc (lambda () 10))"), "E1007");
+        assert_eq!(do_lisp("(call/cc 100)"), "E1006");
+    }
     #[test]
     fn define() {
         let env = lisp::Environment::new();

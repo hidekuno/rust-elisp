@@ -45,6 +45,12 @@ macro_rules! mut_env {
     };
 }
 
+#[macro_export]
+macro_rules! get_ptr {
+    ($e: expr) => {
+        std::rc::Rc::as_ptr($e)
+    };
+}
 #[derive(Clone)]
 pub struct Environment {
     core: EnvTable,
@@ -75,9 +81,11 @@ impl Environment {
     pub fn regist(&self, key: String, exp: Expression) {
         self.core.borrow_mut().regist(key, exp);
     }
+    #[inline]
     pub fn find(&self, key: &String) -> Option<Expression> {
         self.core.borrow().find(key)
     }
+    #[inline]
     pub fn update(&self, key: &String, exp: Expression) {
         self.core.borrow_mut().update(key, exp);
     }
@@ -158,5 +166,13 @@ impl Environment {
             s.push_str("\n");
         }
         s
+    }
+    #[inline]
+    pub fn set_cont(&self, e: &Expression) {
+        self.globals.borrow_mut().cont = Some(e.clone());
+    }
+    #[inline]
+    pub fn get_cont(&self) -> Option<Expression> {
+        return self.globals.borrow().cont.clone();
     }
 }

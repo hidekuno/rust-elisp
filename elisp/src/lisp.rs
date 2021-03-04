@@ -19,6 +19,7 @@ use super::unix::signal::{catch_sig_intr_status, init_sig_intr};
 
 use crate::number::Number;
 use crate::number::Rat;
+use crate::syntax::Continuation;
 
 #[cfg(feature = "thread")]
 use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
@@ -30,6 +31,7 @@ use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
+use crate::get_ptr;
 use crate::mut_list;
 use crate::referlence_list;
 //========================================================================
@@ -62,6 +64,7 @@ pub enum ErrCode {
     E1021,
     E9000,
     E9999,
+    CONT,
 }
 impl ErrCode {
     pub fn as_str(&self) -> &'static str {
@@ -93,6 +96,7 @@ impl ErrCode {
             ErrCode::E1021 => "E1021",
             ErrCode::E9000 => "E9000",
             ErrCode::E9999 => "E9999",
+            ErrCode::CONT => "CONT",
         };
     }
 }
@@ -131,6 +135,7 @@ lazy_static! {
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
         e.insert(ErrCode::E9999.as_str(), "System Panic");
+        e.insert(ErrCode::CONT.as_str(), "Appear Continuation");
         e
     };
 }
@@ -139,6 +144,7 @@ pub struct Error {
     pub line: u32,
     pub file: &'static str,
     pub value: Option<String>,
+    pub exp: Option<Expression>,
 }
 impl Error {
     pub fn get_code(&self) -> String {
@@ -171,6 +177,7 @@ macro_rules! create_error {
             line: line!(),
             file: file!(),
             value: None,
+            exp: None,
         }
     };
 }
@@ -182,6 +189,19 @@ macro_rules! create_error_value {
             line: line!(),
             file: file!(),
             value: Some($v.to_string()),
+            exp: None,
+        }
+    };
+}
+#[macro_export]
+macro_rules! create_continuation {
+    ($e: expr, $n:expr) => {
+        Error {
+            code: ErrCode::CONT,
+            line: line!(),
+            file: file!(),
+            value: Some($n.to_string()),
+            exp: Some($e),
         }
     };
 }
@@ -213,6 +233,7 @@ pub enum Expression {
     TailRecursion(FunctionRc),
     Promise(Box<Expression>, Environment),
     Rational(Rat),
+    Continuation(Box<Continuation>),
 }
 impl Expression {
     pub fn is_list(exp: &Expression) -> bool {
@@ -379,13 +400,14 @@ impl ToString for Expression {
             }
             Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
             Expression::Function(_) => "Function".into(),
-            Expression::BuildInFunction(_, _) => "BuildIn Function".into(),
+            Expression::BuildInFunction(s, _) => format!("<{}> BuildIn Function", s),
             Expression::BuildInFunctionExt(_) => "BuildIn Function Ext".into(),
             Expression::Nil() => "nil".into(),
             Expression::TailLoop() => "tail loop".into(),
             Expression::TailRecursion(_) => "Tail Recursion".into(),
             Expression::Promise(_, _) => "Promise".into(),
             Expression::Rational(v) => v.to_string(),
+            Expression::Continuation(_) => "Continuation".into(),
         };
     }
 }
@@ -452,15 +474,35 @@ impl Function {
         let mut ret = Expression::Nil();
         for e in &self.body {
             ret = loop {
-                match eval(e, &env)? {
-                    Expression::TailLoop() => {
-                        if self.tail_recurcieve {
-                            continue;
+                match eval(e, &env) {
+                    Ok(n) => match n {
+                        Expression::TailLoop() => {
+                            if self.tail_recurcieve {
+                                continue;
+                            }
                         }
-                    }
-                    v => break v,
-                }
-            };
+                        v => break v,
+                    },
+                    Err(e) => match &e.code {
+                        ErrCode::CONT => {
+                            let s = if let Some(ref s) = e.value {
+                                s.clone()
+                            } else {
+                                return Err(e);
+                            };
+                            if self.param.len() == 1 && self.param[0] == s {
+                                if let Expression::Continuation(_) = &exp[1] {
+                                    break e.exp.unwrap();
+                                }
+                            }
+                            return Err(e);
+                        }
+                        _ => {
+                            return Err(e);
+                        }
+                    },
+                };
+            }
         }
         Ok(ret)
     }
@@ -635,6 +677,7 @@ pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
                 env.set_force_stop(true);
             }
             _ => {
+                env.set_cont(&exp);
                 ret = eval(&exp, env)?;
             }
         }
@@ -856,22 +899,6 @@ fn atom(token: &String, env: &Environment) -> ResultExpression {
     };
     Ok(v)
 }
-macro_rules! ret_clone_if_atom {
-    ($e: expr) => {
-        match $e {
-            Expression::Integer(_) => return Ok($e.clone()),
-            Expression::Boolean(_) => return Ok($e.clone()),
-            Expression::Char(_) => return Ok($e.clone()),
-            Expression::Float(_) => return Ok($e.clone()),
-            Expression::String(_) => return Ok($e.clone()),
-            Expression::Nil() => return Ok($e.clone()),
-            Expression::Pair(_, _) => return Ok($e.clone()),
-            Expression::Promise(_, _) => return Ok($e.clone()),
-            Expression::Rational(_) => return Ok($e.clone()),
-            _ => {}
-        }
-    };
-}
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     #[cfg(feature = "signal")]
     catch_sig_intr_status(env);
@@ -879,13 +906,14 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));
     }
-    ret_clone_if_atom!(sexp);
     if let Expression::Symbol(val) = sexp {
         match env.find(&val) {
             Some(v) => Ok(v),
             None => Err(create_error_value!(ErrCode::E1008, val)),
         }
     } else if let Expression::List(val) = sexp {
+        debug!("eval = {:?}", get_ptr!(&val));
+
         let v = &*(referlence_list!(val));
         if v.len() == 0 {
             return Ok(sexp.clone());
@@ -899,14 +927,11 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                 Expression::Function(f) => f.execute(&v[..], env),
                 Expression::BuildInFunction(_, f) => f(&v[..], env),
                 Expression::BuildInFunctionExt(f) => f(&v[..], env),
+                Expression::Continuation(f) => f.execute(&v[..], env),
                 _ => Err(create_error!(ErrCode::E1006)),
             },
         };
-    } else if let Expression::BuildInFunction(_, _) = sexp {
-        Ok(sexp.clone())
-    } else if let Expression::BuildInFunctionExt(_) = sexp {
-        Ok(sexp.clone())
     } else {
-        Err(create_error!(ErrCode::E1009))
+        Ok(sexp.clone())
     }
 }
