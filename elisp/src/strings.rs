@@ -17,6 +17,7 @@ use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
+use crate::number::Number;
 use crate::number::Rat;
 
 pub fn create_function<T>(b: &mut T)
@@ -53,8 +54,8 @@ where
         str_length(exp, env, |s| s.chars().count())
     });
     b.regist("string-size", |exp, env| str_length(exp, env, |s| s.len()));
-    b.regist("number->string", number_string);
-    b.regist("string->number", string_number);
+    b.regist("number->string", |exp, env| number(exp, env, number_string));
+    b.regist("string->number", |exp, env| number(exp, env, string_number));
     b.regist("list->string", list_string);
     b.regist("string->list", string_list);
 
@@ -72,6 +73,28 @@ where
     b.regist("string-scan-right", |exp, env| {
         string_scan(exp, env, StringScan::Right)
     });
+}
+// i64::from_str_radix() is exists, but there is NO to_str_radix.
+fn to_str_radix(n: i64, r: u32) -> Option<String> {
+    let mut num = n;
+    let mut s = String::new();
+
+    let tbl: [char; 36] = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+        'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    ];
+    if r < 2 || 36 < r {
+        return None;
+    }
+    loop {
+        let n = num % r as i64;
+        s.push(tbl[n as usize]);
+        num = num / r as i64;
+        if 0 == num {
+            break;
+        }
+    }
+    Some(s.chars().rev().collect::<String>())
 }
 fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -153,35 +176,60 @@ fn str_length(
         _ => return Err(create_error!(ErrCode::E1015)),
     }
 }
-fn number_string(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if 2 != exp.len() {
+fn number(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
+) -> ResultExpression {
+    if 2 > exp.len() || 3 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = Expression::to_number(&eval(&exp[1], env)?)?;
-    Ok(Expression::String(v.to_string()))
+    let r = if exp.len() == 3 {
+        match eval(&exp[2], env)? {
+            Expression::Integer(i) => i,
+            _ => return Err(create_error!(ErrCode::E1002)),
+        }
+    } else {
+        10
+    };
+    // radix must be between 2 and 36 about scheme
+    // rust, 0 and 36
+    if 2 > r || 36 < r {
+        Err(create_error!(ErrCode::E1021))
+    } else {
+        f(&exp[1], env, r as u32)
+    }
 }
-fn string_number(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if 2 != exp.len() {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+    let v = Expression::to_number(&eval(&exp, env)?)?;
+    match v {
+        Number::Integer(n) => {
+            if r == 10 {
+                Ok(Expression::String(v.to_string()))
+            } else if let Some(s) = to_str_radix(n, r) {
+                Ok(Expression::String(s))
+            } else {
+                Ok(Expression::String(v.to_string()))
+            }
+        }
+        _ => Ok(Expression::String(v.to_string())),
     }
-    let s = match eval(&exp[1], env)? {
+}
+fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+    let s = match eval(&exp, env)? {
         Expression::String(s) => s,
         _ => return Err(create_error!(ErrCode::E1015)),
     };
-    let v = if let Ok(n) = s.parse::<i64>() {
-        Expression::Integer(n)
-    } else if let Ok(n) = s.parse::<f64>() {
+    match i64::from_str_radix(&s, r) {
+        Ok(n) => return Ok(Expression::Integer(n)),
+        Err(_) => {}
+    }
+    let v = if let Ok(n) = s.parse::<f64>() {
         Expression::Float(n)
     } else {
-        match Rat::from(&s) {
+        match Rat::from_radix(&s, r) {
             Ok(n) => Expression::Rational(n),
-            Err(n) => {
-                return if n.code != ErrCode::E1020 {
-                    return Err(create_error!(n.code));
-                } else {
-                    Err(create_error!(ErrCode::E1003))
-                }
-            }
+            Err(_) => Expression::Boolean(false),
         }
     };
     Ok(v)
@@ -478,12 +526,66 @@ mod tests {
         assert_eq!(do_lisp("(number->string 10)"), "\"10\"");
         assert_eq!(do_lisp("(number->string 10.5)"), "\"10.5\"");
         assert_eq!(do_lisp("(number->string 1/3)"), "\"1/3\"");
+        assert_eq!(
+            do_lisp("(number->string 3735927486 2)"),
+            "\"11011110101011011011101010111110\""
+        );
+        assert_eq!(
+            do_lisp("(number->string 3735927486 3)"),
+            "\"100122100210210001200\""
+        );
+        assert_eq!(
+            do_lisp("(number->string 3735927486 4)"),
+            "\"3132223123222332\""
+        );
+        assert_eq!(
+            do_lisp("(number->string 3735927486 5)"),
+            "\"30122344134421\""
+        );
+        assert_eq!(
+            do_lisp("(number->string 3735927486 6)"),
+            "\"1414413520330\""
+        );
+        assert_eq!(do_lisp("(number->string 3735927486 7)"), "\"161402600604\"");
+        assert_eq!(do_lisp("(number->string 3735927486 8)"), "\"33653335276\"");
+        assert_eq!(do_lisp("(number->string 3735927486 9)"), "\"10570723050\"");
+        assert_eq!(do_lisp("(number->string 3735927486 10)"), "\"3735927486\"");
+        assert_eq!(do_lisp("(number->string 3735927486 11)"), "\"1647919685\"");
+        assert_eq!(do_lisp("(number->string 3735927486 12)"), "\"8831a30a6\"");
+        assert_eq!(do_lisp("(number->string 3735927486 13)"), "\"476cc28a5\"");
+        assert_eq!(do_lisp("(number->string 3735927486 14)"), "\"276253874\"");
+        assert_eq!(do_lisp("(number->string 3735927486 15)"), "\"16ceb1726\"");
+        assert_eq!(do_lisp("(number->string 3735927486 16)"), "\"deadbabe\"");
+        assert_eq!(do_lisp("(number->string 3735927486 17)"), "\"91d36cc6\"");
+        assert_eq!(do_lisp("(number->string 3735927486 18)"), "\"61f27270\"");
+        assert_eq!(do_lisp("(number->string 3735927486 19)"), "\"437f24b8\"");
+        assert_eq!(do_lisp("(number->string 3735927486 20)"), "\"2i79aie6\"");
+        assert_eq!(do_lisp("(number->string 3735927486 21)"), "\"21bff6ii\"");
+        assert_eq!(do_lisp("(number->string 3735927486 22)"), "\"1akk149g\"");
+        assert_eq!(do_lisp("(number->string 3735927486 23)"), "\"125a42hj\"");
+        assert_eq!(do_lisp("(number->string 3735927486 24)"), "\"jd49956\"");
+        assert_eq!(do_lisp("(number->string 3735927486 25)"), "\"f7do8ob\"");
+        assert_eq!(do_lisp("(number->string 3735927486 26)"), "\"c2b8boi\"");
+        assert_eq!(do_lisp("(number->string 3735927486 27)"), "\"9h9ll1i\"");
+        assert_eq!(do_lisp("(number->string 3735927486 28)"), "\"7l225hi\"");
+        assert_eq!(do_lisp("(number->string 3735927486 29)"), "\"6842o9l\"");
+        assert_eq!(do_lisp("(number->string 3735927486 30)"), "\"53m7kg6\"");
+        assert_eq!(do_lisp("(number->string 3735927486 31)"), "\"46f9hir\"");
+        assert_eq!(do_lisp("(number->string 3735927486 32)"), "\"3farelu\"");
+        assert_eq!(do_lisp("(number->string 3735927486 33)"), "\"2tf7mor\"");
+        assert_eq!(do_lisp("(number->string 3735927486 34)"), "\"2e7m366\"");
+        assert_eq!(do_lisp("(number->string 3735927486 35)"), "\"214kbpb\"");
+        assert_eq!(do_lisp("(number->string 3735927486 36)"), "\"1ps9w3i\"");
     }
     #[test]
     fn string_number() {
         assert_eq!(do_lisp("(string->number \"123\")"), "123");
         assert_eq!(do_lisp("(string->number \"10.5\")"), "10.5");
         assert_eq!(do_lisp("(string->number \"1/3\")"), "1/3");
+        assert_eq!(do_lisp("(string->number \"10000\" 2)"), "16");
+        assert_eq!(do_lisp("(string->number \"012\" 8)"), "10");
+        assert_eq!(do_lisp("(string->number \"123\" 10)"), "123");
+        assert_eq!(do_lisp("(string->number \"ab\" 16)"), "171");
     }
     #[test]
     fn list_string() {
@@ -697,19 +799,32 @@ mod error_tests {
     #[test]
     fn number_string() {
         assert_eq!(do_lisp("(number->string)"), "E1007");
-        assert_eq!(do_lisp("(number->string 10 20)"), "E1007");
+        assert_eq!(do_lisp("(number->string 10 20 10)"), "E1007");
         assert_eq!(do_lisp("(number->string #f)"), "E1003");
+        assert_eq!(do_lisp("(number->string #f 10)"), "E1003");
+        assert_eq!(do_lisp("(string->number 100 1)"), "E1021");
+        assert_eq!(do_lisp("(string->number 100 37)"), "E1021");
         assert_eq!(do_lisp("(number->string a)"), "E1008");
+        assert_eq!(do_lisp("(string->number 10 a)"), "E1008");
     }
     #[test]
     fn string_number() {
         assert_eq!(do_lisp("(string->number)"), "E1007");
-        assert_eq!(do_lisp("(string->number \"123\" \"10.5\")"), "E1007");
+        assert_eq!(do_lisp("(string->number \"123\" \"10.5\" 10)"), "E1007");
         assert_eq!(do_lisp("(string->number 100)"), "E1015");
-        assert_eq!(do_lisp("(string->number \"/1\")"), "E1003");
-        assert_eq!(do_lisp("(string->number \"1/3/2\")"), "E1003");
-        assert_eq!(do_lisp("(string->number \"1/0\")"), "E1013");
+        assert_eq!(do_lisp("(string->number 100 10)"), "E1015");
+        assert_eq!(do_lisp("(string->number 100 #f)"), "E1002");
+        assert_eq!(do_lisp("(string->number 100 1)"), "E1021");
+        assert_eq!(do_lisp("(string->number 100 37)"), "E1021");
         assert_eq!(do_lisp("(string->number a)"), "E1008");
+        assert_eq!(do_lisp("(string->number 10 a)"), "E1008");
+
+        assert_eq!(do_lisp("(string->number \"ab\" 2)"), "#f");
+        assert_eq!(do_lisp("(string->number \"ab\" 8)"), "#f");
+        assert_eq!(do_lisp("(string->number \"ab\" 10)"), "#f");
+        assert_eq!(do_lisp("(string->number \"/1\")"), "#f");
+        assert_eq!(do_lisp("(string->number \"1/3/2\")"), "#f");
+        assert_eq!(do_lisp("(string->number \"1/0\")"), "#f");
     }
     #[test]
     fn list_string() {

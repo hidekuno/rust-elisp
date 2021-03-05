@@ -63,10 +63,16 @@ impl Rat {
         }
     }
     pub fn from(s: &String) -> Result<Rat, RatParseError> {
+        Rat::from_radix(s, 10)
+    }
+    pub fn from_radix(s: &String, r: u32) -> Result<Rat, RatParseError> {
         let mut v = Vec::new();
         for e in s.split("/") {
-            if let Ok(n) = e.parse::<i64>() {
-                v.push(n);
+            match i64::from_str_radix(&e, r) {
+                Ok(n) => {
+                    v.push(n);
+                }
+                _ => {}
             }
         }
         if v.len() == 2 {
