@@ -806,10 +806,10 @@ mod error_tests {
         assert_eq!(do_lisp("(number->string 10 20 10)"), "E1007");
         assert_eq!(do_lisp("(number->string #f)"), "E1003");
         assert_eq!(do_lisp("(number->string #f 10)"), "E1003");
-        assert_eq!(do_lisp("(string->number 100 1)"), "E1021");
-        assert_eq!(do_lisp("(string->number 100 37)"), "E1021");
+        assert_eq!(do_lisp("(number->string 100 1)"), "E1021");
+        assert_eq!(do_lisp("(number->string 100 37)"), "E1021");
         assert_eq!(do_lisp("(number->string a)"), "E1008");
-        assert_eq!(do_lisp("(string->number 10 a)"), "E1008");
+        assert_eq!(do_lisp("(number->string 10 a)"), "E1008");
     }
     #[test]
     fn string_number() {
