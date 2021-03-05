@@ -15,6 +15,7 @@ use crate::buildin::BuildInTable;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
+use crate::strings::do_radix;
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -73,8 +74,12 @@ where
         })
     });
 
-    b.regist("digit->integer", |exp, env| digit(exp, env, digit_integer));
-    b.regist("integer->digit", |exp, env| digit(exp, env, integer_digit));
+    b.regist("digit->integer", |exp, env| {
+        do_radix(exp, env, digit_integer)
+    });
+    b.regist("integer->digit", |exp, env| {
+        do_radix(exp, env, integer_digit)
+    });
 }
 fn charcmp(
     exp: &[Expression],
@@ -133,30 +138,6 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let a = c as u32;
     Ok(Expression::Integer(a as i64))
-}
-fn digit(
-    exp: &[Expression],
-    env: &Environment,
-    f: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
-) -> ResultExpression {
-    if 2 > exp.len() || 3 < exp.len() {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    let r = if exp.len() == 3 {
-        match eval(&exp[2], env)? {
-            Expression::Integer(i) => i,
-            _ => return Err(create_error!(ErrCode::E1002)),
-        }
-    } else {
-        10
-    };
-    // radix must be between 2 and 36 about scheme
-    // rust, 0 and 36
-    if 2 > r || 36 < r {
-        Err(create_error!(ErrCode::E1021))
-    } else {
-        f(&exp[1], env, r as u32)
-    }
 }
 fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
     let c = match eval(exp, env)? {

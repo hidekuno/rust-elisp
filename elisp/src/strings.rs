@@ -54,8 +54,12 @@ where
         str_length(exp, env, |s| s.chars().count())
     });
     b.regist("string-size", |exp, env| str_length(exp, env, |s| s.len()));
-    b.regist("number->string", |exp, env| number(exp, env, number_string));
-    b.regist("string->number", |exp, env| number(exp, env, string_number));
+    b.regist("number->string", |exp, env| {
+        do_radix(exp, env, number_string)
+    });
+    b.regist("string->number", |exp, env| {
+        do_radix(exp, env, string_number)
+    });
     b.regist("list->string", list_string);
     b.regist("string->list", string_list);
 
@@ -75,7 +79,7 @@ where
     });
 }
 // i64::from_str_radix() is exists, but there is NO to_str_radix.
-fn to_str_radix(n: i64, r: u32) -> Option<String> {
+pub fn to_str_radix(n: i64, r: u32) -> Option<String> {
     let mut num = n;
     let mut s = String::new();
 
@@ -95,6 +99,30 @@ fn to_str_radix(n: i64, r: u32) -> Option<String> {
         }
     }
     Some(s.chars().rev().collect::<String>())
+}
+pub fn do_radix(
+    exp: &[Expression],
+    env: &Environment,
+    f: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
+) -> ResultExpression {
+    if 2 > exp.len() || 3 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let r = if exp.len() == 3 {
+        match eval(&exp[2], env)? {
+            Expression::Integer(i) => i,
+            _ => return Err(create_error!(ErrCode::E1002)),
+        }
+    } else {
+        10
+    };
+    // radix must be between 2 and 36 about scheme
+    // rust, 0 and 36
+    if 2 > r || 36 < r {
+        Err(create_error!(ErrCode::E1021))
+    } else {
+        f(&exp[1], env, r as u32)
+    }
 }
 fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -174,30 +202,6 @@ fn str_length(
     match eval(&exp[1], env)? {
         Expression::String(s) => Ok(Expression::Integer(f(s) as i64)),
         _ => return Err(create_error!(ErrCode::E1015)),
-    }
-}
-fn number(
-    exp: &[Expression],
-    env: &Environment,
-    f: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
-) -> ResultExpression {
-    if 2 > exp.len() || 3 < exp.len() {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    let r = if exp.len() == 3 {
-        match eval(&exp[2], env)? {
-            Expression::Integer(i) => i,
-            _ => return Err(create_error!(ErrCode::E1002)),
-        }
-    } else {
-        10
-    };
-    // radix must be between 2 and 36 about scheme
-    // rust, 0 and 36
-    if 2 > r || 36 < r {
-        Err(create_error!(ErrCode::E1021))
-    } else {
-        f(&exp[1], env, r as u32)
     }
 }
 fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
