@@ -6,6 +6,7 @@
 */
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
+use std::cmp::Ordering;
 use std::vec::Vec;
 
 use crate::create_error;
@@ -48,6 +49,13 @@ where
     b.regist("list-set!", list_set);
     b.regist("set-car!", set_car);
     b.regist("set-cdr!", set_cdr);
+
+    b.regist("sort", sort);
+    b.regist("sort!", sort_effect);
+    b.regist("merge", merge);
+    b.regist("stable-sort", sort_stable);
+    b.regist("stable-sort!", sort_stable_effect);
+    b.regist("sorted?", is_sorted);
 }
 fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
@@ -551,6 +559,262 @@ fn set_cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
+enum ListProcKind {
+    Copy,
+    Effect,
+}
+enum SortKind {
+    Stable(ListProcKind),
+    Unstable(ListProcKind),
+}
+fn sort(exp: &[Expression], env: &Environment) -> ResultExpression {
+    sort_impl(exp, env, SortKind::Unstable(ListProcKind::Copy))
+}
+fn sort_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+    sort_impl(exp, env, SortKind::Unstable(ListProcKind::Effect))
+}
+fn sort_stable(exp: &[Expression], env: &Environment) -> ResultExpression {
+    sort_impl(exp, env, SortKind::Stable(ListProcKind::Copy))
+}
+fn sort_stable_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+    sort_impl(exp, env, SortKind::Stable(ListProcKind::Effect))
+}
+fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExpression {
+    fn _sort_impl(
+        exp: &[Expression],
+        env: &Environment,
+        kind: SortKind,
+        v: &mut Vec<Expression>,
+    ) -> Result<(), Error> {
+        if exp.len() == 2 {
+            Ok(match &kind {
+                SortKind::Stable(_) => v.sort(),
+                SortKind::Unstable(_) => v.sort_unstable(),
+            })
+        } else {
+            let func = eval(&exp[2], env)?;
+            match func {
+                Expression::BuildInFunction(ref s, _) => match &s[..] {
+                    "string>?" | "string>=?" => return Ok(v.sort_by(|a, b| b.cmp(a))),
+                    "string<?" | "string<=?" => return Ok(v.sort()),
+                    "char>?" | "char>=?" => return Ok(v.sort_by(|a, b| b.cmp(a))),
+                    "char<?" | "char<=?" => return Ok(v.sort()),
+                    ">=" | ">" => return Ok(v.sort_by(|a, b| b.cmp(a))),
+                    "<" | "<=" => return Ok(v.sort()),
+                    _ => {}
+                },
+                Expression::Function(_) => {}
+                _ => return Err(create_error!(ErrCode::E1006)),
+            }
+            let sort_by_impl = |a: &Expression, b: &Expression| {
+                let mut v = Vec::new();
+                v.push(func.clone());
+                v.push(a.clone());
+                v.push(b.clone());
+                let e = match &func {
+                    Expression::BuildInFunction(_, f) => f(&v, env),
+                    Expression::Function(f) => f.execute(&v, env),
+                    _ => Ok(Expression::Nil()),
+                };
+                match e {
+                    Ok(v) => match v {
+                        Expression::Boolean(b) => {
+                            return if b == true {
+                                Ordering::Less
+                            } else {
+                                Ordering::Greater
+                            };
+                        }
+                        _ => {}
+                    },
+                    Err(_) => {}
+                };
+                return Ordering::Less;
+            };
+            Ok(match kind {
+                SortKind::Stable(_) => v.sort_by(sort_by_impl),
+                SortKind::Unstable(_) => v.sort_unstable_by(sort_by_impl),
+            })
+        }
+    }
+
+    if 2 > exp.len() || 3 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let rc = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+    let effect = match &kind {
+        SortKind::Stable(k) => k,
+        SortKind::Unstable(k) => k,
+    };
+    match &effect {
+        ListProcKind::Copy => {
+            let l = &*(referlence_list!(rc));
+            let mut v = Vec::new();
+            v.extend_from_slice(&l[..]);
+            _sort_impl(exp, env, kind, &mut v)?;
+            Ok(Environment::create_list(v))
+        }
+        ListProcKind::Effect => {
+            _sort_impl(exp, env, kind, &mut *(mut_list!(rc)))?;
+            Ok(Expression::List(rc.clone()))
+        }
+    }
+}
+fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
+    fn merge_iter(l: &Vec<Expression>, m: &Vec<Expression>) -> Expression {
+        let mut v = Vec::new();
+        let (mut i, mut j) = (0, 0);
+
+        loop {
+            if l.len() <= i || m.len() <= j {
+                break;
+            }
+            match l[i].cmp(&m[j]) {
+                Ordering::Less | Ordering::Equal => {
+                    v.push(l[i].clone());
+                    i = i + 1;
+                }
+                Ordering::Greater => {
+                    v.push(m[j].clone());
+                    j = j + 1;
+                }
+            }
+        }
+        v.extend_from_slice(&l[i..]);
+        v.extend_from_slice(&m[j..]);
+        Environment::create_list(v)
+    }
+    fn merge_iter_by(
+        l: &Vec<Expression>,
+        m: &Vec<Expression>,
+        env: &Environment,
+        func: Expression,
+    ) -> ResultExpression {
+        let mut v = Vec::new();
+        let (mut i, mut j) = (0, 0);
+
+        let mut ql = Vec::new();
+        ql.push(func.clone());
+        loop {
+            if l.len() <= i || m.len() <= j {
+                break;
+            }
+            ql.push(l[i].clone());
+            ql.push(m[j].clone());
+            let r = match &func {
+                Expression::BuildInFunction(_, f) => f(&ql, env),
+                Expression::Function(f) => f.execute(&ql, env),
+                _ => return Err(create_error!(ErrCode::E1006)),
+            };
+            match r {
+                Ok(e) => match e {
+                    Expression::Boolean(b) => {
+                        if b == true {
+                            v.push(l[i].clone());
+                            i = i + 1;
+                        } else {
+                            v.push(m[j].clone());
+                            j = j + 1;
+                        }
+                    }
+                    _ => return Err(create_error!(ErrCode::E1001)),
+                },
+                Err(e) => return Err(e),
+            };
+            ql.pop();
+            ql.pop();
+        }
+        v.extend_from_slice(&l[i..]);
+        v.extend_from_slice(&m[j..]);
+        Ok(Environment::create_list(v))
+    }
+
+    if 3 > exp.len() || 4 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+    let l = &*(referlence_list!(l));
+
+    let m = match eval(&exp[2], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+    let m = &*(referlence_list!(m));
+
+    if exp.len() == 4 {
+        let func = eval(&exp[3], env)?;
+        match func {
+            Expression::BuildInFunction(_, _) => {}
+            Expression::Function(_) => {}
+            _ => return Err(create_error!(ErrCode::E1006)),
+        }
+        merge_iter_by(l, m, env, func)
+    } else {
+        Ok(merge_iter(l, m))
+    }
+}
+fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if 2 > exp.len() || 3 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        _ => return Err(create_error!(ErrCode::E1005)),
+    };
+
+    let l = &*(referlence_list!(l));
+    if exp.len() == 2 {
+        let b = &l[..].windows(2).all(|w| w[0] <= w[1]);
+        Ok(Expression::Boolean(*b))
+    } else {
+        let func = eval(&exp[2], env)?;
+        let cmp = |a: &Expression, b: &Expression| {
+            let mut v = Vec::new();
+            v.push(func.clone());
+            v.push(a.clone());
+            v.push(b.clone());
+            let e = match &func {
+                Expression::BuildInFunction(_, f) => f(&v, env),
+                Expression::Function(f) => f.execute(&v, env),
+                _ => return false,
+            };
+            match e {
+                Ok(v) => match v {
+                    Expression::Boolean(b) => b,
+                    _ => false,
+                },
+                Err(_) => false,
+            }
+        };
+        match func {
+            Expression::BuildInFunction(ref s, _) => match &s[..] {
+                "string>?" | "string>=?" | "char>?" | "char>=?" | ">=" | ">" => {
+                    let b = &l[..].windows(2).all(|w| w[0] >= w[1]);
+                    Ok(Expression::Boolean(*b))
+                }
+                "string<?" | "string<=?" | "char<?" | "char<=?" | "<" | "<=" => {
+                    let b = &l[..].windows(2).all(|w| w[0] <= w[1]);
+                    Ok(Expression::Boolean(*b))
+                }
+                _ => {
+                    let b = &l[..].windows(2).all(|w| cmp(&w[0], &w[1]));
+                    Ok(Expression::Boolean(*b))
+                }
+            },
+            Expression::Function(_) => {
+                let b = &l[..].windows(2).all(|w| cmp(&w[0], &w[1]));
+                Ok(Expression::Boolean(*b))
+            }
+            _ => return Err(create_error!(ErrCode::E1006)),
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::lisp;
@@ -900,6 +1164,344 @@ mod tests {
         do_lisp_env("(set-cdr! a (list 10 20))", &env);
         assert_eq!(do_lisp_env("a", &env), "(1 10 20)");
     }
+    #[test]
+    fn sort() {
+        assert_eq!(
+            do_lisp("(sort (list 10 1 9 5 3 4 7 6 5))"),
+            "(1 3 4 5 5 6 7 9 10)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1.5 9 5 2/3 4 7 6 5))"),
+            "(2/3 1.5 4 5 5 6 7 9 10)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\"))"),
+            "(\"0\" \"A\" \"a\" \"b\" \"c\" \"d\" \"l\" \"m\" \"z\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))"),
+            "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0))"),
+            "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1 9 5 3 4 7 6 5) <)"),
+            "(1 3 4 5 5 6 7 9 10)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1 9 5 3 4 7 6 5) >)"),
+            "(10 9 7 6 5 5 4 3 1)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1 9 5 3 4 7 6 5) <=)"),
+            "(1 3 4 5 5 6 7 9 10)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1 9 5 3 4 7 6 5) >=)"),
+            "(10 9 7 6 5 5 4 3 1)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1.5 9 5 2/3 4 7 6 5) >)"),
+            "(10 9 7 6 5 5 4 1.5 2/3)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\") string>?)"),
+            "(\"z\" \"m\" \"l\" \"d\" \"c\" \"b\" \"a\" \"A\" \"0\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\") string>?)"),
+            "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\") string>=?)"),
+            "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\") string<?)"),
+            "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\") string<=?)"),
+            "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
+        );
+        assert_eq!(
+            do_lisp("(sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) char>?)"),
+            "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) char>=?)"),
+            "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) char<?)"),
+            "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) char<=?)"),
+            "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
+        );
+        assert_eq!(
+            do_lisp("(sort (list 10 1.5 9 5 2/3 4 7 6 5) (lambda (a b) (> a b)))"),
+            "(10 9 7 6 5 5 4 1.5 2/3)"
+        );
+    }
+    #[test]
+    fn sort_effect() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
+        do_lisp_env("(sort! a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(1 3 4 5 5 6 7 9 10)");
+
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
+        do_lisp_env("(sort! a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(2/3 1.5 4 5 5 6 7 9 10)");
+
+        do_lisp_env(
+            "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\"))",
+            &env,
+        );
+        do_lisp_env("(sort! a)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"0\" \"A\" \"a\" \"b\" \"c\" \"d\" \"l\" \"m\" \"z\")"
+        );
+
+        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
+        do_lisp_env("(sort! a)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
+        );
+
+        do_lisp_env(
+            "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0))",
+            &env,
+        );
+        do_lisp_env("(sort! a)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
+        );
+
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
+        do_lisp_env("(sort! a >)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 3 1)");
+
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
+        do_lisp_env("(sort! a >)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+
+        do_lisp_env(
+            "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\") )",
+            &env,
+        );
+        do_lisp_env("(sort! a string>?)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"z\" \"m\" \"l\" \"d\" \"c\" \"b\" \"a\" \"A\" \"0\")"
+        );
+
+        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
+        do_lisp_env("(sort! a string>?)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
+        );
+
+        do_lisp_env(
+            "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) )",
+            &env,
+        );
+        do_lisp_env("(sort! a char>?)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
+        );
+
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
+        do_lisp_env("(sort! a (lambda (a b)(> a b)))", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+    }
+    #[test]
+    fn sort_stable() {
+        assert_eq!(
+            do_lisp("(stable-sort (list 10 1 9 5 3 4 7 6 5))"),
+            "(1 3 4 5 5 6 7 9 10)"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list 10 1.5 9 5 2/3 4 7 6 5))"),
+            "(2/3 1.5 4 5 5 6 7 9 10)"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\"))"),
+            "(\"0\" \"A\" \"a\" \"b\" \"c\" \"d\" \"l\" \"m\" \"z\")"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))"),
+            "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0))"),
+            "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list 10 1 9 5 3 4 7 6 5) >)"),
+            "(10 9 7 6 5 5 4 3 1)"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list 10 1.5 9 5 2/3 4 7 6 5) >)"),
+            "(10 9 7 6 5 5 4 1.5 2/3)"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\") string>?)"),
+            "(\"z\" \"m\" \"l\" \"d\" \"c\" \"b\" \"a\" \"A\" \"0\")"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\") string>?)"),
+            "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) char>?)"),
+            "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
+        );
+        assert_eq!(
+            do_lisp("(stable-sort (list 10 1.5 9 5 2/3 4 7 6 5) (lambda (a b) (> a b)))"),
+            "(10 9 7 6 5 5 4 1.5 2/3)"
+        );
+    }
+    #[test]
+    fn sort_stable_effect() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
+        do_lisp_env("(stable-sort! a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(1 3 4 5 5 6 7 9 10)");
+
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
+        do_lisp_env("(stable-sort! a)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(2/3 1.5 4 5 5 6 7 9 10)");
+
+        do_lisp_env(
+            "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\"))",
+            &env,
+        );
+        do_lisp_env("(stable-sort! a)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"0\" \"A\" \"a\" \"b\" \"c\" \"d\" \"l\" \"m\" \"z\")"
+        );
+
+        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
+        do_lisp_env("(stable-sort! a)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
+        );
+
+        do_lisp_env(
+            "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0))",
+            &env,
+        );
+        do_lisp_env("(stable-sort! a)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
+        );
+
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
+        do_lisp_env("(stable-sort! a >)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 3 1)");
+
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
+        do_lisp_env("(stable-sort! a >)", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+
+        do_lisp_env(
+            "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\") )",
+            &env,
+        );
+        do_lisp_env("(stable-sort! a string>?)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"z\" \"m\" \"l\" \"d\" \"c\" \"b\" \"a\" \"A\" \"0\")"
+        );
+
+        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
+        do_lisp_env("(stable-sort! a string>?)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
+        );
+
+        do_lisp_env(
+            "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) )",
+            &env,
+        );
+        do_lisp_env("(stable-sort! a char>?)", &env);
+        assert_eq!(
+            do_lisp_env("a", &env),
+            "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
+        );
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
+        do_lisp_env("(stable-sort! a (lambda (a b)(> a b)))", &env);
+        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+    }
+    #[test]
+    fn merge() {
+        assert_eq!(
+            do_lisp("(merge (iota 10 1 2) (iota 10 2 2))"),
+            "(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)"
+        );
+        assert_eq!(
+            do_lisp("(merge (list 1/3 1 2) (list 1/2 3/2 1.75))"),
+            "(1/3 1/2 1 3/2 1.75 2)"
+        );
+        assert_eq!(
+            do_lisp("(merge (list \"a\" \"c\" \"e\" \"g\")(list \"b\" \"d\" \"f\" \"h\"))"),
+            "(\"a\" \"b\" \"c\" \"d\" \"e\" \"f\" \"g\" \"h\")"
+        );
+        assert_eq!(
+            do_lisp("(merge (list #\\a #\\c #\\e #\\g)(list #\\b #\\d #\\f #\\h))"),
+            "(#\\a #\\b #\\c #\\d #\\e #\\f #\\g #\\h)"
+        );
+        assert_eq!(
+            do_lisp("(merge (reverse (iota 10 1 2)) (reverse (iota 10 2 2)) >)"),
+            "(20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1)"
+        );
+        assert_eq!(
+            do_lisp(
+                "(merge (list \"g\" \"e\" \"c\" \"a\")(list \"h\" \"f\" \"d\" \"b\") string>?)"
+            ),
+            "(\"h\" \"g\" \"f\" \"e\" \"d\" \"c\" \"b\" \"a\")"
+        );
+        assert_eq!(
+            do_lisp("(merge (list #\\g #\\e #\\c #\\a)(list #\\h #\\f #\\d #\\b) char>?)"),
+            "(#\\h #\\g #\\f #\\e #\\d #\\c #\\b #\\a)"
+        );
+    }
+    #[test]
+    fn is_sorted() {
+        assert_eq!(do_lisp("(sorted? (list 1 2 3))"), "#t");
+        assert_eq!(do_lisp("(sorted? (list 1 2 3) <)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list 3 2 1) >)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list 1 2 3) >)"), "#f");
+        assert_eq!(do_lisp("(sorted? (list 3 2 1) <)"), "#f");
+        assert_eq!(
+            do_lisp("(sorted? (list 1 2 3) (lambda (a b)(< a b)))"),
+            "#t"
+        );
+        assert_eq!(
+            do_lisp("(sorted? (list 1 2 3) (lambda (a b)(> a b)))"),
+            "#f"
+        );
+        assert_eq!(do_lisp("(sorted? (list \"a\" \"b\" \"c\") string<?)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list \"c\" \"b\" \"a\") string>?)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list #\\a #\\b #\\c) char<?)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list #\\c #\\b #\\a) char>?)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list #\\a #\\b #\\c) char-ci<?)"), "#t");
+        assert_eq!(do_lisp("(sorted? (list #\\c #\\b #\\a) char-ci>?)"), "#t");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1121,5 +1723,50 @@ mod error_tests {
         assert_eq!(do_lisp("(set-cdr! c a)"), "E1008");
         assert_eq!(do_lisp("(set-cdr! 100 200)"), "E1005");
         assert_eq!(do_lisp("(set-cdr! () 20)"), "E1011");
+    }
+    #[test]
+    fn sort() {
+        assert_eq!(do_lisp("(sort)"), "E1007");
+        assert_eq!(do_lisp("(sort (list 1) + +)"), "E1007");
+        assert_eq!(do_lisp("(sort +)"), "E1005");
+        assert_eq!(do_lisp("(sort (list 1) 10)"), "E1006");
+    }
+    #[test]
+    fn sort_effect() {
+        assert_eq!(do_lisp("(sort!)"), "E1007");
+        assert_eq!(do_lisp("(sort! (list 1) + +)"), "E1007");
+        assert_eq!(do_lisp("(sort! +)"), "E1005");
+        assert_eq!(do_lisp("(sort! (list 1) 10)"), "E1006");
+    }
+    #[test]
+    fn sort_stable() {
+        assert_eq!(do_lisp("(stable-sort)"), "E1007");
+        assert_eq!(do_lisp("(stable-sort (list 1) + +)"), "E1007");
+        assert_eq!(do_lisp("(stable-sort +)"), "E1005");
+        assert_eq!(do_lisp("(stable-sort (list 1) 10)"), "E1006");
+    }
+    #[test]
+    fn sort_stable_effect() {
+        assert_eq!(do_lisp("(stable-sort!)"), "E1007");
+        assert_eq!(do_lisp("(stable-sort! (list 1) + +)"), "E1007");
+        assert_eq!(do_lisp("(stable-sort! +)"), "E1005");
+        assert_eq!(do_lisp("(stable-sort! (list 1) 10)"), "E1006");
+    }
+    #[test]
+    fn merge() {
+        assert_eq!(do_lisp("(merge)"), "E1007");
+        assert_eq!(do_lisp("(merge (list 1))"), "E1007");
+        assert_eq!(do_lisp("(merge (list 1)(list 2) + +)"), "E1007");
+        assert_eq!(do_lisp("(merge + (list 2) +)"), "E1005");
+        assert_eq!(do_lisp("(merge (list 1) + +)"), "E1005");
+        assert_eq!(do_lisp("(merge (list 1)(list 2)(list 3))"), "E1006");
+        assert_eq!(do_lisp("(merge (list 1)(list 2) +)"), "E1001");
+    }
+    #[test]
+    fn is_sorted() {
+        assert_eq!(do_lisp("(sorted?)"), "E1007");
+        assert_eq!(do_lisp("(sorted? (list 1) + +)"), "E1007");
+        assert_eq!(do_lisp("(sorted? +)"), "E1005");
+        assert_eq!(do_lisp("(sorted? (list 1) 10)"), "E1006");
     }
 }

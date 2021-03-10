@@ -183,18 +183,18 @@ fn merge_sort() {
 
     let program = [
         "(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))",
-        "(define (merge a b)(if (or (null? a)(null? b)) (append a b) \
-         (if (< (car a)(car b))(cons (car a)(merge (cdr a) b)) \
-         (cons (car b) (merge a (cdr b))))))",
+        "(define (l-merge a b)(if (or (null? a)(null? b)) (append a b) \
+         (if (< (car a)(car b))(cons (car a)(l-merge (cdr a) b)) \
+         (cons (car b) (l-merge a (cdr b))))))",
         "(define (msort l)(let ((n (length l)))(if (>= 1 n ) l \
          (if (= n 2) (if (< (car l)(cadr l)) l \
-         (reverse l))(let ((mid (quotient n 2)))(merge (msort (take l mid))(msort (drop l mid))))))))",
+         (reverse l))(let ((mid (quotient n 2)))(l-merge (msort (take l mid))(msort (drop l mid))))))))",
     ];
     for p in &program {
         do_lisp_env(p, &env);
     }
     assert_eq!(
-        do_lisp_env("(merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &env),
+        do_lisp_env("(l-merge (list 1 3 5 7 9)(list 2 4 6 8 10))", &env),
         "(1 2 3 4 5 6 7 8 9 10)"
     );
     assert_eq!(

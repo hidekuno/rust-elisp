@@ -4,6 +4,8 @@
 
    hidekuno@gmail.com
 */
+use std::cmp::Ord;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -411,6 +413,63 @@ impl ToString for Expression {
         };
     }
 }
+impl Ord for Expression {
+    // Support number, string, char
+    fn cmp(&self, other: &Self) -> Ordering {
+        match Expression::to_number(self) {
+            Ok(m) => match Expression::to_number(other) {
+                Ok(n) => {
+                    return if m > n {
+                        Ordering::Greater
+                    } else if m < n {
+                        Ordering::Less
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+                Err(_) => Ordering::Less,
+            },
+            _ => match &self {
+                Expression::String(m) => match &other {
+                    Expression::String(n) => {
+                        return if m > n {
+                            Ordering::Greater
+                        } else if m < n {
+                            Ordering::Less
+                        } else {
+                            Ordering::Equal
+                        }
+                    }
+                    _ => Ordering::Less,
+                },
+                Expression::Char(m) => match &other {
+                    Expression::Char(n) => {
+                        return if m > n {
+                            Ordering::Greater
+                        } else if m < n {
+                            Ordering::Less
+                        } else {
+                            Ordering::Equal
+                        }
+                    }
+                    _ => Ordering::Less,
+                },
+                _ => Ordering::Less,
+            },
+        }
+    }
+}
+impl PartialOrd for Expression {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for Expression {
+    fn eq(&self, other: &Self) -> bool {
+        Expression::eq(self, other)
+    }
+}
+impl Eq for Expression {}
 #[derive(Clone)]
 pub struct Function {
     param: Vec<String>,
