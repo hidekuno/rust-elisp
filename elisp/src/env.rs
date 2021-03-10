@@ -4,8 +4,6 @@
 
    hidekuno@gmail.com
 */
-use std::collections::BTreeMap;
-
 use crate::buildin::create_function;
 use crate::buildin::BuildInTable;
 use crate::lisp::{BasicBuiltIn, Expression};
@@ -25,45 +23,47 @@ use crate::env_thread::EnvTable;
 use crate::mut_env;
 use crate::referlence_env;
 
+type Map<T, U> = std::collections::BTreeMap<T, U>;
+
+impl BuildInTable for Map<&'static str, BasicBuiltIn> {
+    fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
+        self.insert(symbol, func);
+    }
+}
 pub(crate) struct GlobalTbl {
-    pub(crate) builtin_tbl: BTreeMap<&'static str, BasicBuiltIn>,
-    pub(crate) builtin_tbl_ext: BTreeMap<&'static str, ExtFunctionRc>,
+    pub(crate) builtin_tbl: Map<&'static str, BasicBuiltIn>,
+    pub(crate) builtin_tbl_ext: Map<&'static str, ExtFunctionRc>,
     pub(crate) tail_recursion: bool,
     pub(crate) force_stop: bool,
     pub(crate) cont: Option<Expression>,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
-        let mut b: BTreeMap<&'static str, BasicBuiltIn> = BTreeMap::new();
+        let mut b: Map<&'static str, BasicBuiltIn> = Map::new();
         create_function(&mut b);
         GlobalTbl {
             builtin_tbl: b,
-            builtin_tbl_ext: BTreeMap::new(),
+            builtin_tbl_ext: Map::new(),
             tail_recursion: true,
             force_stop: false,
             cont: None,
         }
     }
 }
-impl BuildInTable for BTreeMap<&'static str, BasicBuiltIn> {
-    fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
-        self.insert(symbol, func);
-    }
-}
 pub(crate) struct SimpleEnv {
-    pub(crate) env_tbl: BTreeMap<String, Expression>,
+    pub(crate) env_tbl: Map<String, Expression>,
     pub(crate) parent: Option<EnvTable>,
 }
 impl SimpleEnv {
     pub fn new(parent: Option<EnvTable>) -> Self {
         if let Some(p) = parent {
             SimpleEnv {
-                env_tbl: BTreeMap::new(),
+                env_tbl: Map::new(),
                 parent: Some(p.clone()),
             }
         } else {
             SimpleEnv {
-                env_tbl: BTreeMap::new(),
+                env_tbl: Map::new(),
                 parent: parent,
             }
         }
