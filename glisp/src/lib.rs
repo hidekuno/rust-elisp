@@ -73,6 +73,10 @@ mod tests {
     fn draw_line() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-line 0.0 1.0 0.2 0.3)", &env), "nil");
+        assert_eq!(
+            do_lisp_env("(draw-line (cons 0.0 1.0) (cons 0.2 0.3))", &env),
+            "nil"
+        );
     }
     #[test]
     fn draw_koch() {
@@ -144,6 +148,13 @@ mod tests {
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
             "nil"
         );
+        assert_eq!(
+            do_lisp_env(
+                "(draw-image \"sample\" (cons 0.0 0.0) (cons 1.0 0.0) (cons 0.0 1.0))",
+                &env
+            ),
+            "nil"
+        );
         assert_eq!(do_lisp_env("(image-width \"sample\")", &env), "1");
         assert_eq!(do_lisp_env("(image-height \"sample\")", &env), "1");
     }
@@ -162,6 +173,13 @@ mod tests {
 
         assert_eq!(
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
+            "nil"
+        );
+        assert_eq!(
+            do_lisp_env(
+                "(draw-image \"sample\" (cons 0.0 0.0) (cons 1.0 0.0)(cons 0.0 1.0))",
+                &env
+            ),
             "nil"
         );
         assert_eq!(do_lisp_env("(image-width \"sample\")", &env), "1");
@@ -222,6 +240,19 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
         assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
         assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
+
+        assert_eq!(do_lisp_env("(draw-line (cons 1.0 0.2) 1.0)", &env), "E1005");
+        assert_eq!(do_lisp_env("(draw-line (cons 0.1 0.2) a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(draw-line (cons 1 0.2) a)", &env), "E1003");
+        assert_eq!(do_lisp_env("(draw-line (cons 0.1 2) a)", &env), "E1003");
+        assert_eq!(
+            do_lisp_env("(draw-line (cons 0.1 0.1)(cons 1 0.2))", &env),
+            "E1003"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-line (cons 0.1 0.1)(cons 0.1 2))", &env),
+            "E1003"
+        );
     }
     #[test]
     fn draw_string() {
@@ -343,6 +374,13 @@ mod error_tests {
         );
         assert_eq!(
             do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 1.0 1.0 10)", &env),
+            "E1003"
+        );
+        assert_eq!(
+            do_lisp_env(
+                "(draw-image \"sample\" (cons 0.0 0.0) (cons 1.0 1.0)(cons 1.0 10)))",
+                &env
+            ),
             "E1003"
         );
         assert_eq!(do_lisp_env("(image-width)", &env), "E1007");

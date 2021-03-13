@@ -9,6 +9,7 @@
 extern crate lazy_static;
 pub mod buildin;
 pub mod chars;
+pub mod draw;
 pub mod env;
 pub mod io;
 pub mod lisp;

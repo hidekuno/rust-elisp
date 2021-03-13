@@ -15,6 +15,7 @@
    hidekuno@gmail.com
 */
 pub mod draw;
+pub mod fractal;
 pub mod lisp;
 
 extern crate wasm_bindgen;

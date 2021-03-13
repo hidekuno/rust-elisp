@@ -30,6 +30,8 @@ use crate::ui::DRAW_WIDTH;
 
 use elisp::create_error;
 use elisp::create_error_value;
+use elisp::draw::util::regist_draw_line;
+use elisp::draw::util::set_loc;
 use elisp::lisp;
 
 use lisp::Environment;
@@ -60,27 +62,39 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     // Draw Line
     // ex. (draw-line 0.0 0.0 1.0 1.0)
+    // ex. (draw-line (cons 0.0 0.0) (cons 1.0 1.0))
     //--------------------------------------------------------
-    let draw_line = create_draw_line(draw_table, 1);
-    env.add_builtin_ext_func("draw-line", move |exp, env| {
-        const N: usize = 4;
-        if exp.len() != (N + 1) {
-            return Err(create_error!(ErrCode::E1007));
-        }
-        let mut loc: [f64; N] = [0.0; N];
-        let mut iter = exp[1 as usize..].iter();
-        for i in 0..N {
-            if let Some(e) = iter.next() {
-                if let Expression::Float(f) = lisp::eval(e, env)? {
-                    loc[i] = f;
-                } else {
-                    return Err(create_error!(ErrCode::E1003));
-                }
+    regist_draw_line("draw-line", env, create_draw_line(draw_table, 1));
+
+    //--------------------------------------------------------
+    // Draw Image (draw-image image xorg yorg x0 y0 x1 y1)
+    // ex. (draw-image "roger" 0.0 0.0 0.25 0.0 0.0 0.321)
+    // ex. (draw-image "roger" (cons 0.0 0.0) (cons 0.25 0.0)
+    //                         (cons 0.0 0.321))
+    //--------------------------------------------------------
+    let draw_image = create_draw_image(draw_table);
+    {
+        let draw_table = draw_table.clone();
+        env.add_builtin_ext_func("draw-image", move |exp, env| {
+            if exp.len() != 8 && exp.len() != 5 {
+                return Err(create_error!(ErrCode::E1007));
             }
-        }
-        draw_line(loc[0], loc[1], loc[2], loc[3]);
-        Ok(Expression::Nil())
-    });
+            let symbol = match lisp::eval(&exp[1], env)? {
+                Expression::String(s) => s,
+                _ => return Err(create_error!(ErrCode::E1015)),
+            };
+            let img = match draw_table.find(&symbol) {
+                Some(v) => v.clone(),
+                None => return Err(create_error!(ErrCode::E1008)),
+            };
+
+            const N: usize = 6;
+            let mut ctm: [f64; N] = [0.0; N];
+            set_loc(exp, env, &mut ctm, (2, N))?;
+            draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &*img);
+            Ok(Expression::Nil())
+        });
+    }
     //--------------------------------------------------------
     // Create Image from png
     // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
@@ -134,43 +148,6 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
             draw_table.regist(symbol, Rc::new(PixbufWrapper::new(pix)));
-            Ok(Expression::Nil())
-        });
-    }
-    //--------------------------------------------------------
-    // Draw Image (draw-image image xorg yorg x0 y0 x1 y1)
-    // ex. (draw-image "roger" 0.0 0.0 0.25 0.0 0.0 0.32142857142857145)
-    //--------------------------------------------------------
-    let draw_image = create_draw_image(draw_table);
-    {
-        let draw_table = draw_table.clone();
-        env.add_builtin_ext_func("draw-image", move |exp, env| {
-            if exp.len() != 8 {
-                return Err(create_error!(ErrCode::E1007));
-            }
-            let symbol = match lisp::eval(&exp[1], env)? {
-                Expression::String(s) => s,
-                _ => return Err(create_error!(ErrCode::E1015)),
-            };
-            const N: usize = 6;
-            let mut ctm: [f64; N] = [0.0; N];
-            let mut iter = exp[2 as usize..].iter();
-            for i in 0..N {
-                if let Some(e) = iter.next() {
-                    if let Expression::Float(f) = lisp::eval(e, env)? {
-                        ctm[i] = f;
-                    } else {
-                        return Err(create_error!(ErrCode::E1003));
-                    }
-                } else {
-                    return Err(create_error!(ErrCode::E1007));
-                }
-            }
-            let img = match draw_table.find(&symbol) {
-                Some(v) => v.clone(),
-                None => return Err(create_error!(ErrCode::E1008)),
-            };
-            draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &*img);
             Ok(Expression::Nil())
         });
     }

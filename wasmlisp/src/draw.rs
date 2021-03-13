@@ -17,6 +17,8 @@ use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
 use web_sys::Document;
 use web_sys::HtmlImageElement;
+
+pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 //--------------------------------------------------------
 // Graphics (ex. background color)
 //--------------------------------------------------------
@@ -44,9 +46,7 @@ pub fn create_draw_string(
 // ----------------------------------------------------------------
 // draw line
 // ----------------------------------------------------------------
-pub fn create_draw_line(
-    context: &CanvasRenderingContext2d,
-) -> Box<dyn Fn(f64, f64, f64, f64) + 'static> {
+pub fn create_draw_line(context: &CanvasRenderingContext2d) -> DrawLine {
     let ctx = context.clone();
 
     let draw_line = move |x1, y1, x2, y2| {
