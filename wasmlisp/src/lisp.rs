@@ -186,7 +186,7 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     let draw_image = create_draw_image(&context,&document);
     env.add_builtin_ext_func("draw-image", move |exp, env| {
-        if exp.len() != 8 {
+        if exp.len() != 8 && exp.len() != 5 {
             return Err(create_error!(ErrCode::E1007));
         }
         let symbol = match eval(&exp[1], env)? {
