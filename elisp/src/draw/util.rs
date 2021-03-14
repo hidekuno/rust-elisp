@@ -5,12 +5,16 @@
  hidekuno@gmail.com
 */
 use crate::create_error;
+use crate::draw::Fractal;
 use crate::lisp::eval;
 use crate::lisp::Environment;
 use crate::lisp::ErrCode;
 use crate::lisp::Error;
 use crate::lisp::Expression;
 
+// ----------------------------------------------------------------
+// set up for draw_line
+// ----------------------------------------------------------------
 pub fn regist_draw_line(
     fname: &'static str,
     env: &Environment,
@@ -28,6 +32,9 @@ pub fn regist_draw_line(
         Ok(Expression::Nil())
     });
 }
+// ----------------------------------------------------------------
+// thisi is function for draw-line, draw-image
+// ----------------------------------------------------------------
 pub fn set_loc(
     exp: &[Expression],
     env: &Environment,
@@ -67,4 +74,20 @@ pub fn set_loc(
         }
     }
     Ok(())
+}
+// ----------------------------------------------------------------
+// create new lisp interface
+// ----------------------------------------------------------------
+pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
+    env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
+        if exp.len() != 2 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let c = match eval(&exp[1], env)? {
+            Expression::Integer(c) => c,
+            _ => return Err(create_error!(ErrCode::E1002)),
+        };
+        fractal.do_demo(c as i32);
+        Ok(Expression::Nil())
+    });
 }

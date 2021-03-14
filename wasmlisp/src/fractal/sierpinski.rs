@@ -4,9 +4,9 @@
 
    hidekuno@gmail.com
 */
-use crate::draw::DrawLine;
-use crate::fractal::Fractal;
 use elisp::draw::coord::Coord;
+use elisp::draw::DrawLine;
+use elisp::draw::Fractal;
 
 pub struct Sierpinski {
     draw_line: DrawLine,
@@ -19,9 +19,9 @@ impl Sierpinski {
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, v2: Coord<f64>, c: i32) {
         if c > 1 {
-            let vv0 = (v0 + v1).scale(1.0 / 2.0);
-            let vv1 = (v1 + v2).scale(1.0 / 2.0);
-            let vv2 = (v2 + v0).scale(1.0 / 2.0);
+            let vv0 = (v0 + v1) / 2.0;
+            let vv1 = (v1 + v2) / 2.0;
+            let vv2 = (v2 + v0) / 2.0;
 
             self.draw(v0, vv0, vv2, c - 1);
             self.draw(v1, vv0, vv1, c - 1);

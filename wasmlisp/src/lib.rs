@@ -368,6 +368,13 @@ mod error_tests {
             ),
             "E1003"
         );
+        assert_eq!(
+            do_lisp_env(
+                "(draw-image \"sample\" (cons 10 0.0) (cons 1.0 1.0)(cons 1.0 1.0)))",
+                &env
+            ),
+            "E1003"
+        );
     }
     #[wasm_bindgen_test]
     fn image_width() {

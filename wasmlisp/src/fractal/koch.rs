@@ -4,13 +4,14 @@
 
   hidekuno@gmail.com
 */
-use crate::draw::DrawLine;
-use crate::fractal::Fractal;
 use elisp::draw::coord::Coord;
+use elisp::draw::coord::Matrix;
+use elisp::draw::DrawLine;
+use elisp::draw::Fractal;
 use std::f64::consts::PI;
 
 pub struct Koch {
-    matrix: (Coord<f64>, Coord<f64>),
+    matrix: Matrix<f64>,
     draw_line: DrawLine,
 }
 impl Koch {
@@ -19,19 +20,15 @@ impl Koch {
         let cs = ((PI * 60.0) / 180.0).cos();
 
         Koch {
-            matrix: (Coord::<f64>::new(cs, -sn), Coord::<f64>::new(sn, cs)),
+            matrix: Matrix::new(cs, -sn, sn, cs),
             draw_line: draw_line,
         }
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) {
         if c > 1 {
-            let va = (v0.scale(2 as f64) + v1).scale(1.0 / 3.0);
-            let vb = (v1.scale(2 as f64) + v0).scale(1.0 / 3.0);
-            let vc = va
-                + Coord::<f64>::new(
-                    (self.matrix.0 * (vb - va)).sum(),
-                    (self.matrix.1 * (vb - va)).sum(),
-                );
+            let va = ((v0 * 2.0) + v1) / 3.0;
+            let vb = ((v1 * 2.0) + v0) / 3.0;
+            let vc = va + (self.matrix * (vb - va)).sum();
 
             self.draw(v0, va, c - 1);
             self.draw(va, vc, c - 1);

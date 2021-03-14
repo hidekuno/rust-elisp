@@ -4,8 +4,8 @@
 
    hidekuno@gmail.com
 */
-use crate::draw::DrawLine;
-use crate::fractal::Fractal;
+use elisp::draw::DrawLine;
+use elisp::draw::Fractal;
 
 pub struct Tree {
     cs: f64,

@@ -14,7 +14,6 @@ use super::fractal::hilbert::Hilbert;
 use super::fractal::koch::Koch;
 use super::fractal::sierpinski::Sierpinski;
 use super::fractal::tree::Tree;
-use super::fractal::Fractal;
 use super::fractal::FractalMut;
 use crate::draw::create_draw_arc;
 use crate::draw::create_draw_image;
@@ -30,6 +29,7 @@ use crate::ui::DRAW_WIDTH;
 
 use elisp::create_error;
 use elisp::create_error_value;
+use elisp::draw::util::make_lisp_function;
 use elisp::draw::util::regist_draw_line;
 use elisp::draw::util::set_loc;
 use elisp::lisp;
@@ -371,23 +371,6 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     }
 }
 pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
-    // ----------------------------------------------------------------
-    // create new lisp interface
-    // ----------------------------------------------------------------
-    fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
-        env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
-            if exp.len() != 2 {
-                return Err(create_error!(ErrCode::E1007));
-            }
-            let c = match lisp::eval(&exp[1], env)? {
-                Expression::Integer(c) => c,
-                _ => return Err(create_error!(ErrCode::E1002)),
-            };
-
-            fractal.do_demo(c as i32);
-            Ok(Expression::Nil())
-        });
-    }
     // ----------------------------------------------------------------
     // create new lisp interface (mutable)
     // ----------------------------------------------------------------

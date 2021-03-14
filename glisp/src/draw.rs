@@ -11,6 +11,8 @@ extern crate gtk;
 
 use crate::ui::DRAW_HEIGHT;
 use crate::ui::DRAW_WIDTH;
+use elisp::draw::DrawLine;
+
 use cairo::{Context, Format, ImageSurface, Matrix};
 use gdk::prelude::GdkContextExt;
 use gdk_pixbuf::Pixbuf;
@@ -26,10 +28,8 @@ const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
 const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
 
 pub type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &dyn ImageData) + 'static>;
-pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
 pub type DrawArc = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
-
 // ----------------------------------------------------------------
 // Color table
 // ----------------------------------------------------------------

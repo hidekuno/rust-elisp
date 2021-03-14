@@ -9,6 +9,7 @@ extern crate wasm_bindgen;
 extern crate web_sys;
 
 use elisp::create_error;
+use elisp::draw::DrawLine;
 use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
 
@@ -18,7 +19,6 @@ use web_sys::CanvasRenderingContext2d;
 use web_sys::Document;
 use web_sys::HtmlImageElement;
 
-pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 //--------------------------------------------------------
 // Graphics (ex. background color)
 //--------------------------------------------------------

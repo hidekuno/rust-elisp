@@ -17,23 +17,14 @@ use koch::Koch;
 use sierpinski::Sierpinski;
 use tree::Tree;
 
-use elisp::create_error;
-use elisp::lisp;
-
 use crate::draw::create_draw_line;
-
+use elisp::draw::util::make_lisp_function;
+use elisp::lisp;
 use lisp::Environment;
-use lisp::ErrCode;
-use lisp::Error;
-use lisp::Expression;
 
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-pub trait Fractal {
-    fn get_func_name(&self) -> &'static str;
-    fn do_demo(&self, c: i32);
-}
 pub fn build_demo_function(env: &Environment, document: &web_sys::Document) {
     let canvas = document
         .get_element_by_id("drawingarea")
@@ -48,22 +39,6 @@ pub fn build_demo_function(env: &Environment, document: &web_sys::Document) {
         .unwrap()
         .dyn_into::<CanvasRenderingContext2d>()
         .unwrap();
-    // ----------------------------------------------------------------
-    // create new lisp interface
-    // ----------------------------------------------------------------
-    fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
-        env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
-            if exp.len() != 2 {
-                return Err(create_error!(ErrCode::E1007));
-            }
-            let c = match lisp::eval(&exp[1], env)? {
-                Expression::Integer(c) => c,
-                _ => return Err(create_error!(ErrCode::E1002)),
-            };
-            fractal.do_demo(c as i32);
-            Ok(Expression::Nil())
-        });
-    }
     // ----------------------------------------------------------------
     // create each demo program
     // ----------------------------------------------------------------

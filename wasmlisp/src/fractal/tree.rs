@@ -4,14 +4,15 @@
 
   hidekuno@gmail.com
 */
-use crate::draw::DrawLine;
-use crate::fractal::Fractal;
 use elisp::draw::coord::Coord;
+use elisp::draw::coord::Matrix;
+use elisp::draw::DrawLine;
+use elisp::draw::Fractal;
 use std::f64::consts::PI;
 
 pub struct Tree {
-    left: (Coord<f64>, Coord<f64>),
-    right: (Coord<f64>, Coord<f64>),
+    left: Matrix<f64>,
+    right: Matrix<f64>,
     draw_line: DrawLine,
 }
 impl Tree {
@@ -20,19 +21,17 @@ impl Tree {
         let sn = ((PI * 45.0) / 180.0).sin();
 
         Tree {
-            left: (Coord::<f64>::new(cs, -sn), Coord::<f64>::new(sn, cs)),
-            right: (Coord::<f64>::new(cs, sn), Coord::<f64>::new(-sn, cs)),
+            left: Matrix::new(cs, -sn, sn, cs),
+            right: Matrix::new(cs, sn, -sn, cs),
             draw_line: draw_line,
         }
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) {
-        let alpha = 0.6;
-
         (self.draw_line)(v0.x, v0.y, v1.x, v1.y);
 
-        let s = (v1 - v0).scale(alpha);
-        let va = v1 + Coord::<f64>::new((self.left.0 * s).sum(), (self.left.1 * s).sum());
-        let vb = v1 + Coord::<f64>::new((self.right.0 * s).sum(), (self.right.1 * s).sum());
+        let alpha = 0.6;
+        let va = v1 + (self.left * ((v1 - v0) * alpha)).sum();
+        let vb = v1 + (self.right * ((v1 - v0) * alpha)).sum();
 
         if 0 >= c {
             (self.draw_line)(v1.x, v1.y, va.x, va.y);
