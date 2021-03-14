@@ -12,7 +12,7 @@ RUN git clone https://github.com/hidekuno/rust-elisp
 WORKDIR $HOME/rust-elisp/wasmlisp
 RUN wasm-pack build
 
-FROM node:6-alpine as wasmlisp
+FROM node:10-alpine as wasmlisp
 MAINTAINER hidekuno@gmail.com
 
 WORKDIR /usr/src/app
@@ -24,8 +24,7 @@ RUN npm install
 COPY --from=builder /root/rust-elisp/wasmlisp/webpack.config.js ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.html ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.js ./
-COPY --from=builder /root/rust-elisp/wasmlisp/4k.html ./
 
 EXPOSE 8080
 
-CMD [ "npm", "run", "lisp" ]
+CMD [ "npm", "run", "start" ]
