@@ -4,8 +4,8 @@
 
    hidekuno@gmail.com
 */
-use crate::draw::DrawLine;
 use crate::fractal::FractalMut;
+use elisp::draw::DrawLine;
 
 struct Coord {
     oldx: f64,

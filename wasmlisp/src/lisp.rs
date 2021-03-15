@@ -24,11 +24,15 @@ use lisp::Environment;
 use lisp::Expression;
 use lisp::ErrCode;
 use lisp::Error;
+use elisp::draw::util::regist_draw_line;
+use elisp::draw::util::set_loc;
+
 use crate::draw::create_draw_string;
 use crate::draw::create_draw_line;
 use crate::draw::create_draw_arc;
 use crate::draw::create_draw_image;
 use crate::draw::Graphics;
+use crate::fractal::build_demo_function;
 
 use std::cell::RefCell;
 use std::io::Cursor;
@@ -75,6 +79,7 @@ pub fn start() -> Result<(), JsValue> {
 
     let env = Environment::new();
     build_lisp_function(&env, &document);
+    build_demo_function(&env, &document);
 
     let closure = Closure::wrap(Box::new(move |_event: Event| {
         let result = match do_core_logic(&text.value(), &env) {
@@ -141,29 +146,11 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     // Draw Line
     // ex. (draw-line 10.0 10.0 100.0 100.0)
+    // ex. (draw-line (cons 0.0 0.0) (cons 1.0 1.0))
     //--------------------------------------------------------
     context.set_line_width(LINE_WIDTH);
+    regist_draw_line("draw-line", env, create_draw_line(&context));
 
-    let draw_line = create_draw_line(&context);
-    env.add_builtin_ext_func("draw-line", move |exp, env| {
-        const N: usize = 4;
-        if exp.len() != (N + 1) {
-            return Err(create_error!(ErrCode::E1007));
-        }
-        let mut loc: [f64; N] = [0.0; N];
-        let mut iter = exp[1 as usize..].iter();
-        for i in 0..N {
-            if let Some(e) = iter.next() {
-                if let Expression::Float(f) = eval(e, env)? {
-                    loc[i] = f;
-                } else {
-                    return Err(create_error!(ErrCode::E1003));
-                }
-            }
-        }
-        draw_line(loc[0], loc[1],loc[2], loc[3]);
-        Ok(Expression::Nil())
-    });
     //--------------------------------------------------------
     // ex. (gtk-major-version)
     //--------------------------------------------------------
@@ -199,7 +186,7 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     let draw_image = create_draw_image(&context,&document);
     env.add_builtin_ext_func("draw-image", move |exp, env| {
-        if exp.len() != 8 {
+        if exp.len() != 8 && exp.len() != 5 {
             return Err(create_error!(ErrCode::E1007));
         }
         let symbol = match eval(&exp[1], env)? {
@@ -208,18 +195,7 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
         };
         const N: usize = 6;
         let mut ctm: [f64; N] = [0.0; N];
-        let mut iter = exp[2 as usize..].iter();
-        for i in 0..N {
-            if let Some(e) = iter.next() {
-                if let Expression::Float(f) = eval(e, env)? {
-                    ctm[i] = f;
-                } else {
-                    return Err(create_error!(ErrCode::E1003));
-                }
-            } else {
-                return Err(create_error!(ErrCode::E1007));
-            }
-        }
+        set_loc(exp, env, &mut ctm, (2, N))?;
         draw_image(ctm[0],ctm[1],ctm[2],ctm[3],ctm[4],ctm[5],&symbol)?;
         Ok(Expression::Nil())
     });
