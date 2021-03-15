@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "lisp": "webpack-dev-server"
+    "start": "webpack-dev-server"
   },
   "dependencies": {
     "wasmlisp": "file:./pkg"
