@@ -2,9 +2,10 @@
    Rust study program.
    This is prototype program mini scheme subset what porting from go-scheme.
 
-   hidekuno@gmail.com
    ref) https://doc.rust-jp.rs/book/second-edition/ch20-00-final-project-a-web-server.html
    ex) curl 'http://127.0.0.1:9000/lisp' --get --data-urlencode 'expr=(define a 100)'
+
+   hidekuno@gmail.com
 */
 extern crate elisp;
 use elisp::lisp;

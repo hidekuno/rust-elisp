@@ -25,7 +25,8 @@ use lisp::Expression;
 use lisp::ErrCode;
 use lisp::Error;
 use elisp::draw::util::regist_draw_line;
-use elisp::draw::util::set_loc;
+use elisp::draw::util::regist_draw_image;
+use elisp::draw::util::regist_draw_arc;
 
 use crate::draw::create_draw_string;
 use crate::draw::create_draw_line;
@@ -184,21 +185,8 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     //--------------------------------------------------------
     // ex. (draw-image "roger" 0.0 0.0 180.0 0.0 0.0 180.0)
     //--------------------------------------------------------
-    let draw_image = create_draw_image(&context,&document);
-    env.add_builtin_ext_func("draw-image", move |exp, env| {
-        if exp.len() != 8 && exp.len() != 5 {
-            return Err(create_error!(ErrCode::E1007));
-        }
-        let symbol = match eval(&exp[1], env)? {
-            Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
-        };
-        const N: usize = 6;
-        let mut ctm: [f64; N] = [0.0; N];
-        set_loc(exp, env, &mut ctm, (2, N))?;
-        draw_image(ctm[0],ctm[1],ctm[2],ctm[3],ctm[4],ctm[5],&symbol)?;
-        Ok(Expression::Nil())
-    });
+    regist_draw_image("draw-image", env, create_draw_image(&context,&document));
+
     //--------------------------------------------------------
     // ex. (load-image "roger"
     //        "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true")
@@ -411,25 +399,11 @@ pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
     });
 
     //--------------------------------------------------------
-    // Draw arc
+    // draw arc
     // ex. (draw-arc 75.0 75.0 50.0 0.0)
     //--------------------------------------------------------
-    let draw_arc =  create_draw_arc(&context);
-    env.add_builtin_ext_func("draw-arc", move |exp, env| {
-        if exp.len() != 5 {
-            return Err(create_error!(ErrCode::E1007));
-        }
-        const N: usize = 4;
-        let mut prm: [f64; N] = [0.0; N];
-        for (i, e) in exp[1 as usize..].iter().enumerate() {
-            prm[i] = match lisp::eval(e, env)? {
-                Expression::Float(f) => f,
-                _ => return Err(create_error!(ErrCode::E1003)),
-            };
-        }
-        draw_arc(prm[0], prm[1], prm[2], prm[3]);
-        Ok(Expression::Nil())
-    });
+    regist_draw_arc("draw-arc", env, create_draw_arc(&context));
+
     //--------------------------------------------------------
     // Draw string
     // ex. (draw-string "hello,world" 0.0 10.0)

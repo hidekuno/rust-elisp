@@ -11,7 +11,12 @@ extern crate gtk;
 
 use crate::ui::DRAW_HEIGHT;
 use crate::ui::DRAW_WIDTH;
+use elisp::create_error;
+use elisp::draw::DrawArc;
+use elisp::draw::DrawImage;
 use elisp::draw::DrawLine;
+use elisp::lisp::ErrCode;
+use elisp::lisp::Error;
 
 use cairo::{Context, Format, ImageSurface, Matrix};
 use gdk::prelude::GdkContextExt;
@@ -27,9 +32,6 @@ const DEFALUT_LINE_WIDTH: f64 = 0.001;
 const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
 const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
 
-pub type DrawImage = Box<dyn Fn(f64, f64, f64, f64, f64, f64, &dyn ImageData) + 'static>;
-pub type DrawString = Box<dyn Fn(f64, f64, f64, String) + 'static>;
-pub type DrawArc = Box<dyn Fn(f64, f64, f64, f64) + 'static>;
 // ----------------------------------------------------------------
 // Color table
 // ----------------------------------------------------------------
@@ -237,7 +239,14 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
 // ----------------------------------------------------------------
 pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
     let surface = draw_table.get_default_surface();
-    let draw_image = move |x0, y0, x1, y1, xorg, yorg, img: &dyn ImageData| {
+    let draw_table = draw_table.clone();
+
+    let draw_image = move |x0, y0, x1, y1, xorg, yorg, symbol: &String| {
+        let img = match draw_table.find(&symbol) {
+            Some(v) => v.clone(),
+            None => return Err(create_error!(ErrCode::E1008)),
+        };
+
         let cr = Context::new(&*surface);
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
@@ -257,13 +266,15 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
 
         #[cfg(feature = "animation")]
         force_event_loop!();
+
+        Ok(())
     };
     Box::new(draw_image)
 }
 // ----------------------------------------------------------------
 // create new cairo from imagetable, and draw string
 // ----------------------------------------------------------------
-pub fn create_draw_string(draw_table: &DrawTable) -> DrawString {
+pub fn create_draw_string(draw_table: &DrawTable) -> Box<dyn Fn(f64, f64, f64, String) + 'static> {
     let surface = draw_table.get_default_surface();
 
     let draw_table = draw_table.clone();
@@ -292,10 +303,14 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
     let draw_arc = move |x, y, r, a| {
         let fg = &draw_table.core.borrow().fg;
         let cr = Context::new(&*surface);
+
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
+
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
+        cr.set_line_width(draw_table.core.borrow().line_width);
         cr.arc(x, y, r, a, PI * 2.);
-        cr.fill();
+        cr.stroke();
+
         #[cfg(feature = "animation")]
         force_event_loop!();
     };

@@ -9,6 +9,8 @@ extern crate wasm_bindgen;
 extern crate web_sys;
 
 use elisp::create_error;
+use elisp::draw::DrawArc;
+use elisp::draw::DrawImage;
 use elisp::draw::DrawLine;
 use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
@@ -61,9 +63,7 @@ pub fn create_draw_line(context: &CanvasRenderingContext2d) -> DrawLine {
 // ----------------------------------------------------------------
 // draw arc
 // ----------------------------------------------------------------
-pub fn create_draw_arc(
-    context: &CanvasRenderingContext2d,
-) -> Box<dyn Fn(f64, f64, f64, f64) + 'static> {
+pub fn create_draw_arc(context: &CanvasRenderingContext2d) -> DrawArc {
     let ctx = context.clone();
 
     let draw_arc = move |x, y, r, angle| {
@@ -76,14 +76,11 @@ pub fn create_draw_arc(
 // ----------------------------------------------------------------
 // draw arc
 // ----------------------------------------------------------------
-pub fn create_draw_image(
-    context: &CanvasRenderingContext2d,
-    document: &Document,
-) -> Box<dyn Fn(f64, f64, f64, f64, f64, f64, &String) -> Result<(), Error> + 'static> {
+pub fn create_draw_image(context: &CanvasRenderingContext2d, document: &Document) -> DrawImage {
     let ctx = context.clone();
     let doc = document.clone();
 
-    let draw_image = move |x0, y0, x1, y1, x2, y2, symbol: &String| {
+    let draw_image = move |x0, y0, x1, y1, xorg, yorg, symbol: &String| {
         let img = match doc.get_element_by_id(symbol) {
             Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),
             None => return Err(create_error!(ErrCode::E1008)),
@@ -91,7 +88,7 @@ pub fn create_draw_image(
         let w = img.width() as f64;
         let h = img.height() as f64;
 
-        if let Err(_) = ctx.set_transform(x1 / w, y1 / h, x2 / w, y2 / h, x0, y0) {
+        if let Err(_) = ctx.set_transform(x0 / w, y0 / h, x1 / w, y1 / h, xorg, yorg) {
             return Err(create_error!(ErrCode::E9999));
         }
         // https://rustwasm.github.io/wasm-bindgen/api/web_sys/

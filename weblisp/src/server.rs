@@ -2,6 +2,8 @@
    Rust study program.
    This is prototype program mini scheme subset what porting from go-scheme.
 
+   ref) https://doc.rust-jp.rs/book/second-edition/ch20-00-final-project-a-web-server.html
+
    hidekuno@gmail.com
 */
 extern crate elisp;
