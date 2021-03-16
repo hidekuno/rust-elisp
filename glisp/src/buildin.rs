@@ -30,10 +30,11 @@ use crate::ui::DRAW_WIDTH;
 use elisp::create_error;
 use elisp::create_error_value;
 use elisp::draw::util::make_lisp_function;
+use elisp::draw::util::regist_draw_arc;
+use elisp::draw::util::regist_draw_image;
 use elisp::draw::util::regist_draw_line;
-use elisp::draw::util::set_loc;
-use elisp::lisp;
 
+use elisp::lisp;
 use lisp::Environment;
 use lisp::ErrCode;
 use lisp::Error;
@@ -72,29 +73,8 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // ex. (draw-image "roger" (cons 0.0 0.0) (cons 0.25 0.0)
     //                         (cons 0.0 0.321))
     //--------------------------------------------------------
-    let draw_image = create_draw_image(draw_table);
-    {
-        let draw_table = draw_table.clone();
-        env.add_builtin_ext_func("draw-image", move |exp, env| {
-            if exp.len() != 8 && exp.len() != 5 {
-                return Err(create_error!(ErrCode::E1007));
-            }
-            let symbol = match lisp::eval(&exp[1], env)? {
-                Expression::String(s) => s,
-                _ => return Err(create_error!(ErrCode::E1015)),
-            };
-            let img = match draw_table.find(&symbol) {
-                Some(v) => v.clone(),
-                None => return Err(create_error!(ErrCode::E1008)),
-            };
+    regist_draw_image("draw-image", env, create_draw_image(draw_table));
 
-            const N: usize = 6;
-            let mut ctm: [f64; N] = [0.0; N];
-            set_loc(exp, env, &mut ctm, (2, N))?;
-            draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &*img);
-            Ok(Expression::Nil())
-        });
-    }
     //--------------------------------------------------------
     // Create Image from png
     // ex. (create-image-from-png "roger" "/home/kunohi/rust-elisp/glisp/samples/sicp/sicp.png")
@@ -240,22 +220,8 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // draw arc
     // ex. (draw-arc 0.27 0.65 0.02 0.0)
     //--------------------------------------------------------
-    let draw_arc = create_draw_arc(draw_table);
-    env.add_builtin_ext_func("draw-arc", move |exp, env| {
-        if exp.len() != 5 {
-            return Err(create_error!(ErrCode::E1007));
-        }
-        const N: usize = 4;
-        let mut prm: [f64; N] = [0.0; N];
-        for (i, e) in exp[1 as usize..].iter().enumerate() {
-            prm[i] = match lisp::eval(e, env)? {
-                Expression::Float(f) => f,
-                _ => return Err(create_error!(ErrCode::E1003)),
-            };
-        }
-        draw_arc(prm[0], prm[1], prm[2], prm[3]);
-        Ok(Expression::Nil())
-    });
+    regist_draw_arc("draw-arc", env, create_draw_arc(draw_table));
+
     //--------------------------------------------------------
     // set background
     // ex. (set-background 0.0 0.0 0.0)

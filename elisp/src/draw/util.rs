@@ -1,10 +1,15 @@
 /*
- Rust study program.
- This is prototype program mini scheme subset what porting from go-scheme.
+   Rust study program.
+   This is prototype program mini scheme subset what porting from go-scheme.
 
- hidekuno@gmail.com
+   this is library for glis,wasmlisp.
+
+   hidekuno@gmail.com
 */
 use crate::create_error;
+use crate::draw::DrawArc;
+use crate::draw::DrawImage;
+use crate::draw::DrawLine;
 use crate::draw::Fractal;
 use crate::lisp::eval;
 use crate::lisp::Environment;
@@ -15,16 +20,11 @@ use crate::lisp::Expression;
 // ----------------------------------------------------------------
 // set up for draw_line
 // ----------------------------------------------------------------
-pub fn regist_draw_line(
-    fname: &'static str,
-    env: &Environment,
-    draw_line: Box<dyn Fn(f64, f64, f64, f64) + 'static>,
-) {
+pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawLine) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 5 && exp.len() != 3 {
             return Err(create_error!(ErrCode::E1007));
         }
-
         const N: usize = 4;
         let mut loc: [f64; N] = [0.0; N];
         set_loc(exp, env, &mut loc, (1, N))?;
@@ -33,9 +33,43 @@ pub fn regist_draw_line(
     });
 }
 // ----------------------------------------------------------------
+// set up for draw_image
+// ----------------------------------------------------------------
+pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: DrawImage) {
+    env.add_builtin_ext_func(fname, move |exp, env| {
+        if exp.len() != 8 && exp.len() != 5 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        let symbol = match eval(&exp[1], env)? {
+            Expression::String(s) => s,
+            _ => return Err(create_error!(ErrCode::E1015)),
+        };
+        const N: usize = 6;
+        let mut ctm: [f64; N] = [0.0; N];
+        set_loc(exp, env, &mut ctm, (2, N))?;
+        draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &symbol)?;
+        Ok(Expression::Nil())
+    });
+}
+// ----------------------------------------------------------------
+// set up for draw_arc
+// ----------------------------------------------------------------
+pub fn regist_draw_arc(fname: &'static str, env: &Environment, draw_arc: DrawArc) {
+    env.add_builtin_ext_func(fname, move |exp, env| {
+        if exp.len() != 5 {
+            return Err(create_error!(ErrCode::E1007));
+        }
+        const N: usize = 4;
+        let mut prm: [f64; N] = [0.0; N];
+        set_loc(exp, env, &mut prm, (1, N))?;
+        draw_arc(prm[0], prm[1], prm[2], prm[3]);
+        Ok(Expression::Nil())
+    });
+}
+// ----------------------------------------------------------------
 // thisi is function for draw-line, draw-image
 // ----------------------------------------------------------------
-pub fn set_loc(
+fn set_loc(
     exp: &[Expression],
     env: &Environment,
     loc: &mut [f64],
