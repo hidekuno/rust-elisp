@@ -6,22 +6,37 @@
 */
 import('./pkg').catch(console.error);
 
-const demo_code = `(draw-clear)
-(define (draw-line-vect s e)
-  (draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)))
+const DEMO_CODE = `(draw-clear)
+(define (draw-line-vect s e)(draw-line s e))
 (demo)`;
 
-const animation_demo_code = `(draw-clear)
-(define (draw-line-vect s e)
-  (add-timeout (draw-line (xcor-vect s)(ycor-vect s)(xcor-vect e)(ycor-vect e)) 10))
+const ANIMATION_DEMO_CODE = `(draw-clear)
+(define (draw-line-vect s e)(add-timeout (draw-line s e) 10))
 (demo)`;
 
-const album_image_code = `(draw-clear)
+const ALBUM_IMAGE_CODE = `(draw-clear)
 ((square-limit (below(beside rv ps)(beside sd am)) 0)
                (make-image-frame-rectangle "am" 2.2 2.2))`;
 
-(() => {
+const WEB_FONT = "<i class='fa fa-spinner fa-spin fa-5x fa-fw'></i><br><br>";
 
+const WAIT_MESSAGE = "Please wait until the alert dialog is displayed.";
+
+function addLoading() {
+    let ua = window.navigator.userAgent.toLowerCase();
+
+    let msg  = (ua.indexOf('firefox') != -1)
+        ?"<div class='loadingMsg'>" + WEB_FONT + WAIT_MESSAGE +"</div>"
+        :"<div class='loadingMsg'>" + WAIT_MESSAGE +"</div>";
+
+    if ($("#loading").length == 0) {
+        $("body").append("<div id='loading'>" + msg + "</div>");
+        if (ua.indexOf('firefox') == -1) {
+            $('.loadingMsg').css('background', "url('/loading.gif') center center no-repeat");
+        }
+    }
+}
+(() => {
     let editor = ace.edit("editor");
     editor.$blockScrolling = Infinity;
     editor.setOptions({
@@ -33,29 +48,23 @@ const album_image_code = `(draw-clear)
     editor.getSession().setMode("ace/mode/scheme");
     editor.setFontSize(12);
 
-    let codearea = document.getElementById("codearea");
+    let codeArea = document.getElementById("codearea");
     let evalButton = document.getElementById("eval");
 
     evalButton.onmousedown = () => {
-        codearea.value = editor.getSession().getValue();
+        addLoading();
+        codeArea.value = editor.getSession().getValue();
     };
-
-    evalButton.onkeydown = () => {
-        if (event.keyCode == 32) {
-            codearea.value = editor.getSession().getValue();
-        }
-    };
-
     document.getElementById("sicp").onclick = () => {
         editor.setValue('(load-url "wasm-sicp.scm")', -1);
     };
     document.getElementById("demo").onclick = () => {
-        editor.setValue(demo_code, -1);
+        editor.setValue(DEMO_CODE, -1);
     };
     document.getElementById("anime").onclick = () => {
-        editor.setValue(animation_demo_code, -1);
+        editor.setValue(ANIMATION_DEMO_CODE, -1);
     };
     document.getElementById("album").onclick = () => {
-        editor.setValue(album_image_code, -1);
+        editor.setValue(ALBUM_IMAGE_CODE, -1);
     };
 })();
