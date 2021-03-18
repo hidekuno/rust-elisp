@@ -24,6 +24,7 @@ RUN npm install
 COPY --from=builder /root/rust-elisp/wasmlisp/webpack.config.js ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.html ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.js ./
+COPY --from=builder /root/rust-elisp/wasmlisp/loading.gif ./
 
 EXPOSE 8080
 
