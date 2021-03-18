@@ -16,7 +16,6 @@ use crate::log;
 
 use elisp::create_error;
 use elisp::lisp;
-
 use lisp::do_core_logic;
 use lisp::eval;
 use lisp::repl;
@@ -27,7 +26,6 @@ use lisp::Error;
 use elisp::draw::util::regist_draw_line;
 use elisp::draw::util::regist_draw_image;
 use elisp::draw::util::regist_draw_arc;
-
 use crate::draw::create_draw_string;
 use crate::draw::create_draw_line;
 use crate::draw::create_draw_arc;
@@ -43,6 +41,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::JsFuture;
 
+use js_sys::Promise;
 use web_sys::{
     CanvasRenderingContext2d, Document, Element, Event, HtmlCanvasElement, HtmlImageElement,
     HtmlTextAreaElement, Request, RequestInit, RequestMode, Response,
@@ -58,7 +57,6 @@ const SCHEME_URL: &'static str =
     "https://raw.githubusercontent.com/hidekuno/picture-language/develop";
 
 const LINE_WIDTH: f64 = 0.8;
-
 //--------------------------------------------------------
 // entry point
 //--------------------------------------------------------
@@ -83,11 +81,20 @@ pub fn start() -> Result<(), JsValue> {
     build_demo_function(&env, &document);
 
     let closure = Closure::wrap(Box::new(move |_event: Event| {
-        let result = match do_core_logic(&text.value(), &env) {
-            Ok(r) => r.to_string(),
-            Err(e) => e.get_msg(),
-        };
-        alert(&result);
+
+        let c = Closure::wrap(Box::new(move |v: JsValue| {
+            alert(&v.as_string().unwrap());
+        }) as Box<dyn FnMut(_)>);
+
+        // It's experimental code for study.
+        let _ = future_to_promise(execute_lisp(text.value(),env.clone())).then(&c);
+        c.forget();
+
+        if let Some(element) = document.get_element_by_id("loading") {
+            let loading = element.dyn_into::<Element>().unwrap();
+            loading.remove();
+        }
+        console_log!("eval done.");
     }) as Box<dyn FnMut(_)>);
     button.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
 
@@ -106,9 +113,23 @@ pub fn start() -> Result<(), JsValue> {
     Ok(())
 }
 //--------------------------------------------------------
+// It's experimental code for study.
+//--------------------------------------------------------
+async fn execute_lisp(code: String, env: Environment) -> Result<JsValue, JsValue> {
+    fn call_elisp(code: String, env: Environment) -> JsValue {
+        let v = match do_core_logic(&code, &env) {
+            Ok(r) => r.to_string(),
+            Err(e) => e.get_msg(),
+        };
+        JsValue::from(v)
+    }
+    let text = JsFuture::from(Promise::resolve(&call_elisp(code,env))).await?;
+    Ok(text)
+}
+//--------------------------------------------------------
 // lisp functions
 //--------------------------------------------------------
-pub fn build_lisp_function(env: &Environment, document: &web_sys::Document) {
+pub fn build_lisp_function(env: &Environment, document: &Document) {
     let canvas = document
         .get_element_by_id("drawingarea")
         .unwrap()
