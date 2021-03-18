@@ -9,7 +9,6 @@
 extern crate lazy_static;
 pub mod buildin;
 pub mod chars;
-pub mod draw;
 pub mod env;
 pub mod io;
 pub mod lisp;
@@ -21,6 +20,9 @@ pub mod strings;
 pub mod syntax;
 pub mod unix;
 pub mod util;
+
+#[cfg(not(feature = "thread"))]
+pub mod draw;
 
 #[cfg(not(feature = "thread"))]
 pub mod env_single;
