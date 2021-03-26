@@ -34,7 +34,7 @@ xhost +
 docker run --name glisp -e DISPLAY=docker.for.mac.localhost:0 hidekuno/rust-elisp /root/glisp
 ```
 
-<img src="https://user-images.githubusercontent.com/22115777/68745629-5dcff100-063a-11ea-81cc-bf20d05562eb.png" width=80%>
+<img src="https://user-images.githubusercontent.com/22115777/68745629-5dcff100-063a-11ea-81cc-bf20d05562eb.png" width=50% height=50%>
 
 ### Linux
 ```
@@ -48,7 +48,7 @@ docker run --name glisp -e DISPLAY=${host_ipaddr}:0.0 hidekuno/rust-elisp /root/
 docker pull hidekuno/rust-elisp
 docker run -it --name elisp hidekuno/rust-elisp /root/lisp
 ```
-<img src="https://user-images.githubusercontent.com/22115777/65646335-bb31c380-e035-11e9-8d12-34b6ce0ee667.png" width=80%>
+<img src="https://user-images.githubusercontent.com/22115777/65646335-bb31c380-e035-11e9-8d12-34b6ce0ee667.png" width=80% height=80%>
 
 
 ## 動かし方(Web Assembly版)
@@ -59,4 +59,4 @@ docker run -it --name elisp hidekuno/rust-elisp /root/lisp
 docker pull hidekuno/rust-elisp-wasm
 docker run --name wasmlisp -p 18080:8080 -d hidekuno/rust-elisp-wasm
 ```
-<img src="https://user-images.githubusercontent.com/22115777/68744951-08471480-0639-11ea-8461-b7d32f38189d.png" width=80%>
+<img src="https://user-images.githubusercontent.com/22115777/68744951-08471480-0639-11ea-8461-b7d32f38189d.png" width=50% height=50%>
