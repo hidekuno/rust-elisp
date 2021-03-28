@@ -1,31 +1,31 @@
-RustによるLisp(subset版)の実装
+Implementation of Lisp (subset version) by Rust
 =================
 
-## 概要
-- Rust手習いのため、Lispの縮小版を実装した。(とりあえずschemeベース)
-- 実装目標として、フラクタル図形プログラムを簡単に動作させるための環境を提供する。
+## Overview
+- Implemented a Lisp for Rust lessons. (It's Scheme base)
+- As an implementation goal, we will provide an environment for easily operating a graphic program.
 
-## 完成度合い
-- 簡単なプログラムが動くレベル  
+## Quality
+- Level at which a simple program works
     - https://github.com/hidekuno/rust-elisp/tree/master/elisp/samples  
     - https://github.com/hidekuno/rust-elisp/blob/master/elisp/tests/integration_test.rs
 
-- SICPの図形言語プログラムが動作するところまで確認した。
+- I confirmed that the SICP graphic language program works.
     - https://github.com/hidekuno/picture-language
 
-## 構成
+## Directory structure
 | crate   | instructions |
 |--------|--------|
-| elisp  | lisp本体 |
-| glisp  | 図形描画用GUI |
-| wasmlisp | Web Assembly用UI |
-| weblisp | マルチスレッド検証用プログラム |
-| zlearning |学習用のプログラム(hidekuno/tree-viewerとのパフォーマンス比較検証)|
+| elisp  | lisp interpreter |
+| glisp  | GUI for drawing on GTK3 |
+| wasmlisp | GUI for drawing on Web Assembly |
+| weblisp | Easy Web Serve(Test program for Multithreaded elisp) |
+| zlearning |Program for my learning(Not related to elisp)|
 
-## 動かし方
-### 動作条件
-- dockerが動いていること
-- Xサーバ(macの場合、XQuartz 2.7.11)が動いていること
+## Run on docker(hidekuno/rust-elisp)
+### Requirement
+- docker is running.
+- X Server is running.(XQuartz 2.7.11 for mac)
 
 ### macOS
 ```
@@ -43,18 +43,16 @@ xhost +
 docker run --name glisp -e DISPLAY=${host_ipaddr}:0.0 hidekuno/rust-elisp /root/glisp
 ```
 
-### Xサーバが動いていない環境向け(replのみ版)
+### For environments where the X server is not running
 ```
 docker pull hidekuno/rust-elisp
 docker run -it --name elisp hidekuno/rust-elisp /root/lisp
 ```
 <img src="https://user-images.githubusercontent.com/22115777/65646335-bb31c380-e035-11e9-8d12-34b6ce0ee667.png" width=80% height=80%>
 
-
-## 動かし方(Web Assembly版)
-### 動作条件
-- dockerが動いていること
-
+## Run on docker(hidekuno/rust-elisp-wasm)
+### Requirement
+- docker is running.
 ```
 docker pull hidekuno/rust-elisp-wasm
 docker run --name wasmlisp -p 18080:8080 -d hidekuno/rust-elisp-wasm
