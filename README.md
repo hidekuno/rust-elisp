@@ -27,6 +27,15 @@ Implementation of Lisp (subset version) by Rust
 - docker is running.
 - X Server is running.(XQuartz 2.7.11 for mac)
 
+### Build(my operation log)
+```
+cd ${HOME}/rust-elisp/docker/glisp
+docker build --target=glisp -t hidekuno/rust-elisp --file=./Dockerfile .
+docker login
+docker push hidekuno/rust-elisp
+docker logout
+```
+
 ### macOS
 ```
 docker pull hidekuno/rust-elisp
@@ -53,6 +62,16 @@ docker run -it --name elisp hidekuno/rust-elisp /root/lisp
 ## Run on docker(hidekuno/rust-elisp-wasm)
 ### Requirement
 - docker is running.
+### Build(my operation log)
+```
+cd ${HOME}/rust-elisp/docker/wasmlisp
+docker build -t hidekuno/rust-elisp-wasm --file=./Dockerfile .
+docker login
+docker push hidekuno/rust-elisp-wasm
+docker logout
+```
+
+### RUN
 ```
 docker pull hidekuno/rust-elisp-wasm
 docker run --name wasmlisp -p 18080:8080 -d hidekuno/rust-elisp-wasm
