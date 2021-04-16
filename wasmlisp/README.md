@@ -29,7 +29,7 @@ cd ${HOME}
 cd rust-elisp/wasmlisp
 wasm-pack build
 npm install
-npm run lisp
+npm start
 ```
 
 ## Build & Run(on generic web server)
