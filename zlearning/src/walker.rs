@@ -66,7 +66,7 @@ pub fn create_line_walker(
                 }
                 None => return,
             }
-        };
+        }
         fn walk(item: &Item, param: &KeisenParam, out: &mut dyn Write) {
             if let Some(_) = item.parent {
                 let mut keisen = Vec::new();
