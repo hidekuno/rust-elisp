@@ -21,11 +21,11 @@ fn main() {
     let (delimiter, mode, filename) = parse_arg();
 
     let cache = match create_tree(delimiter, filename) {
-		Ok(t) => t,
-		Err(e) => {
-			println!("{:?}", e);
-			return;
-		}
+        Ok(t) => t,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
+        }
     };
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
@@ -34,14 +34,20 @@ fn main() {
             DisplayMode::SingleCharLine => top
                 .borrow()
                 .accept(&mut LineItemVisitor::new(o, "   ", "|  ", "`--", "|--")),
-            DisplayMode::MultiCharLine => {
-                top.borrow()
-                    .accept(&mut LineItemVisitor::new(o, "　　 " ,"│　 ", "└── " , "├── "))
-            }
-            DisplayMode::BoldMultiCharLine => {
-                top.borrow()
-                    .accept(&mut LineItemVisitor::new(o, "　　 " ,"┃　 ", "┗━━ " , "┣━━ "))
-            }
+            DisplayMode::MultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+                o,
+                "　　 ",
+                "│　 ",
+                "└── ",
+                "├── ",
+            )),
+            DisplayMode::BoldMultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+                o,
+                "　　 ",
+                "┃　 ",
+                "┗━━ ",
+                "┣━━ ",
+            )),
         }
     }
 }

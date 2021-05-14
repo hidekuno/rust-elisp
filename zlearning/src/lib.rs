@@ -10,8 +10,8 @@ pub mod walker;
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::Cache;
     use crate::tree::parse_arg;
+    use crate::tree::Cache;
     use crate::tree::Item;
     use crate::visitor::LineItemVisitor;
     use crate::visitor::Visitor;

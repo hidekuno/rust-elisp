@@ -21,11 +21,11 @@ fn main() {
     let (delimiter, mode, filename) = parse_arg();
 
     let cache = match create_tree(delimiter, filename) {
-		Ok(t) => t,
-		Err(e) => {
-			println!("{:?}", e);
-			return;
-		}
+        Ok(t) => t,
+        Err(e) => {
+            println!("{:?}", e);
+            return;
+        }
     };
 
     if let Some(top) = cache.top {
@@ -34,8 +34,10 @@ fn main() {
         let mut c = match mode {
             DisplayMode::Space => create_walker(o),
             DisplayMode::SingleCharLine => create_line_walker(o, "   ", "|  ", "`--", "|--"),
-            DisplayMode::MultiCharLine => create_line_walker(o,"　　 " ,"│　 ", "└── " , "├── "),
-            DisplayMode::BoldMultiCharLine => create_line_walker(o, "　　 " ,"┃　 ", "┗━━ " , "┣━━ "),
+            DisplayMode::MultiCharLine => create_line_walker(o, "　　 ", "│　 ", "└── ", "├── "),
+            DisplayMode::BoldMultiCharLine => {
+                create_line_walker(o, "　　 ", "┃　 ", "┗━━ ", "┣━━ ")
+            }
         };
         c(top);
     }
