@@ -6,7 +6,7 @@
 */
 extern crate zlearning;
 
-use std::io::{stdin, stdout, StdinLock};
+use std::io::stdout;
 
 use zlearning::tree;
 use zlearning::walker;
@@ -18,12 +18,15 @@ use walker::create_line_walker;
 use walker::create_walker;
 
 fn main() {
-    let (delimiter, mode) = parse_arg();
+    let (delimiter, mode, filename) = parse_arg();
 
-    let s = stdin();
-    let mut cin = s.lock();
-
-    let cache = create_tree::<StdinLock>(&mut cin, delimiter);
+    let cache = match create_tree(delimiter, filename) {
+		Ok(t) => t,
+		Err(e) => {
+			println!("{:?}", e);
+			return;
+		}
+    };
 
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
@@ -31,7 +34,8 @@ fn main() {
         let mut c = match mode {
             DisplayMode::Space => create_walker(o),
             DisplayMode::SingleCharLine => create_line_walker(o, "   ", "|  ", "`--", "|--"),
-            DisplayMode::MultiCharLine => create_line_walker(o, "　　", "　┃", "　┗━", "　┣━"),
+            DisplayMode::MultiCharLine => create_line_walker(o,"　　 " ,"│　 ", "└── " , "├── "),
+            DisplayMode::BoldMultiCharLine => create_line_walker(o, "　　 " ,"┃　 ", "┗━━ " , "┣━━ "),
         };
         c(top);
     }

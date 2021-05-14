@@ -10,7 +10,7 @@ pub mod walker;
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::create_tree;
+    use crate::tree::Cache;
     use crate::tree::parse_arg;
     use crate::tree::Item;
     use crate::visitor::LineItemVisitor;
@@ -22,7 +22,7 @@ mod tests {
         use std::io::{self};
         let mut cursor =
             io::Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.');
+        let cache = Cache::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.');
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
@@ -48,7 +48,7 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
@@ -71,8 +71,8 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let (delimiter, _) = parse_arg();
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
+        let (delimiter, _, _) = parse_arg();
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
@@ -87,9 +87,9 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let (delimiter, _) = parse_arg();
+        let (delimiter, _, _) = parse_arg();
 
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {

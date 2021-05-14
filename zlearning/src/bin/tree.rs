@@ -6,22 +6,27 @@
 */
 extern crate zlearning;
 
-use std::io::{stdin, stdout, StdinLock};
+use std::io::stdout;
+
+use zlearning::tree;
+use zlearning::visitor;
 
 use tree::create_tree;
 use tree::parse_arg;
 use tree::DisplayMode;
 use visitor::ItemVisitor;
 use visitor::LineItemVisitor;
-use zlearning::tree;
-use zlearning::visitor;
 
 fn main() {
-    let (delimiter, mode) = parse_arg();
-    let s = stdin();
-    let mut cin = s.lock();
+    let (delimiter, mode, filename) = parse_arg();
 
-    let cache = create_tree::<StdinLock>(&mut cin, delimiter);
+    let cache = match create_tree(delimiter, filename) {
+		Ok(t) => t,
+		Err(e) => {
+			println!("{:?}", e);
+			return;
+		}
+    };
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
         match mode {
@@ -31,7 +36,11 @@ fn main() {
                 .accept(&mut LineItemVisitor::new(o, "   ", "|  ", "`--", "|--")),
             DisplayMode::MultiCharLine => {
                 top.borrow()
-                    .accept(&mut LineItemVisitor::new(o, "　　", "　┃", "　┗━", "　┣━"))
+                    .accept(&mut LineItemVisitor::new(o, "　　 " ,"│　 ", "└── " , "├── "))
+            }
+            DisplayMode::BoldMultiCharLine => {
+                top.borrow()
+                    .accept(&mut LineItemVisitor::new(o, "　　 " ,"┃　 ", "┗━━ " , "┣━━ "))
             }
         }
     }
