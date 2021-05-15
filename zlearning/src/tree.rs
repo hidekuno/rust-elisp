@@ -230,3 +230,134 @@ pub fn parse_arg(args: Vec<String>) -> Result<(char, DisplayMode, Option<String>
     }
     Ok((delimiter, mode, filename))
 }
+#[test]
+fn test_parse_arg_01() {
+    let args = vec![""];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok((delimiter, mode, filename)) => {
+            assert_eq!(delimiter, '.');
+            assert_eq!(mode, DisplayMode::Space);
+            assert_eq!(filename, None);
+        }
+        Err(_) => {}
+    }
+}
+#[test]
+fn test_parse_arg_02() {
+    let args = vec!["", "-l"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok((delimiter, mode, filename)) => {
+            assert_eq!(delimiter, '.');
+            assert_eq!(mode, DisplayMode::SingleCharLine);
+            assert_eq!(filename, None);
+        }
+        Err(_) => {}
+    }
+}
+#[test]
+fn test_parse_arg_03() {
+    let args = vec!["", "-m"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok((delimiter, mode, filename)) => {
+            assert_eq!(delimiter, '.');
+            assert_eq!(mode, DisplayMode::MultiCharLine);
+            assert_eq!(filename, None);
+        }
+        Err(_) => {}
+    }
+}
+#[test]
+fn test_parse_arg_04() {
+    let args = vec!["", "-b"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok((delimiter, mode, filename)) => {
+            assert_eq!(delimiter, '.');
+            assert_eq!(mode, DisplayMode::BoldMultiCharLine);
+            assert_eq!(filename, None);
+        }
+        Err(_) => {}
+    }
+}
+#[test]
+fn test_parse_arg_05() {
+    let args = vec!["", "-d", "/"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok((delimiter, mode, filename)) => {
+            assert_eq!(delimiter, '/');
+            assert_eq!(mode, DisplayMode::Space);
+            assert_eq!(filename, None);
+        }
+        Err(_) => {}
+    }
+}
+#[test]
+fn test_parse_arg_06() {
+    let args = vec!["", "-f", "/etc/passwd"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok((delimiter, mode, filename)) => {
+            assert_eq!(delimiter, '.');
+            assert_eq!(mode, DisplayMode::Space);
+            assert_eq!(filename, Some(String::from("/etc/passwd")));
+        }
+        Err(_) => {}
+    }
+}
+#[test]
+fn test_parse_arg_07() {
+    let args = vec!["", "-f", "-d"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => {}
+        Err(e) => {
+            assert_eq!(e.to_string(), "ivalid option");
+        }
+    }
+}
+#[test]
+fn test_parse_arg_08() {
+    let args = vec!["", "-d", "f"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => {}
+        Err(e) => {
+            assert_eq!(e.to_string(), "ivalid option");
+        }
+    }
+}
+#[test]
+fn test_parse_arg_09() {
+    let args = vec!["", "-d", "123"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => {}
+        Err(e) => {
+            assert_eq!(e.to_string(), "ivalid option");
+        }
+    }
+}
+#[test]
+fn test_parse_arg_10() {
+    let args = vec!["", "10", "123"];
+
+    match parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => {}
+        Err(e) => {
+            assert_eq!(e.to_string(), "ivalid option");
+        }
+    }
+}
+#[test]
+fn test_parse_arg_11() {
+    match parse_arg(Vec::new()) {
+        Ok(_) => {}
+        Err(e) => {
+            assert_eq!(e.to_string(), "ivalid option");
+        }
+    }
+}
