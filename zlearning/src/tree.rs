@@ -7,7 +7,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::LinkedList;
-use std::env;
 use std::fs::File;
 use std::io::stdin;
 use std::io::BufRead;
@@ -82,6 +81,13 @@ impl Item {
         }
     }
 }
+#[derive(Debug, PartialEq)]
+pub enum DisplayMode {
+    Space,
+    SingleCharLine,
+    MultiCharLine,
+    BoldMultiCharLine,
+}
 pub struct Cache {
     cache: HashMap<String, ItemRef>,
     pub top: Option<ItemRef>,
@@ -142,51 +148,6 @@ impl Cache {
         cache
     }
 }
-pub enum DisplayMode {
-    Space,
-    SingleCharLine,
-    MultiCharLine,
-    BoldMultiCharLine,
-}
-pub fn parse_arg() -> (char, DisplayMode, Option<String>) {
-    enum ParamParse {
-        DelimiterOn,
-        FilenameOn,
-        Off,
-    }
-    let mut mode = DisplayMode::Space;
-    let mut delimiter = '.';
-    let mut parse = ParamParse::Off;
-    let mut filename = None;
-
-    let args: Vec<String> = env::args().collect();
-    for arg in &args[1..] {
-        if arg == "-l" {
-            mode = DisplayMode::SingleCharLine;
-        } else if arg == "-m" {
-            mode = DisplayMode::MultiCharLine;
-        } else if arg == "-b" {
-            mode = DisplayMode::BoldMultiCharLine;
-        } else if arg == "-d" {
-            parse = ParamParse::DelimiterOn;
-        } else if arg == "-f" {
-            parse = ParamParse::FilenameOn;
-        } else {
-            match parse {
-                ParamParse::DelimiterOn => {
-                    delimiter = arg.chars().next().unwrap();
-                    parse = ParamParse::Off;
-                }
-                ParamParse::FilenameOn => {
-                    filename = Some(arg.to_string());
-                    parse = ParamParse::Off;
-                }
-                _ => {}
-            }
-        }
-    }
-    (delimiter, mode, filename)
-}
 pub fn create_tree(delimiter: char, filename: Option<String>) -> Result<Cache, String> {
     let cache = match filename {
         Some(s) => {
@@ -211,4 +172,61 @@ pub fn create_tree(delimiter: char, filename: Option<String>) -> Result<Cache, S
         }
     };
     Ok(cache)
+}
+enum ParamParse {
+    DelimiterOn,
+    FilenameOn,
+    Off,
+}
+impl ParamParse {
+    fn check_option(arg: &String) -> bool {
+        if arg == "-l" || arg == "-m" || arg == "-b" || arg == "-d" || arg == "-f" {
+            return true;
+        }
+        return false;
+    }
+}
+pub fn parse_arg(args: Vec<String>) -> Result<(char, DisplayMode, Option<String>), String> {
+    let mut mode = DisplayMode::Space;
+    let mut delimiter = '.';
+    let mut parse = ParamParse::Off;
+    let mut filename = None;
+
+    if args.len() < 1 {
+        return Err(String::from("ivalid option"));
+    }
+    for arg in &args[1..] {
+        match parse {
+            ParamParse::Off => {
+                if arg == "-l" {
+                    mode = DisplayMode::SingleCharLine;
+                } else if arg == "-m" {
+                    mode = DisplayMode::MultiCharLine;
+                } else if arg == "-b" {
+                    mode = DisplayMode::BoldMultiCharLine;
+                } else if arg == "-d" {
+                    parse = ParamParse::DelimiterOn;
+                } else if arg == "-f" {
+                    parse = ParamParse::FilenameOn;
+                } else {
+                    return Err(String::from("ivalid option"));
+                }
+            }
+            ParamParse::DelimiterOn => {
+                if ParamParse::check_option(arg) || arg.len() != 1 {
+                    return Err(String::from("ivalid option"));
+                }
+                delimiter = arg.chars().next().unwrap();
+                parse = ParamParse::Off;
+            }
+            ParamParse::FilenameOn => {
+                if ParamParse::check_option(arg) {
+                    return Err(String::from("ivalid option"));
+                }
+                filename = Some(arg.to_string());
+                parse = ParamParse::Off;
+            }
+        }
+    }
+    Ok((delimiter, mode, filename))
 }
