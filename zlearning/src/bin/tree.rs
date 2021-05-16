@@ -10,12 +10,13 @@ use std::env;
 use std::error::Error;
 use std::io::stdout;
 
+use zlearning::param;
 use zlearning::tree;
 use zlearning::visitor;
 
+use param::parse_arg;
+use param::DisplayMode;
 use tree::create_tree;
-use tree::parse_arg;
-use tree::DisplayMode;
 use visitor::ItemVisitor;
 use visitor::LineItemVisitor;
 
