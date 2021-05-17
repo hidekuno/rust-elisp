@@ -15,6 +15,7 @@ use std::io::StdinLock;
 use std::rc::Rc;
 use std::rc::Weak;
 
+use crate::param::Config;
 use crate::visitor::Visitor;
 
 // Prevent Broken pipe
@@ -141,8 +142,8 @@ impl Cache {
         cache
     }
 }
-pub fn create_tree(delimiter: char, filename: Option<String>) -> Result<Cache, String> {
-    let cache = match filename {
+pub fn create_tree(config: &Config) -> Result<Cache, String> {
+    let cache = match config.filename() {
         Some(s) => {
             let file = match File::open(s) {
                 Ok(f) => f,
@@ -156,19 +157,24 @@ pub fn create_tree(delimiter: char, filename: Option<String>) -> Result<Cache, S
                 return Err(String::from("It's directory."));
             }
             let mut stream = BufReader::new(file);
-            Cache::create_tree::<BufReader<File>>(&mut stream, delimiter)
+            Cache::create_tree::<BufReader<File>>(&mut stream, config.delimiter())
         }
         None => {
             let s = stdin();
             let mut cin = s.lock();
-            Cache::create_tree::<StdinLock>(&mut cin, delimiter)
+            Cache::create_tree::<StdinLock>(&mut cin, config.delimiter())
         }
     };
     Ok(cache)
 }
 #[test]
 fn test_create_tree_01() {
-    match create_tree(' ', Some(String::from("/proc/version"))) {
+    use crate::param::parse_arg;
+    let args = vec!["", "-f", "/proc/version", "-d", " "];
+
+    match create_tree(
+        &parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
+    ) {
         Ok(cache) => {
             let top = cache.top.unwrap();
             assert_eq!(top.borrow().name, "Linux");
@@ -180,7 +186,12 @@ fn test_create_tree_01() {
 }
 #[test]
 fn test_create_tree_02() {
-    match create_tree(' ', Some(String::from("/proc/hogehoge"))) {
+    use crate::param::parse_arg;
+    let args = vec!["", "-f", "/proc/hogehoge"];
+
+    match create_tree(
+        &parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
+    ) {
         Ok(_) => {}
         Err(e) => {
             assert_eq!(e.to_string().starts_with("No such file or directory"), true);
@@ -190,7 +201,12 @@ fn test_create_tree_02() {
 }
 #[test]
 fn test_create_tree_03() {
-    match create_tree(' ', Some(String::from("/proc"))) {
+    use crate::param::parse_arg;
+    let args = vec!["", "-f", "/proc"];
+
+    match create_tree(
+        &parse_arg(args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
+    ) {
         Ok(_) => {}
         Err(e) => {
             assert_eq!(e.to_string(), "It's directory.");

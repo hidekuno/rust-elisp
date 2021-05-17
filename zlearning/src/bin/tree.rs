@@ -21,12 +21,12 @@ use visitor::ItemVisitor;
 use visitor::LineItemVisitor;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let (delimiter, mode, filename) = parse_arg(env::args().collect())?;
-    let cache = create_tree(delimiter, filename)?;
+    let config = parse_arg(env::args().collect())?;
+    let cache = create_tree(&config)?;
 
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
-        match mode {
+        match config.mode() {
             DisplayMode::Space => top.borrow().accept(&mut ItemVisitor::new(o)),
             DisplayMode::SingleCharLine => top
                 .borrow()

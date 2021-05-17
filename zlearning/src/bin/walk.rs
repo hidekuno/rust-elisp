@@ -21,13 +21,13 @@ use walker::create_line_walker;
 use walker::create_walker;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let (delimiter, mode, filename) = parse_arg(env::args().collect())?;
-    let cache = create_tree(delimiter, filename)?;
+    let config = parse_arg(env::args().collect())?;
+    let cache = create_tree(&config)?;
 
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
 
-        let mut c = match mode {
+        let mut c = match config.mode() {
             DisplayMode::Space => create_walker(o),
             DisplayMode::SingleCharLine => create_line_walker(o, "   ", "|  ", "`--", "|--"),
             DisplayMode::MultiCharLine => create_line_walker(o, "　　 ", "│　 ", "└── ", "├── "),
