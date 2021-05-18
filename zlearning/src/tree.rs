@@ -102,7 +102,7 @@ impl Cache {
             None => None,
         }
     }
-    pub fn create_tree<T>(reader: &mut T, sep: char) -> Cache
+    pub fn create_tree<T>(reader: &mut T, sep: char, level: i32) -> Cache
     where
         T: BufRead,
     {
@@ -112,11 +112,15 @@ impl Cache {
             let mut fullname = String::new();
             let vec: Vec<&str> = line.split(sep).collect();
             for (i, s) in vec.iter().enumerate() {
+                if i > level as usize {
+                    break;
+                }
+
                 if i != 0 {
                     fullname.push(sep);
                 }
                 fullname.push_str(s);
-                if let Some(_) = cache.get(&fullname) {
+                if cache.get(&fullname).is_some() {
                     continue;
                 }
                 let idx = match fullname.rfind(sep) {
@@ -157,12 +161,12 @@ pub fn create_tree(config: &Config) -> Result<Cache, String> {
                 return Err(String::from("It's directory."));
             }
             let mut stream = BufReader::new(file);
-            Cache::create_tree::<BufReader<File>>(&mut stream, config.delimiter())
+            Cache::create_tree::<BufReader<File>>(&mut stream, config.delimiter(), config.level())
         }
         None => {
             let s = stdin();
             let mut cin = s.lock();
-            Cache::create_tree::<StdinLock>(&mut cin, config.delimiter())
+            Cache::create_tree::<StdinLock>(&mut cin, config.delimiter(), config.level())
         }
     };
     Ok(cache)

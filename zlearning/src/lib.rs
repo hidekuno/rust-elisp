@@ -23,7 +23,7 @@ mod tests {
         use std::io::{self};
         let mut cursor =
             io::Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = Cache::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.');
+        let cache = Cache::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
@@ -49,7 +49,7 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
@@ -72,7 +72,7 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n');
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
@@ -88,7 +88,7 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n');
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
@@ -104,7 +104,7 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n');
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
