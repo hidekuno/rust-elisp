@@ -4,17 +4,18 @@
 
    hidekuno@gmail.com
 */
+pub mod param;
 pub mod tree;
 pub mod visitor;
 pub mod walker;
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::create_tree;
-    use crate::tree::parse_arg;
+    use crate::tree::Cache;
     use crate::tree::Item;
     use crate::visitor::LineItemVisitor;
     use crate::visitor::Visitor;
+    use crate::walker::create_line_walker;
     use crate::walker::create_walker;
 
     #[test]
@@ -22,7 +23,7 @@ mod tests {
         use std::io::{self};
         let mut cursor =
             io::Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.');
+        let cache = Cache::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
@@ -48,7 +49,7 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.');
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
@@ -71,8 +72,7 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let (delimiter, _) = parse_arg();
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
@@ -87,13 +87,28 @@ mod tests {
         use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let (delimiter, _) = parse_arg();
 
-        let cache = create_tree::<Cursor<Vec<u8>>>(&mut cursor, delimiter);
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
         let cursor = Cursor::new(String::from("").into_bytes());
 
         if let Some(top) = cache.top {
             let mut c = create_walker(Box::new(cursor));
+            c(top);
+        } else {
+            panic!("test failure");
+        }
+    }
+    #[test]
+    fn test_walker_line() {
+        use std::io::Cursor;
+        let mut cursor =
+            Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
+
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
+        let cursor = Cursor::new(String::from("").into_bytes());
+
+        if let Some(top) = cache.top {
+            let mut c = create_line_walker(Box::new(cursor), "   ", "|  ", "`--", "|--");
             c(top);
         } else {
             panic!("test failure");

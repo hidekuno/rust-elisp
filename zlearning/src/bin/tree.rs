@@ -6,33 +6,46 @@
 */
 extern crate zlearning;
 
-use std::io::{stdin, stdout, StdinLock};
+use std::env;
+use std::error::Error;
+use std::io::stdout;
 
-use tree::create_tree;
-use tree::parse_arg;
-use tree::DisplayMode;
-use visitor::ItemVisitor;
-use visitor::LineItemVisitor;
+use zlearning::param;
 use zlearning::tree;
 use zlearning::visitor;
 
-fn main() {
-    let (delimiter, mode) = parse_arg();
-    let s = stdin();
-    let mut cin = s.lock();
+use param::parse_arg;
+use param::DisplayMode;
+use tree::create_tree;
+use visitor::ItemVisitor;
+use visitor::LineItemVisitor;
 
-    let cache = create_tree::<StdinLock>(&mut cin, delimiter);
+fn main() -> Result<(), Box<dyn Error>> {
+    let config = parse_arg(env::args().collect())?;
+    let cache = create_tree(&config)?;
+
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
-        match mode {
+        match config.mode() {
             DisplayMode::Space => top.borrow().accept(&mut ItemVisitor::new(o)),
             DisplayMode::SingleCharLine => top
                 .borrow()
                 .accept(&mut LineItemVisitor::new(o, "   ", "|  ", "`--", "|--")),
-            DisplayMode::MultiCharLine => {
-                top.borrow()
-                    .accept(&mut LineItemVisitor::new(o, "　　", "　┃", "　┗━", "　┣━"))
-            }
+            DisplayMode::MultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+                o,
+                "　　 ",
+                "│　 ",
+                "└── ",
+                "├── ",
+            )),
+            DisplayMode::BoldMultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+                o,
+                "　　 ",
+                "┃　 ",
+                "┗━━ ",
+                "┣━━ ",
+            )),
         }
     }
+    Ok(())
 }

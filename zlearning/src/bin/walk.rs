@@ -6,33 +6,36 @@
 */
 extern crate zlearning;
 
-use std::io::{stdin, stdout, StdinLock};
+use std::env;
+use std::error::Error;
+use std::io::stdout;
 
+use zlearning::param;
 use zlearning::tree;
 use zlearning::walker;
 
+use param::parse_arg;
+use param::DisplayMode;
 use tree::create_tree;
-use tree::parse_arg;
-use tree::DisplayMode;
 use walker::create_line_walker;
 use walker::create_walker;
 
-fn main() {
-    let (delimiter, mode) = parse_arg();
-
-    let s = stdin();
-    let mut cin = s.lock();
-
-    let cache = create_tree::<StdinLock>(&mut cin, delimiter);
+fn main() -> Result<(), Box<dyn Error>> {
+    let config = parse_arg(env::args().collect())?;
+    let cache = create_tree(&config)?;
 
     if let Some(top) = cache.top {
         let o = Box::new(stdout());
 
-        let mut c = match mode {
+        let mut c = match config.mode() {
             DisplayMode::Space => create_walker(o),
             DisplayMode::SingleCharLine => create_line_walker(o, "   ", "|  ", "`--", "|--"),
-            DisplayMode::MultiCharLine => create_line_walker(o, "　　", "　┃", "　┗━", "　┣━"),
+            DisplayMode::MultiCharLine => create_line_walker(o, "　　 ", "│　 ", "└── ", "├── "),
+            DisplayMode::BoldMultiCharLine => {
+                create_line_walker(o, "　　 ", "┃　 ", "┗━━ ", "┣━━ ")
+            }
         };
         c(top);
     }
+    Ok(())
 }
