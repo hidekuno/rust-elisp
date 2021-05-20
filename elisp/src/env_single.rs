@@ -90,16 +90,10 @@ impl Environment {
         self.core.borrow_mut().update(key, exp);
     }
     pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
-        match self.globals.borrow().builtin_tbl.get(key) {
-            Some(f) => Some(*f),
-            None => None,
-        }
+        self.globals.borrow().builtin_tbl.get(key).copied()
     }
     pub fn get_builtin_ext_func(&self, key: &str) -> Option<Rc<ExtFunction>> {
-        match self.globals.borrow().builtin_tbl_ext.get(key) {
-            Some(f) => Some(f.clone()),
-            None => None,
-        }
+        self.globals.borrow().builtin_tbl_ext.get(key).cloned()
     }
     pub fn add_builtin_ext_func<F>(&self, key: &'static str, c: F)
     where
