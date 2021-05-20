@@ -50,9 +50,9 @@ pub struct Item {
 impl Item {
     fn new(name: String, last_name: &str, parent: Option<ItemRef>) -> Self {
         Item {
-            name: name,
+            name,
             last_name: last_name.into(),
-            parent: parent,
+            parent,
             children: LinkedList::new(),
         }
     }
@@ -157,7 +157,7 @@ pub fn create_tree(config: &Config) -> Result<Cache, String> {
                 Ok(m) => m,
                 Err(e) => return Err(e.to_string()),
             };
-            if true == meta.is_dir() {
+            if meta.is_dir() {
                 return Err(String::from("It's directory."));
             }
             let mut stream = BufReader::new(file);

@@ -46,35 +46,32 @@ pub fn create_line_walker(
     hline_not_last: &'static str,
 ) -> PrintTree {
     let param = KeisenParam {
-        vline_last: vline_last,
-        vline_not_last: vline_not_last,
-        hline_last: hline_last,
-        hline_not_last: hline_not_last,
+        vline_last,
+        vline_not_last,
+        hline_last,
+        hline_not_last,
     };
     let print_tree = move |rc| {
         fn make_vline(param: &KeisenParam, keisen: &mut Vec<&str>, item: &Item) {
-            match item.parent {
-                Some(ref p) => {
-                    if let Some(_) = p.borrow().parent {
-                        keisen.push(if p.borrow().is_last() {
-                            param.vline_last
-                        } else {
-                            param.vline_not_last
-                        });
-                    }
-                    make_vline(param, keisen, &p.borrow());
+            if let Some(ref p) = item.parent {
+                if p.borrow().parent.is_some() {
+                    keisen.push(if p.borrow().is_last() {
+                        param.vline_last
+                    } else {
+                        param.vline_not_last
+                    });
                 }
-                None => return,
+                make_vline(param, keisen, &p.borrow());
             }
         }
         fn walk(item: &Item, param: &KeisenParam, out: &mut dyn Write) {
-            if let Some(_) = item.parent {
-                let mut keisen = Vec::new();
-                keisen.push(if item.is_last() {
+            if item.parent.is_some() {
+                let mut keisen = vec![if item.is_last() {
                     param.hline_last
                 } else {
                     param.hline_not_last
-                });
+                }];
+
                 make_vline(param, &mut keisen, item);
                 keisen.reverse();
                 for line in keisen {

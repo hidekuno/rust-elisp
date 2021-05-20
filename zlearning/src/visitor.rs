@@ -19,7 +19,7 @@ pub struct ItemVisitor {
 }
 impl ItemVisitor {
     pub fn new(out: Box<dyn Write>) -> Self {
-        ItemVisitor { out: out, level: 0 }
+        ItemVisitor { out, level: 0 }
     }
 }
 impl Visitor for ItemVisitor {
@@ -53,38 +53,35 @@ impl LineItemVisitor {
         hline_not_last: &'static str,
     ) -> Self {
         LineItemVisitor {
-            out: out,
-            vline_last: vline_last,
-            vline_not_last: vline_not_last,
-            hline_last: hline_last,
-            hline_not_last: hline_not_last,
+            out,
+            vline_last,
+            vline_not_last,
+            hline_last,
+            hline_not_last,
         }
     }
     fn make_vline(&self, keisen: &mut Vec<&str>, item: &Item) {
-        match item.parent {
-            Some(ref p) => {
-                if let Some(_) = p.borrow().parent {
-                    keisen.push(if p.borrow().is_last() {
-                        self.vline_last
-                    } else {
-                        self.vline_not_last
-                    });
-                }
-                self.make_vline(keisen, &p.borrow());
+        if let Some(ref p) = item.parent {
+            if p.borrow().parent.is_some() {
+                keisen.push(if p.borrow().is_last() {
+                    self.vline_last
+                } else {
+                    self.vline_not_last
+                });
             }
-            None => return,
+            self.make_vline(keisen, &p.borrow());
         }
     }
 }
 impl Visitor for LineItemVisitor {
     fn visit(&mut self, item: &Item) {
-        if let Some(_) = item.parent {
-            let mut keisen = Vec::new();
-            keisen.push(if item.is_last() {
+        if item.parent.is_some() {
+            let mut keisen = vec![if item.is_last() {
                 self.hline_last
             } else {
                 self.hline_not_last
-            });
+            }];
+
             self.make_vline(&mut keisen, item);
             keisen.reverse();
             for line in keisen {

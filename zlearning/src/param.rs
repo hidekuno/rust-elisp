@@ -20,13 +20,13 @@ enum ParamParse {
     Off,
 }
 impl ParamParse {
-    fn check_option(arg: &String) -> bool {
+    fn check_option(arg: &str) -> bool {
         if arg == "-l" || arg == "-m" || arg == "-b" || arg == "-d" || arg == "-f" {
             return true;
         }
-        return false;
+        false
     }
-    fn parse_level(arg: &String) -> Result<i32, String> {
+    fn parse_level(arg: &str) -> Result<i32, String> {
         match i32::from_str_radix(arg, 10) {
             Ok(n) => match n {
                 0..=MAX_LEVEL => Ok(n),
@@ -68,7 +68,7 @@ pub fn parse_arg(args: Vec<String>) -> Result<Config, String> {
     let mut parse = ParamParse::Off;
     let mut config = Config::new();
 
-    if args.len() < 1 {
+    if args.is_empty() {
         return Err(String::from("ivalid option"));
     }
     for arg in &args[1..] {
