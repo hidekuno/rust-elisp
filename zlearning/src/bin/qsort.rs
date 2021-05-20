@@ -41,9 +41,9 @@ fn main() {
     const N: usize = 32;
     let mut stack: [i32; N] = [0; N];
 
-    for i in 0..N {
+    for item in stack.iter_mut().take(N) {
         let y: i32 = rng.gen();
-        stack[i] = y.abs() / 100000;
+        *item = y.abs() / 100000;
     }
     qsort(&mut stack, 0, N - 1);
     println!("{:?}", stack);
@@ -59,7 +59,7 @@ fn main() {
 }
 
 #[allow(dead_code)]
-const RESULT: &'static str = "[5, 8, 12, 16, 18, 21, 23, 25, 28, 29, 30, 45, 46, 46, 50, 54, 55, 58, 59, 59, 62, 62, 68, 85, 85, 85, 86, 86, 87, 91, 95, 97]";
+const RESULT: &str = "[5, 8, 12, 16, 18, 21, 23, 25, 28, 29, 30, 45, 46, 46, 50, 54, 55, 58, 59, 59, 62, 62, 68, 85, 85, 85, 86, 86, 87, 91, 95, 97]";
 
 #[test]
 fn test_qsort_statck() {
@@ -80,8 +80,9 @@ fn test_qsort_heap() {
     ];
 
     let mut heap = Vec::new();
-    for i in 0..N {
-        heap.push(stack[i]);
+
+    for item in stack.iter().take(N) {
+        heap.push(*item);
     }
     qsort(&mut heap, 0, N - 1);
     assert_eq!(format!("{:?}", heap), RESULT);
