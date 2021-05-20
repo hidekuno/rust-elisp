@@ -78,10 +78,10 @@ fn set_loc(
     let mut iter = exp[param.0 as usize..].iter();
 
     if exp.len() == (param.1 + param.0) {
-        for i in 0..param.1 {
+        for item in loc.iter_mut().take(param.1) {
             if let Some(e) = iter.next() {
                 if let Expression::Float(f) = eval(&e, env)? {
-                    loc[i] = f;
+                    *item = f;
                 } else {
                     return Err(create_error!(ErrCode::E1003));
                 }

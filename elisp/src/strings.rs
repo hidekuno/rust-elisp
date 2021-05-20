@@ -87,13 +87,13 @@ pub fn to_str_radix(n: i64, r: u32) -> Option<String> {
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
         'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
     ];
-    if r < 2 || 36 < r {
+    if !(2..=36).contains(&r) {
         return None;
     }
     loop {
         let n = num % r as i64;
         s.push(tbl[n as usize]);
-        num = num / r as i64;
+        num /= r as i64;
         if 0 == num {
             break;
         }
@@ -118,7 +118,7 @@ pub fn do_radix(
     };
     // radix must be between 2 and 36 about scheme
     // rust, 0 and 36
-    if 2 > r || 36 < r {
+    if !(2..=36).contains(&r) {
         Err(create_error!(ErrCode::E1021))
     } else {
         f(&exp[1], env, r as u32)
@@ -169,7 +169,7 @@ fn strcmp(
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v = Vec::new();
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         let s = match eval(e, env)? {
             Expression::String(s) => s,
             _ => return Err(create_error!(ErrCode::E1015)),
@@ -183,7 +183,7 @@ fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v = String::new();
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         match eval(e, env)? {
             Expression::String(s) => v.push_str(&s.into_boxed_str()),
             _ => return Err(create_error!(ErrCode::E1015)),
@@ -201,7 +201,7 @@ fn str_length(
     }
     match eval(&exp[1], env)? {
         Expression::String(s) => Ok(Expression::Integer(f(s) as i64)),
-        _ => return Err(create_error!(ErrCode::E1015)),
+        _ => Err(create_error!(ErrCode::E1015)),
     }
 }
 fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
@@ -224,10 +224,10 @@ fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         Expression::String(s) => s,
         _ => return Err(create_error!(ErrCode::E1015)),
     };
-    match i64::from_str_radix(&s, r) {
-        Ok(n) => return Ok(Expression::Integer(n)),
-        Err(_) => {}
+    if let Ok(n) = i64::from_str_radix(&s, r) {
+        return Ok(Expression::Integer(n));
     }
+
     let v = if let Ok(n) = s.parse::<f64>() {
         Expression::Float(n)
     } else {
@@ -250,7 +250,7 @@ fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = &*(referlence_list!(l));
     let mut v = String::new();
 
-    for e in l.into_iter() {
+    for e in l.iter() {
         v.push(match eval(&e, env)? {
             Expression::Char(c) => c,
             _ => return Err(create_error!(ErrCode::E1019)),
@@ -313,7 +313,7 @@ fn symbol_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     match eval(&exp[1], env)? {
         Expression::Symbol(s) => Ok(Expression::String(s)),
-        _ => return Err(create_error!(ErrCode::E1004)),
+        _ => Err(create_error!(ErrCode::E1004)),
     }
 }
 fn string_symbol(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -397,10 +397,10 @@ enum StringScan {
     Right,
 }
 fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> ResultExpression {
-    fn resolv_scan(x: Option<usize>) -> ResultExpression {
+    fn resolv_scan(x: Option<usize>) -> Expression {
         match x {
-            Some(i) => Ok(Expression::Integer(i as i64)),
-            None => Ok(Expression::Boolean(false)),
+            Some(i) => Expression::Integer(i as i64),
+            None => Expression::Boolean(false),
         }
     }
     if exp.len() != 3 {
@@ -411,14 +411,14 @@ fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> Res
         _ => return Err(create_error!(ErrCode::E1015)),
     };
     match eval(&exp[2], env)? {
-        Expression::Char(c) => match direct {
+        Expression::Char(c) => Ok(match direct {
             StringScan::Left => resolv_scan(p.find(c)),
             StringScan::Right => resolv_scan(p.rfind(c)),
-        },
-        Expression::String(s) => match direct {
+        }),
+        Expression::String(s) => Ok(match direct {
             StringScan::Left => resolv_scan(p.find(&s)),
             StringScan::Right => resolv_scan(p.rfind(&s)),
-        },
+        }),
         _ => Err(create_error!(ErrCode::E1009)),
     }
 }

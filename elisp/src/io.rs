@@ -42,7 +42,7 @@ fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let v = eval(&exp[1], env)?;
     if let Expression::String(s) = v {
-        if false == Path::new(&s).exists() {
+        if !Path::new(&s).exists() {
             return Err(create_error!(ErrCode::E1014));
         }
         let file = match File::open(s) {
@@ -53,7 +53,7 @@ fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
             Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             Ok(meta) => meta,
         };
-        if true == meta.is_dir() {
+        if meta.is_dir() {
             return Err(create_error!(ErrCode::E1016));
         }
         let mut stream = BufReader::new(file);
@@ -68,7 +68,7 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         let v = eval(e, env)?;
         if let Expression::Char(c) = v {
             print!("{} ", c);
@@ -85,7 +85,7 @@ fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    print!("\n");
+    println!();
     Ok(Expression::Nil())
 }
 fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
@@ -108,7 +108,7 @@ fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> Resu
         expression.push(buffer.trim().to_string());
         let lisp = expression.join(" ");
 
-        if false == count_parenthesis(&lisp) {
+        if !count_parenthesis(&lisp) {
             continue;
         }
         let token = tokenize(&lisp);
@@ -149,7 +149,7 @@ fn read_char(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) ->
             }
         }
     }
-    parse(&vec![exp_char], &mut 1, env)
+    parse(&[exp_char], &mut 1, env)
 }
 #[cfg(test)]
 mod tests {

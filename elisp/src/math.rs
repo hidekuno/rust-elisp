@@ -50,7 +50,7 @@ where
         Ok(Expression::Float(to_f64(exp, env)?.exp()))
     });
     b.regist("log", |exp, env| {
-        Ok(Expression::Float(to_f64(exp, env)?.log((1.0 as f64).exp())))
+        Ok(Expression::Float(to_f64(exp, env)?.log((1.0_f64).exp())))
     });
     b.regist("truncate", |exp, env| {
         Ok(Expression::Float(to_f64(exp, env)?.trunc()))

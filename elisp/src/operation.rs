@@ -67,7 +67,7 @@ fn calc(
     if 2 == exp.len() {
         result = f(Number::Integer(x), result);
     } else {
-        for e in &exp[2 as usize..] {
+        for e in &exp[2..] {
             let param = Expression::to_number(&eval(e, env)?)?;
             result = f(result, param);
         }
@@ -84,7 +84,7 @@ fn select_one(
     }
     let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
 
-    for e in &exp[2 as usize..] {
+    for e in &exp[2..] {
         let param = Expression::to_number(&eval(e, env)?)?;
         result = f(result, param);
     }
@@ -100,7 +100,7 @@ fn cmp(
     }
     let mut v: [Number; 2] = [Number::Integer(0); 2];
 
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         v[i] = Expression::to_number(&eval(e, env)?)?;
     }
     Ok(Expression::Boolean(f(&v[0], &v[1])))
@@ -130,7 +130,7 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut x: [i64; 2] = [0; 2];
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         x[i] = match eval(e, env)? {
             Expression::Integer(v) => v,
             _ => return Err(create_error!(ErrCode::E1002)),
@@ -149,12 +149,12 @@ fn bit(exp: &[Expression], env: &Environment, f: fn(x: i64, y: i64) -> i64) -> R
     if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         let param = match eval(e, env)? {
             Expression::Integer(v) => v,
             _ => return Err(create_error!(ErrCode::E1002)),
         };
-        if first == true {
+        if first {
             result = param;
             first = false;
             continue;

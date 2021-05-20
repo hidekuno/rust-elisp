@@ -59,7 +59,7 @@ where
 }
 fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         list.push(eval(e, env)?);
     }
     Ok(Environment::create_list(list))
@@ -85,7 +85,7 @@ fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     match eval(&exp[1], env)? {
         Expression::List(l) => {
             let l = &*(referlence_list!(l));
-            Ok(Expression::Boolean(l.len() == 0))
+            Ok(Expression::Boolean(l.is_empty()))
         }
         _ => Ok(Expression::Boolean(false)),
     }
@@ -108,7 +108,7 @@ fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
     match eval(&exp[1], env)? {
         Expression::List(l) => {
             let l = &*(referlence_list!(l));
-            if l.len() <= 0 {
+            if l.is_empty() {
                 return Err(create_error!(ErrCode::E1011));
             }
             Ok(l[0].clone())
@@ -127,7 +127,7 @@ fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
             match l.len() {
                 0 => Err(create_error!(ErrCode::E1011)),
                 1 => Ok(Environment::create_list(Vec::new())),
-                _ => Ok(Environment::create_list(l[1 as usize..].to_vec())),
+                _ => Ok(Environment::create_list(l[1..].to_vec())),
             }
         }
         Expression::Pair(_car, cdr) => Ok((*cdr).clone()),
@@ -157,8 +157,7 @@ fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     if let Expression::List(l) = cdr {
         let l = referlence_list!(l);
-        let mut v: Vec<Expression> = Vec::new();
-        v.push(car);
+        let mut v: Vec<Expression> = vec![car];
         v.append(&mut l.to_vec());
         Ok(Environment::create_list(v))
     } else {
@@ -170,7 +169,7 @@ fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: Vec<Expression> = Vec::new();
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         match eval(e, env)? {
             Expression::List(l) => {
                 let l = referlence_list!(l);
@@ -191,7 +190,7 @@ fn append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
 
     let mut l = mut_list!(&rc);
-    for e in &exp[2 as usize..] {
+    for e in &exp[2..] {
         match eval(e, env)? {
             Expression::List(v) => {
                 let v = referlence_list!(v);
@@ -242,7 +241,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = &*(referlence_list!(l));
     let mut vec = Vec::new();
     for e in l {
-        if true == Expression::eq(&e, &other) {
+        if Expression::eq(&e, &other) {
             continue;
         }
         vec.push(e.clone());
@@ -262,7 +261,7 @@ fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut l = mut_list!(&rc);
     let mut vec = Vec::new();
     for e in l.iter() {
-        if true == Expression::eq(&e, &other) {
+        if Expression::eq(&e, &other) {
             continue;
         }
         vec.push(e.clone());
@@ -283,7 +282,7 @@ fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
                 _ => Ok(l[l.len() - 1].clone()),
             }
         }
-        Expression::Pair(car, _) => Ok(*car.clone()),
+        Expression::Pair(car, _) => Ok(*car),
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
@@ -306,7 +305,7 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut param: [i64; 4] = [0, 0, 1, 0];
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         match eval(e, env)? {
             Expression::Integer(v) => {
                 param[i] = v;
@@ -335,10 +334,10 @@ fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
         _e: &Expression,
     ) -> ResultExpression {
         result.push(eval(&Environment::create_list(sexp), env)?);
-        return Ok(Expression::Nil());
+        Ok(Expression::Nil())
     }
 
-    return do_list_proc(exp, env, func);
+    do_list_proc(exp, env, func)
 }
 fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
     fn func(
@@ -355,9 +354,9 @@ fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
             _ => return Err(create_error!(ErrCode::E1001)),
         }
-        return Ok(Expression::Nil());
+        Ok(Expression::Nil())
     }
-    return do_list_proc(exp, env, func);
+    do_list_proc(exp, env, func)
 }
 fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
@@ -389,12 +388,12 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     if let Expression::List(l) = eval(&exp[3], env)? {
         let l = &*(referlence_list!(l));
-        if l.len() == 0 {
+        if l.is_empty() {
             return eval(&exp[2], env);
         }
         let mut result = l[0].clone();
         // not carfully length,  safety
-        for e in &l[1 as usize..] {
+        for e in &l[1..] {
             result = eval(
                 &Environment::create_list(make_evaled_list(&callable, &[e.clone()], &Some(result))),
                 env,
@@ -459,9 +458,10 @@ pub fn make_evaled_list(
     let mut sexp: Vec<Expression> = Vec::new();
 
     fn set_evaled_list_inner(sexp: &mut Vec<Expression>, exp: &Expression) {
-        let mut ql: Vec<Expression> = Vec::new();
-        ql.push(Expression::BuildInFunction("quote".to_string(), quote));
-        ql.push(exp.clone());
+        let ql: Vec<Expression> = vec![
+            Expression::BuildInFunction("quote".to_string(), quote),
+            exp.clone(),
+        ];
         sexp.push(Environment::create_list(ql));
     }
 
@@ -509,7 +509,7 @@ fn do_list_proc(
                     e,
                 )?;
             }
-            return Ok(Environment::create_list(result));
+            Ok(Environment::create_list(result))
         }
         _ => Err(create_error!(ErrCode::E1005)),
     }
@@ -521,7 +521,7 @@ fn set_car(exp: &[Expression], env: &Environment) -> ResultExpression {
     match eval(&exp[1], env)? {
         Expression::List(r) => {
             let mut l = mut_list!(r);
-            if l.len() <= 0 {
+            if l.is_empty() {
                 return Err(create_error!(ErrCode::E1011));
             }
             l[0] = eval(&exp[2], env)?;
@@ -537,7 +537,7 @@ fn set_cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
     match eval(&exp[1], env)? {
         Expression::List(r) => {
             let mut l = mut_list!(r);
-            if l.len() <= 0 {
+            if l.is_empty() {
                 return Err(create_error!(ErrCode::E1011));
             }
 
@@ -587,54 +587,74 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
         v: &mut Vec<Expression>,
     ) -> Result<(), Error> {
         if exp.len() == 2 {
-            Ok(match &kind {
+            match &kind {
                 SortKind::Stable(_) => v.sort(),
                 SortKind::Unstable(_) => v.sort_unstable(),
-            })
+            };
+            Ok(())
         } else {
             let func = eval(&exp[2], env)?;
             match func {
                 Expression::BuildInFunction(ref s, _) => match &s[..] {
-                    "string>?" | "string>=?" => return Ok(v.sort_by(|a, b| b.cmp(a))),
-                    "string<?" | "string<=?" => return Ok(v.sort()),
-                    "char>?" | "char>=?" => return Ok(v.sort_by(|a, b| b.cmp(a))),
-                    "char<?" | "char<=?" => return Ok(v.sort()),
-                    ">=" | ">" => return Ok(v.sort_by(|a, b| b.cmp(a))),
-                    "<" | "<=" => return Ok(v.sort()),
+                    "string>?" | "string>=?" => {
+                        return {
+                            v.sort_by(|a, b| b.cmp(a));
+                            Ok(())
+                        }
+                    }
+                    "string<?" | "string<=?" => {
+                        return {
+                            v.sort();
+                            Ok(())
+                        }
+                    }
+                    "char>?" | "char>=?" => {
+                        return {
+                            v.sort_by(|a, b| b.cmp(a));
+                            Ok(())
+                        }
+                    }
+                    "char<?" | "char<=?" => {
+                        return {
+                            v.sort();
+                            Ok(())
+                        }
+                    }
+                    ">=" | ">" => {
+                        return {
+                            v.sort_by(|a, b| b.cmp(a));
+                            Ok(())
+                        }
+                    }
+                    "<" | "<=" => {
+                        return {
+                            v.sort();
+                            Ok(())
+                        }
+                    }
                     _ => {}
                 },
                 Expression::Function(_) => {}
                 _ => return Err(create_error!(ErrCode::E1006)),
             }
             let sort_by_impl = |a: &Expression, b: &Expression| {
-                let mut v = Vec::new();
-                v.push(func.clone());
-                v.push(a.clone());
-                v.push(b.clone());
+                let v = vec![func.clone(), a.clone(), b.clone()];
+
                 let e = match &func {
                     Expression::BuildInFunction(_, f) => f(&v, env),
                     Expression::Function(f) => f.execute(&v, env),
                     _ => Ok(Expression::Nil()),
                 };
-                match e {
-                    Ok(v) => match v {
-                        Expression::Boolean(b) => {
-                            return if b == true {
-                                Ordering::Less
-                            } else {
-                                Ordering::Greater
-                            };
-                        }
-                        _ => {}
-                    },
-                    Err(_) => {}
-                };
-                return Ordering::Less;
+                if let Ok(Expression::Boolean(b)) = e {
+                    return if b { Ordering::Less } else { Ordering::Greater };
+                }
+                Ordering::Less
             };
-            Ok(match kind {
+            match kind {
                 SortKind::Stable(_) => v.sort_by(sort_by_impl),
                 SortKind::Unstable(_) => v.sort_unstable_by(sort_by_impl),
-            })
+            };
+            Ok(())
         }
     }
 
@@ -659,12 +679,12 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
         }
         ListProcKind::Effect => {
             _sort_impl(exp, env, kind, &mut *(mut_list!(rc)))?;
-            Ok(Expression::List(rc.clone()))
+            Ok(Expression::List(rc))
         }
     }
 }
 fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
-    fn merge_iter(l: &Vec<Expression>, m: &Vec<Expression>) -> Expression {
+    fn merge_iter(l: &[Expression], m: &[Expression]) -> Expression {
         let mut v = Vec::new();
         let (mut i, mut j) = (0, 0);
 
@@ -696,8 +716,8 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
         let mut v = Vec::new();
         let (mut i, mut j) = (0, 0);
 
-        let mut ql = Vec::new();
-        ql.push(func.clone());
+        let mut ql = vec![func.clone()];
+
         loop {
             if l.len() <= i || m.len() <= j {
                 break;
@@ -712,12 +732,12 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
             match r {
                 Ok(e) => match e {
                     Expression::Boolean(b) => {
-                        if b == true {
+                        if b {
                             v.push(l[i].clone());
-                            i = i + 1;
+                            i += 1;
                         } else {
                             v.push(m[j].clone());
-                            j = j + 1;
+                            j += 1;
                         }
                     }
                     _ => return Err(create_error!(ErrCode::E1001)),
@@ -775,10 +795,8 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         let func = eval(&exp[2], env)?;
         let cmp = |a: &Expression, b: &Expression| {
-            let mut v = Vec::new();
-            v.push(func.clone());
-            v.push(a.clone());
-            v.push(b.clone());
+            let v = vec![func.clone(), a.clone(), b.clone()];
+
             let e = match &func {
                 Expression::BuildInFunction(_, f) => f(&v, env),
                 Expression::Function(f) => f.execute(&v, env),
@@ -811,7 +829,7 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
                 let b = &l[..].windows(2).all(|w| cmp(&w[0], &w[1]));
                 Ok(Expression::Boolean(*b))
             }
-            _ => return Err(create_error!(ErrCode::E1006)),
+            _ => Err(create_error!(ErrCode::E1006)),
         }
     }
 }

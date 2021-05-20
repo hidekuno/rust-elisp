@@ -18,7 +18,7 @@ pub struct Coord<T> {
 }
 impl<T> Coord<T> {
     pub fn new(x: T, y: T) -> Self {
-        Coord { x: x, y: y }
+        Coord { x, y }
     }
     pub fn sum(&self) -> T
     where

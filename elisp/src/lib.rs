@@ -37,7 +37,7 @@ pub fn do_lisp(program: &str) -> String {
 }
 #[cfg(test)]
 pub fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
-    match lisp::do_core_logic(&program.into(), env) {
+    match lisp::do_core_logic(&program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
     }

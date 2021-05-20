@@ -74,7 +74,7 @@ fn odd_even(exp: &[Expression], env: &Environment, f: fn(i64) -> bool) -> Result
     }
     match eval(&exp[1], env)? {
         Expression::Integer(i) => Ok(Expression::Boolean(f(i))),
-        _ => return Err(create_error!(ErrCode::E1002)),
+        _ => Err(create_error!(ErrCode::E1002)),
     }
 }
 fn is_sign(exp: &[Expression], env: &Environment, f: fn(&Number) -> bool) -> ResultExpression {
@@ -118,8 +118,8 @@ fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     let result = eval(&exp[1], env);
     let end = start.elapsed();
 
-    println!("{}.{:03}(s)", end.as_secs(), end.subsec_nanos() / 1_000_000);
-    return result;
+    println!("{}.{:03}(s)", end.as_secs(), end.subsec_millis());
+    result
 }
 pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {

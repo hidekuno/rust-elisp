@@ -91,7 +91,7 @@ fn charcmp(
     }
     let mut v: [char; 2] = [' '; 2];
 
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         v[i] = match eval(e, env)? {
             Expression::Char(c) => c,
             _ => return Err(create_error!(ErrCode::E1019)),

@@ -82,23 +82,20 @@ impl Environment {
         self.core.borrow_mut().regist(key, exp);
     }
     #[inline]
-    pub fn find(&self, key: &String) -> Option<Expression> {
+    pub fn find(&self, key: &str) -> Option<Expression> {
         self.core.borrow().find(key)
     }
     #[inline]
-    pub fn update(&self, key: &String, exp: Expression) {
+    pub fn update(&self, key: &str, exp: Expression) {
         self.core.borrow_mut().update(key, exp);
     }
     pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
         match self.globals.borrow().builtin_tbl.get(key) {
-            Some(f) => Some(f.clone()),
+            Some(f) => Some(*f),
             None => None,
         }
     }
-    pub fn get_builtin_ext_func(
-        &self,
-        key: &str,
-    ) -> Option<Rc<dyn Fn(&[Expression], &Environment) -> ResultExpression + 'static>> {
+    pub fn get_builtin_ext_func(&self, key: &str) -> Option<Rc<ExtFunction>> {
         match self.globals.borrow().builtin_tbl_ext.get(key) {
             Some(f) => Some(f.clone()),
             None => None,
@@ -126,16 +123,10 @@ impl Environment {
         self.globals.borrow_mut().force_stop
     }
     pub fn get_function_list(&self) -> Option<String> {
-        self.get_environment_list(|_k, v| match v {
-            Expression::Function(_) => true,
-            _ => false,
-        })
+        self.get_environment_list(|_k, v| matches!(v, Expression::Function(_)))
     }
     pub fn get_variable_list(&self) -> Option<String> {
-        self.get_environment_list(|_k, v| match v {
-            Expression::Function(_) => false,
-            _ => true,
-        })
+        self.get_environment_list(|_k, v| !matches!(v, Expression::Function(_)))
     }
     fn get_environment_list(&self, f: fn(&String, &Expression) -> bool) -> Option<String> {
         let mut list = Vec::new();
@@ -145,7 +136,7 @@ impl Environment {
                 list.push(k.as_str());
             }
         }
-        if list.len() == 0 {
+        if list.is_empty() {
             None
         } else {
             Some(list.join("\n"))
@@ -163,7 +154,7 @@ impl Environment {
         let mut s = String::new();
         for (k, _) in self.globals.borrow().builtin_tbl_ext.iter() {
             s.push_str(k);
-            s.push_str("\n");
+            s.push('\n');
         }
         s
     }
@@ -174,5 +165,10 @@ impl Environment {
     #[inline]
     pub fn get_cont(&self) -> Option<Expression> {
         return self.globals.borrow().cont.clone();
+    }
+}
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
     }
 }
