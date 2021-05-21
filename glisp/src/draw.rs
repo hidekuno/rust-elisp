@@ -42,11 +42,7 @@ struct Color {
 }
 impl Color {
     pub fn new(red: f64, green: f64, blue: f64) -> Self {
-        Color {
-            red: red,
-            green: green,
-            blue: blue,
-        }
+        Color { red, green, blue }
     }
 }
 // ----------------------------------------------------------------
@@ -82,7 +78,7 @@ impl DrawTable {
     pub fn regist(&self, key: String, surface: Rc<dyn ImageData>) {
         self.core.borrow_mut().image_table.insert(key, surface);
     }
-    pub fn find(&self, key: &String) -> Option<Rc<dyn ImageData>> {
+    pub fn find(&self, key: &str) -> Option<Rc<dyn ImageData>> {
         match self.core.borrow().image_table.get(key) {
             Some(v) => Some(v.clone()),
             None => None,
@@ -114,7 +110,7 @@ pub struct ImageSurfaceWrapper {
 }
 impl ImageSurfaceWrapper {
     pub fn new(surface: ImageSurface) -> ImageSurfaceWrapper {
-        ImageSurfaceWrapper { surface: surface }
+        ImageSurfaceWrapper { surface }
     }
 }
 impl ImageData for ImageSurfaceWrapper {
@@ -133,7 +129,7 @@ pub struct PixbufWrapper {
 }
 impl PixbufWrapper {
     pub fn new(pixbuf: Pixbuf) -> PixbufWrapper {
-        PixbufWrapper { pixbuf: pixbuf }
+        PixbufWrapper { pixbuf }
     }
 }
 impl ImageData for PixbufWrapper {
@@ -320,7 +316,7 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
 // save surface(as PNG file)
 // ----------------------------------------------------------------
 pub fn save_png_file(draw_table: &DrawTable, filename: &Path, overwrite: bool) -> String {
-    if filename.exists() && overwrite == false {
+    if filename.exists() && !overwrite {
         return format!("\"{}\" is exists", filename.to_str().unwrap());
     }
     let mut file = match File::create(filename) {
@@ -366,8 +362,8 @@ pub fn create_draw_table() -> DrawTable {
         core: Rc::new(RefCell::new(Graphics {
             image_table: HashMap::new(),
             line_width: DEFALUT_LINE_WIDTH,
-            fg: fg,
-            bg: bg,
+            fg,
+            bg,
         })),
         surface: Rc::new(surface),
     }

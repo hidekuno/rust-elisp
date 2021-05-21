@@ -61,9 +61,9 @@ impl ControlWidget {
 
         ControlWidget {
             canvas: gtk::DrawingArea::new(),
-            text_view: text_view,
+            text_view,
             status_bar: gtk::Statusbar::new(),
-            source_view: source_view,
+            source_view,
         }
     }
     fn canvas(&self) -> &gtk::DrawingArea {
@@ -171,7 +171,7 @@ fn create_environment_menu(
     let dialog = gtk::Dialog::new();
     dialog.set_title(menu);
     dialog.set_transient_for(Some(window));
-    dialog.add_button("Ok", gtk::ResponseType::Ok.into());
+    dialog.add_button("Ok", gtk::ResponseType::Ok);
 
     let label = gtk::Label::new(None);
     label.set_selectable(true);
@@ -225,7 +225,7 @@ fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk
     let dialog = gtk::Dialog::new();
     dialog.set_title("Search");
     dialog.set_transient_for(Some(window));
-    dialog.add_button("Ok", gtk::ResponseType::Ok.into());
+    dialog.add_button("Ok", gtk::ResponseType::Ok);
 
     let entry = gtk::SearchEntry::new();
     let content_area = dialog.get_content_area();
@@ -306,7 +306,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         }
         Inhibit(true)
     });
-    let c = gr.clone();
+    let c = gr;
     canvas.connect_button_release_event(move |w, e| {
         if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
             let (x, y) = e.get_position();

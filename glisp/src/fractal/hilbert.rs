@@ -15,12 +15,7 @@ struct Coord {
 }
 impl Coord {
     fn new(oldx: f64, oldy: f64, x: f64, y: f64) -> Self {
-        Coord {
-            oldx: oldx,
-            oldy: oldy,
-            x: x,
-            y: y,
-        }
+        Coord { oldx, oldy, x, y }
     }
 }
 pub struct Hilbert {
@@ -31,7 +26,7 @@ impl Hilbert {
     pub fn new(draw_line: DrawLine) -> Self {
         Hilbert {
             lgth: 0.0,
-            draw_line: draw_line,
+            draw_line,
         }
     }
     fn draw(&self, coord: &mut Coord) {
@@ -41,7 +36,6 @@ impl Hilbert {
     }
     fn ldr(&self, c: i32, coord: &mut Coord) {
         if c == 0 {
-            return;
         } else {
             self.dlu(c - 1, coord);
             coord.x -= self.lgth;
@@ -60,7 +54,6 @@ impl Hilbert {
     }
     fn urd(&self, c: i32, coord: &mut Coord) {
         if c == 0 {
-            return;
         } else {
             self.rul(c - 1, coord);
             coord.y -= self.lgth;
@@ -79,7 +72,6 @@ impl Hilbert {
     }
     fn rul(&self, c: i32, coord: &mut Coord) {
         if c == 0 {
-            return;
         } else {
             self.urd(c - 1, coord);
             coord.x += self.lgth;
@@ -98,7 +90,6 @@ impl Hilbert {
     }
     fn dlu(&self, c: i32, coord: &mut Coord) {
         if c == 0 {
-            return;
         } else {
             self.ldr(c - 1, coord);
             coord.y += self.lgth;
@@ -123,7 +114,7 @@ impl FractalMut for Hilbert {
     fn do_demo(&mut self, c: i32) {
         let width = 1.0;
         self.lgth = ((width / 2.0) as f64).powi(c);
-        let y = (width - (self.lgth * (2.0 as f64).powi(c - 1))) / 3.6;
+        let y = (width - (self.lgth * (2.0_f64).powi(c - 1))) / 3.6;
         let x = width - y;
         let oldx = x;
         let oldy = y;

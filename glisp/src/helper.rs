@@ -38,14 +38,14 @@ impl History {
     pub fn menu(&self) -> &gtk::MenuItem {
         &self.menu
     }
-    pub fn push(&self, exp: &String, tb: &gtk::TextBuffer) {
+    pub fn push(&self, exp: &str, tb: &gtk::TextBuffer) {
         let s = String::from(exp).replace("\n", " ");
         let c = if let Some(ref v) = s.get(0..HISTORY_COL_SIZE) {
             gtk::MenuItem::with_mnemonic(format!("{} ..", v).as_str())
         } else {
             gtk::MenuItem::with_mnemonic(s.as_str())
         };
-        let exp_ = exp.clone();
+        let exp_ = exp.to_string();
         let exp_ = exp_.into_boxed_str();
         let text_buffer = tb.clone();
         c.connect_activate(move |_| {
@@ -60,7 +60,7 @@ impl History {
                 w.append(&c);
 
                 let mut h = self.children.borrow_mut();
-                h.push_front((c, exp.clone()));
+                h.push_front((c, exp.to_string()));
                 if h.len() > self.max_item {
                     if let Some((c, _)) = h.pop_back() {
                         w.remove(&c);
@@ -70,7 +70,7 @@ impl History {
             }
         }
     }
-    pub fn is_once(&self, exp: &String) -> bool {
+    pub fn is_once(&self, exp: &str) -> bool {
         for (_, e) in self.children.borrow().iter() {
             if e == exp {
                 return true;
@@ -129,10 +129,10 @@ impl SourceView {
                             state = Status::String;
                         }
                         _ => {
-                            if true == c.is_digit(10) {
+                            if c.is_digit(10) {
                                 vec = Some(start.clone());
                                 state = Status::Number;
-                            } else if true == c.is_lowercase() {
+                            } else if c.is_lowercase() {
                                 vec = Some(start.clone());
                                 state = Status::Keyword;
                             } else {
@@ -162,8 +162,8 @@ impl SourceView {
                         }
                         _ => {}
                     },
-                    Status::String => match c {
-                        '"' => {
+                    Status::String => {
+                        if c == '"' {
                             start.forward_char();
                             if let Some(s) = &vec {
                                 text_buffer.apply_tag(&*(self.string), s, &start);
@@ -171,13 +171,12 @@ impl SourceView {
                             state = Status::Ready;
                             continue;
                         }
-                        _ => {}
-                    },
+                    }
                 }
             } else {
                 break;
             }
-            if false == start.forward_char() {
+            if !start.forward_char() {
                 break;
             }
         }
@@ -194,18 +193,18 @@ impl SourceView {
                 }
             }
         }
-        return false;
+        false
     }
     fn is_number(&self, s: &gtk::TextIter, r: &gtk::TextIter) -> bool {
         if let Some(w) = s.get_slice(r) {
             for c in w.as_str().chars() {
-                if false == c.is_digit(10) && c != '.' {
+                if !c.is_digit(10) && c != '.' {
                     return false;
                 }
             }
             return true;
         }
-        return false;
+        false
     }
     pub fn do_highlight(&self, text_buffer: &gtk::TextBuffer) {
         // println!("{}", std::mem::size_of_val(&self.string));
@@ -278,14 +277,14 @@ pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
         for dir in vec {
             path.push(dir);
         }
-        if false == path.as_path().exists() {
+        if !path.as_path().exists() {
             return Ok(None);
         }
 
-        if true == path.is_file() {
+        if path.is_file() {
             let f = path.to_str().unwrap();
             Ok(Some(format!("(load-file \"{}\")", f)))
-        } else if true == path.is_dir() {
+        } else if path.is_dir() {
             for entry in fs::read_dir(path)? {
                 let dir = entry?;
                 let path = dir.path();
