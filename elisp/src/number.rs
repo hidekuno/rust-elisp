@@ -26,8 +26,8 @@ pub struct RatParseError {
     pub code: ErrCode,
 }
 impl fmt::Display for RatParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code.as_str())
+    fn fmt(&self, format: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(format, "{}", self.code.as_str())
     }
 }
 impl Error for RatParseError {

@@ -68,33 +68,33 @@ pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     eval(&exp[1], env)
 }
-fn odd_even(exp: &[Expression], env: &Environment, f: fn(i64) -> bool) -> ResultExpression {
+fn odd_even(exp: &[Expression], env: &Environment, func: fn(i64) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::Integer(i) => Ok(Expression::Boolean(f(i))),
+        Expression::Integer(i) => Ok(Expression::Boolean(func(i))),
         _ => Err(create_error!(ErrCode::E1002)),
     }
 }
-fn is_sign(exp: &[Expression], env: &Environment, f: fn(&Number) -> bool) -> ResultExpression {
+fn is_sign(exp: &[Expression], env: &Environment, func: fn(&Number) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = Expression::to_number(&eval(&exp[1], env)?)?;
 
-    Ok(Expression::Boolean(f(&v)))
+    Ok(Expression::Boolean(func(&v)))
 }
 fn is_type(
     exp: &[Expression],
     env: &Environment,
-    f: fn(e: &Expression) -> bool,
+    func: fn(e: &Expression) -> bool,
 ) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = eval(&exp[1], env)?;
-    Ok(Expression::Boolean(f(&v)))
+    Ok(Expression::Boolean(func(&v)))
 }
 fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
     //srfi-98

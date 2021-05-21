@@ -122,11 +122,11 @@ impl Environment {
     pub fn get_variable_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| !matches!(v, Expression::Function(_)))
     }
-    fn get_environment_list(&self, f: fn(&String, &Expression) -> bool) -> Option<String> {
+    fn get_environment_list(&self, func: fn(&String, &Expression) -> bool) -> Option<String> {
         let mut list = Vec::new();
         let e = self.core.borrow();
         for (k, v) in e.env_tbl.iter() {
-            if f(k, v) {
+            if func(k, v) {
                 list.push(k.as_str());
             }
         }

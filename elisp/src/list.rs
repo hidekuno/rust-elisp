@@ -204,7 +204,7 @@ fn append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
 fn take_drop(
     exp: &[Expression],
     env: &Environment,
-    f: fn(l: &Vec<Expression>, n: usize) -> &[Expression],
+    func: fn(l: &Vec<Expression>, n: usize) -> &[Expression],
 ) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -224,7 +224,7 @@ fn take_drop(
         return Err(create_error!(ErrCode::E1011));
     }
     let mut vec = Vec::new();
-    vec.extend_from_slice(f(&l, n as usize));
+    vec.extend_from_slice(func(&l, n as usize));
 
     Ok(Environment::create_list(vec))
 }
@@ -684,59 +684,59 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
     }
 }
 fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
-    fn merge_iter(l: &[Expression], m: &[Expression]) -> Expression {
+    fn merge_iter(l1: &[Expression], l2: &[Expression]) -> Expression {
         let mut v = Vec::new();
         let (mut i, mut j) = (0, 0);
 
         loop {
-            if l.len() <= i || m.len() <= j {
+            if l1.len() <= i || l2.len() <= j {
                 break;
             }
-            match l[i].cmp(&m[j]) {
+            match l1[i].cmp(&l2[j]) {
                 Ordering::Less | Ordering::Equal => {
-                    v.push(l[i].clone());
-                    i = i + 1;
+                    v.push(l1[i].clone());
+                    i += 1;
                 }
                 Ordering::Greater => {
-                    v.push(m[j].clone());
-                    j = j + 1;
+                    v.push(l2[j].clone());
+                    j += 1;
                 }
             }
         }
-        v.extend_from_slice(&l[i..]);
-        v.extend_from_slice(&m[j..]);
+        v.extend_from_slice(&l1[i..]);
+        v.extend_from_slice(&l2[j..]);
         Environment::create_list(v)
     }
     fn merge_iter_by(
-        l: &Vec<Expression>,
-        m: &Vec<Expression>,
+        l1: &[Expression],
+        l2: &[Expression],
         env: &Environment,
         func: Expression,
     ) -> ResultExpression {
-        let mut v = Vec::new();
+        let mut vec = Vec::new();
         let (mut i, mut j) = (0, 0);
 
         let mut ql = vec![func.clone()];
 
         loop {
-            if l.len() <= i || m.len() <= j {
+            if l1.len() <= i || l2.len() <= j {
                 break;
             }
-            ql.push(l[i].clone());
-            ql.push(m[j].clone());
-            let r = match &func {
+            ql.push(l1[i].clone());
+            ql.push(l2[j].clone());
+            let result = match &func {
                 Expression::BuildInFunction(_, f) => f(&ql, env),
                 Expression::Function(f) => f.execute(&ql, env),
                 _ => return Err(create_error!(ErrCode::E1006)),
             };
-            match r {
+            match result {
                 Ok(e) => match e {
                     Expression::Boolean(b) => {
                         if b {
-                            v.push(l[i].clone());
+                            vec.push(l1[i].clone());
                             i += 1;
                         } else {
-                            v.push(m[j].clone());
+                            vec.push(l2[j].clone());
                             j += 1;
                         }
                     }
@@ -747,25 +747,25 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
             ql.pop();
             ql.pop();
         }
-        v.extend_from_slice(&l[i..]);
-        v.extend_from_slice(&m[j..]);
-        Ok(Environment::create_list(v))
+        vec.extend_from_slice(&l1[i..]);
+        vec.extend_from_slice(&l2[j..]);
+        Ok(Environment::create_list(vec))
     }
 
     if 3 > exp.len() || 4 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let l = match eval(&exp[1], env)? {
+    let l1 = match eval(&exp[1], env)? {
         Expression::List(l) => l,
         _ => return Err(create_error!(ErrCode::E1005)),
     };
-    let l = &*(referlence_list!(l));
+    let l1 = &*(referlence_list!(l1));
 
-    let m = match eval(&exp[2], env)? {
+    let l2 = match eval(&exp[2], env)? {
         Expression::List(l) => l,
         _ => return Err(create_error!(ErrCode::E1005)),
     };
-    let m = &*(referlence_list!(m));
+    let l2 = &*(referlence_list!(l2));
 
     if exp.len() == 4 {
         let func = eval(&exp[3], env)?;
@@ -774,9 +774,9 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
             Expression::Function(_) => {}
             _ => return Err(create_error!(ErrCode::E1006)),
         }
-        merge_iter_by(l, m, env, func)
+        merge_iter_by(l1, l2, env, func)
     } else {
-        Ok(merge_iter(l, m))
+        Ok(merge_iter(l1, l2))
     }
 }
 fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {

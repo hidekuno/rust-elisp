@@ -103,7 +103,7 @@ pub fn to_str_radix(n: i64, r: u32) -> Option<String> {
 pub fn do_radix(
     exp: &[Expression],
     env: &Environment,
-    f: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
+    func: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
 ) -> ResultExpression {
     if 2 > exp.len() || 3 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -121,7 +121,7 @@ pub fn do_radix(
     if !(2..=36).contains(&r) {
         Err(create_error!(ErrCode::E1021))
     } else {
-        f(&exp[1], env, r as u32)
+        func(&exp[1], env, r as u32)
     }
 }
 fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -163,7 +163,7 @@ fn string(exp: &[Expression], env: &Environment) -> ResultExpression {
 fn strcmp(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: &String, y: &String) -> bool,
+    func: fn(x: &String, y: &String) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -176,7 +176,7 @@ fn strcmp(
         };
         v.push(s);
     }
-    Ok(Expression::Boolean(f(&v[0], &v[1])))
+    Ok(Expression::Boolean(func(&v[0], &v[1])))
 }
 fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 3 > exp.len() {
@@ -194,13 +194,13 @@ fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
 fn str_length(
     exp: &[Expression],
     env: &Environment,
-    f: fn(s: String) -> usize,
+    func: fn(s: String) -> usize,
 ) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => Ok(Expression::Integer(f(s) as i64)),
+        Expression::String(s) => Ok(Expression::Integer(func(s) as i64)),
         _ => Err(create_error!(ErrCode::E1015)),
     }
 }
