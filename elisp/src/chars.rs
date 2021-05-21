@@ -84,25 +84,25 @@ where
 fn charcmp(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: char, y: char) -> bool,
+    func: fn(x: char, y: char) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: [char; 2] = [' '; 2];
 
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         v[i] = match eval(e, env)? {
             Expression::Char(c) => c,
             _ => return Err(create_error!(ErrCode::E1019)),
         }
     }
-    Ok(Expression::Boolean(f(v[0], v[1])))
+    Ok(Expression::Boolean(func(v[0], v[1])))
 }
 fn char_kind(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: char) -> Expression,
+    func: fn(x: char) -> Expression,
 ) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -111,7 +111,7 @@ fn char_kind(
         Expression::Char(c) => c,
         _ => return Err(create_error!(ErrCode::E1019)),
     };
-    Ok(f(c))
+    Ok(func(c))
 }
 fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {

@@ -59,19 +59,19 @@ impl SimpleEnv {
         if let Some(p) = parent {
             SimpleEnv {
                 env_tbl: Map::new(),
-                parent: Some(p.clone()),
+                parent: Some(p),
             }
         } else {
             SimpleEnv {
                 env_tbl: Map::new(),
-                parent: parent,
+                parent,
             }
         }
     }
     pub fn regist(&mut self, key: String, exp: Expression) {
         self.env_tbl.insert(key, exp);
     }
-    pub fn find(&self, key: &String) -> Option<Expression> {
+    pub fn find(&self, key: &str) -> Option<Expression> {
         match self.env_tbl.get(key) {
             Some(v) => Some(v.clone()),
             None => match self.parent {
@@ -80,14 +80,11 @@ impl SimpleEnv {
             },
         }
     }
-    pub fn update(&mut self, key: &String, exp: Expression) {
+    pub fn update(&mut self, key: &str, exp: Expression) {
         if self.env_tbl.contains_key(key) {
             self.env_tbl.insert(key.to_string(), exp);
-        } else {
-            match self.parent {
-                Some(ref p) => mut_env!(p).update(key, exp),
-                None => {}
-            }
+        } else if let Some(ref p) = self.parent {
+            mut_env!(p).update(key, exp)
         }
     }
 }

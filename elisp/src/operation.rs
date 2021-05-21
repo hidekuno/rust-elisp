@@ -56,7 +56,7 @@ where
 fn calc(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: Number, y: Number) -> Number,
+    func: fn(x: Number, y: Number) -> Number,
     x: i64,
 ) -> ResultExpression {
     if 1 >= exp.len() {
@@ -65,11 +65,11 @@ fn calc(
     let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
 
     if 2 == exp.len() {
-        result = f(Number::Integer(x), result);
+        result = func(Number::Integer(x), result);
     } else {
-        for e in &exp[2 as usize..] {
+        for e in &exp[2..] {
             let param = Expression::to_number(&eval(e, env)?)?;
-            result = f(result, param);
+            result = func(result, param);
         }
     }
     Ok(Number::to_expression(&result))
@@ -77,38 +77,38 @@ fn calc(
 fn select_one(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: Number, y: Number) -> Number,
+    func: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
     if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
 
-    for e in &exp[2 as usize..] {
+    for e in &exp[2..] {
         let param = Expression::to_number(&eval(e, env)?)?;
-        result = f(result, param);
+        result = func(result, param);
     }
     Ok(Number::to_expression(&result))
 }
 fn cmp(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: &Number, y: &Number) -> bool,
+    func: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: [Number; 2] = [Number::Integer(0); 2];
 
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         v[i] = Expression::to_number(&eval(e, env)?)?;
     }
-    Ok(Expression::Boolean(f(&v[0], &v[1])))
+    Ok(Expression::Boolean(func(&v[0], &v[1])))
 }
 fn divide(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: &i64, y: &i64) -> i64,
+    func: fn(x: &i64, y: &i64) -> i64,
 ) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -119,7 +119,7 @@ fn divide(
             if y == 0 {
                 Err(create_error!(ErrCode::E1013))
             } else {
-                Ok(Expression::Integer(f(&x, &y)))
+                Ok(Expression::Integer(func(&x, &y)))
             }
         }
         (_, _) => Err(create_error!(ErrCode::E1002)),
@@ -130,7 +130,7 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut x: [i64; 2] = [0; 2];
-    for (i, e) in exp[1 as usize..].iter().enumerate() {
+    for (i, e) in exp[1..].iter().enumerate() {
         x[i] = match eval(e, env)? {
             Expression::Integer(v) => v,
             _ => return Err(create_error!(ErrCode::E1002)),
@@ -142,24 +142,24 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
         x[0] >> x[1].abs()
     }))
 }
-fn bit(exp: &[Expression], env: &Environment, f: fn(x: i64, y: i64) -> i64) -> ResultExpression {
+fn bit(exp: &[Expression], env: &Environment, func: fn(x: i64, y: i64) -> i64) -> ResultExpression {
     let mut result: i64 = 0;
     let mut first: bool = true;
 
     if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1 as usize..] {
+    for e in &exp[1..] {
         let param = match eval(e, env)? {
             Expression::Integer(v) => v,
             _ => return Err(create_error!(ErrCode::E1002)),
         };
-        if first == true {
+        if first {
             result = param;
             first = false;
             continue;
         }
-        result = f(result, param);
+        result = func(result, param);
     }
     Ok(Expression::Integer(result))
 }
@@ -176,7 +176,7 @@ fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
 fn bitcount(
     exp: &[Expression],
     env: &Environment,
-    f: fn(x: i64, y: i64) -> bool,
+    func: fn(x: i64, y: i64) -> bool,
 ) -> ResultExpression {
     if exp.len() != 2 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
@@ -189,7 +189,7 @@ fn bitcount(
 
                 let mut n = 0;
                 for i in 0..64 {
-                    if f(x, i) {
+                    if func(x, i) {
                         n += 1;
                     }
                 }

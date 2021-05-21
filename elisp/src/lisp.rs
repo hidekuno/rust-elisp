@@ -66,11 +66,11 @@ pub enum ErrCode {
     E1021,
     E9000,
     E9999,
-    CONT,
+    Cont,
 }
 impl ErrCode {
     pub fn as_str(&self) -> &'static str {
-        return match self {
+        match self {
             ErrCode::E0001 => "E0001",
             ErrCode::E0002 => "E0002",
             ErrCode::E0003 => "E0003",
@@ -98,12 +98,12 @@ impl ErrCode {
             ErrCode::E1021 => "E1021",
             ErrCode::E9000 => "E9000",
             ErrCode::E9999 => "E9999",
-            ErrCode::CONT => "CONT",
-        };
+            ErrCode::Cont => "CONT",
+        }
     }
 }
 impl PartialEq<ErrCode> for ErrCode {
-    fn eq(&self, other: &ErrCode) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.as_str() == other.as_str()
     }
 }
@@ -137,7 +137,7 @@ lazy_static! {
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
         e.insert(ErrCode::E9999.as_str(), "System Panic");
-        e.insert(ErrCode::CONT.as_str(), "Appear Continuation");
+        e.insert(ErrCode::Cont.as_str(), "Appear Continuation");
         e
     };
 }
@@ -199,7 +199,7 @@ macro_rules! create_error_value {
 macro_rules! create_continuation {
     ($e: expr, $n:expr) => {
         Error {
-            code: ErrCode::CONT,
+            code: ErrCode::Cont,
             line: line!(),
             file: file!(),
             value: Some($n.to_string()),
@@ -239,107 +239,46 @@ pub enum Expression {
 }
 impl Expression {
     pub fn is_list(exp: &Expression) -> bool {
-        match exp {
-            Expression::List(_) => true,
-            _ => false,
-        }
+        matches!(exp, Expression::List(_))
     }
     pub fn is_pair(exp: &Expression) -> bool {
-        match exp {
-            Expression::Pair(_, _) => true,
-            _ => false,
-        }
+        matches!(exp, Expression::Pair(_, _))
     }
     pub fn is_char(exp: &Expression) -> bool {
-        match exp {
-            Expression::Char(_) => true,
-            _ => false,
-        }
+        matches!(exp, Expression::Char(_))
     }
     pub fn is_string(exp: &Expression) -> bool {
-        match exp {
-            Expression::String(_) => true,
-            _ => false,
-        }
+        matches!(exp, Expression::String(_))
     }
     pub fn is_procedure(exp: &Expression) -> bool {
-        match exp {
-            Expression::Function(_) => true,
-            Expression::BuildInFunction(_, _) => true,
-            Expression::BuildInFunctionExt(_) => true,
-            _ => false,
-        }
+        matches!(
+            exp,
+            Expression::Function(_)
+                | Expression::BuildInFunction(_, _)
+                | Expression::BuildInFunctionExt(_)
+        )
     }
     pub fn is_integer(exp: &Expression) -> bool {
-        match exp {
-            Expression::Integer(_) => true,
-            _ => false,
-        }
+        matches!(exp, Expression::Integer(_))
     }
     pub fn is_number(exp: &Expression) -> bool {
-        match exp {
-            Expression::Integer(_) => true,
-            Expression::Float(_) => true,
-            Expression::Rational(_) => true,
-            _ => false,
-        }
+        matches!(
+            exp,
+            Expression::Integer(_) | Expression::Float(_) | Expression::Rational(_)
+        )
     }
     pub fn is_symbol(exp: &Expression) -> bool {
-        match exp {
-            Expression::Symbol(_) => true,
-            _ => false,
-        }
+        matches!(exp, Expression::Symbol(_))
     }
     pub fn is_boolean(exp: &Expression) -> bool {
-        match exp {
-            Expression::Boolean(_) => true,
-            _ => false,
-        }
-    }
-    pub fn eq(x: &Expression, y: &Expression) -> bool {
-        if let (Expression::Integer(a), Expression::Integer(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Float(a), Expression::Float(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Rational(a), Expression::Rational(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::String(a), Expression::String(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Char(a), Expression::Char(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Boolean(a), Expression::Boolean(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Symbol(a), Expression::Symbol(b)) = (x, y) {
-            if a == b {
-                return true;
-            }
-        }
-        false
+        matches!(exp, Expression::Boolean(_))
     }
     pub fn to_number(x: &Expression) -> Result<Number, Error> {
         match x {
             Expression::Float(v) => Ok(Number::Float(*v)),
             Expression::Integer(v) => Ok(Number::Integer(*v)),
             Expression::Rational(v) => Ok(Number::Rational(*v)),
-            _ => return Err(create_error!(ErrCode::E1003)),
+            _ => Err(create_error!(ErrCode::E1003)),
         }
     }
     fn list_string(exp: &[Expression]) -> String {
@@ -354,18 +293,18 @@ impl Expression {
                 el = true;
             } else {
                 if el {
-                    s.push_str(" ");
+                    s.push(' ');
                 }
                 s.push_str(e.to_string().as_str());
                 if c != exp.len() {
-                    s.push_str(" ");
+                    s.push(' ');
                 }
                 el = false;
             }
             c += 1;
         }
-        s.push_str(")");
-        return s;
+        s.push(')');
+        s
     }
 }
 impl ToString for Expression {
@@ -419,7 +358,7 @@ impl Ord for Expression {
         match Expression::to_number(self) {
             Ok(m) => match Expression::to_number(other) {
                 Ok(n) => {
-                    return if m > n {
+                    if m > n {
                         Ordering::Greater
                     } else if m < n {
                         Ordering::Less
@@ -431,27 +370,11 @@ impl Ord for Expression {
             },
             _ => match &self {
                 Expression::String(m) => match &other {
-                    Expression::String(n) => {
-                        return if m > n {
-                            Ordering::Greater
-                        } else if m < n {
-                            Ordering::Less
-                        } else {
-                            Ordering::Equal
-                        }
-                    }
+                    Expression::String(n) => m.cmp(&n),
                     _ => Ordering::Less,
                 },
                 Expression::Char(m) => match &other {
-                    Expression::Char(n) => {
-                        return if m > n {
-                            Ordering::Greater
-                        } else if m < n {
-                            Ordering::Less
-                        } else {
-                            Ordering::Equal
-                        }
-                    }
+                    Expression::Char(n) => m.cmp(&n),
                     _ => Ordering::Less,
                 },
                 _ => Ordering::Less,
@@ -466,7 +389,42 @@ impl PartialOrd for Expression {
 }
 impl PartialEq for Expression {
     fn eq(&self, other: &Self) -> bool {
-        Expression::eq(self, other)
+        if let (Expression::Integer(a), Expression::Integer(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Float(a), Expression::Float(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Rational(a), Expression::Rational(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::String(a), Expression::String(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Char(a), Expression::Char(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Boolean(a), Expression::Boolean(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Symbol(a), Expression::Symbol(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        false
     }
 }
 impl Eq for Expression {}
@@ -493,10 +451,10 @@ impl Function {
         let mut vec: Vec<Expression> = Vec::new();
         vec.extend_from_slice(&sexp[2..]);
         Function {
-            param: param,
+            param,
             body: vec,
-            name: name,
-            closure_env: closure_env,
+            name,
+            closure_env,
             tail_recurcieve: false,
         }
     }
@@ -507,7 +465,7 @@ impl Function {
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
         // env set
-        for e in &exp[1 as usize..] {
+        for e in &exp[1..] {
             vec.push(eval(e, env)?);
         }
         for (i, e) in vec.into_iter().enumerate() {
@@ -521,7 +479,7 @@ impl Function {
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
-        for e in &exp[1 as usize..] {
+        for e in &exp[1..] {
             vec.push(eval(e, env)?);
         }
         // @@@ env.create();
@@ -543,7 +501,7 @@ impl Function {
                         v => break v,
                     },
                     Err(e) => match &e.code {
-                        ErrCode::CONT => {
+                        ErrCode::Cont => {
                             let s = if let Some(ref s) = e.value {
                                 s.clone()
                             } else {
@@ -566,7 +524,7 @@ impl Function {
         Ok(ret)
     }
     pub fn get_tail_recurcieve(&self) -> bool {
-        return self.tail_recurcieve;
+        self.tail_recurcieve
     }
     pub fn set_tail_recurcieve(&mut self) {
         if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice()) {
@@ -606,14 +564,14 @@ impl Function {
                                 vec = if n == 0 { Some(v.clone()) } else { None };
                             }
                         }
-                        n = n + 1;
+                        n += 1;
                     } else if *s == "else" {
                         return self.parse_tail_recurcieve(&l[1..]);
                     }
                 }
             }
         }
-        return vec;
+        vec
     }
 }
 //========================================================================
@@ -629,8 +587,8 @@ pub const TAB: ControlChar = ControlChar(0x09, "#\\tab");
 pub const NEWLINE: ControlChar = ControlChar(0x0A, "#\\newline");
 pub const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
 
-const TRUE: &'static str = "#t";
-const FALSE: &'static str = "#f";
+const TRUE: &str = "#t";
+const FALSE: &str = "#f";
 
 const BACKSLASH: u8 = 0x5c;
 //========================================================================
@@ -641,9 +599,8 @@ pub fn do_interactive() {
     let mut stream = BufReader::new(std::io::stdin());
     let env = Environment::new();
 
-    match repl(&mut stream, &env, Some(PROMPT)) {
-        Err(e) => println!("{}", e),
-        Ok(_) => {}
+    if let Err(e) = repl(&mut stream, &env, Some(PROMPT)) {
+        println!("{}", e)
     }
 }
 pub fn repl(
@@ -665,7 +622,7 @@ pub fn repl(
             if n == 0 {
                 break 'outer;
             }
-            if program.len() == 0 {
+            if program.is_empty() {
                 if buffer.trim() == QUIT {
                     println!("Bye");
                     break 'outer;
@@ -678,7 +635,7 @@ pub fn repl(
             }
             program.push(buffer.trim().to_string());
             let lisp = program.join(" ");
-            if false == count_parenthesis(&lisp) {
+            if !count_parenthesis(&lisp) {
                 continue;
             }
             break lisp;
@@ -697,12 +654,12 @@ pub fn repl(
     }
     Ok(())
 }
-pub fn count_parenthesis(program: &String) -> bool {
+pub fn count_parenthesis(program: &str) -> bool {
     let mut left = 0;
     let mut right = 0;
     let mut search = true;
 
-    for c in program.as_str().chars() {
+    for c in program.chars() {
         if c == '"' && search {
             search = false;
         } else if c == '"' && !search {
@@ -715,9 +672,9 @@ pub fn count_parenthesis(program: &String) -> bool {
             right += 1;
         }
     }
-    return left <= right;
+    left <= right
 }
-pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
+pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
     let mut token = tokenize(program);
     let mut c: i32 = 1;
     let mut ret = Expression::Nil();
@@ -750,7 +707,7 @@ pub fn do_core_logic(program: &String, env: &Environment) -> ResultExpression {
             c = 1;
         }
     }
-    return Ok(ret);
+    Ok(ret)
 }
 struct TokenState {
     tokens: Vec<String>,
@@ -778,7 +735,7 @@ impl TokenState {
     }
     fn push_if_quote(&mut self, s: String) {
         if let Some(last) = self.tokens.last() {
-            if self.quote_mode == true && last == "quote" {
+            if self.quote_mode && last == "quote" {
                 self.tokens.push(s);
                 self.tokens.push(")".into());
                 self.quote_mode = false;
@@ -800,7 +757,7 @@ impl TokenState {
         self.tokens
     }
 }
-pub fn tokenize(program: &String) -> Vec<String> {
+pub fn tokenize(program: &str) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
 
@@ -840,7 +797,7 @@ pub fn tokenize(program: &String) -> Vec<String> {
                     token.string_mode = false;
                 }
             }
-        } else if token.name.starts_with("#\\") == true {
+        } else if token.name.starts_with("#\\") {
             set_token_name!(c);
         } else {
             match c {
@@ -859,7 +816,7 @@ pub fn tokenize(program: &String) -> Vec<String> {
                     token.right += 1;
                     token.push(")".into());
 
-                    if (token.quote_mode == true) && (token.left == token.right) {
+                    if token.quote_mode && (token.left == token.right) {
                         token.push(")".into());
                         token.quote_mode = false;
                     }
@@ -878,10 +835,10 @@ pub fn tokenize(program: &String) -> Vec<String> {
         token.push_if_quote(program.get(from..token.idx).unwrap().to_string());
     }
     debug!("{:?}", token.tokens);
-    return token.tokens();
+    token.tokens()
 }
-pub fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> ResultExpression {
-    if tokens.len() == 0 {
+pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
+    if tokens.is_empty() {
         return Err(create_error!(ErrCode::E0001));
     }
 
@@ -912,13 +869,13 @@ pub fn parse(tokens: &Vec<String>, count: &mut i32, env: &Environment) -> Result
         Err(create_error!(ErrCode::E0003))
     } else {
         // string check ex. <rust-elisp> "abc
-        if (token == "\"") || (token.starts_with("\"") && !token.ends_with("\"")) {
+        if (token == "\"") || (token.starts_with('\"') && !token.ends_with('\"')) {
             return Err(create_error!(ErrCode::E0004));
         }
         atom(&token, env)
     }
 }
-fn atom(token: &String, env: &Environment) -> ResultExpression {
+fn atom(token: &str, env: &Environment) -> ResultExpression {
     let v = if let Ok(n) = token.parse::<i64>() {
         Expression::Integer(n)
     } else if let Ok(n) = token.parse::<f64>() {
@@ -935,18 +892,18 @@ fn atom(token: &String, env: &Environment) -> ResultExpression {
         Expression::Char(char::from(NEWLINE.0))
     } else if token == CARRIAGERETRUN.1 {
         Expression::Char(char::from(CARRIAGERETRUN.0))
-    } else if (token.starts_with("#\\")) && (token.as_str().chars().count() == 3) {
+    } else if (token.starts_with("#\\")) && (token.chars().count() == 3) {
         let c = token.chars().collect::<Vec<char>>();
         Expression::Char(c[2])
-    } else if (token.len() >= 2) && (token.starts_with("\"")) && (token.ends_with("\"")) {
+    } else if (token.len() >= 2) && (token.starts_with('\"')) && (token.ends_with('\"')) {
         let s = token[1..token.len() - 1].to_string();
         Expression::String(s)
-    } else if let Some(f) = env.get_builtin_func(token.as_str()) {
-        Expression::BuildInFunction(token.clone(), f)
-    } else if let Some(f) = env.get_builtin_ext_func(token.as_str()) {
+    } else if let Some(f) = env.get_builtin_func(token) {
+        Expression::BuildInFunction(token.to_string(), f)
+    } else if let Some(f) = env.get_builtin_ext_func(token) {
         Expression::BuildInFunctionExt(f)
     } else {
-        match Rat::from(&token) {
+        match Rat::from(&token.to_string()) {
             Ok(n) => Expression::Rational(n),
             Err(n) => {
                 if n.code != ErrCode::E1020 {
@@ -974,10 +931,10 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
         debug!("eval = {:?}", get_ptr!(&val));
 
         let v = &*(referlence_list!(val));
-        if v.len() == 0 {
+        if v.is_empty() {
             return Ok(sexp.clone());
         }
-        return match &v[0] {
+        match &v[0] {
             Expression::BuildInFunction(_, f) => f(&v[..], env),
             Expression::BuildInFunctionExt(f) => f(&v[..], env),
             Expression::TailRecursion(f) => f.set_param(&v[..], env),
@@ -989,7 +946,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                 Expression::Continuation(f) => f.execute(&v[..], env),
                 _ => Err(create_error!(ErrCode::E1006)),
             },
-        };
+        }
     } else {
         Ok(sexp.clone())
     }
