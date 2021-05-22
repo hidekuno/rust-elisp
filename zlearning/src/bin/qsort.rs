@@ -41,9 +41,9 @@ fn main() {
     const N: usize = 32;
     let mut stack: [i32; N] = [0; N];
 
-    for item in stack.iter_mut().take(N) {
+    for s in stack.iter_mut().take(N) {
         let y: i32 = rng.gen();
-        *item = y.abs() / 100000;
+        *s = y.abs() / 100000;
     }
     qsort(&mut stack, 0, N - 1);
     println!("{:?}", stack);
@@ -81,8 +81,8 @@ fn test_qsort_heap() {
 
     let mut heap = Vec::new();
 
-    for item in stack.iter().take(N) {
-        heap.push(*item);
+    for s in stack.iter().take(N) {
+        heap.push(*s);
     }
     qsort(&mut heap, 0, N - 1);
     assert_eq!(format!("{:?}", heap), RESULT);

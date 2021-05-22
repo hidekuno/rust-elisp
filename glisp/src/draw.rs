@@ -79,10 +79,7 @@ impl DrawTable {
         self.core.borrow_mut().image_table.insert(key, surface);
     }
     pub fn find(&self, key: &str) -> Option<Rc<dyn ImageData>> {
-        match self.core.borrow().image_table.get(key) {
-            Some(v) => Some(v.clone()),
-            None => None,
-        }
+        self.core.borrow().image_table.get(key).cloned()
     }
     pub fn set_background(&mut self, red: f64, green: f64, blue: f64) {
         self.core.borrow_mut().set_background(red, green, blue);
