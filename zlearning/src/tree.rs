@@ -97,10 +97,7 @@ impl Cache {
         self.cache.insert(key, value);
     }
     fn get(&self, key: &str) -> Option<ItemRef> {
-        match self.cache.get(key) {
-            Some(v) => Some(v.clone()),
-            None => None,
-        }
+        self.cache.get(key).cloned()
     }
     pub fn create_tree<T>(reader: &mut T, sep: char, level: i32) -> Cache
     where

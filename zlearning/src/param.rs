@@ -27,7 +27,7 @@ impl ParamParse {
         false
     }
     fn parse_level(arg: &str) -> Result<i32, String> {
-        match i32::from_str_radix(arg, 10) {
+        match arg.parse::<i32>() {
             Ok(n) => match n {
                 0..=MAX_LEVEL => Ok(n),
                 _ => Err(String::from("ivalid option")),

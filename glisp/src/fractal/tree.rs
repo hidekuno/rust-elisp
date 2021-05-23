@@ -17,7 +17,7 @@ impl Tree {
         Tree {
             cs: ((std::f64::consts::PI * 15.0) / 180.0).cos(),
             sn: ((std::f64::consts::PI * 45.0) / 180.0).sin(),
-            draw_line: draw_line,
+            draw_line,
         }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) {

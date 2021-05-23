@@ -12,9 +12,7 @@ pub struct Dragon {
 }
 impl Dragon {
     pub fn new(draw_line: DrawLine) -> Self {
-        Dragon {
-            draw_line: draw_line,
-        }
+        Dragon { draw_line }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) {
         let xx = x1 - x0;

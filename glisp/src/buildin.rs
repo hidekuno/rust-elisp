@@ -164,7 +164,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         }
         const N: usize = 3;
         let mut prm: [f64; N] = [0.0; N];
-        for (i, e) in exp[1 as usize..4 as usize].iter().enumerate() {
+        for (i, e) in exp[1..4].iter().enumerate() {
             prm[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
                 _ => return Err(create_error!(ErrCode::E1003)),
@@ -212,7 +212,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             s.push(*c);
         }
         if j != 22 {
-            draw_string(0.02, h, 0.03, s.to_string());
+            draw_string(0.02, h, 0.03, s);
         }
         Ok(Expression::Nil())
     });
@@ -308,7 +308,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         }
         const N: usize = 3;
         let mut rgb: [f64; N] = [0.0; N];
-        for (i, e) in exp[1 as usize..].iter().enumerate() {
+        for (i, e) in exp[1..].iter().enumerate() {
             rgb[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
                 _ => return Err(create_error!(ErrCode::E1003)),
