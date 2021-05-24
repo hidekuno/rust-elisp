@@ -21,7 +21,7 @@ impl Koch {
 
         Koch {
             matrix: Matrix::new(cs, -sn, sn, cs),
-            draw_line: draw_line,
+            draw_line,
         }
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) {
