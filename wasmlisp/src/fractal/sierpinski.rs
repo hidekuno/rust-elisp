@@ -13,9 +13,7 @@ pub struct Sierpinski {
 }
 impl Sierpinski {
     pub fn new(draw_line: DrawLine) -> Self {
-        Sierpinski {
-            draw_line: draw_line,
-        }
+        Sierpinski { draw_line }
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, v2: Coord<f64>, c: i32) {
         if c > 1 {

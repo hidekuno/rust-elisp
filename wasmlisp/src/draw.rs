@@ -32,6 +32,11 @@ impl Graphics {
         Graphics { bg: None }
     }
 }
+impl Default for Graphics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 // ----------------------------------------------------------------
 // draw string
 // ----------------------------------------------------------------
@@ -88,14 +93,20 @@ pub fn create_draw_image(context: &CanvasRenderingContext2d, document: &Document
         let w = img.width() as f64;
         let h = img.height() as f64;
 
-        if let Err(_) = ctx.set_transform(x0 / w, y0 / h, x1 / w, y1 / h, xorg, yorg) {
+        if ctx
+            .set_transform(x0 / w, y0 / h, x1 / w, y1 / h, xorg, yorg)
+            .is_err()
+        {
             return Err(create_error!(ErrCode::E9999));
         }
         // https://rustwasm.github.io/wasm-bindgen/api/web_sys/
-        if let Err(_) = ctx.draw_image_with_html_image_element(&img, 0.0, 0.0) {
+        if ctx
+            .draw_image_with_html_image_element(&img, 0.0, 0.0)
+            .is_err()
+        {
             return Err(create_error!(ErrCode::E9999));
         }
-        if let Err(_) = ctx.set_transform(1.0, 0.0, 0.0, 1.0, 0.0, 0.0) {
+        if ctx.set_transform(1.0, 0.0, 0.0, 1.0, 0.0, 0.0).is_err() {
             return Err(create_error!(ErrCode::E9999));
         }
         Ok(())

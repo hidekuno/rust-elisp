@@ -14,24 +14,24 @@ use crate::alert;
 use crate::console_log;
 use crate::log;
 
+use crate::draw::create_draw_arc;
+use crate::draw::create_draw_image;
+use crate::draw::create_draw_line;
+use crate::draw::create_draw_string;
+use crate::draw::Graphics;
+use crate::fractal::build_demo_function;
 use elisp::create_error;
+use elisp::draw::util::regist_draw_arc;
+use elisp::draw::util::regist_draw_image;
+use elisp::draw::util::regist_draw_line;
 use elisp::lisp;
 use lisp::do_core_logic;
 use lisp::eval;
 use lisp::repl;
 use lisp::Environment;
-use lisp::Expression;
 use lisp::ErrCode;
 use lisp::Error;
-use elisp::draw::util::regist_draw_line;
-use elisp::draw::util::regist_draw_image;
-use elisp::draw::util::regist_draw_arc;
-use crate::draw::create_draw_string;
-use crate::draw::create_draw_line;
-use crate::draw::create_draw_arc;
-use crate::draw::create_draw_image;
-use crate::draw::Graphics;
-use crate::fractal::build_demo_function;
+use lisp::Expression;
 
 use std::cell::RefCell;
 use std::io::Cursor;
@@ -48,13 +48,11 @@ use web_sys::{
 };
 
 #[cfg(not(feature = "develop"))]
-const SCHEME_URL: &'static str =
-    "https://raw.githubusercontent.com/hidekuno/picture-language/master";
+const SCHEME_URL: &str = "https://raw.githubusercontent.com/hidekuno/picture-language/master";
 
 // wasm-pack build -- --features develop
 #[cfg(feature = "develop")]
-const SCHEME_URL: &'static str =
-    "https://raw.githubusercontent.com/hidekuno/picture-language/develop";
+const SCHEME_URL: &str = "https://raw.githubusercontent.com/hidekuno/picture-language/develop";
 
 const LINE_WIDTH: f64 = 0.8;
 //--------------------------------------------------------
@@ -81,13 +79,12 @@ pub fn start() -> Result<(), JsValue> {
     build_demo_function(&env, &document);
 
     let closure = Closure::wrap(Box::new(move |_event: Event| {
-
         let c = Closure::wrap(Box::new(move |v: JsValue| {
             alert(&v.as_string().unwrap());
         }) as Box<dyn FnMut(_)>);
 
         // It's experimental code for study.
-        let _ = future_to_promise(execute_lisp(text.value(),env.clone())).then(&c);
+        let _ = future_to_promise(execute_lisp(text.value(), env.clone())).then(&c);
         c.forget();
 
         if let Some(element) = document.get_element_by_id("loading") {
@@ -123,7 +120,7 @@ async fn execute_lisp(code: String, env: Environment) -> Result<JsValue, JsValue
         };
         JsValue::from(v)
     }
-    let text = JsFuture::from(Promise::resolve(&call_elisp(code,env))).await?;
+    let text = JsFuture::from(Promise::resolve(&call_elisp(code, env))).await?;
     Ok(text)
 }
 //--------------------------------------------------------
@@ -153,7 +150,6 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let ctx = context.clone();
     let g = graphics.clone();
     env.add_builtin_ext_func("draw-clear", move |exp, _| {
-
         if exp.len() != 1 {
             return Err(create_error!(ErrCode::E1007));
         }
@@ -206,7 +202,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     // ex. (draw-image "roger" 0.0 0.0 180.0 0.0 0.0 180.0)
     //--------------------------------------------------------
-    regist_draw_image("draw-image", env, create_draw_image(&context,&document));
+    regist_draw_image("draw-image", env, create_draw_image(&context, &document));
 
     //--------------------------------------------------------
     // ex. (load-image "roger"
@@ -236,7 +232,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
                 false,
             ),
         };
-        if exists == false {
+        if !exists {
             img.set_id(&symbol);
             doc.body().unwrap().append_child(&img).unwrap();
         }
@@ -329,7 +325,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
 
         let t = ((end - start).trunc()) as i64;
         console_log!("{}.{}(s)", t / 1000, t % 1000);
-        return result;
+        result
     });
     //--------------------------------------------------------
     // ex. (add-timeout (image-width "sample") 10)
@@ -383,9 +379,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     // Set background
     // ex. (set-background "black")
     //--------------------------------------------------------
-    let c = canvas.clone();
     let ctx = context.clone();
-    let g = graphics.clone();
     env.add_builtin_ext_func("set-background", move |exp, env| {
         if exp.len() != 2 {
             return Err(create_error!(ErrCode::E1007));
@@ -396,9 +390,9 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         };
         let js = JsValue::from(color);
         ctx.set_fill_style(&js);
-        g.borrow_mut().bg = Some(js);
+        graphics.borrow_mut().bg = Some(js);
 
-        ctx.fill_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
+        ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
 
         Ok(Expression::Nil())
     });
@@ -440,23 +434,22 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         };
         const N: usize = 2;
         let mut prm: [f64; N] = [0.0; N];
-        for (i, e) in exp[2 as usize..4].iter().enumerate() {
+        for (i, e) in exp[2..4].iter().enumerate() {
             prm[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
                 _ => return Err(create_error!(ErrCode::E1003)),
             };
         }
         let font = if exp.len() == 5 {
-            let s = match lisp::eval(&exp[4],env)? {
+            match lisp::eval(&exp[4], env)? {
                 Expression::String(s) => s,
                 _ => return Err(create_error!(ErrCode::E1015)),
-            };
-            s
+            }
         } else {
             "bold 20px sans-serif".to_string()
         };
         //ex) "italic bold 20px sans-serif"
-        draw_string(text,prm[0],prm[1],font);
+        draw_string(text, prm[0], prm[1], font);
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -465,30 +458,21 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     let draw_string = create_draw_string(&context);
     env.add_builtin_ext_func("draw-eval", move |exp, env| {
-
         if exp.len() != 2 {
             return Err(create_error!(ErrCode::E1007));
         }
         let result = match lisp::eval(&exp[1], env) {
-            Ok(r) => {
-                r.to_string()
-            }
-            Err(e) => {
-                e.get_msg()
-            }
+            Ok(r) => r.to_string(),
+            Err(e) => e.get_msg(),
         };
-        draw_string(result,30.0,30.0,"bold 20px sans-serif".to_string());
+        draw_string(result, 30.0, 30.0, "bold 20px sans-serif".to_string());
         Ok(Expression::Nil())
     });
 }
 // ----------------------------------------------------------------
 // image size
 // ----------------------------------------------------------------
-fn image_size(
-    exp: &[Expression],
-    env: &Environment,
-    doc: &Document,
-) -> Result<(f64, f64), Error> {
+fn image_size(exp: &[Expression], env: &Environment, doc: &Document) -> Result<(f64, f64), Error> {
     if exp.len() != 2 {
         return Err(create_error!(ErrCode::E1007));
     }
