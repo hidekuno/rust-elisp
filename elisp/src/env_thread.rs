@@ -96,24 +96,25 @@ impl Environment {
         self.core.lock().unwrap().regist(key, exp);
     }
     #[inline]
-    pub fn find(&self, key: &String) -> Option<Expression> {
+    pub fn find(&self, key: &str) -> Option<Expression> {
         self.core.lock().unwrap().find(key)
     }
     #[inline]
-    pub fn update(&self, key: &String, exp: Expression) {
+    pub fn update(&self, key: &str, exp: Expression) {
         self.core.lock().unwrap().update(key, exp);
     }
+    #[inline]
     pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
-        match self.globals.lock().unwrap().builtin_tbl.get(key) {
-            Some(f) => Some(f.clone()),
-            None => None,
-        }
+        self.globals.lock().unwrap().builtin_tbl.get(key).cloned()
     }
+    #[inline]
     pub fn get_builtin_ext_func(&self, key: &str) -> Option<ExtFunctionRc> {
-        match self.globals.lock().unwrap().builtin_tbl_ext.get(key) {
-            Some(f) => Some(f.clone()),
-            None => None,
-        }
+        self.globals
+            .lock()
+            .unwrap()
+            .builtin_tbl_ext
+            .get(key)
+            .cloned()
     }
     pub fn add_builtin_ext_func<F>(&self, key: &'static str, c: F)
     where
@@ -144,5 +145,10 @@ impl Environment {
     #[inline]
     pub fn get_cont(&self) -> Option<Expression> {
         return self.globals.lock().unwrap().cont.clone();
+    }
+}
+impl Default for Environment {
+    fn default() -> Self {
+        Self::new()
     }
 }
