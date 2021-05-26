@@ -89,9 +89,11 @@ impl Environment {
     pub fn update(&self, key: &str, exp: Expression) {
         self.core.borrow_mut().update(key, exp);
     }
+    #[inline]
     pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
         self.globals.borrow().builtin_tbl.get(key).cloned()
     }
+    #[inline]
     pub fn get_builtin_ext_func(&self, key: &str) -> Option<Rc<ExtFunction>> {
         self.globals.borrow().builtin_tbl_ext.get(key).cloned()
     }
