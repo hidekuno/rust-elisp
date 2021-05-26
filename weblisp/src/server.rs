@@ -28,10 +28,10 @@ const MAX_CONCURRENCY: usize = 4;
 const READ_TIMEOUT: u64 = 60;
 
 #[cfg(not(feature = "all-interface"))]
-pub const BIND_ADDRESS: &'static str = "127.0.0.1:9000";
+pub const BIND_ADDRESS: &str = "127.0.0.1:9000";
 
 #[cfg(feature = "all-interface")]
-pub const BIND_ADDRESS: &'static str = "0.0.0.0:9000";
+pub const BIND_ADDRESS: &str = "0.0.0.0:9000";
 
 pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
     let listenner = TcpListener::bind(BIND_ADDRESS)?;
