@@ -43,14 +43,13 @@ fn main() {
 
     let t = if args.len() < 2 {
         server::MAX_TRANSACTION
+    } else if let Ok(n) = args[1].parse::<usize>() {
+        n
     } else {
-        if let Ok(n) = args[1].parse::<usize>() {
-            n
-        } else {
-            error!("bad paramemter: {}", args[1]);
-            return;
-        }
+        error!("bad paramemter: {}", args[1]);
+        return;
     };
+
     if let Err(e) = run_web_service(t) {
         error!("main fault: {:?}", e);
     }

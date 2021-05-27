@@ -24,24 +24,24 @@ use std::process::{Child, Command, Stdio};
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-pub const PROTOCOL: &'static str = "HTTP/1.1";
-pub const CRLF: &'static str = "\r\n";
+pub const PROTOCOL: &str = "HTTP/1.1";
+pub const CRLF: &str = "\r\n";
 
-const RESPONSE_200: &'static str = "200 OK";
-const RESPONSE_400: &'static str = "400 Bad Request";
-const RESPONSE_404: &'static str = "404 Not Found";
-const RESPONSE_405: &'static str = "405 Method Not Allowed";
-const RESPONSE_500: &'static str = "500 Internal Server Error";
+const RESPONSE_200: &str = "200 OK";
+const RESPONSE_400: &str = "400 Bad Request";
+const RESPONSE_404: &str = "404 Not Found";
+const RESPONSE_405: &str = "405 Method Not Allowed";
+const RESPONSE_500: &str = "500 Internal Server Error";
 
 struct MimeType(&'static str, &'static str);
 const MIME_PLAIN: MimeType = MimeType("txt", "text/plain");
 const MIME_HTML: MimeType = MimeType("html", "text/html");
 const MIME_PNG: MimeType = MimeType("png", "image/png");
-const DEFALUT_MIME: &'static str = "application/octet-stream";
-const CGI_EXT: &'static str = ".cgi";
+const DEFALUT_MIME: &str = "application/octet-stream";
+const CGI_EXT: &str = ".cgi";
 
-const LISP: &'static str = "/lisp";
-const LISP_PARAMNAME: &'static str = "expr=";
+const LISP: &str = "/lisp";
+const LISP_PARAMNAME: &str = "expr=";
 
 #[derive(Debug)]
 struct UriParseError {
@@ -67,8 +67,8 @@ macro_rules! print_error {
 }
 macro_rules! http_write {
     ($s: expr, $v: expr) => {
-        $s.write($v.as_bytes())?;
-        $s.write(CRLF.as_bytes())?;
+        $s.write_all($v.as_bytes())?;
+        $s.write_all(CRLF.as_bytes())?;
     };
 }
 macro_rules! http_error {
@@ -97,23 +97,23 @@ macro_rules! http_value_error {
 }
 #[derive(Clone)]
 pub enum Method {
-    GET,
-    POST,
-    HEAD,
+    Get,
+    Post,
+    Head,
 }
 impl Method {
     fn as_ref(&self) -> &str {
         match self {
-            Method::GET => "GET",
-            Method::POST => "POST",
-            Method::HEAD => "HEAD",
+            Method::Get => "GET",
+            Method::Post => "POST",
+            Method::Head => "HEAD",
         }
     }
     fn create(other: &str) -> Option<Method> {
         match other {
-            "GET" => Some(Method::GET),
-            "POST" => Some(Method::POST),
-            "HEAD" => Some(Method::HEAD),
+            "GET" => Some(Method::Get),
+            "POST" => Some(Method::Post),
+            "HEAD" => Some(Method::Head),
             _ => None,
         }
     }
@@ -209,11 +209,8 @@ impl Contents {
 macro_rules! is_head_method {
     ($result: expr) => {
         if let Ok(req) = $result {
-            if let Some(m) = req.get_method() {
-                match m {
-                    Method::HEAD => true,
-                    _ => false,
-                }
+            if let Some(Method::Head) = req.get_method() {
+                true
             } else {
                 false
             }
@@ -228,6 +225,7 @@ pub fn core_proc(
     buffer: &[u8],
 ) -> Result<(), Box<dyn Error>> {
     let r = parse_request(buffer);
+
     let (status_line, mut contents, mime) = match &r {
         Ok(r) => dispatch(&r, env),
         Err(e) => http_value_error!(RESPONSE_400, e),
@@ -251,7 +249,7 @@ pub fn core_proc(
     if let Some(v) = mime {
         http_write!(stream, format!("Content-type: {}", v));
         http_write!(stream, format!("Content-length: {}", contents.len()));
-        stream.write(CRLF.as_bytes())?;
+        stream.write_all(CRLF.as_bytes())?;
     }
     let head = is_head_method!(r);
     if !head {
@@ -277,7 +275,7 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
     }
     let method = Method::create(requst[0]);
     let iter = urldecode(requst[1])?;
-    let mut iter = iter.split('?').into_iter();
+    let mut iter = iter.split('?');
 
     let url = if let Some(s) = iter.next() {
         s
@@ -289,33 +287,25 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
     let mut body = String::from("");
     let mut header = true;
     for e in lines {
-        if e == "" {
+        if e.is_empty() {
             header = false;
-        } else if header == true {
+        } else if header {
             headers.push(e.into());
-        } else {
-            match method {
-                Some(ref m) => match m {
-                    Method::POST => {
-                        body = match urldecode(e) {
-                            Ok(n) => n,
-                            Err(_) => body,
-                        };
-                        parameter = body.as_str();
-                    }
-                    _ => {}
-                },
-                None => {}
-            }
+        } else if let Some(Method::Post) = method {
+            body = match urldecode(e) {
+                Ok(n) => n,
+                Err(_) => body,
+            };
+            parameter = body.as_str();
         }
     }
     Ok(Request {
-        method: method,
+        method,
         resource: String::from(url),
         protocol: String::from(requst[2]),
         parameter: String::from(parameter),
-        headers: headers,
-        body: body,
+        headers,
+        body,
     })
 }
 fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
@@ -325,7 +315,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
         Second,
     }
     enum ByteMode {
-        ASCII,
+        Ascii,
         Jpn,
     }
     let mut r = String::new();
@@ -333,7 +323,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
     let mut ja: [u8; 3] = [0; 3];
     let mut ja_cnt = 0;
     let mut state = PercentState::Init;
-    let mut mode = ByteMode::ASCII;
+    let mut mode = ByteMode::Ascii;
 
     for b in s.bytes() {
         if b == 0x00 {
@@ -349,7 +339,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
                 en[0] = b;
                 state = PercentState::Second;
                 mode = match b {
-                    0x30..=0x37 => ByteMode::ASCII,
+                    0x30..=0x37 => ByteMode::Ascii,
                     _ => ByteMode::Jpn,
                 }
             }
@@ -357,7 +347,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
                 en[1] = b;
                 state = PercentState::Init;
                 match mode {
-                    ByteMode::ASCII => {
+                    ByteMode::Ascii => {
                         let v = u8::from_str_radix(std::str::from_utf8(&en)?, 16)?;
                         r.push(v as char);
                     }
@@ -367,7 +357,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
 
                         // not full support utf8
                         if ja_cnt == 3 {
-                            mode = ByteMode::ASCII;
+                            mode = ByteMode::Ascii;
                             ja_cnt = 0;
                             r.push_str(std::str::from_utf8(&ja)?);
                         }
@@ -408,7 +398,7 @@ fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Opt
 }
 fn set_path_security(path: &mut PathBuf, filename: &str) {
     for s in filename.split('/') {
-        if s == "" {
+        if s.is_empty() {
             continue;
         }
         if s == "." {
@@ -426,7 +416,7 @@ fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
         Err(e) => return http_value_error!(RESPONSE_500, e),
     };
     set_path_security(&mut path, filename);
-    if false == path.as_path().exists() {
+    if !path.as_path().exists() {
         return http_error!(RESPONSE_404);
     }
     let file = match File::open(path) {
@@ -437,13 +427,13 @@ fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
         Ok(meta) => meta,
         Err(e) => return http_value_error!(RESPONSE_500, e),
     };
-    if true == meta.is_dir() {
+    if meta.is_dir() {
         return static_contents(&(filename.to_owned() + "/index.html"));
     }
     (
         RESPONSE_200,
         Contents::File(WebFile {
-            file: file,
+            file,
             length: meta.len(),
         }),
         Some(get_mime(filename)),
@@ -454,7 +444,7 @@ fn get_mime(filename: &str) -> &'static str {
         Some(i) => &filename[i + 1..],
         None => "",
     };
-    return if ext == MIME_HTML.0 {
+    if ext == MIME_HTML.0 {
         MIME_HTML.1
     } else if ext == MIME_PLAIN.0 {
         MIME_PLAIN.1
@@ -462,7 +452,7 @@ fn get_mime(filename: &str) -> &'static str {
         MIME_PNG.1
     } else {
         DEFALUT_MIME
-    };
+    }
 }
 fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
     let mut path = match env::current_dir() {
@@ -471,7 +461,7 @@ fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
     };
     set_path_security(&mut path, r.get_resource());
 
-    if false == path.as_path().exists() {
+    if !path.as_path().exists() {
         return http_error!(RESPONSE_404);
     }
     let mut cgi = match Command::new(path)
