@@ -13,7 +13,7 @@ use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, Int, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 use crate::strings::do_radix;
 
@@ -137,7 +137,7 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => return Err(create_error!(ErrCode::E1019)),
     };
     let a = c as u32;
-    Ok(Expression::Integer(a as i64))
+    Ok(Expression::Integer(a as Int))
 }
 fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
     let c = match eval(exp, env)? {
@@ -145,7 +145,7 @@ fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         _ => return Err(create_error!(ErrCode::E1019)),
     };
     match c.to_digit(r as u32) {
-        Some(i) => Ok(Expression::Integer(i as i64)),
+        Some(i) => Ok(Expression::Integer(i as Int)),
         None => Ok(Expression::Boolean(false)),
     }
 }

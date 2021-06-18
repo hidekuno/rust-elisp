@@ -17,6 +17,7 @@ use std::string::ToString;
 
 use crate::lisp::ErrCode;
 use crate::lisp::Expression;
+use crate::lisp::Int;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -40,11 +41,11 @@ impl Error for RatParseError {
 }
 #[derive(Debug, Copy, Clone)]
 pub struct Rat {
-    pub numer: i64,
-    pub denom: i64,
+    pub numer: Int,
+    pub denom: Int,
 }
 impl Rat {
-    pub fn new(n: i64, d: i64) -> Rat {
+    pub fn new(n: Int, d: Int) -> Rat {
         let l = gcm(n, d);
         let sign = if n * d < 0 { -1 } else { 1 };
 
@@ -68,7 +69,7 @@ impl Rat {
     pub fn from_radix(s: &str, r: u32) -> Result<Rat, RatParseError> {
         let mut v = Vec::new();
         for e in s.split('/') {
-            if let Ok(n) = i64::from_str_radix(&e, r) {
+            if let Ok(n) = Int::from_str_radix(&e, r) {
                 v.push(n);
             }
         }
@@ -86,7 +87,7 @@ impl Rat {
         Ok(Rat::new(v[0], v[1]))
     }
 }
-fn gcm(n: i64, m: i64) -> i64 {
+fn gcm(n: Int, m: Int) -> Int {
     match n % m {
         0 => m.wrapping_abs(),
         l => gcm(m, l),
@@ -156,14 +157,14 @@ impl PartialOrd for Rat {
 }
 #[derive(Debug, Copy, Clone)]
 pub enum Number {
-    Integer(i64),
+    Integer(Int),
     Float(f64),
     Rational(Rat),
 }
 impl Number {
     fn calc<I, F, R, V>(self: Number, other: Number, icalc: I, fcalc: F, rcalc: R) -> V
     where
-        I: Fn(i64, i64) -> V,
+        I: Fn(Int, Int) -> V,
         F: Fn(f64, f64) -> V,
         R: Fn(Rat, Rat) -> V,
     {
@@ -198,9 +199,9 @@ impl Add for Number {
     type Output = Number;
 
     fn add(self, other: Number) -> Number {
-        self.calc::<fn(i64, i64) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
+        self.calc::<fn(Int, Int) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
             other,
-            |x: i64, y: i64| Number::Integer(x + y),
+            |x: Int, y: Int| Number::Integer(x + y),
             |x: f64, y: f64| Number::Float(x + y),
             |x: Rat, y: Rat| Number::Rational(x + y),
         )
@@ -209,9 +210,9 @@ impl Add for Number {
 impl Sub for Number {
     type Output = Number;
     fn sub(self, other: Number) -> Number {
-        self.calc::<fn(i64, i64) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
+        self.calc::<fn(Int, Int) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
             other,
-            |x: i64, y: i64| Number::Integer(x - y),
+            |x: Int, y: Int| Number::Integer(x - y),
             |x: f64, y: f64| Number::Float(x - y),
             |x: Rat, y: Rat| Number::Rational(x - y),
         )
@@ -220,9 +221,9 @@ impl Sub for Number {
 impl Mul for Number {
     type Output = Number;
     fn mul(self, other: Number) -> Number {
-        self.calc::<fn(i64, i64) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
+        self.calc::<fn(Int, Int) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
             other,
-            |x: i64, y: i64| Number::Integer(x * y),
+            |x: Int, y: Int| Number::Integer(x * y),
             |x: f64, y: f64| Number::Float(x * y),
             |x: Rat, y: Rat| Number::Rational(x * y),
         )
@@ -240,17 +241,17 @@ impl Div for Number {
             }
             if 0 != (x % y) {
                 return self
-                    .calc::<fn(i64, i64) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
+                    .calc::<fn(Int, Int) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
                         Number::Rational(Rat::new(y, 1)),
-                        |x: i64, y: i64| Number::Integer(x / y),
+                        |x: Int, y: Int| Number::Integer(x / y),
                         |x: f64, y: f64| Number::Float(x / y),
                         |x: Rat, y: Rat| Number::Rational(x / y),
                     );
             }
         }
-        self.calc::<fn(i64, i64) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
+        self.calc::<fn(Int, Int) -> Number, fn(f64, f64) -> Number, fn(Rat, Rat) -> Number, Number>(
             other,
-            |x: i64, y: i64| Number::Integer(x / y),
+            |x: Int, y: Int| Number::Integer(x / y),
             |x: f64, y: f64| Number::Float(x / y),
             |x: Rat, y: Rat| Number::Rational(x / y),
         )
@@ -258,9 +259,9 @@ impl Div for Number {
 }
 impl PartialEq for Number {
     fn eq(&self, other: &Number) -> bool {
-        self.calc::<fn(i64, i64) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
+        self.calc::<fn(Int, Int) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
             *other,
-            |x: i64, y: i64| x == y,
+            |x: Int, y: Int| x == y,
             |x: f64, y: f64| x == y,
             |x: Rat, y: Rat| x == y,
         )
@@ -268,33 +269,33 @@ impl PartialEq for Number {
 }
 impl PartialOrd for Number {
     fn lt(&self, other: &Number) -> bool {
-        self.calc::<fn(i64, i64) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
+        self.calc::<fn(Int, Int) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
             *other,
-            |x: i64, y: i64| x < y,
+            |x: Int, y: Int| x < y,
             |x: f64, y: f64| x < y,
             |x: Rat, y: Rat| x < y,
         )
     }
     fn le(&self, other: &Number) -> bool {
-        self.calc::<fn(i64, i64) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
+        self.calc::<fn(Int, Int) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
             *other,
-            |x: i64, y: i64| x <= y,
+            |x: Int, y: Int| x <= y,
             |x: f64, y: f64| x <= y,
             |x: Rat, y: Rat| x <= y,
         )
     }
     fn gt(&self, other: &Number) -> bool {
-        self.calc::<fn(i64, i64) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
+        self.calc::<fn(Int, Int) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
             *other,
-            |x: i64, y: i64| x > y,
+            |x: Int, y: Int| x > y,
             |x: f64, y: f64| x > y,
             |x: Rat, y: Rat| x > y,
         )
     }
     fn ge(&self, other: &Number) -> bool {
-        self.calc::<fn(i64, i64) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
+        self.calc::<fn(Int, Int) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
             *other,
-            |x: i64, y: i64| x >= y,
+            |x: Int, y: Int| x >= y,
             |x: f64, y: f64| x >= y,
             |x: Rat, y: Rat| x >= y,
         )

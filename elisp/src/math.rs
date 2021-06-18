@@ -15,11 +15,11 @@ use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, Int, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 use crate::number::Rat;
 
-const SAMPLE_INT: i64 = 10_000_000_000_000;
+const SAMPLE_INT: Int = 10_000_000_000_000;
 
 pub fn create_function<T>(b: &mut T)
 where
@@ -97,7 +97,7 @@ fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut rng = rand::thread_rng();
-    let x: i64 = rng.gen();
+    let x: Int = rng.gen();
     Ok(Expression::Integer(x.abs() / SAMPLE_INT))
 }
 fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -108,7 +108,7 @@ fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
         let mut rng = rand::thread_rng();
         let mut vec = Vec::new();
         for _ in 0..i {
-            let x: i64 = rng.gen();
+            let x: Int = rng.gen();
             vec.push(Expression::Integer(x.abs() / SAMPLE_INT));
         }
         Ok(Environment::create_list(vec))

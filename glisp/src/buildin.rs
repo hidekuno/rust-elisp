@@ -39,6 +39,7 @@ use lisp::Environment;
 use lisp::ErrCode;
 use lisp::Error;
 use lisp::Expression;
+use lisp::Int;
 
 use cairo::ImageSurface;
 use gdk_pixbuf::Pixbuf;
@@ -299,7 +300,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             if exp.len() != 1 {
                 return Err(create_error!(ErrCode::E1007));
             }
-            Ok(Expression::Integer(x as i64))
+            Ok(Expression::Integer(x as Int))
         });
     }
     fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Error> {

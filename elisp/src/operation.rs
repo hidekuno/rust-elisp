@@ -12,7 +12,7 @@ use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, Int, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 
 use crate::number::Number;
@@ -57,7 +57,7 @@ fn calc(
     exp: &[Expression],
     env: &Environment,
     func: fn(x: Number, y: Number) -> Number,
-    x: i64,
+    x: Int,
 ) -> ResultExpression {
     if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -108,7 +108,7 @@ fn cmp(
 fn divide(
     exp: &[Expression],
     env: &Environment,
-    func: fn(x: &i64, y: &i64) -> i64,
+    func: fn(x: &Int, y: &Int) -> Int,
 ) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -129,7 +129,7 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut x: [i64; 2] = [0; 2];
+    let mut x: [Int; 2] = [0; 2];
     for (i, e) in exp[1..].iter().enumerate() {
         x[i] = match eval(e, env)? {
             Expression::Integer(v) => v,
@@ -142,8 +142,8 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
         x[0] >> x[1].abs()
     }))
 }
-fn bit(exp: &[Expression], env: &Environment, func: fn(x: i64, y: i64) -> i64) -> ResultExpression {
-    let mut result: i64 = 0;
+fn bit(exp: &[Expression], env: &Environment, func: fn(x: Int, y: Int) -> Int) -> ResultExpression {
+    let mut result: Int = 0;
     let mut first: bool = true;
 
     if 1 >= exp.len() {
@@ -176,7 +176,7 @@ fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
 fn bitcount(
     exp: &[Expression],
     env: &Environment,
-    func: fn(x: i64, y: i64) -> bool,
+    func: fn(x: Int, y: Int) -> bool,
 ) -> ResultExpression {
     if exp.len() != 2 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
