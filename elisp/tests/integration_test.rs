@@ -417,3 +417,18 @@ fn zeller() {
         );
     }
 }
+#[test]
+fn kansuji() {
+    let env = lisp::Environment::new();
+    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/kansuji.scm\"))"
+                , &env);
+
+    assert_eq!(
+        do_lisp_env("(to-kansuji 1152921504606846976)", &env),
+        "\"115京2921兆5046億684万6976\""
+    );
+    assert_eq!(
+        do_lisp_env("(to-kansuji 1000000000000000000)", &env),
+        "\"100京\""
+    );
+}
