@@ -435,6 +435,9 @@ fn kansuji() {
         do_lisp_env("(to-kansuji 1000000000000000000)", &env),
         "\"100京\""
     );
+    assert_eq!(do_lisp_env("(to-kansuji 10000)", &env), "\"1万\"");
+    assert_eq!(do_lisp_env("(to-kansuji 1000)", &env), "\"1000\"");
+    assert_eq!(do_lisp_env("(to-kansuji 0)", &env), "\"0\"");
 }
 #[cfg(feature = "i128")]
 #[test]

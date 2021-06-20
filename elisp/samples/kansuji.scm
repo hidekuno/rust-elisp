@@ -53,5 +53,5 @@
   (let loop ((l (reverse (string->list (number->string num))))
              (i 0)
              (answer (list)))
-    (if (null? l) (make-answer answer)
+    (if (null? l) (if (= (quotient num 10000) 0) (format "~d" num)(make-answer answer))
         (loop (cddddr l)(+ i 4)(make-kansuji answer l i)))))
