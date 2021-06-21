@@ -18,3 +18,4 @@ async-std = { version = "1.5.0", features = ["attributes"] }
 [features]
 thread = []
 signal = []
+i128 = []

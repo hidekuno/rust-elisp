@@ -216,10 +216,16 @@ macro_rules! print_error {
 //========================================================================
 pub type ResultExpression = Result<Expression, Error>;
 pub type BasicBuiltIn = fn(&[Expression], &Environment) -> ResultExpression;
+
+#[cfg(not(feature = "i128"))]
+pub type Int = i64;
+
+#[cfg(feature = "i128")]
+pub type Int = i128;
 //========================================================================
 #[derive(Clone)]
 pub enum Expression {
-    Integer(i64),
+    Integer(Int),
     Float(f64),
     Char(char),
     Boolean(bool),
@@ -876,7 +882,7 @@ pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExp
     }
 }
 fn atom(token: &str, env: &Environment) -> ResultExpression {
-    let v = if let Ok(n) = token.parse::<i64>() {
+    let v = if let Ok(n) = token.parse::<Int>() {
         Expression::Integer(n)
     } else if let Ok(n) = token.parse::<f64>() {
         Expression::Float(n)

@@ -15,7 +15,7 @@ use std::vec::Vec;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, Int, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 use crate::number::Number;
 use crate::number::Rat;
@@ -79,7 +79,7 @@ where
     });
 }
 // i64::from_str_radix() is exists, but there is NO to_str_radix.
-pub fn to_str_radix(n: i64, r: u32) -> Option<String> {
+pub fn to_str_radix(n: Int, r: u32) -> Option<String> {
     let mut num = n;
     let mut s = String::new();
 
@@ -91,9 +91,9 @@ pub fn to_str_radix(n: i64, r: u32) -> Option<String> {
         return None;
     }
     loop {
-        let n = num % r as i64;
+        let n = num % r as Int;
         s.push(tbl[n as usize]);
-        num /= r as i64;
+        num /= r as Int;
         if 0 == num {
             break;
         }
@@ -200,7 +200,7 @@ fn str_length(
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => Ok(Expression::Integer(func(s) as i64)),
+        Expression::String(s) => Ok(Expression::Integer(func(s) as Int)),
         _ => Err(create_error!(ErrCode::E1015)),
     }
 }
@@ -224,7 +224,7 @@ fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         Expression::String(s) => s,
         _ => return Err(create_error!(ErrCode::E1015)),
     };
-    if let Ok(n) = i64::from_str_radix(&s, r) {
+    if let Ok(n) = Int::from_str_radix(&s, r) {
         return Ok(Expression::Integer(n));
     }
 
@@ -399,7 +399,7 @@ enum StringScan {
 fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> ResultExpression {
     fn resolv_scan(x: Option<usize>) -> Expression {
         match x {
-            Some(i) => Expression::Integer(i as i64),
+            Some(i) => Expression::Integer(i as Int),
             None => Expression::Boolean(false),
         }
     }

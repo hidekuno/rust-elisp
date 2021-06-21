@@ -16,7 +16,7 @@ use crate::referlence_list;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, Int, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 use crate::syntax::quote;
 
@@ -96,7 +96,7 @@ fn length(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::List(l) = eval(&exp[1], env)? {
         let l = &*(referlence_list!(l));
-        Ok(Expression::Integer(l.len() as i64))
+        Ok(Expression::Integer(l.len() as Int))
     } else {
         Err(create_error!(ErrCode::E1005))
     }
@@ -304,7 +304,7 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() <= 1 || 4 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut param: [i64; 4] = [0, 0, 1, 0];
+    let mut param: [Int; 4] = [0, 0, 1, 0];
     for (i, e) in exp[1..].iter().enumerate() {
         match eval(e, env)? {
             Expression::Integer(v) => {

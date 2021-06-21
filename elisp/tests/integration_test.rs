@@ -359,8 +359,9 @@ fn trigonometric() {
 #[test]
 fn bsearch() {
     let env = lisp::Environment::new();
-    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/bsearch.scm\"))"
-                , &env);
+    do_lisp_env(
+        "(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/bsearch.scm\"))",
+        &env);
     assert_eq!(
         do_lisp_env(
             "(bsearch (filter (lambda (n) (odd? n)) (iota 100)) 1)",
@@ -393,8 +394,9 @@ fn bsearch() {
 #[test]
 fn base64() {
     let env = lisp::Environment::new();
-    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/base64.scm\"))"
-                , &env);
+    do_lisp_env(
+        "(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/base64.scm\"))",
+        &env);
     assert_eq!(
         do_lisp_env("(base64-encode \"Hello,World\")", &env),
         "\"SGVsbG8sV29ybGQ=\""
@@ -407,8 +409,9 @@ fn base64() {
 #[test]
 fn zeller() {
     let env = lisp::Environment::new();
-    do_lisp_env("(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/zeller.scm\"))"
-                , &env);
+    do_lisp_env(
+        "(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/zeller.scm\"))",
+        &env);
 
     for n in 1..7 {
         assert_eq!(
@@ -416,4 +419,39 @@ fn zeller() {
             (n - 1).to_string()
         );
     }
+}
+#[test]
+fn kansuji() {
+    let env = lisp::Environment::new();
+    do_lisp_env(
+        "(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/kansuji.scm\"))",
+        &env);
+
+    assert_eq!(
+        do_lisp_env("(to-kansuji 1152921504606846976)", &env),
+        "\"115京2921兆5046億684万6976\""
+    );
+    assert_eq!(
+        do_lisp_env("(to-kansuji 1000000000000000000)", &env),
+        "\"100京\""
+    );
+    assert_eq!(do_lisp_env("(to-kansuji 10000)", &env), "\"1万\"");
+    assert_eq!(do_lisp_env("(to-kansuji 1000)", &env), "\"1000\"");
+    assert_eq!(do_lisp_env("(to-kansuji 0)", &env), "\"0\"");
+}
+#[cfg(feature = "i128")]
+#[test]
+fn kansuji_128() {
+    let env = lisp::Environment::new();
+    do_lisp_env(
+        "(load-file (string-append (get-environment-variable \"HOME\") \"/rust-elisp/elisp/samples/kansuji.scm\"))",
+        &env);
+    assert_eq!(
+        do_lisp_env("(to-kansuji 170141183460469231731687303715884105727)", &env),
+        "\"170澗1411溝8346穣469𥝱2317垓3168京7303兆7158億8410万5727\""
+    );
+    assert_eq!(
+        do_lisp_env("(to-kansuji 100000000000000000000000000000000000000)", &env),
+        "\"100澗\""
+    );
 }

@@ -14,7 +14,7 @@ use crate::create_error_value;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, Int, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 use crate::number::Number;
 
@@ -68,7 +68,7 @@ pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     eval(&exp[1], env)
 }
-fn odd_even(exp: &[Expression], env: &Environment, func: fn(i64) -> bool) -> ResultExpression {
+fn odd_even(exp: &[Expression], env: &Environment, func: fn(Int) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
