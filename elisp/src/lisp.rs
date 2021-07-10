@@ -736,21 +736,16 @@ impl TokenState {
             idx: 0,
         }
     }
-    fn push(&mut self, s: String) {
-        self.tokens.push(s);
-    }
     fn push_if_quote(&mut self, s: String) {
         if let Some(last) = self.tokens.last() {
             if self.quote_mode && last == "quote" {
                 self.tokens.push(s);
                 self.tokens.push(")".into());
                 self.quote_mode = false;
-            } else {
-                self.tokens.push(s);
+                return;
             }
-        } else {
-            self.tokens.push(s);
         }
+        self.tokens.push(s);
     }
     fn set_quote(&mut self) {
         self.left = 0;
@@ -816,14 +811,14 @@ pub fn tokenize(program: &str) -> Vec<String> {
                 }
                 '(' => {
                     token.left += 1;
-                    token.push("(".into());
+                    token.tokens.push("(".into());
                 }
                 ')' => {
                     token.right += 1;
-                    token.push(")".into());
+                    token.tokens.push(")".into());
 
                     if token.quote_mode && (token.left == token.right) {
-                        token.push(")".into());
+                        token.tokens.push(")".into());
                         token.quote_mode = false;
                     }
                 }
