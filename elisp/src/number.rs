@@ -186,11 +186,11 @@ impl Number {
             },
         }
     }
-    pub fn to_expression(x: &Number) -> Expression {
-        match x {
-            Number::Integer(a) => Expression::Integer(*a),
-            Number::Float(a) => Expression::Float(*a),
-            Number::Rational(a) => Expression::Rational(*a),
+    pub fn to_expression(self: Number) -> Expression {
+        match self {
+            Number::Integer(a) => Expression::Integer(a),
+            Number::Float(a) => Expression::Float(a),
+            Number::Rational(a) => Expression::Rational(a),
         }
     }
 }

@@ -72,7 +72,7 @@ fn calc(
             result = func(result, param);
         }
     }
-    Ok(Number::to_expression(&result))
+    Ok(Number::to_expression(result))
 }
 fn select_one(
     exp: &[Expression],
@@ -88,7 +88,7 @@ fn select_one(
         let param = Expression::to_number(&eval(e, env)?)?;
         result = func(result, param);
     }
-    Ok(Number::to_expression(&result))
+    Ok(Number::to_expression(result))
 }
 fn cmp(
     exp: &[Expression],
