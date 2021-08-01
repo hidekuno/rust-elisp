@@ -64,7 +64,7 @@ impl Continuation {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         if let Expression::List(l) = &self.cont {
-            debug!("Continuation = {:?}", get_ptr!(&l));
+            debug!("Continuation = {:?}", get_ptr!(l));
         }
         Err(create_continuation!(eval(&exp[1], env)?, exp[0].clone()))
     }
@@ -300,10 +300,10 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
             if let Some(e) = iter.next() {
                 if let Expression::Symbol(s) = e {
                     if s != "else" {
-                        eval(&e, env)?;
+                        eval(e, env)?;
                     }
                 } else {
-                    let v = eval(&e, env)?;
+                    let v = eval(e, env)?;
                     if let Expression::Boolean(b) = v {
                         if !b {
                             continue;
@@ -316,7 +316,7 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
             } else {
                 return Err(create_error!(ErrCode::E1012));
             }
-            return begin(&l, env);
+            return begin(l, env);
         } else {
             return Err(create_error!(ErrCode::E1005));
         }
@@ -343,7 +343,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                             return Err(create_error!(ErrCode::E1017));
                         }
                         if 1 < l.len() {
-                            return begin(&l, env);
+                            return begin(l, env);
                         } else {
                             return Ok(Expression::Integer(0));
                         }
@@ -351,11 +351,11 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                     Expression::List(r) => {
                         let c = &*(referlence_list!(r));
                         for e in c {
-                            param[2] = eval(&e, env)?;
+                            param[2] = eval(e, env)?;
                             if let Expression::Boolean(b) = eqv(&param, env)? {
                                 if b {
                                     if 1 < l.len() {
-                                        return begin(&l, env);
+                                        return begin(l, env);
                                     } else {
                                         return Ok(Expression::List(r.clone()));
                                     }
@@ -388,7 +388,7 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     if let Expression::List(l) = eval(&exp[2], env)? {
         let l = &*(referlence_list!(l));
-        let sexp = make_evaled_list(&exp[1], &l, &None);
+        let sexp = make_evaled_list(&exp[1], l, &None);
 
         eval(&Environment::create_list(sexp), env)
     } else {
@@ -426,7 +426,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, l.len()));
     }
 
-    let local_env = Environment::with_parent(&env);
+    let local_env = Environment::with_parent(env);
     let mut param = Vec::<String>::new();
     let mut update = Vec::<Expression>::new();
 
@@ -481,7 +481,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         // eval step
         let mut result = Vec::<Expression>::new();
         for u in &update {
-            result.push(eval(&u, &local_env)?);
+            result.push(eval(u, &local_env)?);
         }
         for (i, v) in result.into_iter().enumerate() {
             local_env.regist(param[i].clone(), v);

@@ -154,7 +154,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             return Err(create_error!(ErrCode::E1007));
         }
         if let Some(color) = &g.borrow().bg {
-            ctx.set_fill_style(&color);
+            ctx.set_fill_style(color);
             ctx.fill_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
         } else {
             ctx.clear_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
@@ -202,7 +202,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     // ex. (draw-image "roger" 0.0 0.0 180.0 0.0 0.0 180.0)
     //--------------------------------------------------------
-    regist_draw_image("draw-image", env, create_draw_image(&context, &document));
+    regist_draw_image("draw-image", env, create_draw_image(&context, document));
 
     //--------------------------------------------------------
     // ex. (load-image "roger"

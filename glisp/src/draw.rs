@@ -235,7 +235,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
     let draw_table = draw_table.clone();
 
     let draw_image = move |x0, y0, x1, y1, xorg, yorg, symbol: &String| {
-        let img = match draw_table.find(&symbol) {
+        let img = match draw_table.find(symbol) {
             Some(v) => v.clone(),
             None => return Err(create_error!(ErrCode::E1008)),
         };

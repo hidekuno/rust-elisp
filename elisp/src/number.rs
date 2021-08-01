@@ -69,7 +69,7 @@ impl Rat {
     pub fn from_radix(s: &str, r: u32) -> Result<Rat, RatParseError> {
         let mut v = Vec::new();
         for e in s.split('/') {
-            if let Ok(n) = Int::from_str_radix(&e, r) {
+            if let Ok(n) = Int::from_str_radix(e, r) {
                 v.push(n);
             }
         }

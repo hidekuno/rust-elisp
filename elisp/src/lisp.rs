@@ -376,11 +376,11 @@ impl Ord for Expression {
             },
             _ => match &self {
                 Expression::String(m) => match &other {
-                    Expression::String(n) => m.cmp(&n),
+                    Expression::String(n) => m.cmp(n),
                     _ => Ordering::Less,
                 },
                 Expression::Char(m) => match &other {
-                    Expression::Char(n) => m.cmp(&n),
+                    Expression::Char(n) => m.cmp(n),
                     _ => Ordering::Less,
                 },
                 _ => Ordering::Less,
@@ -873,7 +873,7 @@ pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExp
         if (token == "\"") || (token.starts_with('\"') && !token.ends_with('\"')) {
             return Err(create_error!(ErrCode::E0004));
         }
-        atom(&token, env)
+        atom(token, env)
     }
 }
 fn atom(token: &str, env: &Environment) -> ResultExpression {
@@ -924,12 +924,12 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
         return Err(create_error!(ErrCode::E9000));
     }
     if let Expression::Symbol(val) = sexp {
-        match env.find(&val) {
+        match env.find(val) {
             Some(v) => Ok(v),
             None => Err(create_error_value!(ErrCode::E1008, val)),
         }
     } else if let Expression::List(val) = sexp {
-        debug!("eval = {:?}", get_ptr!(&val));
+        debug!("eval = {:?}", get_ptr!(val));
 
         let v = &*(referlence_list!(val));
         if v.is_empty() {

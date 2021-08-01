@@ -108,7 +108,7 @@ pub fn parse_arg(args: Vec<String>) -> Result<Config, String> {
                 if ParamParse::check_option(arg) {
                     return Err(String::from("ivalid option"));
                 }
-                config.level = ParamParse::parse_level(&arg)?;
+                config.level = ParamParse::parse_level(arg)?;
                 parse = ParamParse::Off;
             }
         }

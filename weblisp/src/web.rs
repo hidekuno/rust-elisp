@@ -227,7 +227,7 @@ pub fn core_proc(
     let r = parse_request(buffer);
 
     let (status_line, mut contents, mime) = match &r {
-        Ok(r) => dispatch(&r, env),
+        Ok(r) => dispatch(r, env),
         Err(e) => http_value_error!(RESPONSE_400, e),
     };
 
