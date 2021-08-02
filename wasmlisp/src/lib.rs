@@ -65,7 +65,7 @@ const IMG_URL: &'static str =
 
 #[cfg(test)]
 fn do_lisp_env(program: &str, env: &Environment) -> String {
-    match elisp::lisp::do_core_logic(&program.into(), env) {
+    match elisp::lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
     }
