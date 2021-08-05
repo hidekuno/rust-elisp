@@ -11,7 +11,7 @@ extern crate elisp;
 use elisp::lisp;
 
 fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
-    match lisp::do_core_logic(&program, env) {
+    match lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
     }

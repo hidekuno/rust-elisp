@@ -33,11 +33,11 @@ pub mod env_thread;
 #[cfg(test)]
 pub fn do_lisp(program: &str) -> String {
     let env = lisp::Environment::new();
-    return do_lisp_env(program, &env);
+    do_lisp_env(program, &env)
 }
 #[cfg(test)]
 pub fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
-    match lisp::do_core_logic(&program, env) {
+    match lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
     }
@@ -127,9 +127,9 @@ mod tests {
     #[test]
     fn force_stop() {
         let env = lisp::Environment::new();
-        assert!(env.is_force_stop() == false);
+        assert!(!env.is_force_stop());
         do_lisp_env("( force-stop )", &env);
-        assert!(env.is_force_stop() == true);
+        assert!(env.is_force_stop());
         assert_eq!(do_lisp_env("a", &env), "E9000");
         env.set_force_stop(false);
         assert_eq!(do_lisp_env("100", &env), "100");
@@ -137,11 +137,11 @@ mod tests {
     #[test]
     fn set_tail_recursion() {
         let env = lisp::Environment::new();
-        assert!(env.is_tail_recursion() == true);
+        assert!(env.is_tail_recursion());
         do_lisp_env("(  tail-recursion-off )", &env);
-        assert!(env.is_tail_recursion() == false);
+        assert!(!env.is_tail_recursion());
         do_lisp_env("(  tail-recursion-on )", &env);
-        assert!(env.is_tail_recursion() == true);
+        assert!(env.is_tail_recursion());
     }
     #[test]
     fn tail_recurcieve_4() {

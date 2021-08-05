@@ -17,9 +17,9 @@ use elisp::lisp;
 use lisp::Environment;
 use lisp::repl;
 
-const PROGRAM_URL: &'static str =
+const PROGRAM_URL: &str =
     "https://raw.githubusercontent.com/hidekuno/rust-elisp/master/elisp/samples/8queen.scm";
-const TEST_CODE: &'static str = "(8queen (iota 8 1) '())";
+const TEST_CODE: &str = "(8queen (iota 8 1) '())";
 
 fn load_url() -> Result<(String,StatusCode),
                         Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -48,9 +48,8 @@ fn main() {
 
     let env = Environment::new();
     let mut cursor =io::Cursor::new(lisp.into_bytes());
-    match repl(&mut cursor,&env, None) {
-        Err(e) => println!("{:?}", e),
-        Ok(_) => {},
+    if let Err(e) = repl(&mut cursor,&env, None) {
+        println!("{:?}", e);
     }
     let result = match lisp::do_core_logic(&String::from(TEST_CODE), &env) {
         Ok(r) => r.to_string(),

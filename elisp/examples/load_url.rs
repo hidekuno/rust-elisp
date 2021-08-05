@@ -22,7 +22,7 @@ use lisp::Error;
 use lisp::repl;
 use lisp::eval;
 
-fn load_url(url: &String) -> Result<(String,StatusCode),
+fn load_url(url: &str) -> Result<(String,StatusCode),
                                     Box<dyn std::error::Error + Send + Sync + 'static>> {
     task::block_on(
         async {
@@ -42,7 +42,7 @@ pub fn build_lisp_function(env: &Environment) {
         } else {
             return Err(create_error!(ErrCode::E1015));
         };
-        if url.starts_with("http://") == false && url.starts_with("https://") == false {
+        if !url.starts_with("http://") && !url.starts_with("https://") {
             return Err(create_error!(ErrCode::E1021));
         }
 
@@ -61,15 +61,14 @@ pub fn build_lisp_function(env: &Environment) {
         };
         println!("{}",lisp);
         let mut cursor =io::Cursor::new(lisp.into_bytes());
-        match repl(&mut cursor,&env, None) {
-            Err(e) => println!("{}", e),
-            Ok(_) => {}
+        if let Err(e) = repl(&mut cursor,env, None) {
+            println!("{}", e);
         }
         Ok(Expression::Nil())
     });
 }
 
-const PROGRAM_URL: &'static str =
+const PROGRAM_URL: &str =
     "https://raw.githubusercontent.com/hidekuno/rust-elisp/master/elisp/samples/oops.scm";
 
 fn main() {
