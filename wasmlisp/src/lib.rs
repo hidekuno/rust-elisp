@@ -60,7 +60,7 @@ const CANVAS_WIDTH: u32 = 720;
 const CANVAS_HEIGHT: u32 = 560;
 
 #[cfg(test)]
-const IMG_URL: &'static str =
+const IMG_URL: &str =
     "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
 
 #[cfg(test)]
@@ -96,13 +96,13 @@ mod tests {
     use super::*;
     use wasm_bindgen_test::*;
 
-    const SD_URL: &'static str =
+    const SD_URL: &str =
         "https://coverartarchive.org/release-group/9b1acd78-3d19-37bb-8ca0-5816d44da439/front-250.jpg";
 
-    const RV_URL: &'static str =
+    const RV_URL: &str =
         "https://coverartarchive.org/release-group/72d15666-99a7-321e-b1f3-a3f8c09dff9f/front-250.jpg";
 
-    const PS_URL: &'static str =
+    const PS_URL: &str =
         "https://coverartarchive.org/release-group/fdd96703-7b21-365e-bdea-38029fbeb84e/front-250.jpg";
 
     wasm_bindgen_test_configure!(run_in_browser);
