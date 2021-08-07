@@ -52,7 +52,7 @@ mod tests {
         stream.read_to_end(&mut buffer)?;
 
         let mut v = Vec::new();
-        for e in buffer.into_boxed_slice().into_iter() {
+        for e in buffer.into_boxed_slice().iter() {
             match e {
                 0x00..=0x7F => v.push(*e),
                 0xE5 => v.push(*e), //山(0xE5B1B1)
