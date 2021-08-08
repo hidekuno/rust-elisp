@@ -205,7 +205,7 @@ fn str_length(
     }
 }
 fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
-    let v = Expression::to_number(&eval(&exp, env)?)?;
+    let v = Expression::to_number(&eval(exp, env)?)?;
     match v {
         Number::Integer(n) => {
             if r == 10 {
@@ -220,7 +220,7 @@ fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
     }
 }
 fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
-    let s = match eval(&exp, env)? {
+    let s = match eval(exp, env)? {
         Expression::String(s) => s,
         _ => return Err(create_error!(ErrCode::E1015)),
     };
@@ -251,7 +251,7 @@ fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut v = String::new();
 
     for e in l.iter() {
-        v.push(match eval(&e, env)? {
+        v.push(match eval(e, env)? {
             Expression::Char(c) => c,
             _ => return Err(create_error!(ErrCode::E1019)),
         });

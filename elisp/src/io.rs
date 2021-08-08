@@ -166,7 +166,7 @@ mod tests {
     fn read_char_test(data: &str) -> String {
         let mut cur = Cursor::new(data.as_bytes());
         let env = lisp::Environment::new();
-        match io::read_char(&vec![Expression::Nil()], &env, &mut cur) {
+        match io::read_char(&[Expression::Nil()], &env, &mut cur) {
             Ok(s) => s.to_string(),
             Err(_) => "error".to_string(),
         }
@@ -210,9 +210,8 @@ mod tests {
     fn read() {
         let mut cur = Cursor::new("abcdef".as_bytes());
         let env = lisp::Environment::new();
-        match io::read(&vec![Expression::Nil()], &env, &mut cur) {
-            Ok(s) => assert_eq!(s.to_string(), "abcdef"),
-            Err(_) => {}
+        if let Ok(s) = io::read(&[Expression::Nil()], &env, &mut cur) {
+            assert_eq!(s.to_string(), "abcdef")
         }
     }
     #[test]

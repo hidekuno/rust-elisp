@@ -91,29 +91,20 @@ impl SimpleEnv {
 #[test]
 fn global_tbl() {
     let g = GlobalTbl::new();
-    assert_eq!(g.tail_recursion, true);
-    assert_eq!(g.force_stop, false);
-    assert_eq!(g.builtin_tbl.len() > 0, true);
+    assert!(g.tail_recursion);
+    assert!(!g.force_stop);
+    assert!(!g.builtin_tbl.is_empty());
     assert_eq!(g.builtin_tbl_ext.len(), 0);
 }
 #[test]
 fn simple_env() {
     let mut s = SimpleEnv::new(None);
-    assert_eq!(
-        if let Some(_) = s.parent {
-            "exists"
-        } else {
-            "None"
-        },
-        "None"
-    );
+    assert_eq!(if s.parent.is_some() { "exists" } else { "None" }, "None");
+
     s.regist("x".to_string(), Expression::Integer(10));
     assert_eq!(
-        if let Some(x) = s.find(&"x".to_string()) {
-            match x {
-                Expression::Integer(y) => y,
-                _ => -1,
-            }
+        if let Some(Expression::Integer(x)) = s.find(&"x".to_string()) {
+            x
         } else {
             -1
         },
@@ -121,11 +112,8 @@ fn simple_env() {
     );
     s.update(&"x".to_string(), Expression::Integer(20));
     assert_eq!(
-        if let Some(x) = s.find(&"x".to_string()) {
-            match x {
-                Expression::Integer(y) => y,
-                _ => -1,
-            }
+        if let Some(Expression::Integer(x)) = s.find(&"x".to_string()) {
+            x
         } else {
             -1
         },

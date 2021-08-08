@@ -17,7 +17,7 @@ use elisp::lisp::Environment;
 
 #[cfg(test)]
 fn do_lisp_env(program: &str, env: &Environment) -> String {
-    match elisp::lisp::do_core_logic(&program, env) {
+    match elisp::lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
     }
@@ -210,8 +210,7 @@ mod tests {
             .output()
             .expect("gtk-xx-version falut");
         let version = String::from_utf8(output.stdout).unwrap();
-        let version = version.split(".");
-        let mut iter = version.into_iter();
+        let mut iter = version.split('.');
         if let Some(v) = iter.next() {
             assert_eq!(do_lisp_env("(gtk-major-version)", &env), v);
         }

@@ -241,7 +241,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = &*(referlence_list!(l));
     let mut vec = Vec::new();
     for e in l {
-        if Expression::eq(&e, &other) {
+        if Expression::eq(e, &other) {
             continue;
         }
         vec.push(e.clone());
@@ -261,7 +261,7 @@ fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut l = mut_list!(&rc);
     let mut vec = Vec::new();
     for e in l.iter() {
-        if Expression::eq(&e, &other) {
+        if Expression::eq(e, &other) {
             continue;
         }
         vec.push(e.clone());
@@ -470,7 +470,7 @@ pub fn make_evaled_list(
     if let Some(e) = result {
         match e {
             Expression::List(_) | Expression::Symbol(_) => {
-                set_evaled_list_inner(&mut sexp, &e);
+                set_evaled_list_inner(&mut sexp, e);
             }
             _ => sexp.push(e.clone()),
         }
@@ -478,7 +478,7 @@ pub fn make_evaled_list(
     for e in exp {
         match e {
             Expression::List(_) | Expression::Symbol(_) => {
-                set_evaled_list_inner(&mut sexp, &e);
+                set_evaled_list_inner(&mut sexp, e);
             }
             _ => sexp.push(e.clone()),
         }

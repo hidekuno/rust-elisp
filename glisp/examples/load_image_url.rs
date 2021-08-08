@@ -54,7 +54,7 @@ fn load_url(url: &String) -> Result<(Vec<u8>,StatusCode),
     )
 }
 #[cfg(feature = "redirect")]
-fn load_url(url: &String) -> Result<(Vec<u8>,StatusCode),
+fn load_url(url: &str) -> Result<(Vec<u8>,StatusCode),
                                     Box<dyn std::error::Error + Send + Sync + 'static>> {
     task::block_on(
         async {
@@ -82,7 +82,7 @@ fn build_example_function(app: &Application) {
         } else {
             return Err(create_error!(ErrCode::E1015));
         };
-        if url.starts_with("http://") == false && url.starts_with("https://") == false {
+        if !url.starts_with("http://")  && !url.starts_with("https://") {
             return Err(create_error!(ErrCode::E1021));
         }
 
@@ -116,13 +116,13 @@ struct Application<'a> {
 impl<'a> Application<'a> {
     fn new(env: &'a Environment, draw_table: &'a DrawTable) -> Self {
         Application {
-            env: env,
-            draw_table: draw_table,
+            env,
+            draw_table,
         }
     }
 }
 fn create_app<'a>(env: &'a Environment, draw_table: &'a DrawTable) -> Application<'a> {
-    Application::new(&env, &draw_table)
+    Application::new(env, draw_table)
 }
 fn build_draw_ui(app: &Application) {
     // Create Lisp Function

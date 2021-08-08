@@ -353,7 +353,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     {
         let text_buffer = text_view.get_buffer().expect("Couldn't get window");
         text_buffer.connect_end_user_action(move |w| {
-            source_view.do_highlight(&w);
+            source_view.do_highlight(w);
         });
     }
     //--------------------------------------------------------
@@ -376,7 +376,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         });
         save
     });
-    menu.append(&create_save_as_menu(&window, &status_bar, &draw_table));
+    menu.append(&create_save_as_menu(&window, status_bar, draw_table));
     menu.append(&{
         let quit = gtk::MenuItem::with_mnemonic("_Quit");
         let env = env.clone();

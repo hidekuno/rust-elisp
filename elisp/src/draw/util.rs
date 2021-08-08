@@ -80,7 +80,7 @@ fn set_loc(
     if exp.len() == (param.1 + param.0) {
         for l in loc.iter_mut().take(param.1) {
             if let Some(e) = iter.next() {
-                if let Expression::Float(f) = eval(&e, env)? {
+                if let Expression::Float(f) = eval(e, env)? {
                     *l = f;
                 } else {
                     return Err(create_error!(ErrCode::E1003));
@@ -90,7 +90,7 @@ fn set_loc(
     } else if exp.len() == (param.1 / 2 + param.0) {
         for i in (0..param.1).step_by(2) {
             if let Some(e) = iter.next() {
-                if let Expression::Pair(x, y) = eval(&e, env)? {
+                if let Expression::Pair(x, y) = eval(e, env)? {
                     if let Expression::Float(f) = eval(&x, env)? {
                         loc[i] = f;
                     } else {
