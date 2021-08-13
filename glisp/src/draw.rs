@@ -4,9 +4,7 @@
 
    hidekuno@gmail.com
 */
-extern crate cairo;
 extern crate elisp;
-extern crate gdk_pixbuf;
 extern crate gtk;
 
 use crate::ui::DRAW_HEIGHT;
@@ -17,6 +15,9 @@ use elisp::draw::DrawImage;
 use elisp::draw::DrawLine;
 use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
+use gtk::cairo;
+use gtk::gdk;
+use gtk::gdk_pixbuf;
 
 use cairo::{Context, Format, ImageSurface, Matrix};
 use gdk::prelude::GdkContextExt;
@@ -112,10 +113,10 @@ impl ImageSurfaceWrapper {
 }
 impl ImageData for ImageSurfaceWrapper {
     fn get_width(&self) -> f64 {
-        self.surface.get_width() as f64
+        self.surface.width() as f64
     }
     fn get_height(&self) -> f64 {
-        self.surface.get_height() as f64
+        self.surface.height() as f64
     }
     fn set_context_image(&self, cr: &Context) {
         cr.set_source_surface(&self.surface, 0.0, 0.0);
@@ -131,10 +132,10 @@ impl PixbufWrapper {
 }
 impl ImageData for PixbufWrapper {
     fn get_width(&self) -> f64 {
-        self.pixbuf.get_width() as f64
+        self.pixbuf.width() as f64
     }
     fn get_height(&self) -> f64 {
-        self.pixbuf.get_height() as f64
+        self.pixbuf.height() as f64
     }
     fn set_context_image(&self, cr: &Context) {
         cr.set_source_pixbuf(&self.pixbuf, 0.0, 0.0);

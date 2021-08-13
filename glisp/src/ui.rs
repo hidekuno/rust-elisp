@@ -4,13 +4,12 @@
 
    hidekuno@gmail.com
 */
-extern crate gdk;
-extern crate glib;
+extern crate elisp;
 extern crate gtk;
 
-extern crate elisp;
-
 use elisp::lisp;
+use gtk::gdk;
+use gtk::glib;
 use lisp::Environment;
 
 use gtk::prelude::*;
@@ -56,7 +55,7 @@ struct ControlWidget {
 impl ControlWidget {
     fn new() -> Self {
         let text_view = gtk::TextView::new();
-        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+        let text_buffer = text_view.buffer().expect("Couldn't get window");
         let source_view = SourceView::new(&text_buffer);
 
         ControlWidget {
@@ -81,7 +80,7 @@ impl ControlWidget {
 }
 macro_rules! set_message {
     ($s: expr, $v: expr) => {
-        $s.push($s.get_context_id(EVAL_RESULT_ID), $v);
+        $s.push($s.context_id(EVAL_RESULT_ID), $v);
     };
 }
 //--------------------------------------------------------
@@ -132,7 +131,7 @@ textview {
         .load_from_data(style.as_bytes())
         .expect("Failed to load CSS");
     gtk::StyleContext::add_provider_for_screen(
-        &gdk::Screen::get_default().expect("Error initializing gtk css provider."),
+        &gdk::Screen::default().expect("Error initializing gtk css provider."),
         &provider,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
@@ -145,7 +144,7 @@ fn create_demo_program_menu(menu: &str, pdir: &'static str, ui: &ControlWidget) 
     let ui = ui.clone();
     load.connect_activate(move |_| match load_demo_program(pdir) {
         Ok(v) => {
-            let text_buffer = ui.text_view().get_buffer().expect("Couldn't get window");
+            let text_buffer = ui.text_view().buffer().expect("Couldn't get window");
             text_buffer.set_text(&v.into_boxed_str());
             ui.source_view().do_highlight(&text_buffer);
         }
@@ -175,7 +174,7 @@ fn create_environment_menu(
 
     let label = gtk::Label::new(None);
     label.set_selectable(true);
-    let content_area = dialog.get_content_area();
+    let content_area = dialog.content_area();
     content_area.add(&label);
 
     mi.connect_activate(move |_| {
@@ -209,7 +208,7 @@ fn create_save_as_menu(
     let draw_table = draw_table.clone();
     mi.connect_activate(move |_| {
         if gtk::ResponseType::Accept == dialog.run() {
-            let message = save_png_file(&draw_table, &dialog.get_filename().unwrap(), true);
+            let message = save_png_file(&draw_table, &dialog.filename().unwrap(), true);
             set_message!(status_bar, message.as_str());
         }
         dialog.hide();
@@ -228,13 +227,13 @@ fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk
     dialog.add_button("Ok", gtk::ResponseType::Ok);
 
     let entry = gtk::SearchEntry::new();
-    let content_area = dialog.get_content_area();
+    let content_area = dialog.content_area();
     content_area.add(&entry);
 
     mi.connect_activate(move |_| {
         dialog.show_all();
         if gtk::ResponseType::Ok == dialog.run() {
-            let text = entry.get_text();
+            let text = entry.text();
             search_word_highlight(&text_buffer, "search", text.as_str());
         }
         dialog.hide();
@@ -291,16 +290,16 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let gr = Rc::new(Graffiti::new(draw_table));
     let c = gr.clone();
     canvas.connect_button_press_event(move |_, e| {
-        if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
-            let (x, y) = e.get_position();
+        if e.state() == gdk::ModifierType::BUTTON1_MASK {
+            let (x, y) = e.position();
             c.start_graffiti(x, y);
         }
         Inhibit(true)
     });
     let c = gr.clone();
     canvas.connect_motion_notify_event(move |w, e| {
-        if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
-            let (x, y) = e.get_position();
+        if e.state() == gdk::ModifierType::BUTTON1_MASK {
+            let (x, y) = e.position();
             c.draw_graffiti(x, y);
             w.queue_draw_area(x as i32 - 2, y as i32 - 2, 4, 4);
         }
@@ -308,15 +307,15 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     });
     let c = gr;
     canvas.connect_button_release_event(move |w, e| {
-        if e.get_state() == gdk::ModifierType::BUTTON1_MASK {
-            let (x, y) = e.get_position();
+        if e.state() == gdk::ModifierType::BUTTON1_MASK {
+            let (x, y) = e.position();
             c.stop_graffiti(x, y);
             w.queue_draw();
         }
         Inhibit(true)
     });
     canvas.set_events(
-        canvas.get_events()
+        canvas.events()
             | gdk::EventMask::BUTTON_PRESS_MASK
             | gdk::EventMask::BUTTON_RELEASE_MASK
             | gdk::EventMask::POINTER_MOTION_MASK,
@@ -332,13 +331,13 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     scroll.set_size_request(DRAW_WIDTH, 160);
     {
         let env = env.clone();
-        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+        let text_buffer = text_view.buffer().expect("Couldn't get window");
         let history = history.clone();
         let ui = ui.clone();
         let draw_table = draw_table.clone();
         text_view.connect_key_press_event(move |_, key| {
-            if key.get_state().intersects(gdk::ModifierType::CONTROL_MASK) {
-                if let Some(c) = key.get_keyval().to_unicode() {
+            if key.state().intersects(gdk::ModifierType::CONTROL_MASK) {
+                if let Some(c) = key.keyval().to_unicode() {
                     match c as u32 {
                         EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
                         DRAW_CLEAR_KEYCODE => clear_canvas(&draw_table, ui.canvas()),
@@ -351,7 +350,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
         });
     }
     {
-        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+        let text_buffer = text_view.buffer().expect("Couldn't get window");
         text_buffer.connect_end_user_action(move |w| {
             source_view.do_highlight(w);
         });
@@ -417,7 +416,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     });
     menu.append(&{
         let clear = gtk::MenuItem::with_mnemonic("_Code Clear");
-        let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+        let text_buffer = text_view.buffer().expect("Couldn't get window");
 
         clear.connect_activate(move |_| {
             text_buffer.set_text("");
@@ -431,7 +430,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let menu = gtk::Menu::new();
     menu.append(&create_search_menu(
         &window,
-        text_view.get_buffer().expect("Couldn't get window"),
+        text_view.buffer().expect("Couldn't get window"),
     ));
     search.set_submenu(Some(&menu));
     menu_bar.append(&search);
@@ -504,7 +503,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     let canvas = ui.canvas();
     let text_view = ui.text_view();
     let status_bar = ui.status_bar();
-    let text_buffer = text_view.get_buffer().expect("Couldn't get window");
+    let text_buffer = text_view.buffer().expect("Couldn't get window");
 
     #[cfg(feature = "animation")]
     let sid = {
@@ -515,14 +514,11 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
             glib::Continue(true)
         })
     };
-    let (s, e) = match text_buffer.get_selection_bounds() {
+    let (s, e) = match text_buffer.selection_bounds() {
         Some(t) => t,
-        None => (text_buffer.get_start_iter(), text_buffer.get_end_iter()),
+        None => (text_buffer.start_iter(), text_buffer.end_iter()),
     };
-    let exp = text_buffer
-        .get_text(&s, &e, false)
-        .expect("die")
-        .to_string();
+    let exp = text_buffer.text(&s, &e, false).expect("die").to_string();
 
     let result = match lisp::do_core_logic(&exp, env) {
         Ok(r) => {

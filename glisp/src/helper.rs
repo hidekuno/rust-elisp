@@ -52,10 +52,10 @@ impl History {
             text_buffer.set_text(&exp_);
         });
 
-        if None == self.menu.get_submenu() {
+        if None == self.menu.submenu() {
             self.menu.set_submenu(Some(&gtk::Menu::new()));
         }
-        if let Some(w) = self.menu.get_submenu() {
+        if let Some(w) = self.menu.submenu() {
             if let Ok(w) = w.downcast::<gtk::Menu>() {
                 w.append(&c);
 
@@ -91,15 +91,15 @@ pub struct SourceView {
 impl SourceView {
     pub fn new(tb: &gtk::TextBuffer) -> Self {
         let keyword = gtk::TextTag::new(Some("keyword"));
-        keyword.set_property_foreground(Some("#0033ee"));
+        keyword.set_foreground(Some("#0033ee"));
 
         let string = gtk::TextTag::new(Some("string"));
-        string.set_property_foreground(Some("#660000"));
+        string.set_foreground(Some("#660000"));
 
         let digit = gtk::TextTag::new(Some("digit"));
-        digit.set_property_foreground(Some("#009900"));
+        digit.set_foreground(Some("#009900"));
 
-        let table: gtk::TextTagTable = tb.get_tag_table().unwrap();
+        let table: gtk::TextTagTable = tb.tag_table().unwrap();
         table.add(&keyword);
         table.add(&string);
         table.add(&digit);
@@ -120,7 +120,7 @@ impl SourceView {
         let mut vec: Option<gtk::TextIter> = None;
         let mut state = Status::Ready;
         loop {
-            if let Some(c) = start.get_char() {
+            if let Some(c) = start.char() {
                 match state {
                     Status::Ready => match c {
                         '(' | ')' | ' ' | '\n' => state = Status::Ready,
@@ -182,7 +182,7 @@ impl SourceView {
         }
     }
     fn is_keyword(&self, s: &gtk::TextIter, r: &gtk::TextIter) -> bool {
-        if let Some(w) = s.get_slice(r) {
+        if let Some(w) = s.slice(r) {
             for word in vec![
                 "define", "lambda", "if", "map", "filter", "reduce", "let", "set!", "and", "or",
                 "not", "cond", "case", "begin", "else", "apply", "delay", "force", "quote",
@@ -196,7 +196,7 @@ impl SourceView {
         false
     }
     fn is_number(&self, s: &gtk::TextIter, r: &gtk::TextIter) -> bool {
-        if let Some(w) = s.get_slice(r) {
+        if let Some(w) = s.slice(r) {
             for c in w.as_str().chars() {
                 if !c.is_digit(10) && c != '.' {
                     return false;
@@ -210,8 +210,8 @@ impl SourceView {
         // println!("{}", std::mem::size_of_val(&self.string));
         // println!("{}", std::mem::size_of::<gtk::TextBuffer>());
         // println!("{}", std::any::type_name::<gtk::TextBuffer>());
-        let start = text_buffer.get_start_iter();
-        let end = text_buffer.get_end_iter();
+        let start = text_buffer.start_iter();
+        let end = text_buffer.end_iter();
 
         text_buffer.remove_tag(&*(self.keyword), &start, &end);
         text_buffer.remove_tag(&*(self.digit), &start, &end);
@@ -225,20 +225,20 @@ impl SourceView {
 // ex) search_word_highlight(text_buffer, "search", "frame");
 //------------------------------------------------------------------------
 pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word: &str) {
-    let table: gtk::TextTagTable = text_buffer.get_tag_table().unwrap();
+    let table: gtk::TextTagTable = text_buffer.tag_table().unwrap();
 
     let search_tag = if let Some(tag) = table.lookup(tag_name) {
         tag
     } else {
         let search_tag = gtk::TextTag::new(Some(tag_name));
-        search_tag.set_property_foreground(Some("#ee0000"));
-        search_tag.set_property_background(Some("#eaeaea"));
+        search_tag.set_foreground(Some("#ee0000"));
+        search_tag.set_background(Some("#eaeaea"));
         table.add(&search_tag);
         search_tag
     };
 
-    let start = text_buffer.get_start_iter();
-    let end = text_buffer.get_end_iter();
+    let start = text_buffer.start_iter();
+    let end = text_buffer.end_iter();
     text_buffer.remove_tag(&search_tag, &start, &end);
 
     if word.is_empty() {
