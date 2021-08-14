@@ -151,7 +151,7 @@ impl Graffiti {
     pub fn new(draw_table: &DrawTable) -> Self {
         let surface = draw_table.get_default_surface();
         Graffiti {
-            cr: Context::new(&*surface),
+            cr: Context::new(&*surface).unwrap(),
         }
     }
     pub fn start_graffiti(&self, x: f64, y: f64) {
@@ -185,7 +185,7 @@ macro_rules! force_event_loop {
 // ----------------------------------------------------------------
 pub fn draw_clear(draw_table: &DrawTable) {
     let surface = draw_table.get_default_surface();
-    let cr = &Context::new(&*surface);
+    let cr = &Context::new(&*surface).unwrap();
     cr.transform(Matrix {
         xx: 1.0,
         yx: 0.0,
@@ -203,7 +203,7 @@ pub fn draw_clear(draw_table: &DrawTable) {
 // ----------------------------------------------------------------
 pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine {
     let surface = draw_table.get_default_surface();
-    let cr = Context::new(&*surface);
+    let cr = Context::new(&*surface).unwrap();
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
 
     let draw_table = draw_table.clone();
@@ -241,7 +241,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
             None => return Err(create_error!(ErrCode::E1008)),
         };
 
-        let cr = Context::new(&*surface);
+        let cr = Context::new(&*surface).unwrap();
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
 
@@ -274,7 +274,7 @@ pub fn create_draw_string(draw_table: &DrawTable) -> Box<dyn Fn(f64, f64, f64, S
     let draw_table = draw_table.clone();
     let draw_string = move |x, y, f, s: String| {
         let fg = &draw_table.core.borrow().fg;
-        let cr = Context::new(&*surface);
+        let cr = Context::new(&*surface).unwrap();
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
         cr.move_to(x, y);
@@ -296,7 +296,7 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
 
     let draw_arc = move |x, y, r, a| {
         let fg = &draw_table.core.borrow().fg;
-        let cr = Context::new(&*surface);
+        let cr = Context::new(&*surface).unwrap();
 
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
 
@@ -338,7 +338,7 @@ pub fn create_draw_table() -> DrawTable {
     let fg = Color::new(DEFALUT_FG_COLOR.0, DEFALUT_FG_COLOR.1, DEFALUT_FG_COLOR.2);
     let bg = Color::new(DEFALUT_BG_COLOR.0, DEFALUT_BG_COLOR.1, DEFALUT_BG_COLOR.2);
 
-    let cr = Context::new(&surface);
+    let cr = Context::new(&surface).unwrap();
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
     cr.set_source_rgb(bg.red, bg.green, bg.blue);
     cr.paint();
