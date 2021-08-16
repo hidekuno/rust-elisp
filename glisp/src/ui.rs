@@ -9,6 +9,7 @@ extern crate gtk;
 
 use elisp::lisp;
 use gtk::gdk;
+#[cfg(feature = "animation")]
 use gtk::glib;
 use lisp::Environment;
 
