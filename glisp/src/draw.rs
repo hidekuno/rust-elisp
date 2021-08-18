@@ -33,6 +33,7 @@ const DEFALUT_LINE_WIDTH: f64 = 0.001;
 const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
 const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
 
+const CAIRO_ERR_MSG: &str = "Invalid cairo state";
 // ----------------------------------------------------------------
 // Color table
 // ----------------------------------------------------------------
@@ -119,7 +120,8 @@ impl ImageData for ImageSurfaceWrapper {
         self.surface.height() as f64
     }
     fn set_context_image(&self, cr: &Context) {
-        cr.set_source_surface(&self.surface, 0.0, 0.0);
+        cr.set_source_surface(&self.surface, 0.0, 0.0)
+            .expect(CAIRO_ERR_MSG);
     }
 }
 pub struct PixbufWrapper {
@@ -161,12 +163,12 @@ impl Graffiti {
     }
     pub fn draw_graffiti(&self, x: f64, y: f64) {
         self.cr.line_to(x, y);
-        self.cr.stroke();
+        self.cr.stroke().expect(CAIRO_ERR_MSG);
         self.cr.move_to(x, y);
     }
     pub fn stop_graffiti(&self, x: f64, y: f64) {
         self.cr.line_to(x, y);
-        self.cr.stroke();
+        self.cr.stroke().expect(CAIRO_ERR_MSG);
     }
 }
 // ----------------------------------------------------------------
@@ -196,7 +198,7 @@ pub fn draw_clear(draw_table: &DrawTable) {
     });
     let bg = &draw_table.core.borrow().bg;
     cr.set_source_rgb(bg.red, bg.green, bg.blue);
-    cr.paint();
+    cr.paint().expect(CAIRO_ERR_MSG);
 }
 // ----------------------------------------------------------------
 // create new cairo from imagetable, and draw line
@@ -215,7 +217,7 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
         cr.set_line_width(draw_table.core.borrow().line_width);
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
-        cr.stroke();
+        cr.stroke().expect(CAIRO_ERR_MSG);
         {
             let mut c = count.borrow_mut();
             *c += 1;
@@ -256,7 +258,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
         cr.transform(matrix);
 
         img.set_context_image(&cr);
-        cr.paint();
+        cr.paint().expect(CAIRO_ERR_MSG);
 
         #[cfg(feature = "animation")]
         force_event_loop!();
@@ -279,9 +281,9 @@ pub fn create_draw_string(draw_table: &DrawTable) -> Box<dyn Fn(f64, f64, f64, S
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
         cr.move_to(x, y);
         cr.set_font_size(f);
-        cr.show_text(s.as_str());
+        cr.show_text(s.as_str()).expect(CAIRO_ERR_MSG);
 
-        cr.stroke();
+        cr.stroke().expect(CAIRO_ERR_MSG);
         #[cfg(feature = "animation")]
         force_event_loop!();
     };
@@ -303,7 +305,7 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
         cr.set_line_width(draw_table.core.borrow().line_width);
         cr.arc(x, y, r, a, PI * 2.);
-        cr.stroke();
+        cr.stroke().expect(CAIRO_ERR_MSG);
 
         #[cfg(feature = "animation")]
         force_event_loop!();
@@ -341,20 +343,20 @@ pub fn create_draw_table() -> DrawTable {
     let cr = Context::new(&surface).unwrap();
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
     cr.set_source_rgb(bg.red, bg.green, bg.blue);
-    cr.paint();
+    cr.paint().expect(CAIRO_ERR_MSG);
 
     cr.set_source_rgb(fg.red, fg.green, fg.blue);
     cr.move_to(0.04, 0.50);
     cr.set_font_size(0.25);
-    cr.show_text("Rust");
+    cr.show_text("Rust").expect(CAIRO_ERR_MSG);
 
     cr.move_to(0.27, 0.69);
     cr.text_path("eLisp");
     cr.set_source_rgb(0.5, 0.5, 1.0);
-    cr.fill_preserve();
+    cr.fill_preserve().expect(CAIRO_ERR_MSG);
     cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.set_line_width(0.01);
-    cr.stroke();
+    cr.stroke().expect(CAIRO_ERR_MSG);
 
     DrawTable {
         core: Rc::new(RefCell::new(Graphics {
