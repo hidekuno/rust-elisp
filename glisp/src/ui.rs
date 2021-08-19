@@ -281,12 +281,13 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let canvas = ui.canvas();
     canvas.set_size_request(DRAW_WIDTH, DRAW_HEIGHT);
 
-    let surface = draw_table.get_default_surface();
-    canvas.connect_draw(move |_, cr| {
-        cr.set_source_surface(&*surface, 0.0, 0.0);
-        cr.paint();
-        Inhibit(false)
-    });
+    {
+        let draw_table = draw_table.clone();
+        canvas.connect_draw(move |_, cr| {
+            draw_table.set_cairo_surface(cr);
+            Inhibit(false)
+        });
+    }
 
     let gr = Rc::new(Graffiti::new(draw_table));
     let c = gr.clone();

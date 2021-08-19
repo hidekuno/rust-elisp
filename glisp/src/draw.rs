@@ -95,6 +95,12 @@ impl DrawTable {
     pub fn get_default_surface(&self) -> Rc<ImageSurface> {
         self.surface.clone()
     }
+    pub fn set_cairo_surface(&self, cr: &Context) {
+        cr.set_source_surface(&*self.surface, 0.0, 0.0)
+            .expect(CAIRO_ERR_MSG);
+
+        cr.paint().expect(CAIRO_ERR_MSG);
+    }
 }
 // ----------------------------------------------------------------
 // Image data
