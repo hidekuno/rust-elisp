@@ -4,9 +4,7 @@
 
    hidekuno@gmail.com
 */
-extern crate cairo;
 extern crate elisp;
-extern crate gdk_pixbuf;
 extern crate gtk;
 
 use super::fractal::dragon::Dragon;
@@ -26,6 +24,8 @@ use crate::draw::ImageSurfaceWrapper;
 use crate::draw::PixbufWrapper;
 use crate::ui::DRAW_HEIGHT;
 use crate::ui::DRAW_WIDTH;
+use gtk::cairo;
+use gtk::gdk_pixbuf;
 
 use elisp::create_error;
 use elisp::create_error_value;
@@ -290,9 +290,9 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // ex. (gtk-micro-version)
     //--------------------------------------------------------
     let version_tbl = [
-        ("gtk-major-version", gtk::get_major_version()),
-        ("gtk-minor-version", gtk::get_minor_version()),
-        ("gtk-micro-version", gtk::get_micro_version()),
+        ("gtk-major-version", gtk::major_version()),
+        ("gtk-minor-version", gtk::minor_version()),
+        ("gtk-micro-version", gtk::micro_version()),
     ];
     for (f, v) in version_tbl.iter() {
         let x = *v;

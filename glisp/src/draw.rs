@@ -4,9 +4,7 @@
 
    hidekuno@gmail.com
 */
-extern crate cairo;
 extern crate elisp;
-extern crate gdk_pixbuf;
 extern crate gtk;
 
 use crate::ui::DRAW_HEIGHT;
@@ -17,6 +15,9 @@ use elisp::draw::DrawImage;
 use elisp::draw::DrawLine;
 use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
+use gtk::cairo;
+use gtk::gdk;
+use gtk::gdk_pixbuf;
 
 use cairo::{Context, Format, ImageSurface, Matrix};
 use gdk::prelude::GdkContextExt;
@@ -32,6 +33,7 @@ const DEFALUT_LINE_WIDTH: f64 = 0.001;
 const DEFALUT_BG_COLOR: (f64, f64, f64) = (0.9, 0.9, 0.9);
 const DEFALUT_FG_COLOR: (f64, f64, f64) = (0.0, 0.0, 0.0);
 
+const CAIRO_ERR_MSG: &str = "Invalid cairo state";
 // ----------------------------------------------------------------
 // Color table
 // ----------------------------------------------------------------
@@ -93,6 +95,12 @@ impl DrawTable {
     pub fn get_default_surface(&self) -> Rc<ImageSurface> {
         self.surface.clone()
     }
+    pub fn set_cairo_surface(&self, cr: &Context) {
+        cr.set_source_surface(&*self.surface, 0.0, 0.0)
+            .expect(CAIRO_ERR_MSG);
+
+        cr.paint().expect(CAIRO_ERR_MSG);
+    }
 }
 // ----------------------------------------------------------------
 // Image data
@@ -112,13 +120,14 @@ impl ImageSurfaceWrapper {
 }
 impl ImageData for ImageSurfaceWrapper {
     fn get_width(&self) -> f64 {
-        self.surface.get_width() as f64
+        self.surface.width() as f64
     }
     fn get_height(&self) -> f64 {
-        self.surface.get_height() as f64
+        self.surface.height() as f64
     }
     fn set_context_image(&self, cr: &Context) {
-        cr.set_source_surface(&self.surface, 0.0, 0.0);
+        cr.set_source_surface(&self.surface, 0.0, 0.0)
+            .expect(CAIRO_ERR_MSG);
     }
 }
 pub struct PixbufWrapper {
@@ -131,10 +140,10 @@ impl PixbufWrapper {
 }
 impl ImageData for PixbufWrapper {
     fn get_width(&self) -> f64 {
-        self.pixbuf.get_width() as f64
+        self.pixbuf.width() as f64
     }
     fn get_height(&self) -> f64 {
-        self.pixbuf.get_height() as f64
+        self.pixbuf.height() as f64
     }
     fn set_context_image(&self, cr: &Context) {
         cr.set_source_pixbuf(&self.pixbuf, 0.0, 0.0);
@@ -150,7 +159,7 @@ impl Graffiti {
     pub fn new(draw_table: &DrawTable) -> Self {
         let surface = draw_table.get_default_surface();
         Graffiti {
-            cr: Context::new(&*surface),
+            cr: Context::new(&*surface).unwrap(),
         }
     }
     pub fn start_graffiti(&self, x: f64, y: f64) {
@@ -160,12 +169,12 @@ impl Graffiti {
     }
     pub fn draw_graffiti(&self, x: f64, y: f64) {
         self.cr.line_to(x, y);
-        self.cr.stroke();
+        self.cr.stroke().expect(CAIRO_ERR_MSG);
         self.cr.move_to(x, y);
     }
     pub fn stop_graffiti(&self, x: f64, y: f64) {
         self.cr.line_to(x, y);
-        self.cr.stroke();
+        self.cr.stroke().expect(CAIRO_ERR_MSG);
     }
 }
 // ----------------------------------------------------------------
@@ -184,7 +193,7 @@ macro_rules! force_event_loop {
 // ----------------------------------------------------------------
 pub fn draw_clear(draw_table: &DrawTable) {
     let surface = draw_table.get_default_surface();
-    let cr = &Context::new(&*surface);
+    let cr = &Context::new(&*surface).unwrap();
     cr.transform(Matrix {
         xx: 1.0,
         yx: 0.0,
@@ -195,14 +204,14 @@ pub fn draw_clear(draw_table: &DrawTable) {
     });
     let bg = &draw_table.core.borrow().bg;
     cr.set_source_rgb(bg.red, bg.green, bg.blue);
-    cr.paint();
+    cr.paint().expect(CAIRO_ERR_MSG);
 }
 // ----------------------------------------------------------------
 // create new cairo from imagetable, and draw line
 // ----------------------------------------------------------------
 pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine {
     let surface = draw_table.get_default_surface();
-    let cr = Context::new(&*surface);
+    let cr = Context::new(&*surface).unwrap();
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
 
     let draw_table = draw_table.clone();
@@ -214,7 +223,7 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
         cr.set_line_width(draw_table.core.borrow().line_width);
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
-        cr.stroke();
+        cr.stroke().expect(CAIRO_ERR_MSG);
         {
             let mut c = count.borrow_mut();
             *c += 1;
@@ -240,7 +249,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
             None => return Err(create_error!(ErrCode::E1008)),
         };
 
-        let cr = Context::new(&*surface);
+        let cr = Context::new(&*surface).unwrap();
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
 
@@ -255,7 +264,7 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
         cr.transform(matrix);
 
         img.set_context_image(&cr);
-        cr.paint();
+        cr.paint().expect(CAIRO_ERR_MSG);
 
         #[cfg(feature = "animation")]
         force_event_loop!();
@@ -273,14 +282,14 @@ pub fn create_draw_string(draw_table: &DrawTable) -> Box<dyn Fn(f64, f64, f64, S
     let draw_table = draw_table.clone();
     let draw_string = move |x, y, f, s: String| {
         let fg = &draw_table.core.borrow().fg;
-        let cr = Context::new(&*surface);
+        let cr = Context::new(&*surface).unwrap();
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
         cr.move_to(x, y);
         cr.set_font_size(f);
-        cr.show_text(s.as_str());
+        cr.show_text(s.as_str()).expect(CAIRO_ERR_MSG);
 
-        cr.stroke();
+        cr.stroke().expect(CAIRO_ERR_MSG);
         #[cfg(feature = "animation")]
         force_event_loop!();
     };
@@ -295,14 +304,14 @@ pub fn create_draw_arc(draw_table: &DrawTable) -> DrawArc {
 
     let draw_arc = move |x, y, r, a| {
         let fg = &draw_table.core.borrow().fg;
-        let cr = Context::new(&*surface);
+        let cr = Context::new(&*surface).unwrap();
 
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
 
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
         cr.set_line_width(draw_table.core.borrow().line_width);
         cr.arc(x, y, r, a, PI * 2.);
-        cr.stroke();
+        cr.stroke().expect(CAIRO_ERR_MSG);
 
         #[cfg(feature = "animation")]
         force_event_loop!();
@@ -337,23 +346,23 @@ pub fn create_draw_table() -> DrawTable {
     let fg = Color::new(DEFALUT_FG_COLOR.0, DEFALUT_FG_COLOR.1, DEFALUT_FG_COLOR.2);
     let bg = Color::new(DEFALUT_BG_COLOR.0, DEFALUT_BG_COLOR.1, DEFALUT_BG_COLOR.2);
 
-    let cr = Context::new(&surface);
+    let cr = Context::new(&surface).unwrap();
     cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
     cr.set_source_rgb(bg.red, bg.green, bg.blue);
-    cr.paint();
+    cr.paint().expect(CAIRO_ERR_MSG);
 
     cr.set_source_rgb(fg.red, fg.green, fg.blue);
     cr.move_to(0.04, 0.50);
     cr.set_font_size(0.25);
-    cr.show_text("Rust");
+    cr.show_text("Rust").expect(CAIRO_ERR_MSG);
 
     cr.move_to(0.27, 0.69);
     cr.text_path("eLisp");
     cr.set_source_rgb(0.5, 0.5, 1.0);
-    cr.fill_preserve();
+    cr.fill_preserve().expect(CAIRO_ERR_MSG);
     cr.set_source_rgb(0.0, 0.0, 0.0);
     cr.set_line_width(0.01);
-    cr.stroke();
+    cr.stroke().expect(CAIRO_ERR_MSG);
 
     DrawTable {
         core: Rc::new(RefCell::new(Graphics {
