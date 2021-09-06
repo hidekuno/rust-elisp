@@ -1,4 +1,4 @@
-FROM node:stretch as builder
+FROM node:12-stretch as builder
 MAINTAINER hidekuno@gmail.com
 
 ENV HOME /root
@@ -12,7 +12,7 @@ RUN git clone https://github.com/hidekuno/rust-elisp
 WORKDIR $HOME/rust-elisp/wasmlisp
 RUN wasm-pack build
 
-FROM node:10-alpine as wasmlisp
+FROM node:12-alpine as wasmlisp
 MAINTAINER hidekuno@gmail.com
 
 WORKDIR /usr/src/app
