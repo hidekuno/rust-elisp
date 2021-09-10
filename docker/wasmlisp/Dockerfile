@@ -1,4 +1,4 @@
-FROM node:stretch as builder
+FROM node:16-buster as builder
 MAINTAINER hidekuno@gmail.com
 
 ENV HOME /root
@@ -12,7 +12,7 @@ RUN git clone https://github.com/hidekuno/rust-elisp
 WORKDIR $HOME/rust-elisp/wasmlisp
 RUN wasm-pack build
 
-FROM node:10-alpine as wasmlisp
+FROM node:16-alpine as wasmlisp
 MAINTAINER hidekuno@gmail.com
 
 WORKDIR /usr/src/app
@@ -24,6 +24,7 @@ RUN npm install
 COPY --from=builder /root/rust-elisp/wasmlisp/webpack.config.js ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.html ./
 COPY --from=builder /root/rust-elisp/wasmlisp/index.js ./
+COPY --from=builder /root/rust-elisp/wasmlisp/ui.js ./
 COPY --from=builder /root/rust-elisp/wasmlisp/loading.gif ./
 
 EXPOSE 8080
