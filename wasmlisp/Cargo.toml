@@ -6,9 +6,6 @@ edition = "2018"
 description = "A Lisp Interpreter with Web Assembly"
 repository = "https://github.com/hidekuno/rust-elisp"
 
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = false
-
 [lib]
 crate-type = ["cdylib"]
 

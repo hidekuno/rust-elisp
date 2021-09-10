@@ -1,4 +1,4 @@
-FROM node:12-stretch as builder
+FROM node:12-buster as builder
 MAINTAINER hidekuno@gmail.com
 
 ENV HOME /root
