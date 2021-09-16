@@ -33,6 +33,8 @@ use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
+static mut EVAL_COUNT: u64 = 0;
+
 use crate::get_ptr;
 use crate::mut_list;
 use crate::referlence_list;
@@ -65,6 +67,7 @@ pub enum ErrCode {
     E1020,
     E1021,
     E9000,
+    E9001,
     E9999,
     Cont,
 }
@@ -97,6 +100,7 @@ impl ErrCode {
             ErrCode::E1020 => "E1020",
             ErrCode::E1021 => "E1021",
             ErrCode::E9000 => "E9000",
+            ErrCode::E9001 => "E9001",
             ErrCode::E9999 => "E9999",
             ErrCode::Cont => "CONT",
         }
@@ -136,6 +140,7 @@ lazy_static! {
         e.insert(ErrCode::E1020.as_str(), "Not Rat");
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
+        e.insert(ErrCode::E9001.as_str(), "Exceed Eval Counts");
         e.insert(ErrCode::E9999.as_str(), "System Panic");
         e.insert(ErrCode::Cont.as_str(), "Appear Continuation");
         e
@@ -586,6 +591,7 @@ const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
 const FORCE_STOP: &str = "(force-stop)";
+const MAX_EVAL_COUNTS: u64 = 100_000_000;
 
 pub struct ControlChar(pub u8, pub &'static str);
 pub const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -685,6 +691,9 @@ pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
     let mut c: i32 = 1;
     let mut ret = Expression::Nil();
 
+    unsafe {
+        EVAL_COUNT = 0;
+    }
     loop {
         let exp = parse(&token, &mut c, env)?;
 
@@ -758,7 +767,7 @@ impl TokenState {
         self.tokens
     }
 }
-pub fn tokenize(program: &str) -> Vec<String> {
+pub(crate) fn tokenize(program: &str) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
 
@@ -838,7 +847,7 @@ pub fn tokenize(program: &str) -> Vec<String> {
     debug!("{:?}", token.tokens);
     token.tokens()
 }
-pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
+pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.is_empty() {
         return Err(create_error!(ErrCode::E0001));
     }
@@ -919,6 +928,14 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     #[cfg(feature = "signal")]
     catch_sig_intr_status(env);
+
+    unsafe {
+        if MAX_EVAL_COUNTS < EVAL_COUNT {
+            EVAL_COUNT = 0;
+            return Err(create_error!(ErrCode::E9001));
+        }
+        EVAL_COUNT += 1;
+    }
 
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));
