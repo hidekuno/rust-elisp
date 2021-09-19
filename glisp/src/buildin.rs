@@ -355,7 +355,12 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
                 Expression::Integer(c) => c,
                 _ => return Err(create_error!(ErrCode::E1002)),
             };
-            fractal.borrow_mut().do_demo(c as i32);
+            let fractal = fractal.try_borrow_mut();
+            if fractal.is_err() {
+                return Err(create_error!(ErrCode::E9999));
+            }
+            let mut fractal = fractal.unwrap();
+            fractal.do_demo(c as i32)?;
             Ok(Expression::Nil())
         });
     }

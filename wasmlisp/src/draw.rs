@@ -62,6 +62,7 @@ pub fn create_draw_line(context: &CanvasRenderingContext2d) -> DrawLine {
         ctx.line_to(x2, y2);
         ctx.close_path();
         ctx.stroke();
+        Ok(())
     };
     Box::new(draw_line)
 }

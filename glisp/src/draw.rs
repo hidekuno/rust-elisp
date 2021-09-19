@@ -224,15 +224,21 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
         cr.move_to(x0, y0);
         cr.line_to(x1, y1);
         cr.stroke().expect(CAIRO_ERR_MSG);
+
+        #[cfg(feature = "animation")]
         {
-            let mut c = count.borrow_mut();
+            let c = count.try_borrow_mut();
+            if c.is_err() {
+                return Err(create_error!(ErrCode::E9999));
+            }
+            let mut c = c.unwrap();
             *c += 1;
 
             if 0 == (*c % redraw_times) {
-                #[cfg(feature = "animation")]
                 force_event_loop!();
             }
         }
+        Ok(())
     };
     Box::new(draw_line)
 }
