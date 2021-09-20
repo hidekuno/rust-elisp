@@ -65,6 +65,7 @@ pub enum ErrCode {
     E1020,
     E1021,
     E9000,
+    E9002,
     E9999,
     Cont,
 }
@@ -97,6 +98,7 @@ impl ErrCode {
             ErrCode::E1020 => "E1020",
             ErrCode::E1021 => "E1021",
             ErrCode::E9000 => "E9000",
+            ErrCode::E9002 => "E9002",
             ErrCode::E9999 => "E9999",
             ErrCode::Cont => "CONT",
         }
@@ -136,6 +138,10 @@ lazy_static! {
         e.insert(ErrCode::E1020.as_str(), "Not Rat");
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
+        e.insert(
+            ErrCode::E9002.as_str(),
+            "Not Support Double Execution Of draw-line apps",
+        );
         e.insert(ErrCode::E9999.as_str(), "System Panic");
         e.insert(ErrCode::Cont.as_str(), "Appear Continuation");
         e

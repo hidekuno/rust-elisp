@@ -229,7 +229,7 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
         {
             let c = count.try_borrow_mut();
             if c.is_err() {
-                return Err(create_error!(ErrCode::E9999));
+                return Err(create_error!(ErrCode::E9002));
             }
             let mut c = c.unwrap();
             *c += 1;
