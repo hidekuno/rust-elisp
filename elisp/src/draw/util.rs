@@ -28,7 +28,7 @@ pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawL
         const N: usize = 4;
         let mut loc: [f64; N] = [0.0; N];
         set_loc(exp, env, &mut loc, (1, N))?;
-        draw_line(loc[0], loc[1], loc[2], loc[3]);
+        draw_line(loc[0], loc[1], loc[2], loc[3])?;
         Ok(Expression::Nil())
     });
 }
@@ -121,7 +121,7 @@ pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
             Expression::Integer(c) => c,
             _ => return Err(create_error!(ErrCode::E1002)),
         };
-        fractal.do_demo(c as i32);
+        fractal.do_demo(c as i32)?;
         Ok(Expression::Nil())
     });
 }
