@@ -83,7 +83,7 @@ where
 }
 fn charcmp(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: char, y: char) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
@@ -101,7 +101,7 @@ fn charcmp(
 }
 fn char_kind(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: char) -> Expression,
 ) -> ResultExpression {
     if 2 != exp.len() {
@@ -113,7 +113,7 @@ fn char_kind(
     };
     Ok(func(c))
 }
-fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn integer_char(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -128,7 +128,7 @@ fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1019))
     }
 }
-fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn char_integer(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -139,7 +139,7 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     let a = c as u32;
     Ok(Expression::Integer(a as Int))
 }
-fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+fn digit_integer(exp: &Expression, env: &mut Environment, r: u32) -> ResultExpression {
     let c = match eval(exp, env)? {
         Expression::Char(c) => c,
         _ => return Err(create_error!(ErrCode::E1019)),
@@ -149,7 +149,7 @@ fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         None => Ok(Expression::Boolean(false)),
     }
 }
-fn integer_digit(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+fn integer_digit(exp: &Expression, env: &mut Environment, r: u32) -> ResultExpression {
     let i = match eval(exp, env)? {
         Expression::Integer(c) => c,
         _ => return Err(create_error!(ErrCode::E1002)),

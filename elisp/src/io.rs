@@ -36,7 +36,7 @@ where
         read_char(exp, env, &mut BufReader::new(std::io::stdin()))
     });
 }
-fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn load_file(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -64,7 +64,7 @@ fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Err(create_error!(ErrCode::E1015))
 }
-fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn display(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -81,14 +81,14 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
+fn newline(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     println!();
     Ok(Expression::Nil())
 }
-fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
+fn read(exp: &[Expression], env: &mut Environment, stream: &mut dyn BufRead) -> ResultExpression {
     if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -116,7 +116,11 @@ fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> Resu
     };
     result
 }
-fn read_char(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
+fn read_char(
+    exp: &[Expression],
+    env: &mut Environment,
+    stream: &mut dyn BufRead,
+) -> ResultExpression {
     if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -165,8 +169,8 @@ mod tests {
 
     fn read_char_test(data: &str) -> String {
         let mut cur = Cursor::new(data.as_bytes());
-        let env = lisp::Environment::new();
-        match io::read_char(&[Expression::Nil()], &env, &mut cur) {
+        let mut env = lisp::Environment::new();
+        match io::read_char(&[Expression::Nil()], &mut env, &mut cur) {
             Ok(s) => s.to_string(),
             Err(_) => "error".to_string(),
         }
@@ -188,19 +192,19 @@ mod tests {
         writeln!(file, "(define d 100)").unwrap();
         file.flush().unwrap();
 
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
         let f = test_file.as_path().to_str().expect("die");
-        do_lisp_env(format!("(load-file \"{}\")", f).as_str(), &env);
-        assert_eq!(do_lisp_env("foo", &env), "100");
-        assert_eq!(do_lisp_env("hoge", &env), "200");
-        assert_eq!(do_lisp_env("fuga", &env), "300");
-        assert_eq!(do_lisp_env("(+ a b c)", &env), "600");
+        do_lisp_env(format!("(load-file \"{}\")", f).as_str(), &mut env);
+        assert_eq!(do_lisp_env("foo", &mut env), "100");
+        assert_eq!(do_lisp_env("hoge", &mut env), "200");
+        assert_eq!(do_lisp_env("fuga", &mut env), "300");
+        assert_eq!(do_lisp_env("(+ a b c)", &mut env), "600");
     }
     #[test]
     fn display() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
-        assert_eq!(do_lisp_env("(display a)", &env), "nil");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        assert_eq!(do_lisp_env("(display a)", &mut env), "nil");
     }
     #[test]
     fn newline() {
@@ -209,8 +213,8 @@ mod tests {
     #[test]
     fn read() {
         let mut cur = Cursor::new("abcdef".as_bytes());
-        let env = lisp::Environment::new();
-        if let Ok(s) = io::read(&[Expression::Nil()], &env, &mut cur) {
+        let mut env = lisp::Environment::new();
+        if let Ok(s) = io::read(&[Expression::Nil()], &mut env, &mut cur) {
             assert_eq!(s.to_string(), "abcdef")
         }
     }

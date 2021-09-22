@@ -9,19 +9,22 @@
             (/ (image-width "rb") (screen-width) 1.0) 0.0
             0.0 (/ (image-height "rb")(screen-height) 1.0))
 
+    (define ll (paint-image "ll"))
+    (define aframe (make-image-frame "ll" 2.0))
+    ((square-limit ll 0) aframe)
+
    hidekuno@gmail.com
 */
 extern crate elisp;
 extern crate glisp;
 extern crate surf;
-extern crate gio;
-extern crate glib;
 
+use std::cell::RefCell;
 use std::rc::Rc;
-
-use glib::Bytes;
-use gio::MemoryInputStream;
-use gdk_pixbuf::Pixbuf;
+use gtk::glib::Bytes;
+use gtk::gio::MemoryInputStream;
+use gtk::gio::Cancellable;
+use gtk::gdk_pixbuf::Pixbuf;
 use surf::http::StatusCode;
 use async_std::task;
 
@@ -101,7 +104,7 @@ fn build_example_function(app: &Application) {
         };
         let b = Bytes::from_owned(img);
         let stream = MemoryInputStream::from_bytes(&b);
-        let pix = match Pixbuf::from_stream(&stream, None::<&gio::Cancellable>) {
+        let pix = match Pixbuf::from_stream(&stream, None::<&Cancellable>) {
             Ok(pix) => pix,
             Err(_) => return Err(create_error!(ErrCode::E9999)),
         };
@@ -125,12 +128,15 @@ fn create_app<'a>(env: &'a Environment, draw_table: &'a DrawTable) -> Applicatio
     Application::new(env, draw_table)
 }
 fn build_draw_ui(app: &Application) {
+    let env = RefCell::new(app.env.clone());
+    let mut env = env.borrow_mut();
+
     // Create Lisp Function
-    build_lisp_function(app.env, app.draw_table);
-    build_demo_function(app.env, app.draw_table);
+    build_lisp_function(&mut env, app.draw_table);
+    build_demo_function(&mut env, app.draw_table);
     build_example_function(app);
 
-    scheme_gtk(app.env, app.draw_table);
+    scheme_gtk(&mut env, app.draw_table);
     gtk::main();
 }
 fn main() {

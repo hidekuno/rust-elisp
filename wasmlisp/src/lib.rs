@@ -64,7 +64,7 @@ const IMG_URL: &str =
     "https://github.com/hidekuno/picture-language/blob/master/sicp/sicp.png?raw=true";
 
 #[cfg(test)]
-fn do_lisp_env(program: &str, env: &Environment) -> String {
+fn do_lisp_env(program: &str, env: &mut Environment) -> String {
     match elisp::lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
@@ -86,9 +86,9 @@ fn init() -> Environment {
     canvas.set_height(CANVAS_HEIGHT);
     document.body().unwrap().append_child(&canvas).unwrap();
 
-    let env = Environment::new();
-    lisp::build_lisp_function(&env, &document);
-    fractal::build_demo_function(&env, &document);
+    let mut env = Environment::new();
+    lisp::build_lisp_function(&mut env, &document);
+    fractal::build_demo_function(&mut env, &document);
     env
 }
 #[cfg(test)]
@@ -109,163 +109,166 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn draw_clear() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-clear)", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-clear)", &mut env), "nil");
     }
     #[wasm_bindgen_test]
     fn draw_line() {
-        let env = init();
+        let mut env = init();
         assert_eq!(
-            do_lisp_env("(draw-line 10.0 10.0 100.0 100.0)", &env),
+            do_lisp_env("(draw-line 10.0 10.0 100.0 100.0)", &mut env),
             "nil"
         );
         assert_eq!(
-            do_lisp_env("(draw-line (cons 10.0 10.0) (cons 100.0 100.0))", &env),
+            do_lisp_env("(draw-line (cons 10.0 10.0) (cons 100.0 100.0))", &mut env),
             "nil"
         );
     }
     #[wasm_bindgen_test]
     fn gtk_major_version() {
-        let env = init();
-        assert_eq!(do_lisp_env("(gtk-major-version)", &env), "-1");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(gtk-major-version)", &mut env), "-1");
     }
     #[wasm_bindgen_test]
     fn screen_width() {
-        let env = init();
+        let mut env = init();
         assert_eq!(
-            do_lisp_env("(screen-width)", &env),
+            do_lisp_env("(screen-width)", &mut env),
             CANVAS_WIDTH.to_string()
         );
     }
     #[wasm_bindgen_test]
     fn screen_height() {
-        let env = init();
+        let mut env = init();
         assert_eq!(
-            do_lisp_env("(screen-height)", &env),
+            do_lisp_env("(screen-height)", &mut env),
             CANVAS_HEIGHT.to_string()
         );
     }
     #[wasm_bindgen_test]
     fn load_image() {
-        let env = init();
+        let mut env = init();
         assert_eq!(
             do_lisp_env(
                 format!("(load-image \"roger\" \"{}\")", IMG_URL).as_str(),
-                &env
+                &mut env
             ),
             "nil"
         );
     }
     #[wasm_bindgen_test]
     fn draw_image() {
-        let env = init();
+        let mut env = init();
         do_lisp_env(
             format!("(load-image \"roger\" \"{}\")", SD_URL).as_str(),
-            &env,
+            &mut env,
         );
         assert_eq!(
-            do_lisp_env("(draw-image \"roger\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
+            do_lisp_env("(draw-image \"roger\" 0.0 0.0 1.0 0.0 0.0 1.0)", &mut env),
             "nil"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-image \"roger\" (cons 0.0 0.0) (cons 1.0 0.0) (cons 0.0 1.0))",
-                &env
+                &mut env
             ),
             "nil"
         );
     }
     #[wasm_bindgen_test]
     fn image_width() {
-        let env = init();
+        let mut env = init();
         do_lisp_env(
             format!("(load-image \"roger\" \"{}\")", RV_URL).as_str(),
-            &env,
+            &mut env,
         );
         // NG because It's Asynchronous processing
-        assert_eq!(do_lisp_env("(image-width \"roger\")", &env), "0");
+        assert_eq!(do_lisp_env("(image-width \"roger\")", &mut env), "0");
     }
     #[wasm_bindgen_test]
     fn image_height() {
-        let env = init();
+        let mut env = init();
         do_lisp_env(
             format!("(load-image \"roger\" \"{}\")", PS_URL).as_str(),
-            &env,
+            &mut env,
         );
         // NG because It's Asynchronous processing
-        assert_eq!(do_lisp_env("(image-height \"roger\")", &env), "0");
+        assert_eq!(do_lisp_env("(image-height \"roger\")", &mut env), "0");
     }
     #[wasm_bindgen_test]
     fn load_url() {
-        let env = init();
+        let mut env = init();
         assert_eq!(
-            do_lisp_env("(load-url \"sicp/abstract-data.scm\")", &env),
+            do_lisp_env("(load-url \"sicp/abstract-data.scm\")", &mut env),
             "nil"
         );
         // NG because It's Asynchronous processing
         // left: `"E1008"`,
         // right: `"Function"`', src/lisp.rs:493:9
-        // assert_eq!(do_lisp_env("make-frame", &env), "Function");
+        // assert_eq!(do_lisp_env("make-frame", &mut env), "Function");
     }
     #[wasm_bindgen_test]
     fn add_timeout() {
-        let env = init();
-        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10)", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10)", &mut env), "nil");
     }
     #[wasm_bindgen_test]
     fn set_foreground() {
-        let env = init();
-        assert_eq!(do_lisp_env("(set-foreground \"blue\")", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(set-foreground \"blue\")", &mut env), "nil");
     }
     #[wasm_bindgen_test]
     fn set_background() {
-        let env = init();
-        assert_eq!(do_lisp_env("(set-background \"black\")", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(set-background \"black\")", &mut env), "nil");
     }
     #[wasm_bindgen_test]
     fn set_line_width() {
-        let env = init();
-        assert_eq!(do_lisp_env("(set-line-width 1.0)", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(set-line-width 1.0)", &mut env), "nil");
     }
     #[wasm_bindgen_test]
     fn draw_arc() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-arc 75.0 75.0 50.0 0.0)", &env), "nil");
+        let mut env = init();
+        assert_eq!(
+            do_lisp_env("(draw-arc 75.0 75.0 50.0 0.0)", &mut env),
+            "nil"
+        );
     }
     #[wasm_bindgen_test]
     fn draw_string() {
-        let env = init();
+        let mut env = init();
         assert_eq!(
-            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0)", &env),
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0)", &mut env),
             "nil"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-string \"Hello,World\" 20.0 20.0 \"italic bold 20px sans-serif\")",
-                &env
+                &mut env
             ),
             "nil"
         );
     }
     #[wasm_bindgen_test]
     fn draw_eval() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-eval (iota 20))", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-eval (iota 20))", &mut env), "nil");
     }
     #[test]
     fn draw_koch() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-koch 2)", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-koch 2)", &mut env), "nil");
     }
     #[test]
     fn draw_tree() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-tree 2)", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-tree 2)", &mut env), "nil");
     }
     #[test]
     fn draw_sierpinski() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-sierpinski 2)", &mut env), "nil");
     }
 }
 #[cfg(test)]
@@ -277,259 +280,280 @@ mod error_tests {
 
     #[wasm_bindgen_test]
     fn draw_clear() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-clear 1)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-clear 1)", &mut env), "E1007");
     }
     #[wasm_bindgen_test]
     fn draw_line() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-line)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
-        assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
-        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &env), "E1003");
-        assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &env), "E1008");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-line)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &mut env), "E1003");
+        assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &mut env), "E1008");
+        assert_eq!(do_lisp_env("(draw-line 0.0 1.0 2.0 3)", &mut env), "E1003");
+        assert_eq!(do_lisp_env("(draw-line a b 2.0 3)", &mut env), "E1008");
 
-        assert_eq!(do_lisp_env("(draw-line (cons 1.0 0.2) 1.0)", &env), "E1005");
-        assert_eq!(do_lisp_env("(draw-line (cons 0.1 0.2) a)", &env), "E1008");
-        assert_eq!(do_lisp_env("(draw-line (cons 1 0.2) a)", &env), "E1003");
-        assert_eq!(do_lisp_env("(draw-line (cons 0.1 2) a)", &env), "E1003");
         assert_eq!(
-            do_lisp_env("(draw-line (cons 0.1 0.1)(cons 1 0.2))", &env),
+            do_lisp_env("(draw-line (cons 1.0 0.2) 1.0)", &mut env),
+            "E1005"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-line (cons 0.1 0.2) a)", &mut env),
+            "E1008"
+        );
+        assert_eq!(do_lisp_env("(draw-line (cons 1 0.2) a)", &mut env), "E1003");
+        assert_eq!(do_lisp_env("(draw-line (cons 0.1 2) a)", &mut env), "E1003");
+        assert_eq!(
+            do_lisp_env("(draw-line (cons 0.1 0.1)(cons 1 0.2))", &mut env),
             "E1003"
         );
         assert_eq!(
-            do_lisp_env("(draw-line (cons 0.1 0.1)(cons 0.1 2))", &env),
+            do_lisp_env("(draw-line (cons 0.1 0.1)(cons 0.1 2))", &mut env),
             "E1003"
         );
     }
     #[wasm_bindgen_test]
     fn gtk_major_version() {
-        let env = init();
-        assert_eq!(do_lisp_env("(gtk-major-version 1)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(gtk-major-version 1)", &mut env), "E1007");
     }
     #[wasm_bindgen_test]
     fn screen_width() {
-        let env = init();
-        assert_eq!(do_lisp_env("(screen-width 1)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(screen-width 1)", &mut env), "E1007");
     }
     #[wasm_bindgen_test]
     fn screen_height() {
-        let env = init();
-        assert_eq!(do_lisp_env("(screen-height 1)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(screen-height 1)", &mut env), "E1007");
     }
     #[wasm_bindgen_test]
     fn load_image() {
-        let env = init();
-        assert_eq!(do_lisp_env("(load-image)", &env), "E1007");
-        assert_eq!(do_lisp_env("(load-image  \"sample\")", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(load-image)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(load-image  \"sample\")", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(load-image  \"sample\" 10 20 30)", &env),
+            do_lisp_env("(load-image  \"sample\" 10 20 30)", &mut env),
             "E1007"
         );
         assert_eq!(
-            do_lisp_env(format!("(load-image 10 \"{}\")", IMG_URL).as_str(), &env),
+            do_lisp_env(
+                format!("(load-image 10 \"{}\")", IMG_URL).as_str(),
+                &mut env
+            ),
             "E1015"
         );
-        assert_eq!(do_lisp_env("(load-image \"sample\" 10)", &env), "E1015");
+        assert_eq!(do_lisp_env("(load-image \"sample\" 10)", &mut env), "E1015");
     }
     #[wasm_bindgen_test]
     fn draw_image() {
-        let env = init();
+        let mut env = init();
         do_lisp_env(
             format!("(load-image \"sample\" \"{}\")", IMG_URL).as_str(),
-            &env,
+            &mut env,
         );
-        assert_eq!(do_lisp_env("(draw-image)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-image 10)", &env), "E1007");
+        assert_eq!(do_lisp_env("(draw-image)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-image 10)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(draw-image \"sample\" 1 2 3 10)", &env),
+            do_lisp_env("(draw-image \"sample\" 1 2 3 10)", &mut env),
             "E1007"
         );
         assert_eq!(
-            do_lisp_env("(draw-image 10 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
+            do_lisp_env("(draw-image 10 0.0 0.0 1.0 0.0 0.0 1.0)", &mut env),
             "E1015"
         );
         assert_eq!(
-            do_lisp_env("(draw-image \"sample1\" 0.0 0.0 1.0 0.0 0.0 1.0)", &env),
+            do_lisp_env("(draw-image \"sample1\" 0.0 0.0 1.0 0.0 0.0 1.0)", &mut env),
             "E1008"
         );
         assert_eq!(
-            do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 1.0 1.0 10)", &env),
+            do_lisp_env("(draw-image \"sample\" 0.0 0.0 1.0 1.0 1.0 10)", &mut env),
             "E1003"
         );
         assert_eq!(
-            do_lisp_env("(draw-image \"sample\" a 0.0 1.0 1.0 1.0 10)", &env),
+            do_lisp_env("(draw-image \"sample\" a 0.0 1.0 1.0 1.0 10)", &mut env),
             "E1008"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-image \"sample\" (cons 0.0 0.0) (cons 1.0 1.0)(cons 1.0 10)))",
-                &env
+                &mut env
             ),
             "E1003"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-image \"sample\" (cons 10 0.0) (cons 1.0 1.0)(cons 1.0 1.0)))",
-                &env
+                &mut env
             ),
             "E1003"
         );
     }
     #[wasm_bindgen_test]
     fn image_width() {
-        let env = init();
+        let mut env = init();
         do_lisp_env(
             format!("(load-image \"sample\" \"{}\")", IMG_URL).as_str(),
-            &env,
+            &mut env,
         );
-        assert_eq!(do_lisp_env("(image-width)", &env), "E1007");
+        assert_eq!(do_lisp_env("(image-width)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(image-width \"sample\" \"sample1\")", &env),
+            do_lisp_env("(image-width \"sample\" \"sample1\")", &mut env),
             "E1007"
         );
-        assert_eq!(do_lisp_env("(image-width 10)", &env), "E1015");
-        assert_eq!(do_lisp_env("(image-width a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(image-width 10)", &mut env), "E1015");
+        assert_eq!(do_lisp_env("(image-width a)", &mut env), "E1008");
     }
     #[wasm_bindgen_test]
     fn image_height() {
-        let env = init();
+        let mut env = init();
         do_lisp_env(
             format!("(load-image \"sample\" \"{}\")", IMG_URL).as_str(),
-            &env,
+            &mut env,
         );
-        assert_eq!(do_lisp_env("(image-height)", &env), "E1007");
+        assert_eq!(do_lisp_env("(image-height)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(image-height \"sample\" \"sample1\")", &env),
+            do_lisp_env("(image-height \"sample\" \"sample1\")", &mut env),
             "E1007"
         );
-        assert_eq!(do_lisp_env("(image-height 10)", &env), "E1015");
-        assert_eq!(do_lisp_env("(image-height a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(image-height 10)", &mut env), "E1015");
+        assert_eq!(do_lisp_env("(image-height a)", &mut env), "E1008");
     }
     #[wasm_bindgen_test]
     fn load_url() {
-        let env = init();
-        assert_eq!(do_lisp_env("(load-url)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(load-url)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(load-url \"sicp/abstract-data.scm\" 10 12)", &env),
+            do_lisp_env("(load-url \"sicp/abstract-data.scm\" 10 12)", &mut env),
             "E1007"
         );
-        assert_eq!(do_lisp_env("(load-url 10)", &env), "E1015");
-        assert_eq!(do_lisp_env("(load-url a)", &env), "E1008");
+        assert_eq!(do_lisp_env("(load-url 10)", &mut env), "E1015");
+        assert_eq!(do_lisp_env("(load-url a)", &mut env), "E1008");
     }
     #[wasm_bindgen_test]
     fn add_timeout() {
-        let env = init();
-        assert_eq!(do_lisp_env("(add-timeout)", &env), "E1007");
-        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 10 10)", &env), "E1007");
-        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) #t)", &env), "E1002");
-        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 0)", &env), "E1021");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(add-timeout)", &mut env), "E1007");
+        assert_eq!(
+            do_lisp_env("(add-timeout (+ 1 1) 10 10)", &mut env),
+            "E1007"
+        );
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) #t)", &mut env), "E1002");
+        assert_eq!(do_lisp_env("(add-timeout (+ 1 1) 0)", &mut env), "E1021");
     }
     #[wasm_bindgen_test]
     fn set_foreground() {
-        let env = init();
-        assert_eq!(do_lisp_env("(set-foreground)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(set-foreground)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(set-foreground \"black\" \"black\")", &env),
+            do_lisp_env("(set-foreground \"black\" \"black\")", &mut env),
             "E1007"
         );
-        assert_eq!(do_lisp_env("(set-foreground #t)", &env), "E1015");
+        assert_eq!(do_lisp_env("(set-foreground #t)", &mut env), "E1015");
     }
     #[wasm_bindgen_test]
     fn set_background() {
-        let env = init();
-        assert_eq!(do_lisp_env("(set-background)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(set-background)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(set-background \"black\" \"black\")", &env),
+            do_lisp_env("(set-background \"black\" \"black\")", &mut env),
             "E1007"
         );
-        assert_eq!(do_lisp_env("(set-background #t)", &env), "E1015");
+        assert_eq!(do_lisp_env("(set-background #t)", &mut env), "E1015");
     }
     #[wasm_bindgen_test]
     fn set_line_width() {
-        let env = init();
-        assert_eq!(do_lisp_env("(set-line-width)", &env), "E1007");
-        assert_eq!(do_lisp_env("(set-line-width 1.0 1.0)", &env), "E1007");
-        assert_eq!(do_lisp_env("(set-line-width #t)", &env), "E1003");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(set-line-width)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(set-line-width 1.0 1.0)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(set-line-width #t)", &mut env), "E1003");
     }
     #[wasm_bindgen_test]
     fn draw_arc() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-arc)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-arc)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(draw-arc 0.27 0.65 0.02 0.0 1.0)", &env),
+            do_lisp_env("(draw-arc 0.27 0.65 0.02 0.0 1.0)", &mut env),
             "E1007"
         );
-        assert_eq!(do_lisp_env("(draw-arc #t 0.65 0.02 0.0)", &env), "E1003");
-        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 0.02 #t)", &env), "E1003");
-        assert_eq!(do_lisp_env("(draw-arc 0.27 0.65 #t 0.0)", &env), "E1003");
+        assert_eq!(
+            do_lisp_env("(draw-arc #t 0.65 0.02 0.0)", &mut env),
+            "E1003"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-arc 0.27 0.65 0.02 #t)", &mut env),
+            "E1003"
+        );
+        assert_eq!(
+            do_lisp_env("(draw-arc 0.27 0.65 #t 0.0)", &mut env),
+            "E1003"
+        );
     }
     #[wasm_bindgen_test]
     fn draw_string() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-string)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-string)", &mut env), "E1007");
         assert_eq!(
-            do_lisp_env("(draw-string \"Hello,World\" 20.0)", &env),
+            do_lisp_env("(draw-string \"Hello,World\" 20.0)", &mut env),
             "E1007"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-string \"Hello,World\" 20.0 20.0 \"italic bold 20px sans-serif\" 10.0)",
-                &env
+                &mut env
             ),
             "E1007"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-string 10.0 20.0 20.0 \"italic bold 20px sans-serif\")",
-                &env
+                &mut env
             ),
             "E1015"
         );
         assert_eq!(
-            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0 10.0)", &env),
+            do_lisp_env("(draw-string \"Hello,World\" 20.0 20.0 10.0)", &mut env),
             "E1015"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-string \"Hello,World\" #t 20.0 \"italic bold 20px sans-serif\")",
-                &env
+                &mut env
             ),
             "E1003"
         );
         assert_eq!(
             do_lisp_env(
                 "(draw-string \"Hello,World\" 20.0 #t \"italic bold 20px sans-serif\")",
-                &env
+                &mut env
             ),
             "E1003"
         );
     }
     #[wasm_bindgen_test]
     fn draw_eval() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-eval)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-eval (iota 20) 10)", &env), "E1007");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-eval)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-eval (iota 20) 10)", &mut env), "E1007");
     }
     #[test]
     fn draw_koch() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-koch)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-koch 10 20)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-koch 10.5)", &env), "E1002");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-koch)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-koch 10 20)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-koch 10.5)", &mut env), "E1002");
     }
     #[test]
     fn draw_tree() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-tree)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-tree 10 20)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-tree 10.5)", &env), "E1002");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-tree)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-tree 10 20)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-tree 10.5)", &mut env), "E1002");
     }
     #[test]
     fn draw_sierpinski() {
-        let env = init();
-        assert_eq!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-sierpinski 10 20)", &env), "E1007");
-        assert_eq!(do_lisp_env("(draw-sierpinski 10.5)", &env), "E1002");
+        let mut env = init();
+        assert_eq!(do_lisp_env("(draw-sierpinski)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-sierpinski 10 20)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(draw-sierpinski 10.5)", &mut env), "E1002");
     }
 }

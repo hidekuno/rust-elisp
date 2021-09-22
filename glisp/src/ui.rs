@@ -14,6 +14,7 @@ use gtk::glib;
 use lisp::Environment;
 
 use gtk::prelude::*;
+use std::cell::RefCell;
 use std::env;
 use std::rc::Rc;
 
@@ -244,7 +245,7 @@ fn create_search_menu(window: &gtk::Window, text_buffer: gtk::TextBuffer) -> gtk
 //--------------------------------------------------------
 // Gtk widget initialize
 //--------------------------------------------------------
-pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
+pub fn scheme_gtk(env: &mut Environment, draw_table: &DrawTable) {
     gtk::init().expect("Failed to initialize GTK.");
     setup_key_emacs_like();
 
@@ -332,16 +333,20 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     scroll.add(text_view);
     scroll.set_size_request(DRAW_WIDTH, 160);
     {
-        let env = env.clone();
         let text_buffer = text_view.buffer().expect("Couldn't get window");
         let history = history.clone();
         let ui = ui.clone();
         let draw_table = draw_table.clone();
+        let env = RefCell::new(env.clone());
+
         text_view.connect_key_press_event(move |_, key| {
             if key.state().intersects(gdk::ModifierType::CONTROL_MASK) {
                 if let Some(c) = key.keyval().to_unicode() {
                     match c as u32 {
-                        EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
+                        EVAL_KEYCODE => {
+                            let mut env = env.borrow_mut();
+                            execute_lisp(&mut env, &ui, &history);
+                        }
                         DRAW_CLEAR_KEYCODE => clear_canvas(&draw_table, ui.canvas()),
                         TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
                         _ => {}
@@ -395,11 +400,13 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     let menu = gtk::Menu::new();
     menu.append(&{
         let eval = gtk::MenuItem::with_mnemonic("_Eval");
-        let env = env.clone();
+        let env = RefCell::new(env.clone());
         let ui = ui.clone();
         let history = history.clone();
+
         eval.connect_activate(move |_| {
-            execute_lisp(&env, &ui, &history);
+            let mut env = env.borrow_mut();
+            execute_lisp(&mut env, &ui, &history);
         });
         eval
     });
@@ -501,7 +508,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
 //--------------------------------------------------------
 // Lisp code tokenize, parse, eval
 //--------------------------------------------------------
-fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
+fn execute_lisp(env: &mut Environment, ui: &ControlWidget, history: &History) {
     let canvas = ui.canvas();
     let text_view = ui.text_view();
     let status_bar = ui.status_bar();

@@ -25,7 +25,7 @@ use lisp::Environment;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-pub fn build_demo_function(env: &Environment, document: &web_sys::Document) {
+pub fn build_demo_function(env: &mut Environment, document: &web_sys::Document) {
     let canvas = document
         .get_element_by_id("drawingarea")
         .unwrap()

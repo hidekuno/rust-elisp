@@ -65,6 +65,7 @@ pub enum ErrCode {
     E1020,
     E1021,
     E9000,
+    E9001,
     E9002,
     E9999,
     Cont,
@@ -98,6 +99,7 @@ impl ErrCode {
             ErrCode::E1020 => "E1020",
             ErrCode::E1021 => "E1021",
             ErrCode::E9000 => "E9000",
+            ErrCode::E9001 => "E9001",
             ErrCode::E9002 => "E9002",
             ErrCode::E9999 => "E9999",
             ErrCode::Cont => "CONT",
@@ -138,6 +140,7 @@ lazy_static! {
         e.insert(ErrCode::E1020.as_str(), "Not Rat");
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
+        e.insert(ErrCode::E9001.as_str(), "Exceed Eval Counts");
         e.insert(
             ErrCode::E9002.as_str(),
             "Not Support Double Execution Of draw-line apps",
@@ -221,7 +224,7 @@ macro_rules! print_error {
 }
 //========================================================================
 pub type ResultExpression = Result<Expression, Error>;
-pub type BasicBuiltIn = fn(&[Expression], &Environment) -> ResultExpression;
+pub type BasicBuiltIn = fn(&[Expression], &mut Environment) -> ResultExpression;
 
 #[cfg(not(feature = "i128"))]
 pub type Int = i64;
@@ -470,7 +473,7 @@ impl Function {
             tail_recurcieve: false,
         }
     }
-    pub fn set_param(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
+    pub fn set_param(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
@@ -485,7 +488,7 @@ impl Function {
         }
         Ok(Expression::TailLoop())
     }
-    pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
+    pub fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if self.param.len() != (exp.len() - 1) {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
@@ -495,7 +498,7 @@ impl Function {
             vec.push(eval(e, env)?);
         }
         // @@@ env.create();
-        let env = Environment::with_parent(&self.closure_env);
+        let mut env = Environment::with_parent(&self.closure_env);
         for (i, s) in self.param.iter().enumerate() {
             env.regist(s.to_string(), vec[i].clone());
         }
@@ -503,7 +506,7 @@ impl Function {
         let mut ret = Expression::Nil();
         for e in &self.body {
             ret = loop {
-                match eval(e, &env) {
+                match eval(e, &mut env) {
                     Ok(n) => match n {
                         Expression::TailLoop() => {
                             if self.tail_recurcieve {
@@ -592,6 +595,7 @@ const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
 const FORCE_STOP: &str = "(force-stop)";
+const MAX_EVAL_COUNT: u64 = 100_000_000;
 
 pub struct ControlChar(pub u8, pub &'static str);
 pub const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -609,15 +613,15 @@ pub fn do_interactive() {
     init_sig_intr();
 
     let mut stream = BufReader::new(std::io::stdin());
-    let env = Environment::new();
+    let mut env = Environment::new();
 
-    if let Err(e) = repl(&mut stream, &env, Some(PROMPT)) {
+    if let Err(e) = repl(&mut stream, &mut env, Some(PROMPT)) {
         println!("{}", e)
     }
 }
 pub fn repl(
     stream: &mut dyn BufRead,
-    env: &Environment,
+    env: &mut Environment,
     prompt: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = String::new();
@@ -686,7 +690,7 @@ pub fn count_parenthesis(program: &str) -> bool {
     }
     left <= right
 }
-pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
+pub fn do_core_logic(program: &str, env: &mut Environment) -> ResultExpression {
     let mut token = tokenize(program);
     let mut c: i32 = 1;
     let mut ret = Expression::Nil();
@@ -705,6 +709,7 @@ pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
                 env.set_force_stop(true);
             }
             _ => {
+                env.eval_count = 0;
                 env.set_cont(&exp);
                 ret = eval(&exp, env)?;
             }
@@ -844,7 +849,7 @@ pub fn tokenize(program: &str) -> Vec<String> {
     debug!("{:?}", token.tokens);
     token.tokens()
 }
-pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
+pub fn parse(tokens: &[String], count: &mut i32, env: &mut Environment) -> ResultExpression {
     if tokens.is_empty() {
         return Err(create_error!(ErrCode::E0001));
     }
@@ -882,7 +887,7 @@ pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExp
         atom(token, env)
     }
 }
-fn atom(token: &str, env: &Environment) -> ResultExpression {
+fn atom(token: &str, env: &mut Environment) -> ResultExpression {
     let v = if let Ok(n) = token.parse::<Int>() {
         Expression::Integer(n)
     } else if let Ok(n) = token.parse::<f64>() {
@@ -922,9 +927,15 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
     };
     Ok(v)
 }
-pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
+pub fn eval(sexp: &Expression, env: &mut Environment) -> ResultExpression {
     #[cfg(feature = "signal")]
     catch_sig_intr_status(env);
+
+    if MAX_EVAL_COUNT < env.eval_count {
+        env.eval_count = 0;
+        return Err(create_error!(ErrCode::E9001));
+    }
+    env.eval_count += 1;
 
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));

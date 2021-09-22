@@ -47,7 +47,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::rc::Rc;
 
-pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
+pub fn build_lisp_function(env: &mut Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     // Draw Clear
     //--------------------------------------------------------
@@ -303,7 +303,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             Ok(Expression::Integer(x as Int))
         });
     }
-    fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Error> {
+    fn get_color(exp: &[Expression], env: &mut Environment) -> Result<(f64, f64, f64), Error> {
         if exp.len() != 4 {
             return Err(create_error!(ErrCode::E1007));
         }
@@ -319,7 +319,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     }
     fn image_size(
         exp: &[Expression],
-        env: &Environment,
+        env: &mut Environment,
         draw_table: &DrawTable,
         f: fn(&dyn ImageData) -> f64,
     ) -> Result<f64, Error> {
@@ -337,7 +337,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         Ok(f(&*img))
     }
 }
-pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
+pub fn build_demo_function(env: &mut Environment, draw_table: &DrawTable) {
     // ----------------------------------------------------------------
     // create new lisp interface (mutable)
     // ----------------------------------------------------------------

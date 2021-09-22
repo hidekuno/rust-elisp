@@ -57,14 +57,14 @@ where
     b.regist("stable-sort!", sort_stable_effect);
     b.regist("sorted?", is_sorted);
 }
-fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
     for e in &exp[1..] {
         list.push(eval(e, env)?);
     }
     Ok(Environment::create_list(list))
 }
-fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn make_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -78,7 +78,7 @@ fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let v = eval(&exp[2], env)?;
     Ok(Environment::create_list(vec![v; n as usize]))
 }
-fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn null_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -90,7 +90,7 @@ fn null_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Ok(Expression::Boolean(false)),
     }
 }
-fn length(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn length(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -101,7 +101,7 @@ fn length(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1005))
     }
 }
-fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -117,7 +117,7 @@ fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -134,7 +134,7 @@ fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn cadr(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn cadr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -148,7 +148,7 @@ fn cadr(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1005))
     }
 }
-fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn cons(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -164,7 +164,7 @@ fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
         Ok(Expression::Pair(Box::new(car), Box::new(cdr)))
     }
 }
-fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -180,7 +180,7 @@ fn append(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Environment::create_list(v))
 }
-fn append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn append_effect(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -203,7 +203,7 @@ fn append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn take_drop(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(l: &Vec<Expression>, n: usize) -> &[Expression],
 ) -> ResultExpression {
     if exp.len() != 3 {
@@ -228,7 +228,7 @@ fn take_drop(
 
     Ok(Environment::create_list(vec))
 }
-fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn delete(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -248,7 +248,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Environment::create_list(vec))
 }
-fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn delete_effect(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -270,7 +270,7 @@ fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     l.extend_from_slice(&vec);
     Ok(Expression::List(rc.clone()))
 }
-fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn last(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -286,7 +286,7 @@ fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn reverse(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -300,7 +300,7 @@ fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn iota(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() <= 1 || 4 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -326,10 +326,10 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Environment::create_list(l))
 }
-fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn map(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     fn func(
         sexp: Vec<Expression>,
-        env: &Environment,
+        env: &mut Environment,
         result: &mut Vec<Expression>,
         _e: &Expression,
     ) -> ResultExpression {
@@ -339,10 +339,10 @@ fn map(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     do_list_proc(exp, env, func)
 }
-fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn filter(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     fn func(
         sexp: Vec<Expression>,
-        env: &Environment,
+        env: &mut Environment,
         result: &mut Vec<Expression>,
         e: &Expression,
     ) -> ResultExpression {
@@ -358,7 +358,7 @@ fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     do_list_proc(exp, env, func)
 }
-fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn for_each(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -380,7 +380,7 @@ fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn reduce(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -404,7 +404,7 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1005))
     }
 }
-fn list_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn list_ref(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -425,7 +425,7 @@ fn list_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn list_set(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 4 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -487,8 +487,13 @@ pub fn make_evaled_list(
 }
 fn do_list_proc(
     exp: &[Expression],
-    env: &Environment,
-    func: fn(Vec<Expression>, &Environment, &mut Vec<Expression>, &Expression) -> ResultExpression,
+    env: &mut Environment,
+    func: fn(
+        Vec<Expression>,
+        &mut Environment,
+        &mut Vec<Expression>,
+        &Expression,
+    ) -> ResultExpression,
 ) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -514,7 +519,7 @@ fn do_list_proc(
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn set_car(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn set_car(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -530,7 +535,7 @@ fn set_car(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1005)),
     }
 }
-fn set_cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn set_cdr(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -567,22 +572,22 @@ enum SortKind {
     Stable(ListProcKind),
     Unstable(ListProcKind),
 }
-fn sort(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn sort(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     sort_impl(exp, env, SortKind::Unstable(ListProcKind::Copy))
 }
-fn sort_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn sort_effect(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     sort_impl(exp, env, SortKind::Unstable(ListProcKind::Effect))
 }
-fn sort_stable(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn sort_stable(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     sort_impl(exp, env, SortKind::Stable(ListProcKind::Copy))
 }
-fn sort_stable_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn sort_stable_effect(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     sort_impl(exp, env, SortKind::Stable(ListProcKind::Effect))
 }
-fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExpression {
+fn sort_impl(exp: &[Expression], env: &mut Environment, kind: SortKind) -> ResultExpression {
     fn _sort_impl(
         exp: &[Expression],
-        env: &Environment,
+        env: &mut Environment,
         kind: SortKind,
         v: &mut Vec<Expression>,
     ) -> Result<(), Error> {
@@ -683,7 +688,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
         }
     }
 }
-fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn merge(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     fn merge_iter(l1: &[Expression], l2: &[Expression]) -> Expression {
         let mut v = Vec::new();
         let (mut i, mut j) = (0, 0);
@@ -710,7 +715,7 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
     fn merge_iter_by(
         l1: &[Expression],
         l2: &[Expression],
-        env: &Environment,
+        env: &mut Environment,
         func: Expression,
     ) -> ResultExpression {
         let mut vec = Vec::new();
@@ -779,7 +784,7 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
         Ok(merge_iter(l1, l2))
     }
 }
-fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn is_sorted(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 > exp.len() || 3 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -794,7 +799,7 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
         Ok(Expression::Boolean(*b))
     } else {
         let func = eval(&exp[2], env)?;
-        let cmp = |a: &Expression, b: &Expression| {
+        let mut cmp = |a: &Expression, b: &Expression| {
             let v = vec![func.clone(), a.clone(), b.clone()];
 
             let e = match &func {
@@ -848,10 +853,10 @@ mod tests {
             do_lisp("(list (list (list 1))(list 2)(list 3))"),
             "(((1))(2)(3))"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 10)", &env);
-        do_lisp_env("(define b 20)", &env);
-        assert_eq!(do_lisp_env("(list a b)", &env), "(10 20)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 10)", &mut env);
+        do_lisp_env("(define b 20)", &mut env);
+        assert_eq!(do_lisp_env("(list a b)", &mut env), "(10 20)");
     }
     #[test]
     fn make_list() {
@@ -906,12 +911,15 @@ mod tests {
         assert_eq!(do_lisp("(cons 1 (list 2))"), "(1 2)");
         assert_eq!(do_lisp("(cons (list 1)(list 2))"), "((1) 2)");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (iota 10))", &env);
-        do_lisp_env("(define b a)", &env);
-        assert_eq!(do_lisp_env("(cons #t a)", &env), "(#t 0 1 2 3 4 5 6 7 8 9)");
-        assert_eq!(do_lisp_env("a", &env), "(0 1 2 3 4 5 6 7 8 9)");
-        assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4 5 6 7 8 9)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (iota 10))", &mut env);
+        do_lisp_env("(define b a)", &mut env);
+        assert_eq!(
+            do_lisp_env("(cons #t a)", &mut env),
+            "(#t 0 1 2 3 4 5 6 7 8 9)"
+        );
+        assert_eq!(do_lisp_env("a", &mut env), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("b", &mut env), "(0 1 2 3 4 5 6 7 8 9)");
     }
     #[test]
     fn append() {
@@ -923,15 +931,15 @@ mod tests {
         );
         assert_eq!(do_lisp("(append (iota 5) (list 100))"), "(0 1 2 3 4 100)");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (iota 5))", &env);
-        do_lisp_env("(define b a)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (iota 5))", &mut env);
+        do_lisp_env("(define b a)", &mut env);
         assert_eq!(
-            do_lisp_env("(append (iota 5 5) a)", &env),
+            do_lisp_env("(append (iota 5 5) a)", &mut env),
             "(5 6 7 8 9 0 1 2 3 4)"
         );
-        assert_eq!(do_lisp_env("a", &env), "(0 1 2 3 4)");
-        assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4)");
+        assert_eq!(do_lisp_env("a", &mut env), "(0 1 2 3 4)");
+        assert_eq!(do_lisp_env("b", &mut env), "(0 1 2 3 4)");
     }
     #[test]
     fn append_effect() {
@@ -943,15 +951,15 @@ mod tests {
         );
         assert_eq!(do_lisp("(append! (iota 5) (list 100))"), "(0 1 2 3 4 100)");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (iota 5))", &env);
-        do_lisp_env("(define b a)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (iota 5))", &mut env);
+        do_lisp_env("(define b a)", &mut env);
         assert_eq!(
-            do_lisp_env("(append! a (iota 5 5))", &env),
+            do_lisp_env("(append! a (iota 5 5))", &mut env),
             "(0 1 2 3 4 5 6 7 8 9)"
         );
-        assert_eq!(do_lisp_env("a", &env), "(0 1 2 3 4 5 6 7 8 9)");
-        assert_eq!(do_lisp_env("b", &env), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("a", &mut env), "(0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("b", &mut env), "(0 1 2 3 4 5 6 7 8 9)");
     }
     #[test]
     fn take() {
@@ -971,58 +979,61 @@ mod tests {
     }
     #[test]
     fn delete() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 10 10.5 3/5 \"ABC\" #\\a #t))", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 10.5 3/5 \"ABC\" #\\a #t))", &mut env);
         assert_eq!(
-            do_lisp_env("(delete 10 a)", &env),
+            do_lisp_env("(delete 10 a)", &mut env),
             "(10.5 3/5 \"ABC\" #\\a #t)"
         );
         assert_eq!(
-            do_lisp_env("(delete 10.5 a)", &env),
+            do_lisp_env("(delete 10.5 a)", &mut env),
             "(10 3/5 \"ABC\" #\\a #t)"
         );
         assert_eq!(
-            do_lisp_env("(delete 3/5 a)", &env),
+            do_lisp_env("(delete 3/5 a)", &mut env),
             "(10 10.5 \"ABC\" #\\a #t)"
         );
         assert_eq!(
-            do_lisp_env("(delete \"ABC\" a)", &env),
+            do_lisp_env("(delete \"ABC\" a)", &mut env),
             "(10 10.5 3/5 #\\a #t)"
         );
         assert_eq!(
-            do_lisp_env("(delete #\\a a)", &env),
+            do_lisp_env("(delete #\\a a)", &mut env),
             "(10 10.5 3/5 \"ABC\" #t)"
         );
         assert_eq!(
-            do_lisp_env("(delete #t a)", &env),
+            do_lisp_env("(delete #t a)", &mut env),
             "(10 10.5 3/5 \"ABC\" #\\a)"
         );
     }
     #[test]
     fn delete_effect() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 10 10.5 3/5 \"ABC\" #\\a #t))", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 10.5 3/5 \"ABC\" #\\a #t))", &mut env);
 
-        do_lisp_env("(delete! 10 a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10.5 3/5 \"ABC\" #\\a #t)");
+        do_lisp_env("(delete! 10 a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10.5 3/5 \"ABC\" #\\a #t)");
 
         assert_eq!(
-            do_lisp_env("(delete! 10.5 a)", &env),
+            do_lisp_env("(delete! 10.5 a)", &mut env),
             "(3/5 \"ABC\" #\\a #t)"
         );
-        assert_eq!(do_lisp_env("(delete! 3/5 a)", &env), "(\"ABC\" #\\a #t)");
+        assert_eq!(
+            do_lisp_env("(delete! 3/5 a)", &mut env),
+            "(\"ABC\" #\\a #t)"
+        );
 
-        do_lisp_env("(delete! \"ABC\" a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(#\\a #t)");
+        do_lisp_env("(delete! \"ABC\" a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(#\\a #t)");
 
-        do_lisp_env("(delete! #\\a a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(#t)");
+        do_lisp_env("(delete! #\\a a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(#t)");
 
-        do_lisp_env("(delete! #f a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(#t)");
+        do_lisp_env("(delete! #f a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(#t)");
 
-        do_lisp_env("(delete! #t a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "()");
+        do_lisp_env("(delete! #t a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "()");
     }
     #[test]
     fn last() {
@@ -1065,24 +1076,24 @@ mod tests {
             do_lisp("(map (lambda (n) (car n)) (list (list (list 1))(list 2)(list 3)))"),
             "((1) 2 3)"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
-        do_lisp_env("(define b 200)", &env);
-        do_lisp_env("(define c 300)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b 200)", &mut env);
+        do_lisp_env("(define c 300)", &mut env);
         do_lisp_env(
             "(define d (list (list (list 1))(list (list 2))(list (list 3))))",
-            &env,
+            &mut env,
         );
 
         assert_eq!(
             do_lisp_env(
                 "(map (lambda (n)(map (lambda (m)(/ m 10)) n))(list (list 10 20 30)(list a b c)))",
-                &env
+                &mut env
             ),
             "((1 2 3)(10 20 30))"
         );
         assert_eq!(
-            do_lisp_env("(map (lambda (n) (car n)) d)", &env),
+            do_lisp_env("(map (lambda (n) (car n)) d)", &mut env),
             "((1)(2)(3))"
         );
     }
@@ -1102,16 +1113,19 @@ mod tests {
             "(10)"
         );
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
-        do_lisp_env("(define b 200)", &env);
-        do_lisp_env("(define c 300)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b 200)", &mut env);
+        do_lisp_env("(define c 300)", &mut env);
         assert_eq!(
-            do_lisp_env("(filter (lambda (n) (= n 100)) (list a b c))", &env),
+            do_lisp_env("(filter (lambda (n) (= n 100)) (list a b c))", &mut env),
             "(100)"
         );
         assert_eq!(
-            do_lisp_env("(filter (lambda (n) (not (= n 100))) (list a b c))", &env),
+            do_lisp_env(
+                "(filter (lambda (n) (not (= n 100))) (list a b c))",
+                &mut env
+            ),
             "(200 300)"
         );
     }
@@ -1126,12 +1140,12 @@ mod tests {
             do_lisp("(reduce (lambda (a b) (+ a b))(* 10 10)(list))"),
             "100"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
-        do_lisp_env("(define b 200)", &env);
-        do_lisp_env("(define c 300)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b 200)", &mut env);
+        do_lisp_env("(define c 300)", &mut env);
         assert_eq!(
-            do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &env),
+            do_lisp_env("(reduce (lambda (a b) (+ a b))0(list a b c))", &mut env),
             "600"
         );
         assert_eq!(do_lisp("(reduce 0 (list) (list))"), "()");
@@ -1139,10 +1153,10 @@ mod tests {
     }
     #[test]
     fn for_each() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define c 0)", &env);
-        do_lisp_env("(for-each (lambda (n) (set! c (+ c n)))(iota 5))", &env);
-        assert_eq!(do_lisp_env("c", &env), "10");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define c 0)", &mut env);
+        do_lisp_env("(for-each (lambda (n) (set! c (+ c n)))(iota 5))", &mut env);
+        assert_eq!(do_lisp_env("c", &mut env), "10");
     }
     #[test]
     fn list_ref() {
@@ -1155,32 +1169,32 @@ mod tests {
     }
     #[test]
     fn list_set() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 1 2 3 4 5))", &env);
-        do_lisp_env("(define b a)", &env);
-        do_lisp_env("(list-set! a 0 100)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(100 2 3 4 5)");
-        assert_eq!(do_lisp_env("b", &env), "(100 2 3 4 5)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 1 2 3 4 5))", &mut env);
+        do_lisp_env("(define b a)", &mut env);
+        do_lisp_env("(list-set! a 0 100)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(100 2 3 4 5)");
+        assert_eq!(do_lisp_env("b", &mut env), "(100 2 3 4 5)");
     }
     #[test]
     fn set_car() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 1 2 3 4 5))", &env);
-        do_lisp_env("(set-car! a 100)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(100 2 3 4 5)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 1 2 3 4 5))", &mut env);
+        do_lisp_env("(set-car! a 100)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(100 2 3 4 5)");
 
-        do_lisp_env("(set-car! a (list 10 20))", &env);
-        assert_eq!(do_lisp_env("a", &env), "((10 20) 2 3 4 5)");
+        do_lisp_env("(set-car! a (list 10 20))", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "((10 20) 2 3 4 5)");
     }
     #[test]
     fn set_cdr() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 1 2 3 4 5))", &env);
-        do_lisp_env("(set-cdr! a 100)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(1 100)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 1 2 3 4 5))", &mut env);
+        do_lisp_env("(set-cdr! a 100)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(1 100)");
 
-        do_lisp_env("(set-cdr! a (list 10 20))", &env);
-        assert_eq!(do_lisp_env("a", &env), "(1 10 20)");
+        do_lisp_env("(set-cdr! a (list 10 20))", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(1 10 20)");
     }
     #[test]
     fn sort() {
@@ -1267,80 +1281,86 @@ mod tests {
     }
     #[test]
     fn sort_effect() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
-        do_lisp_env("(sort! a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(1 3 4 5 5 6 7 9 10)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &mut env);
+        do_lisp_env("(sort! a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(1 3 4 5 5 6 7 9 10)");
 
-        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
-        do_lisp_env("(sort! a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(2/3 1.5 4 5 5 6 7 9 10)");
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &mut env);
+        do_lisp_env("(sort! a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(2/3 1.5 4 5 5 6 7 9 10)");
 
         do_lisp_env(
             "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\"))",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(sort! a)", &env);
+        do_lisp_env("(sort! a)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"0\" \"A\" \"a\" \"b\" \"c\" \"d\" \"l\" \"m\" \"z\")"
         );
 
-        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
-        do_lisp_env("(sort! a)", &env);
+        do_lisp_env(
+            "(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))",
+            &mut env,
+        );
+        do_lisp_env("(sort! a)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
         );
 
         do_lisp_env(
             "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0))",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(sort! a)", &env);
+        do_lisp_env("(sort! a)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
         );
 
-        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
-        do_lisp_env("(sort! a >)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 3 1)");
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &mut env);
+        do_lisp_env("(sort! a >)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10 9 7 6 5 5 4 3 1)");
 
-        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
-        do_lisp_env("(sort! a >)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &mut env);
+        do_lisp_env("(sort! a >)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10 9 7 6 5 5 4 1.5 2/3)");
 
         do_lisp_env(
             "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\") )",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(sort! a string>?)", &env);
+        do_lisp_env("(sort! a string>?)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"z\" \"m\" \"l\" \"d\" \"c\" \"b\" \"a\" \"A\" \"0\")"
         );
 
-        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
-        do_lisp_env("(sort! a string>?)", &env);
+        do_lisp_env(
+            "(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))",
+            &mut env,
+        );
+        do_lisp_env("(sort! a string>?)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
         );
 
         do_lisp_env(
             "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) )",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(sort! a char>?)", &env);
+        do_lisp_env("(sort! a char>?)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
         );
 
-        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
-        do_lisp_env("(sort! a (lambda (a b)(> a b)))", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &mut env);
+        do_lisp_env("(sort! a (lambda (a b)(> a b)))", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10 9 7 6 5 5 4 1.5 2/3)");
     }
     #[test]
     fn sort_stable() {
@@ -1391,79 +1411,85 @@ mod tests {
     }
     #[test]
     fn sort_stable_effect() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
-        do_lisp_env("(stable-sort! a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(1 3 4 5 5 6 7 9 10)");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &mut env);
+        do_lisp_env("(stable-sort! a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(1 3 4 5 5 6 7 9 10)");
 
-        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
-        do_lisp_env("(stable-sort! a)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(2/3 1.5 4 5 5 6 7 9 10)");
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &mut env);
+        do_lisp_env("(stable-sort! a)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(2/3 1.5 4 5 5 6 7 9 10)");
 
         do_lisp_env(
             "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\"))",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(stable-sort! a)", &env);
+        do_lisp_env("(stable-sort! a)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"0\" \"A\" \"a\" \"b\" \"c\" \"d\" \"l\" \"m\" \"z\")"
         );
 
-        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
-        do_lisp_env("(stable-sort! a)", &env);
+        do_lisp_env(
+            "(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))",
+            &mut env,
+        );
+        do_lisp_env("(stable-sort! a)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"AA\" \"AB\" \"AZ\" \"BB\" \"CA\")"
         );
 
         do_lisp_env(
             "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0))",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(stable-sort! a)", &env);
+        do_lisp_env("(stable-sort! a)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(#\\0 #\\A #\\a #\\b #\\c #\\d #\\l #\\m #\\z)"
         );
 
-        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &env);
-        do_lisp_env("(stable-sort! a >)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 3 1)");
+        do_lisp_env("(define a (list 10 1 9 5 3 4 7 6 5))", &mut env);
+        do_lisp_env("(stable-sort! a >)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10 9 7 6 5 5 4 3 1)");
 
-        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
-        do_lisp_env("(stable-sort! a >)", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &mut env);
+        do_lisp_env("(stable-sort! a >)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10 9 7 6 5 5 4 1.5 2/3)");
 
         do_lisp_env(
             "(define a (list \"z\" \"a\" \"b\" \"m\" \"l\" \"d\" \"A\" \"c\" \"0\") )",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(stable-sort! a string>?)", &env);
+        do_lisp_env("(stable-sort! a string>?)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"z\" \"m\" \"l\" \"d\" \"c\" \"b\" \"a\" \"A\" \"0\")"
         );
 
-        do_lisp_env("(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))", &env);
-        do_lisp_env("(stable-sort! a string>?)", &env);
+        do_lisp_env(
+            "(define a (list \"AZ\" \"AA\" \"AB\" \"CA\" \"BB\"))",
+            &mut env,
+        );
+        do_lisp_env("(stable-sort! a string>?)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(\"CA\" \"BB\" \"AZ\" \"AB\" \"AA\")"
         );
 
         do_lisp_env(
             "(define a (list #\\z #\\a #\\b #\\m #\\l #\\d #\\A #\\c #\\0) )",
-            &env,
+            &mut env,
         );
-        do_lisp_env("(stable-sort! a char>?)", &env);
+        do_lisp_env("(stable-sort! a char>?)", &mut env);
         assert_eq!(
-            do_lisp_env("a", &env),
+            do_lisp_env("a", &mut env),
             "(#\\z #\\m #\\l #\\d #\\c #\\b #\\a #\\A #\\0)"
         );
-        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &env);
-        do_lisp_env("(stable-sort! a (lambda (a b)(> a b)))", &env);
-        assert_eq!(do_lisp_env("a", &env), "(10 9 7 6 5 5 4 1.5 2/3)");
+        do_lisp_env("(define a (list 10 1.5 9 5 2/3 4 7 6 5))", &mut env);
+        do_lisp_env("(stable-sort! a (lambda (a b)(> a b)))", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "(10 9 7 6 5 5 4 1.5 2/3)");
     }
     #[test]
     fn merge() {

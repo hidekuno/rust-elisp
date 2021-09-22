@@ -216,6 +216,7 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
 
     let draw_table = draw_table.clone();
 
+    #[cfg(feature = "animation")]
     let count = RefCell::new(0);
     let draw_line = move |x0, y0, x1, y1| {
         let fg = &draw_table.core.borrow().fg;
@@ -225,18 +226,16 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
         cr.line_to(x1, y1);
         cr.stroke().expect(CAIRO_ERR_MSG);
 
-        #[cfg(feature = "animation")]
-        {
-            let c = count.try_borrow_mut();
-            if c.is_err() {
-                return Err(create_error!(ErrCode::E9002));
-            }
-            let mut c = c.unwrap();
-            *c += 1;
+        let c = count.try_borrow_mut();
+        if c.is_err() {
+            return Err(create_error!(ErrCode::E9002));
+        }
+        let mut c = c.unwrap();
+        *c += 1;
 
-            if 0 == (*c % redraw_times) {
-                force_event_loop!();
-            }
+        if 0 == (*c % redraw_times) {
+            #[cfg(feature = "animation")]
+            force_event_loop!();
         }
         Ok(())
     };

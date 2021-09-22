@@ -74,9 +74,9 @@ pub fn start() -> Result<(), JsValue> {
         .dyn_into::<HtmlTextAreaElement>()
         .unwrap();
 
-    let env = Environment::new();
-    build_lisp_function(&env, &document);
-    build_demo_function(&env, &document);
+    let mut env = Environment::new();
+    build_lisp_function(&mut env, &document);
+    build_demo_function(&mut env, &document);
 
     let closure = Closure::wrap(Box::new(move |_event: Event| {
         let c = Closure::wrap(Box::new(move |v: JsValue| {
@@ -113,8 +113,8 @@ pub fn start() -> Result<(), JsValue> {
 // It's experimental code for study.
 //--------------------------------------------------------
 async fn execute_lisp(code: String, env: Environment) -> Result<JsValue, JsValue> {
-    fn call_elisp(code: String, env: Environment) -> JsValue {
-        let v = match do_core_logic(&code, &env) {
+    fn call_elisp(code: String, mut env: Environment) -> JsValue {
+        let v = match do_core_logic(&code, &mut env) {
             Ok(r) => r.to_string(),
             Err(e) => e.get_msg(),
         };
@@ -126,7 +126,7 @@ async fn execute_lisp(code: String, env: Environment) -> Result<JsValue, JsValue
 //--------------------------------------------------------
 // lisp functions
 //--------------------------------------------------------
-pub fn build_lisp_function(env: &Environment, document: &Document) {
+pub fn build_lisp_function(env: &mut Environment, document: &Document) {
     let canvas = document
         .get_element_by_id("drawingarea")
         .unwrap()
@@ -241,8 +241,8 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
 
         if exp.len() == 4 {
             let e = exp[3].clone();
-            let env = env.clone();
-            let closure = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &env) {
+            let mut env = env.clone();
+            let closure = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &mut env) {
                 Ok(v) => console_log!("load-image: {}", v.to_string()),
                 Err(e) => console_log!("load-image: {}", e.get_code()),
             }) as Box<dyn FnMut(_)>);
@@ -279,12 +279,12 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             Expression::String(s) => s,
             _ => return Err(create_error!(ErrCode::E1015)),
         };
-        let env_ = env.clone();
+        let mut env_ = env.clone();
         let program = scm.to_string();
         let closure = Closure::wrap(Box::new(move |v: JsValue| {
             if let Some(s) = v.as_string() {
                 let mut cur = Cursor::new(s.into_bytes());
-                if let Err(e) = repl(&mut cur, &env_, None) {
+                if let Err(e) = repl(&mut cur, &mut env_, None) {
                     console_log!("load-url {} {:?}", program, e);
                 } else {
                     console_log!("load-url {}", program);
@@ -296,9 +296,9 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         if exp.len() == 2 {
             let _promise = promise.then(&closure);
         } else {
-            let env_ = env.clone();
+            let mut env_ = env.clone();
             let e = exp[2].clone();
-            let c = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &env_) {
+            let c = Closure::wrap(Box::new(move |_: JsValue| match eval(&e, &mut env_) {
                 Ok(v) => console_log!("load-url-2 {}", v.to_string()),
                 Err(e) => console_log!("load-url-2 {}", e.get_code()),
             }) as Box<dyn FnMut(_)>);
@@ -341,10 +341,10 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         if t < 1 {
             return Err(create_error!(ErrCode::E1021));
         }
-        let env = env.clone();
+        let mut env = env.clone();
         let e = exp[1].clone();
 
-        let timeout = Closure::wrap(Box::new(move || match eval(&e, &env) {
+        let timeout = Closure::wrap(Box::new(move || match eval(&e, &mut env) {
             Ok(_) => {}
             Err(e) => console_log!("add-timeout: {}", e.get_code()),
         }) as Box<dyn FnMut()>);
@@ -472,7 +472,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
 // ----------------------------------------------------------------
 // image size
 // ----------------------------------------------------------------
-fn image_size(exp: &[Expression], env: &Environment, doc: &Document) -> Result<(f64, f64), Error> {
+fn image_size(
+    exp: &[Expression],
+    env: &mut Environment,
+    doc: &Document,
+) -> Result<(f64, f64), Error> {
     if exp.len() != 2 {
         return Err(create_error!(ErrCode::E1007));
     }

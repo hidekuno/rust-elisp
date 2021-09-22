@@ -11,7 +11,7 @@ use std::vec::Vec;
 use crate::env::{GlobalTbl, SimpleEnv};
 use crate::lisp::{BasicBuiltIn, Expression, Function, ResultExpression};
 //========================================================================
-pub(crate) type ExtFunction = dyn Fn(&[Expression], &Environment) -> ResultExpression;
+pub(crate) type ExtFunction = dyn Fn(&[Expression], &mut Environment) -> ResultExpression;
 pub(crate) type EnvTable = Rc<RefCell<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Rc<Function>;
@@ -53,18 +53,21 @@ macro_rules! get_ptr {
 }
 #[derive(Clone)]
 pub struct Environment {
+    pub(crate) eval_count: u64,
     core: EnvTable,
     globals: Rc<RefCell<GlobalTbl>>,
 }
 impl Environment {
     pub fn new() -> Self {
         Environment {
+            eval_count: 0,
             core: Rc::new(RefCell::new(SimpleEnv::new(None))),
             globals: Rc::new(RefCell::new(GlobalTbl::new())),
         }
     }
     pub fn with_parent(parent: &Environment) -> Self {
         Environment {
+            eval_count: parent.eval_count,
             core: Rc::new(RefCell::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
         }
@@ -99,7 +102,7 @@ impl Environment {
     }
     pub fn add_builtin_ext_func<F>(&self, key: &'static str, c: F)
     where
-        F: Fn(&[Expression], &Environment) -> ResultExpression + 'static,
+        F: Fn(&[Expression], &mut Environment) -> ResultExpression + 'static,
     {
         self.globals
             .borrow_mut()

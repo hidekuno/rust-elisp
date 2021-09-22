@@ -20,7 +20,7 @@ use crate::lisp::Expression;
 // ----------------------------------------------------------------
 // set up for draw_line
 // ----------------------------------------------------------------
-pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawLine) {
+pub fn regist_draw_line(fname: &'static str, env: &mut Environment, draw_line: DrawLine) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 5 && exp.len() != 3 {
             return Err(create_error!(ErrCode::E1007));
@@ -35,7 +35,7 @@ pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawL
 // ----------------------------------------------------------------
 // set up for draw_image
 // ----------------------------------------------------------------
-pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: DrawImage) {
+pub fn regist_draw_image(fname: &'static str, env: &mut Environment, draw_image: DrawImage) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 8 && exp.len() != 5 {
             return Err(create_error!(ErrCode::E1007));
@@ -54,7 +54,7 @@ pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: Dra
 // ----------------------------------------------------------------
 // set up for draw_arc
 // ----------------------------------------------------------------
-pub fn regist_draw_arc(fname: &'static str, env: &Environment, draw_arc: DrawArc) {
+pub fn regist_draw_arc(fname: &'static str, env: &mut Environment, draw_arc: DrawArc) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 5 {
             return Err(create_error!(ErrCode::E1007));
@@ -71,7 +71,7 @@ pub fn regist_draw_arc(fname: &'static str, env: &Environment, draw_arc: DrawArc
 // ----------------------------------------------------------------
 fn set_loc(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     loc: &mut [f64],
     param: (usize, usize),
 ) -> Result<(), Error> {
@@ -112,7 +112,7 @@ fn set_loc(
 // ----------------------------------------------------------------
 // create new lisp interface
 // ----------------------------------------------------------------
-pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
+pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &mut Environment) {
     env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
         if exp.len() != 2 {
             return Err(create_error!(ErrCode::E1007));

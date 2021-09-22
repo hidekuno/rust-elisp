@@ -59,7 +59,7 @@ impl Continuation {
         //
         Continuation { cont }
     }
-    pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
+    pub fn execute(&self, exp: &[Expression], env: &mut Environment) -> ResultExpression {
         if exp.len() != 2 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
@@ -69,7 +69,7 @@ impl Continuation {
         Err(create_continuation!(eval(&exp[1], env)?, exp[0].clone()))
     }
 }
-pub fn call_cc(exp: &[Expression], env: &Environment) -> ResultExpression {
+pub fn call_cc(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -83,14 +83,14 @@ pub fn call_cc(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1006))
     }
 }
-pub fn quote(exp: &[Expression], _env: &Environment) -> ResultExpression {
+pub fn quote(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
     } else {
         Ok(exp[1].clone())
     }
 }
-fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn define(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -135,7 +135,7 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1004))
     }
 }
-fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn lambda(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -156,12 +156,12 @@ fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
         env.clone(),
     )))
 }
-fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn let_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     // @@@ env.create();
-    let param = Environment::with_parent(env);
+    let mut param = Environment::with_parent(env);
     let mut idx = 1;
     let mut name = String::from("lambda");
 
@@ -215,9 +215,9 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
             param.regist(s.to_string(), Environment::create_func(f.clone()));
         }
     }
-    f.execute(&param_value_list, &param)
+    f.execute(&param_value_list, &mut param)
 }
-fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn set_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -233,7 +233,7 @@ fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1004))
     }
 }
-fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn if_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -249,7 +249,7 @@ fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1001))
     }
 }
-fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn and(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -264,7 +264,7 @@ fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::Boolean(true))
 }
-fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn or(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -279,7 +279,7 @@ fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::Boolean(false))
 }
-fn not(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn not(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -288,7 +288,7 @@ fn not(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1001)),
     }
 }
-fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn cond(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -323,7 +323,7 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn case(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -372,7 +372,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::Nil())
 }
-fn begin(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn begin(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -382,7 +382,7 @@ fn begin(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(ret)
 }
-fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn apply(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -395,24 +395,24 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1005))
     }
 }
-fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn delay(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     Ok(Expression::Promise(Box::new(exp[1].clone()), env.clone()))
 }
-fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn force(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let v = eval(&exp[1], env)?;
-    if let Expression::Promise(p, pe) = v {
-        eval(&(*p), &pe)
+    if let Expression::Promise(p, mut pe) = v {
+        eval(&(*p), &mut pe)
     } else {
         Ok(v)
     }
 }
-fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn do_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() < 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -426,7 +426,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, l.len()));
     }
 
-    let local_env = Environment::with_parent(env);
+    let mut local_env = Environment::with_parent(env);
     let mut param = Vec::<String>::new();
     let mut update = Vec::<Expression>::new();
 
@@ -465,9 +465,9 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     let v = loop {
         // eval condition
-        if let Expression::Boolean(b) = eval(&cond[0], &local_env)? {
+        if let Expression::Boolean(b) = eval(&cond[0], &mut local_env)? {
             if b {
-                let v = eval(&cond[1], &local_env)?;
+                let v = eval(&cond[1], &mut local_env)?;
                 break v;
             }
         } else {
@@ -475,13 +475,13 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
         // eval body
         for e in exp.iter().skip(3) {
-            eval(e, &local_env)?;
+            eval(e, &mut local_env)?;
         }
 
         // eval step
         let mut result = Vec::<Expression>::new();
         for u in &update {
-            result.push(eval(u, &local_env)?);
+            result.push(eval(u, &mut local_env)?);
         }
         for (i, v) in result.into_iter().enumerate() {
             local_env.regist(param[i].clone(), v);
@@ -495,9 +495,9 @@ mod tests {
     use crate::{do_lisp, do_lisp_env};
     #[test]
     fn callcc() {
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
         assert_eq!(
-            do_lisp_env("(+ 1 (* 2 (call/cc (lambda (cont) (cont 3)))))", &env),
+            do_lisp_env("(+ 1 (* 2 (call/cc (lambda (cont) (cont 3)))))", &mut env),
             "7"
         );
         assert_eq!(
@@ -505,7 +505,7 @@ mod tests {
                 &("(call/cc (lambda (throw)".to_string()
                     + "(+ 5 (* 10 (call/cc (lambda (escape)"
                     + " (* 100 (throw 3))))))))"),
-                &env
+                &mut env
             ),
             "3"
         );
@@ -514,7 +514,7 @@ mod tests {
                 &("(call/cc (lambda (hoge) (+ 3 (call/cc (lambda (throw)".to_string()
                     + "(+ 5 (* 10 (call/cc (lambda (escape)"
                     + "(* 100 (throw 3)))))))))))"),
-                &env
+                &mut env
             ),
             "6"
         );
@@ -523,7 +523,7 @@ mod tests {
                 &("(call/cc (lambda (throw)".to_string()
                     + "(+ 5 (* 10 "
                     + "(call/cc (lambda (escape) (* 100 (escape 3))))))))"),
-                &env
+                &mut env
             ),
             "35"
         );
@@ -532,7 +532,7 @@ mod tests {
                 &("(call/cc (lambda (hoge) (+ 3 (call/cc (lambda (throw)".to_string()
                     + "(+ 5 (* 10 "
                     + "(call/cc (lambda (escape) (* 100 (escape 3)))))))))))"),
-                &env
+                &mut env
             ),
             "38"
         );
@@ -540,63 +540,63 @@ mod tests {
             &("(define (map-check fn chk ls)".to_string()
                 + "(call/cc (lambda (return) "
                 + "(map (lambda (x) (if (chk x) (return '()) (fn x))) ls))))"),
-            &env,
+            &mut env,
         );
         assert_eq!(
             do_lisp_env(
                 "(map-check (lambda (x) (* x x)) (lambda (x) (< x 0)) (list 1 2 3 4 5))",
-                &env
+                &mut env
             ),
             "(1 4 9 16 25)"
         );
         assert_eq!(
             do_lisp_env(
                 "(map-check (lambda (x) (* x x)) (lambda (x) (< x 0)) (list 1 2 3 -1 5))",
-                &env
+                &mut env
             ),
             "()"
         );
     }
     #[test]
     fn define() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
-        assert_eq!(do_lisp_env("a", &env), "100");
-        do_lisp_env("(define a 10.5)", &env);
-        assert_eq!(do_lisp_env("a", &env), "10.5");
-        do_lisp_env("(define a #t)", &env);
-        assert_eq!(do_lisp_env("a", &env), "#t");
-        do_lisp_env("(define a #\\A)", &env);
-        assert_eq!(do_lisp_env("a", &env), "#\\A");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "100");
+        do_lisp_env("(define a 10.5)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "10.5");
+        do_lisp_env("(define a #t)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "#t");
+        do_lisp_env("(define a #\\A)", &mut env);
+        assert_eq!(do_lisp_env("a", &mut env), "#\\A");
 
-        do_lisp_env("(define (fuga a b)(* a b))", &env);
-        assert_eq!(do_lisp_env("(fuga 6 8)", &env), "48");
-        do_lisp_env("(define (hoge a b) a)", &env);
-        assert_eq!(do_lisp_env("(hoge 6 8)", &env), "6");
+        do_lisp_env("(define (fuga a b)(* a b))", &mut env);
+        assert_eq!(do_lisp_env("(fuga 6 8)", &mut env), "48");
+        do_lisp_env("(define (hoge a b) a)", &mut env);
+        assert_eq!(do_lisp_env("(hoge 6 8)", &mut env), "6");
 
-        do_lisp_env("(define a 100)", &env);
-        do_lisp_env("(define b a)", &env);
-        assert_eq!(do_lisp_env("b", &env), "100");
+        do_lisp_env("(define a 100)", &mut env);
+        do_lisp_env("(define b a)", &mut env);
+        assert_eq!(do_lisp_env("b", &mut env), "100");
 
-        do_lisp_env("(define plus +)", &env);
-        assert_eq!(do_lisp_env("(plus 10 20)", &env), "30");
+        do_lisp_env("(define plus +)", &mut env);
+        assert_eq!(do_lisp_env("(plus 10 20)", &mut env), "30");
 
-        do_lisp_env("(define (p-nashi)(* 10 20))", &env);
-        assert_eq!(do_lisp_env("(p-nashi)", &env), "200");
+        do_lisp_env("(define (p-nashi)(* 10 20))", &mut env);
+        assert_eq!(do_lisp_env("(p-nashi)", &mut env), "200");
 
-        do_lisp_env("(define (hoge a b)(define (alpha x)(+ x 10))(define (beta y)(+ y 10))(+ (alpha a)(beta b)))",&env);
-        assert_eq!(do_lisp_env("(hoge 1 2)", &env), "23");
-        assert_eq!(do_lisp_env("(hoge 3 4)", &env), "27");
+        do_lisp_env("(define (hoge a b)(define (alpha x)(+ x 10))(define (beta y)(+ y 10))(+ (alpha a)(beta b)))",&mut env);
+        assert_eq!(do_lisp_env("(hoge 1 2)", &mut env), "23");
+        assert_eq!(do_lisp_env("(hoge 3 4)", &mut env), "27");
     }
     #[test]
     fn lambda() {
         assert_eq!(do_lisp("((lambda (a b)(+ a b)) 1 2)"), "3");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &env);
-        assert_eq!(do_lisp_env("(hoge 6 8)", &env), "14");
-        do_lisp_env("(define hoge (lambda (a b) b))", &env);
-        assert_eq!(do_lisp_env("(hoge 6 8)", &env), "8");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &mut env);
+        assert_eq!(do_lisp_env("(hoge 6 8)", &mut env), "14");
+        do_lisp_env("(define hoge (lambda (a b) b))", &mut env);
+        assert_eq!(do_lisp_env("(hoge 6 8)", &mut env), "8");
     }
     #[test]
     fn let_f() {
@@ -612,12 +612,12 @@ mod tests {
     }
     #[test]
     fn set_f() {
-        let env = lisp::Environment::new();
-        do_lisp_env("(define c 0)", &env);
-        do_lisp_env("(set! c 10)", &env);
-        assert_eq!(do_lisp_env("c", &env), "10");
-        do_lisp_env("(set! c (+ c 1))", &env);
-        assert_eq!(do_lisp_env("c", &env), "11");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define c 0)", &mut env);
+        do_lisp_env("(set! c 10)", &mut env);
+        assert_eq!(do_lisp_env("c", &mut env), "10");
+        do_lisp_env("(set! c (+ c 1))", &mut env);
+        assert_eq!(do_lisp_env("c", &mut env), "11");
     }
 
     #[test]
@@ -652,34 +652,46 @@ mod tests {
         assert_eq!(do_lisp("(cond ((= 100 10)))"), "nil");
         assert_eq!(do_lisp("(cond (else 10))"), "10");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 10)", &env);
-        assert_eq!(do_lisp_env("(cond (a 20))", &env), "20");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 10)", &mut env);
+        assert_eq!(do_lisp_env("(cond (a 20))", &mut env), "20");
         assert_eq!(
-            do_lisp_env("(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))", &env),
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
             "\"A\""
         );
-        do_lisp_env("(define a 20)", &env);
+        do_lisp_env("(define a 20)", &mut env);
         assert_eq!(
-            do_lisp_env("(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))", &env),
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
             "\"B\""
         );
-        do_lisp_env("(define a 30)", &env);
+        do_lisp_env("(define a 30)", &mut env);
         assert_eq!(
-            do_lisp_env("(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))", &env),
+            do_lisp_env(
+                "(cond ((= a 10) \"A\")((= a 20) \"B\")(else \"C\"))",
+                &mut env
+            ),
             "\"C\""
         );
         assert_eq!(
             do_lisp_env(
                 "(cond ((= a 10) \"A\")((= a 20) \"B\")(else (* a 10)))",
-                &env
+                &mut env
             ),
             "300"
         );
-        do_lisp_env("(define a 100)", &env);
-        assert_eq!(do_lisp_env("(cond ((= a 10) 20)(else 30 40))", &env), "40");
+        do_lisp_env("(define a 100)", &mut env);
         assert_eq!(
-            do_lisp_env("(cond ((= a 100) 20 30)(else 40 50))", &env),
+            do_lisp_env("(cond ((= a 10) 20)(else 30 40))", &mut env),
+            "40"
+        );
+        assert_eq!(
+            do_lisp_env("(cond ((= a 100) 20 30)(else 40 50))", &mut env),
             "30"
         );
     }
@@ -691,57 +703,57 @@ mod tests {
         assert_eq!(do_lisp("(case 10 (else))"), "0");
         assert_eq!(do_lisp("(case 1 ((1 2)))"), "(1 2)");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
         assert_eq!(
-            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &env),
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
             "\"A\""
         );
-        do_lisp_env("(define a 1)", &env);
+        do_lisp_env("(define a 1)", &mut env);
         assert_eq!(
-            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &env),
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
             "\"B\""
         );
-        do_lisp_env("(define a 200)", &env);
+        do_lisp_env("(define a 200)", &mut env);
         assert_eq!(
-            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &env),
+            do_lisp_env("(case a ((100 200) \"A\")(else \"B\"))", &mut env),
             "\"A\""
         );
-        do_lisp_env("(define a 400)", &env);
+        do_lisp_env("(define a 400)", &mut env);
         assert_eq!(
             do_lisp_env(
                 "(case a ((100 200) \"A\")((300 400) \"B\")(else \"C\"))",
-                &env
+                &mut env
             ),
             "\"B\""
         );
-        do_lisp_env("(define b 100)", &env);
+        do_lisp_env("(define b 100)", &mut env);
         assert_eq!(
             do_lisp_env(
                 "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
-                &env
+                &mut env
             ),
             "\"B\""
         );
-        do_lisp_env("(define a 100)", &env);
+        do_lisp_env("(define a 100)", &mut env);
         assert_eq!(
             do_lisp_env(
                 "(case a ((200 b) \"A\")((300 400) \"B\")(else \"C\"))",
-                &env
+                &mut env
             ),
             "\"A\""
         );
-        do_lisp_env("(define a 1000)", &env);
+        do_lisp_env("(define a 1000)", &mut env);
         assert_eq!(
             do_lisp_env(
                 "(case a ((b 200) \"A\")((300 400) \"B\")(else \"C\"))",
-                &env
+                &mut env
             ),
             "\"C\""
         );
-        do_lisp_env("(define a 100) ", &env);
+        do_lisp_env("(define a 100) ", &mut env);
         assert_eq!(
-            do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &env),
+            do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &mut env),
             "\"B\""
         );
     }
@@ -764,9 +776,9 @@ mod tests {
             do_lisp("(apply (lambda (a) (map (lambda (n) (* n n)) a)) (list (list 1 2 3)))"),
             "(1 4 9)"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define (hoge x y)(* x y))", &env);
-        assert_eq!(do_lisp_env("(apply hoge (list 3 4))", &env), "12");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define (hoge x y)(* x y))", &mut env);
+        assert_eq!(do_lisp_env("(apply hoge (list 3 4))", &mut env), "12");
     }
     #[test]
     fn delay_force() {
@@ -774,9 +786,9 @@ mod tests {
         assert_eq!(do_lisp("(force (delay (+ 1 1)))"), "2");
         assert_eq!(do_lisp("(force  (+ 1 2))"), "3");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define p (delay (+ 2 3)))", &env);
-        assert_eq!(do_lisp_env("(force p)", &env), "5");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define p (delay (+ 2 3)))", &mut env);
+        assert_eq!(do_lisp_env("(force p)", &mut env), "5");
     }
     #[test]
     fn quote() {
@@ -806,10 +818,10 @@ mod tests {
             do_lisp("(do ((a '(0 1 2 3 4) (cdr a))(b 0 (+ b (car a))))((null? a) b)(display (car a))(newline))"),
             "10"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define x 100)", &env);
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define x 100)", &mut env);
         assert_eq!(
-            do_lisp_env("(do ((i 0 (+ i 1)))((= i 10) x)(set! x (+ i x)))", &env),
+            do_lisp_env("(do ((i 0 (+ i 1)))((= i 10) x)(set! x (+ i x)))", &mut env),
             "145"
         );
     }
@@ -828,32 +840,41 @@ mod error_tests {
     }
     #[test]
     fn define() {
-        let env = lisp::Environment::new();
-        assert_eq!(do_lisp_env("(define)", &env), "E1007");
-        assert_eq!(do_lisp_env("(define a)", &env), "E1007");
-        assert_eq!(do_lisp_env("(define a 11 12)", &env), "E1007");
-        assert_eq!(do_lisp_env("(define 1 10)", &env), "E1004");
-        assert_eq!(do_lisp_env("(define (hoge a 1) (+ 100 a))", &env), "E1004");
-        assert_eq!(do_lisp_env("(define (hoge 1 a) (+ 100 a))", &env), "E1004");
-        assert_eq!(do_lisp_env("(define (100 a b) (+ 100 a))", &env), "E1004");
-        assert_eq!(do_lisp_env("(define () (+ 100 a))", &env), "E1007");
+        let mut env = lisp::Environment::new();
+        assert_eq!(do_lisp_env("(define)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(define a)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(define a 11 12)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(define 1 10)", &mut env), "E1004");
+        assert_eq!(
+            do_lisp_env("(define (hoge a 1) (+ 100 a))", &mut env),
+            "E1004"
+        );
+        assert_eq!(
+            do_lisp_env("(define (hoge 1 a) (+ 100 a))", &mut env),
+            "E1004"
+        );
+        assert_eq!(
+            do_lisp_env("(define (100 a b) (+ 100 a))", &mut env),
+            "E1004"
+        );
+        assert_eq!(do_lisp_env("(define () (+ 100 a))", &mut env), "E1007");
 
-        assert_eq!(do_lisp_env("(define a ga)", &env), "E1008");
+        assert_eq!(do_lisp_env("(define a ga)", &mut env), "E1008");
     }
     #[test]
     fn lambda() {
-        let env = lisp::Environment::new();
-        assert_eq!(do_lisp_env("(lambda)", &env), "E1007");
-        assert_eq!(do_lisp_env("(lambda (a b))", &env), "E1007");
-        assert_eq!(do_lisp_env("(lambda  a (+ a b))", &env), "E1005");
-        assert_eq!(do_lisp_env("(lambda (a 1) (+ a 10))", &env), "E1004");
-        assert_eq!(do_lisp_env("((list 1) 10)", &env), "E1006");
+        let mut env = lisp::Environment::new();
+        assert_eq!(do_lisp_env("(lambda)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(lambda (a b))", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(lambda  a (+ a b))", &mut env), "E1005");
+        assert_eq!(do_lisp_env("(lambda (a 1) (+ a 10))", &mut env), "E1004");
+        assert_eq!(do_lisp_env("((list 1) 10)", &mut env), "E1006");
 
-        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &env);
-        assert_eq!(do_lisp_env("(hoge 10 ga)", &env), "E1008");
+        do_lisp_env("(define hoge (lambda (a b) (+ a b)))", &mut env);
+        assert_eq!(do_lisp_env("(hoge 10 ga)", &mut env), "E1008");
 
-        do_lisp_env("(define hoge (lambda (a b) (+ ga b)))", &env);
-        assert_eq!(do_lisp_env("(hoge 10 20)", &env), "E1008");
+        do_lisp_env("(define hoge (lambda (a b) (+ ga b)))", &mut env);
+        assert_eq!(do_lisp_env("(hoge 10 20)", &mut env), "E1008");
     }
     #[test]
     fn let_f() {
@@ -871,11 +892,11 @@ mod error_tests {
     }
     #[test]
     fn set_f() {
-        let env = lisp::Environment::new();
-        assert_eq!(do_lisp_env("(set!)", &env), "E1007");
-        assert_eq!(do_lisp_env("(set! c)", &env), "E1007");
-        assert_eq!(do_lisp_env("(set! 10 10)", &env), "E1004");
-        assert_eq!(do_lisp_env("(set! c 10)", &env), "E1008");
+        let mut env = lisp::Environment::new();
+        assert_eq!(do_lisp_env("(set!)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(set! c)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(set! 10 10)", &mut env), "E1004");
+        assert_eq!(do_lisp_env("(set! c 10)", &mut env), "E1008");
     }
     #[test]
     fn if_f() {

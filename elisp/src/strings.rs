@@ -102,8 +102,8 @@ pub fn to_str_radix(n: Int, r: u32) -> Option<String> {
 }
 pub fn do_radix(
     exp: &[Expression],
-    env: &Environment,
-    func: fn(exp: &Expression, env: &Environment, r: u32) -> ResultExpression,
+    env: &mut Environment,
+    func: fn(exp: &Expression, env: &mut Environment, r: u32) -> ResultExpression,
 ) -> ResultExpression {
     if 2 > exp.len() || 3 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -124,7 +124,7 @@ pub fn do_radix(
         func(&exp[1], env, r as u32)
     }
 }
-fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn format_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -150,7 +150,7 @@ fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     Ok(Expression::String(s))
 }
-fn string(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn string(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -162,7 +162,7 @@ fn string(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn strcmp(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: &String, y: &String) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
@@ -178,7 +178,7 @@ fn strcmp(
     }
     Ok(Expression::Boolean(func(&v[0], &v[1])))
 }
-fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn str_append(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 3 > exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -193,7 +193,7 @@ fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn str_length(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(s: String) -> usize,
 ) -> ResultExpression {
     if 2 != exp.len() {
@@ -204,7 +204,7 @@ fn str_length(
         _ => Err(create_error!(ErrCode::E1015)),
     }
 }
-fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+fn number_string(exp: &Expression, env: &mut Environment, r: u32) -> ResultExpression {
     let v = Expression::to_number(&eval(exp, env)?)?;
     match v {
         Number::Integer(n) => {
@@ -219,7 +219,7 @@ fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         _ => Ok(Expression::String(v.to_string())),
     }
 }
-fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
+fn string_number(exp: &Expression, env: &mut Environment, r: u32) -> ResultExpression {
     let s = match eval(exp, env)? {
         Expression::String(s) => s,
         _ => return Err(create_error!(ErrCode::E1015)),
@@ -238,7 +238,7 @@ fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
     };
     Ok(v)
 }
-fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn list_string(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -258,7 +258,7 @@ fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::String(v))
 }
-fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn string_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -272,7 +272,7 @@ fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Environment::create_list(l))
 }
-fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn substring(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 4 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -307,7 +307,7 @@ fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::String(v))
 }
-fn symbol_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn symbol_string(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -316,7 +316,7 @@ fn symbol_string(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1004)),
     }
 }
-fn string_symbol(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn string_symbol(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -325,7 +325,7 @@ fn string_symbol(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1015)),
     }
 }
-fn make_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn make_string(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -347,7 +347,7 @@ fn make_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     Ok(Expression::String(s))
 }
-fn string_split(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn string_split(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -367,7 +367,7 @@ fn string_split(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     Ok(Environment::create_list(v))
 }
-fn string_join(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn string_join(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -396,7 +396,7 @@ enum StringScan {
     Left,
     Right,
 }
-fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> ResultExpression {
+fn string_scan(exp: &[Expression], env: &mut Environment, direct: StringScan) -> ResultExpression {
     fn resolv_scan(x: Option<usize>) -> Expression {
         match x {
             Some(i) => Expression::Integer(i as Int),
@@ -438,10 +438,10 @@ mod tests {
         assert_eq!(do_lisp("(format \"~B\" 10)"), "\"1010\"");
         assert_eq!(do_lisp("(format \"~b\" 10)"), "\"1010\"");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a \"~D\")", &env);
-        do_lisp_env("(define b 100)", &env);
-        assert_eq!(do_lisp_env("(format a b)", &env), "\"100\"");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a \"~D\")", &mut env);
+        do_lisp_env("(define b 100)", &mut env);
+        assert_eq!(do_lisp_env("(format a b)", &mut env), "\"100\"");
     }
     #[test]
     fn string() {

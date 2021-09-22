@@ -32,11 +32,11 @@ pub mod env_thread;
 
 #[cfg(test)]
 pub fn do_lisp(program: &str) -> String {
-    let env = lisp::Environment::new();
-    do_lisp_env(program, &env)
+    let mut env = lisp::Environment::new();
+    do_lisp_env(program, &mut env)
 }
 #[cfg(test)]
-pub fn do_lisp_env(program: &str, env: &lisp::Environment) -> String {
+pub fn do_lisp_env(program: &str, env: &mut lisp::Environment) -> String {
     match lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_code(),
@@ -71,9 +71,9 @@ mod tests {
         assert_eq!(do_lisp("\"山田太郎\""), "\"山田太郎\"");
         assert_eq!(do_lisp("\"山田(太郎\""), "\"山田(太郎\"");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define 山 200)", &env);
-        assert_eq!(do_lisp_env("山", &env), "200");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define 山 200)", &mut env);
+        assert_eq!(do_lisp_env("山", &mut env), "200");
     }
     #[test]
     fn tail_recurcieve_1() {
@@ -104,14 +104,17 @@ mod tests {
     #[test]
     fn tail_recurcieve_3() {
         // stack overflow check
-        let env = lisp::Environment::new();
-        do_lisp_env("(define (hoge i) (if (<= 10000 i) i (hoge (+ i 1))))", &env);
-        assert_eq!(do_lisp_env("(hoge 0)", &env), "10000");
+        let mut env = lisp::Environment::new();
+        do_lisp_env(
+            "(define (hoge i) (if (<= 10000 i) i (hoge (+ i 1))))",
+            &mut env,
+        );
+        assert_eq!(do_lisp_env("(hoge 0)", &mut env), "10000");
         do_lisp_env(
             "(define (hoge)(let loop ((i 0))(if (<= 10000 i) i (begin (+ 1 1)(loop (+ i 1))))))",
-            &env,
+            &mut env,
         );
-        assert_eq!(do_lisp_env("(hoge)", &env), "10000");
+        assert_eq!(do_lisp_env("(hoge)", &mut env), "10000");
     }
     #[test]
     fn sequence() {
@@ -126,42 +129,48 @@ mod tests {
     }
     #[test]
     fn force_stop() {
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
         assert!(!env.is_force_stop());
-        do_lisp_env("( force-stop )", &env);
+        do_lisp_env("( force-stop )", &mut env);
         assert!(env.is_force_stop());
-        assert_eq!(do_lisp_env("a", &env), "E9000");
+        assert_eq!(do_lisp_env("a", &mut env), "E9000");
         env.set_force_stop(false);
-        assert_eq!(do_lisp_env("100", &env), "100");
+        assert_eq!(do_lisp_env("100", &mut env), "100");
     }
     #[test]
     fn set_tail_recursion() {
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
         assert!(env.is_tail_recursion());
-        do_lisp_env("(  tail-recursion-off )", &env);
+        do_lisp_env("(  tail-recursion-off )", &mut env);
         assert!(!env.is_tail_recursion());
-        do_lisp_env("(  tail-recursion-on )", &env);
+        do_lisp_env("(  tail-recursion-on )", &mut env);
         assert!(env.is_tail_recursion());
     }
     #[test]
     fn tail_recurcieve_4() {
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
         assert_eq!(
             do_lisp_env(
                 "(let loop ((i 0))(define a 100)(cond ((<= 100 i) i)(else (loop (+ i 1)))))",
-                &env
+                &mut env
             ),
             "100"
         );
         assert_eq!(
             do_lisp_env(
                 "(let loop ((i 0))(list 10)(cond ((<= 10 i) i)(else (loop (+ i 1)))))",
-                &env
+                &mut env
             ),
             "10"
         );
-        assert_eq!(do_lisp_env("(let loop ((i 0))(define c 10))", &env), "c");
-        assert_eq!(do_lisp_env("(let loop ((i 0))(begin 1000))", &env), "1000");
+        assert_eq!(
+            do_lisp_env("(let loop ((i 0))(define c 10))", &mut env),
+            "c"
+        );
+        assert_eq!(
+            do_lisp_env("(let loop ((i 0))(begin 1000))", &mut env),
+            "1000"
+        );
     }
 }
 #[cfg(test)]

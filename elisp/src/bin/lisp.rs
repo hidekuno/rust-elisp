@@ -22,10 +22,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     if args.len() < 2 {
         lisp::do_interactive();
     } else if args[1] == "--profile" {
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
         match lisp::do_core_logic(
             &String::from("(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))"),
-            &env,
+            &mut env,
         ) {
             Ok(r) => println!("{}", r.to_string()),
             Err(e) => print_error!(e),
@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         let filename = &args[1];
         let mut program: Vec<String> = Vec::new();
-        let env = lisp::Environment::new();
+        let mut env = lisp::Environment::new();
 
         for result in BufReader::new(File::open(filename)?).lines() {
             let l = result?;
@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             program.push(l);
         }
-        match lisp::do_core_logic(&program.join(" "), &env) {
+        match lisp::do_core_logic(&program.join(" "), &mut env) {
             Ok(r) => println!("{}", r.to_string()),
             Err(e) => print_error!(e),
         }

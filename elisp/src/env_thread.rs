@@ -13,7 +13,7 @@ use crate::env::{GlobalTbl, SimpleEnv};
 use crate::lisp::{BasicBuiltIn, Expression, Function, ResultExpression};
 //========================================================================
 pub(crate) type ExtFunction =
-    Box<dyn Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static>;
+    Box<dyn Fn(&[Expression], &mut Environment) -> ResultExpression + Sync + Send + 'static>;
 pub(crate) type EnvTable = Arc<Mutex<SimpleEnv>>;
 //------------------------------------------------------------------------
 pub type FunctionRc = Arc<Function>;
@@ -67,18 +67,21 @@ macro_rules! get_ptr {
 
 #[derive(Clone)]
 pub struct Environment {
+    pub(crate) eval_count: u64,
     core: EnvTable,
     globals: Arc<Mutex<GlobalTbl>>,
 }
 impl Environment {
     pub fn new() -> Self {
         Environment {
+            eval_count: 0,
             core: Arc::new(Mutex::new(SimpleEnv::new(None))),
             globals: Arc::new(Mutex::new(GlobalTbl::new())),
         }
     }
     pub fn with_parent(parent: &Environment) -> Self {
         Environment {
+            eval_count: parent.eval_count,
             core: Arc::new(Mutex::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
         }
@@ -118,7 +121,7 @@ impl Environment {
     }
     pub fn add_builtin_ext_func<F>(&self, key: &'static str, c: F)
     where
-        F: Fn(&[Expression], &Environment) -> ResultExpression + Sync + Send + 'static,
+        F: Fn(&[Expression], &mut Environment) -> ResultExpression + Sync + Send + 'static,
     {
         self.globals
             .lock()

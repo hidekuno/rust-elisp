@@ -70,7 +70,7 @@ where
     b.regist("rand-list", rand_list);
     b.regist("expt", expt);
 }
-fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, Error> {
+fn to_f64(exp: &[Expression], env: &mut Environment) -> Result<f64, Error> {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -81,7 +81,7 @@ fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, Error> {
         _ => Err(create_error!(ErrCode::E1003)),
     }
 }
-fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn abs(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -92,7 +92,7 @@ fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => return Err(create_error!(ErrCode::E1003)),
     })
 }
-fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
+fn rand_integer(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     if 1 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -100,7 +100,7 @@ fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
     let x: Int = rng.gen();
     Ok(Expression::Integer(x.abs() / SAMPLE_INT))
 }
-fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn rand_list(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -116,7 +116,7 @@ fn rand_list(exp: &[Expression], env: &Environment) -> ResultExpression {
         Err(create_error!(ErrCode::E1002))
     }
 }
-fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn expt(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -150,9 +150,9 @@ mod tests {
         assert_eq!(do_lisp("(sqrt 9)"), "3");
         assert_eq!(do_lisp("(sqrt 25.0)"), "5");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 16)", &env);
-        assert_eq!(do_lisp_env("(sqrt a)", &env), "4");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 16)", &mut env);
+        assert_eq!(do_lisp_env("(sqrt a)", &mut env), "4");
     }
     #[test]
     fn sin() {
@@ -168,9 +168,9 @@ mod tests {
             do_lisp("(sin (/(* 60 (* 4 (atan 1))) 180))"),
             "0.8660254037844386"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* 30 (* 4 (atan 1))) 180))", &env);
-        assert_eq!(do_lisp_env("(sin a)", &env), "0.49999999999999994");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* 30 (* 4 (atan 1))) 180))", &mut env);
+        assert_eq!(do_lisp_env("(sin a)", &mut env), "0.49999999999999994");
     }
     #[test]
     fn cos() {
@@ -186,9 +186,9 @@ mod tests {
             do_lisp("(cos (/(* 59.725 (* 4 (atan 1))) 180))"),
             "0.5041508484218754"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* 60 (* 4 (atan 1))) 180))", &env);
-        assert_eq!(do_lisp_env("(cos a)", &env), "0.5000000000000001");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* 60 (* 4 (atan 1))) 180))", &mut env);
+        assert_eq!(do_lisp_env("(cos a)", &mut env), "0.5000000000000001");
     }
     #[test]
     fn tan() {
@@ -200,9 +200,9 @@ mod tests {
             do_lisp("(tan (/(* 45.5 (* 4 (atan 1))) 180))"),
             "1.0176073929721252"
         );
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* 45 (* 4 (atan 1))) 180))", &env);
-        assert_eq!(do_lisp_env("(tan a)", &env), "0.9999999999999999");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* 45 (* 4 (atan 1))) 180))", &mut env);
+        assert_eq!(do_lisp_env("(tan a)", &mut env), "0.9999999999999999");
     }
     #[test]
     fn asin() {
@@ -215,9 +215,12 @@ mod tests {
             do_lisp("(/(* pi 30)180)")
         );
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* pi 30)180))", &env);
-        assert_eq!(do_lisp_env("(sin (asin a))", &env), do_lisp_env("a", &env));
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* pi 30)180))", &mut env);
+        assert_eq!(
+            do_lisp_env("(sin (asin a))", &mut env),
+            do_lisp_env("a", &mut env)
+        );
     }
     #[test]
     fn acos() {
@@ -230,9 +233,12 @@ mod tests {
             do_lisp("(/(* pi 30)180)")
         );
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a (/(* pi 30)180))", &env);
-        assert_eq!(do_lisp_env("(cos (acos a))", &env), do_lisp_env("a", &env));
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a (/(* pi 30)180))", &mut env);
+        assert_eq!(
+            do_lisp_env("(cos (acos a))", &mut env),
+            do_lisp_env("a", &mut env)
+        );
     }
     #[test]
     fn atan() {
@@ -240,9 +246,9 @@ mod tests {
         assert_eq!(do_lisp("(* 4 (atan 1))"), "3.141592653589793");
         assert_eq!(do_lisp("(* 4 (atan 1.0))"), "3.141592653589793");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 1)", &env);
-        assert_eq!(do_lisp_env("(* 4 (atan a))", &env), "3.141592653589793");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 1)", &mut env);
+        assert_eq!(do_lisp_env("(* 4 (atan a))", &mut env), "3.141592653589793");
     }
     #[test]
     fn exp() {
@@ -250,9 +256,9 @@ mod tests {
         assert_eq!(do_lisp("(exp 1.025)"), "2.7870954605658507");
         assert_eq!(do_lisp("(exp 2)"), "7.38905609893065");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 3)", &env);
-        assert_eq!(do_lisp_env("(exp a)", &env), "20.085536923187668");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 3)", &mut env);
+        assert_eq!(do_lisp_env("(exp a)", &mut env), "20.085536923187668");
     }
     #[test]
     fn log() {
@@ -261,10 +267,10 @@ mod tests {
         assert_eq!(do_lisp("(exp (/(log 8) 3))"), "2");
         assert_eq!(do_lisp("(round (exp (* (log 2) 3)))"), "8");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 9)", &env);
-        do_lisp_env("(define b 3)", &env);
-        assert_eq!(do_lisp_env("(/(log a)(log b))", &env), "2");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 9)", &mut env);
+        do_lisp_env("(define b 3)", &mut env);
+        assert_eq!(do_lisp_env("(/(log a)(log b))", &mut env), "2");
     }
     #[test]
     fn truncate() {
@@ -303,10 +309,10 @@ mod tests {
         assert_eq!(do_lisp("(abs -1/3)"), "1/3");
         assert_eq!(do_lisp("(abs  1/3)"), "1/3");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a -20)", &env);
-        do_lisp_env("(define b -1.5)", &env);
-        assert_eq!(do_lisp_env("(+ (abs a)(abs b))", &env), "21.5");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a -20)", &mut env);
+        do_lisp_env("(define b -1.5)", &mut env);
+        assert_eq!(do_lisp_env("(+ (abs a)(abs b))", &mut env), "21.5");
     }
     #[test]
     fn rand_integer() {

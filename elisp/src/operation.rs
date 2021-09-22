@@ -55,7 +55,7 @@ where
 }
 fn calc(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: Number, y: Number) -> Number,
     x: Int,
 ) -> ResultExpression {
@@ -76,7 +76,7 @@ fn calc(
 }
 fn select_one(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
     if 1 >= exp.len() {
@@ -92,7 +92,7 @@ fn select_one(
 }
 fn cmp(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
     if 3 != exp.len() {
@@ -107,7 +107,7 @@ fn cmp(
 }
 fn divide(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: &Int, y: &Int) -> Int,
 ) -> ResultExpression {
     if exp.len() != 3 {
@@ -125,7 +125,7 @@ fn divide(
         (_, _) => Err(create_error!(ErrCode::E1002)),
     }
 }
-fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn shift(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -142,7 +142,11 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
         x[0] >> x[1].abs()
     }))
 }
-fn bit(exp: &[Expression], env: &Environment, func: fn(x: Int, y: Int) -> Int) -> ResultExpression {
+fn bit(
+    exp: &[Expression],
+    env: &mut Environment,
+    func: fn(x: Int, y: Int) -> Int,
+) -> ResultExpression {
     let mut result: Int = 0;
     let mut first: bool = true;
 
@@ -163,7 +167,7 @@ fn bit(exp: &[Expression], env: &Environment, func: fn(x: Int, y: Int) -> Int) -
     }
     Ok(Expression::Integer(result))
 }
-fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn lognot(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
     } else {
@@ -175,7 +179,7 @@ fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn bitcount(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(x: Int, y: Int) -> bool,
 ) -> ResultExpression {
     if exp.len() != 2 {
@@ -200,7 +204,7 @@ fn bitcount(
         }
     }
 }
-fn twos_exponent(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn twos_exponent(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }

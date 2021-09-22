@@ -368,7 +368,10 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
     }
     Ok(r)
 }
-fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Option<&'static str>) {
+fn dispatch(
+    r: &Request,
+    mut env: lisp::Environment,
+) -> (&'static str, Contents, Option<&'static str>) {
     if None == r.get_method() {
         return http_error!(RESPONSE_405);
     }
@@ -379,7 +382,7 @@ fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Opt
             return http_error!(RESPONSE_400);
         }
         let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
-        let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
+        let mut result = match lisp::do_core_logic(&expr.to_string(), &mut env) {
             Ok(r) => r.to_string(),
             Err(e) => {
                 if lisp::ErrCode::E9000.as_str() == e.get_code() {

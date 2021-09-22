@@ -62,13 +62,13 @@ where
     b.regist("get-environment-variable", get_env);
     b.regist("native-endian", native_endian);
 }
-pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
+pub fn identity(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     eval(&exp[1], env)
 }
-fn odd_even(exp: &[Expression], env: &Environment, func: fn(Int) -> bool) -> ResultExpression {
+fn odd_even(exp: &[Expression], env: &mut Environment, func: fn(Int) -> bool) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -77,7 +77,11 @@ fn odd_even(exp: &[Expression], env: &Environment, func: fn(Int) -> bool) -> Res
         _ => Err(create_error!(ErrCode::E1002)),
     }
 }
-fn is_sign(exp: &[Expression], env: &Environment, func: fn(&Number) -> bool) -> ResultExpression {
+fn is_sign(
+    exp: &[Expression],
+    env: &mut Environment,
+    func: fn(&Number) -> bool,
+) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -87,7 +91,7 @@ fn is_sign(exp: &[Expression], env: &Environment, func: fn(&Number) -> bool) -> 
 }
 fn is_type(
     exp: &[Expression],
-    env: &Environment,
+    env: &mut Environment,
     func: fn(e: &Expression) -> bool,
 ) -> ResultExpression {
     if 2 != exp.len() {
@@ -96,7 +100,7 @@ fn is_type(
     let v = eval(&exp[1], env)?;
     Ok(Expression::Boolean(func(&v)))
 }
-fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn get_env(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     //srfi-98
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
@@ -109,7 +113,7 @@ fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
         _ => Err(create_error!(ErrCode::E1015)),
     }
 }
-fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn time_f(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -121,7 +125,7 @@ fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     println!("{}.{:03}(s)", end.as_secs(), end.subsec_millis());
     result
 }
-pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
+pub fn eqv(exp: &[Expression], env: &mut Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -139,7 +143,7 @@ pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
         Ok(Expression::Boolean(Expression::eq(&a, &b)))
     }
 }
-fn native_endian(exp: &[Expression], _env: &Environment) -> ResultExpression {
+fn native_endian(exp: &[Expression], _env: &mut Environment) -> ResultExpression {
     if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -289,14 +293,14 @@ mod tests {
         assert_eq!(do_lisp("(identity (+ 1 2 3))"), "6");
         assert_eq!(do_lisp("(identity ((lambda (a b) (+ a b)) 1 2))"), "3");
 
-        let env = lisp::Environment::new();
-        do_lisp_env("(define a 100)", &env);
-        assert_eq!(do_lisp_env("(identity a)", &env), "100");
+        let mut env = lisp::Environment::new();
+        do_lisp_env("(define a 100)", &mut env);
+        assert_eq!(do_lisp_env("(identity a)", &mut env), "100");
     }
     #[test]
     fn time_f() {
-        let env = lisp::Environment::new();
-        assert_eq!(do_lisp_env("(time (+ 10 20))", &env), "30");
+        let mut env = lisp::Environment::new();
+        assert_eq!(do_lisp_env("(time (+ 10 20))", &mut env), "30");
     }
     #[test]
     fn get_env() {
@@ -432,10 +436,10 @@ mod error_tests {
     }
     #[test]
     fn time_f() {
-        let env = lisp::Environment::new();
-        assert_eq!(do_lisp_env("(time)", &env), "E1007");
-        assert_eq!(do_lisp_env("(time 10 10)", &env), "E1007");
-        assert_eq!(do_lisp_env("(time c)", &env), "E1008");
+        let mut env = lisp::Environment::new();
+        assert_eq!(do_lisp_env("(time)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(time 10 10)", &mut env), "E1007");
+        assert_eq!(do_lisp_env("(time c)", &mut env), "E1008");
     }
     #[test]
     fn get_env() {
