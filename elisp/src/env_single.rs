@@ -106,21 +106,35 @@ impl Environment {
             .builtin_tbl_ext
             .insert(key, Rc::new(c));
     }
+    #[inline]
+    pub fn set_eval_count(&self, c: u64) {
+        self.globals.borrow_mut().eval_count = c;
+    }
+    #[inline]
+    pub fn get_eval_count(&self) -> u64 {
+        self.globals.borrow().eval_count
+    }
+    #[inline]
     pub fn set_tail_recursion(&self, b: bool) {
         self.globals.borrow_mut().tail_recursion = b;
     }
+    #[inline]
     pub fn is_tail_recursion(&self) -> bool {
-        self.globals.borrow_mut().tail_recursion
+        self.globals.borrow().tail_recursion
     }
+    #[inline]
     pub fn set_force_stop(&self, b: bool) {
         self.globals.borrow_mut().force_stop = b;
     }
+    #[inline]
     pub fn is_force_stop(&self) -> bool {
-        self.globals.borrow_mut().force_stop
+        self.globals.borrow().force_stop
     }
+    #[inline]
     pub fn get_function_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| matches!(v, Expression::Function(_)))
     }
+    #[inline]
     pub fn get_variable_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| !matches!(v, Expression::Function(_)))
     }

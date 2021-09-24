@@ -126,15 +126,27 @@ impl Environment {
             .builtin_tbl_ext
             .insert(key, Arc::new(Box::new(c)));
     }
+    #[inline]
+    pub fn set_eval_count(&self, c: u64) {
+        self.globals.lock().unwrap().eval_count = c;
+    }
+    #[inline]
+    pub fn get_eval_count(&self) -> u64 {
+        self.globals.lock().unwrap().eval_count
+    }
+    #[inline]
     pub fn set_tail_recursion(&self, b: bool) {
         self.globals.lock().unwrap().tail_recursion = b;
     }
+    #[inline]
     pub fn is_tail_recursion(&self) -> bool {
         self.globals.lock().unwrap().tail_recursion
     }
+    #[inline]
     pub fn set_force_stop(&self, b: bool) {
         self.globals.lock().unwrap().force_stop = b;
     }
+    #[inline]
     pub fn is_force_stop(&self) -> bool {
         self.globals.lock().unwrap().force_stop
     }
