@@ -11,6 +11,7 @@ use elisp::lisp;
 use gtk::gdk;
 #[cfg(feature = "animation")]
 use gtk::glib;
+use lisp::set_force_stop;
 use lisp::Environment;
 
 use gtk::prelude::*;
@@ -380,9 +381,8 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     menu.append(&create_save_as_menu(&window, status_bar, draw_table));
     menu.append(&{
         let quit = gtk::MenuItem::with_mnemonic("_Quit");
-        let env = env.clone();
         quit.connect_activate(move |_| {
-            env.set_force_stop(true);
+            set_force_stop(true);
             gtk::main_quit();
         });
         quit
@@ -531,7 +531,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
         }
         Err(e) => {
             if STOP_ERROR_CODE == e.get_code() {
-                env.set_force_stop(false);
+                set_force_stop(false);
             }
             e.get_msg()
         }

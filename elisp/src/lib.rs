@@ -127,11 +127,11 @@ mod tests {
     #[test]
     fn force_stop() {
         let env = lisp::Environment::new();
-        assert!(!env.is_force_stop());
+        assert!(!lisp::is_force_stop());
         do_lisp_env("( force-stop )", &env);
-        assert!(env.is_force_stop());
+        assert!(lisp::is_force_stop());
         assert_eq!(do_lisp_env("a", &env), "E9000");
-        env.set_force_stop(false);
+        lisp::set_force_stop(false);
         assert_eq!(do_lisp_env("100", &env), "100");
     }
     #[test]

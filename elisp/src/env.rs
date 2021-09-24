@@ -34,7 +34,6 @@ pub(crate) struct GlobalTbl {
     pub(crate) builtin_tbl: Map<&'static str, BasicBuiltIn>,
     pub(crate) builtin_tbl_ext: Map<&'static str, ExtFunctionRc>,
     pub(crate) tail_recursion: bool,
-    pub(crate) force_stop: bool,
     pub(crate) cont: Option<Expression>,
 }
 impl GlobalTbl {
@@ -45,7 +44,6 @@ impl GlobalTbl {
             builtin_tbl: b,
             builtin_tbl_ext: Map::new(),
             tail_recursion: true,
-            force_stop: false,
             cont: None,
         }
     }
@@ -92,7 +90,6 @@ impl SimpleEnv {
 fn global_tbl() {
     let g = GlobalTbl::new();
     assert!(g.tail_recursion);
-    assert!(!g.force_stop);
     assert!(!g.builtin_tbl.is_empty());
     assert_eq!(g.builtin_tbl_ext.len(), 0);
 }

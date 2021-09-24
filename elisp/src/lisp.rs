@@ -34,6 +34,7 @@ use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
 pub type Environment = crate::env_single::Environment;
 
 static mut EVAL_COUNT: u64 = 0;
+static mut FORCE_STOP: bool = false;
 
 use crate::get_ptr;
 use crate::mut_list;
@@ -596,7 +597,7 @@ const PROMPT: &str = "rust.elisp> ";
 const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
-const FORCE_STOP: &str = "(force-stop)";
+const FORCE_STOP_CMD: &str = "(force-stop)";
 const MAX_EVAL_COUNTS: u64 = 100_000_000;
 
 pub struct ControlChar(pub u8, pub &'static str);
@@ -610,6 +611,14 @@ const FALSE: &str = "#f";
 
 const BACKSLASH: u8 = 0x5c;
 //========================================================================
+pub fn set_force_stop(b: bool) {
+    unsafe {
+        FORCE_STOP = b;
+    }
+}
+pub fn is_force_stop() -> bool {
+    unsafe { FORCE_STOP }
+}
 pub fn do_interactive() {
     #[cfg(feature = "signal")]
     init_sig_intr();
@@ -663,7 +672,9 @@ pub fn repl(
             Ok(n) => println!("{}", n.to_string()),
             Err(e) => {
                 if ErrCode::E9000.as_str() == e.get_code() {
-                    env.set_force_stop(false);
+                    unsafe {
+                        FORCE_STOP = false;
+                    }
                 }
                 print_error!(e);
             }
@@ -710,9 +721,9 @@ pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
             TAIL_OFF => {
                 env.set_tail_recursion(false);
             }
-            FORCE_STOP => {
-                env.set_force_stop(true);
-            }
+            FORCE_STOP_CMD => unsafe {
+                FORCE_STOP = true;
+            },
             _ => {
                 env.set_cont(&exp);
                 ret = eval(&exp, env)?;
@@ -933,7 +944,7 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
 }
 pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     #[cfg(feature = "signal")]
-    catch_sig_intr_status(env);
+    catch_sig_intr_status();
 
     unsafe {
         if MAX_EVAL_COUNTS < EVAL_COUNT {
@@ -941,10 +952,10 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
             return Err(create_error!(ErrCode::E9001));
         }
         EVAL_COUNT += 1;
-    }
 
-    if env.is_force_stop() {
-        return Err(create_error!(ErrCode::E9000));
+        if FORCE_STOP {
+            return Err(create_error!(ErrCode::E9000));
+        }
     }
     if let Expression::Symbol(val) = sexp {
         match env.find(val) {

@@ -110,13 +110,7 @@ impl Environment {
         self.globals.borrow_mut().tail_recursion = b;
     }
     pub fn is_tail_recursion(&self) -> bool {
-        self.globals.borrow_mut().tail_recursion
-    }
-    pub fn set_force_stop(&self, b: bool) {
-        self.globals.borrow_mut().force_stop = b;
-    }
-    pub fn is_force_stop(&self) -> bool {
-        self.globals.borrow_mut().force_stop
+        self.globals.borrow().tail_recursion
     }
     pub fn get_function_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| matches!(v, Expression::Function(_)))

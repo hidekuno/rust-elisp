@@ -132,12 +132,6 @@ impl Environment {
     pub fn is_tail_recursion(&self) -> bool {
         self.globals.lock().unwrap().tail_recursion
     }
-    pub fn set_force_stop(&self, b: bool) {
-        self.globals.lock().unwrap().force_stop = b;
-    }
-    pub fn is_force_stop(&self) -> bool {
-        self.globals.lock().unwrap().force_stop
-    }
     #[inline]
     pub fn set_cont(&self, e: &Expression) {
         self.globals.lock().unwrap().cont = Some(e.clone());

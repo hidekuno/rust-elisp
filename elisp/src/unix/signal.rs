@@ -4,7 +4,7 @@
 
   hidekuno@gmail.com
 */
-use crate::lisp::Environment;
+use crate::lisp::set_force_stop;
 
 static mut CTRLC: bool = false;
 const SIGINTR: u32 = 2;
@@ -24,11 +24,11 @@ pub fn init_sig_intr() {
         signal(SIGINTR, interrupt);
     }
 }
-pub fn catch_sig_intr_status(env: &Environment) {
+pub fn catch_sig_intr_status() {
     unsafe {
         if CTRLC {
             CTRLC = false;
-            env.set_force_stop(true);
+            set_force_stop(true);
         }
     }
 }
