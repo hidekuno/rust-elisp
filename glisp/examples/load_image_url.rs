@@ -2,13 +2,15 @@
    Rust study program.
    This is prototype program mini scheme subset what porting from go-scheme.
 
-   ex.)
+   ex.1)
     (load-image-url "rb" "https://images-fe.ssl-images-amazon.com/images/I/51TCtM6EVWL._AC_UL160_.jpg")
     (draw-clear)
     (draw-image "rb" 0.0 0.0
             (/ (image-width "rb") (screen-width) 1.0) 0.0
             0.0 (/ (image-height "rb")(screen-height) 1.0))
 
+   ex.2)
+    (load-image-url "ll" "https://m.media-amazon.com/images/I/51YQgix7QuL._AC_UL320_.jpg")
     (define ll (paint-image "ll"))
     (define aframe (make-image-frame "ll" 2.0))
     ((square-limit ll 0) aframe)
