@@ -35,6 +35,7 @@ pub const DRAW_HEIGHT: i32 = 560;
 const EVAL_RESULT_ID: &str = "result";
 const PNG_SAVE_FILE: &str = "glisp.png";
 
+const DRAW_STOP_KEYCODE: u32 = 99;
 const EVAL_KEYCODE: u32 = 114;
 const TEXT_CLEAR_KEYCODE: u32 = 117;
 const DRAW_CLEAR_KEYCODE: u32 = 108;
@@ -341,6 +342,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
             if key.state().intersects(gdk::ModifierType::CONTROL_MASK) {
                 if let Some(c) = key.keyval().to_unicode() {
                     match c as u32 {
+                        DRAW_STOP_KEYCODE => env.set_force_stop(true),
                         EVAL_KEYCODE => execute_lisp(&env, &ui, &history),
                         DRAW_CLEAR_KEYCODE => clear_canvas(&draw_table, ui.canvas()),
                         TEXT_CLEAR_KEYCODE => text_buffer.set_text(""),
