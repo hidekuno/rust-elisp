@@ -1,17 +1,20 @@
 /*
-   Rust study program.
-   This is prototype program mini scheme subset what porting from go-scheme.
+  Rust study program.
+  This is prototype program mini scheme subset what porting from go-scheme.
 
-   hidekuno@gmail.com
+  hidekuno@gmail.com
 */
+use elisp::create_error;
 use elisp::draw::DrawLine;
 use elisp::draw::Fractal;
+use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
 
 pub struct Tree {
     cs: f64,
     sn: f64,
     draw_line: DrawLine,
+    max: i32,
 }
 impl Tree {
     pub fn new(draw_line: DrawLine) -> Self {
@@ -19,6 +22,7 @@ impl Tree {
             cs: ((std::f64::consts::PI * 15.0) / 180.0).cos(),
             sn: ((std::f64::consts::PI * 45.0) / 180.0).sin(),
             draw_line,
+            max: 22,
         }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Error> {
@@ -46,6 +50,10 @@ impl Fractal for Tree {
         "draw-tree"
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
+        if 0 > c || self.max < c {
+            return Err(create_error!(ErrCode::E1021));
+        }
+
         self.draw(
             0.4166666666666667,
             0.7142857142857143,

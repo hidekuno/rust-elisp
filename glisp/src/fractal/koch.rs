@@ -4,14 +4,17 @@
 
    hidekuno@gmail.com
 */
+use elisp::create_error;
 use elisp::draw::DrawLine;
 use elisp::draw::Fractal;
+use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
 
 pub struct Koch {
     sin60: f64,
     cos60: f64,
     draw_line: DrawLine,
+    max: i32,
 }
 impl Koch {
     pub fn new(draw_line: DrawLine) -> Self {
@@ -19,6 +22,7 @@ impl Koch {
             sin60: ((std::f64::consts::PI * 60.0) / 180.0).sin(),
             cos60: ((std::f64::consts::PI * 60.0) / 180.0).cos(),
             draw_line,
+            max: 12,
         }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Error> {
@@ -46,6 +50,10 @@ impl Fractal for Koch {
         "draw-koch"
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
+        if 0 > c || self.max < c {
+            return Err(create_error!(ErrCode::E1021));
+        }
+
         self.draw(
             0.3597222222222222,
             0.0,

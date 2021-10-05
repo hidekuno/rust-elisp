@@ -4,16 +4,19 @@
 
    hidekuno@gmail.com
 */
+use elisp::create_error;
 use elisp::draw::DrawLine;
 use elisp::draw::Fractal;
+use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
 
 pub struct Dragon {
     draw_line: DrawLine,
+    max: i32,
 }
 impl Dragon {
     pub fn new(draw_line: DrawLine) -> Self {
-        Dragon { draw_line }
+        Dragon { draw_line, max: 20 }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Error> {
         let xx = x1 - x0;
@@ -36,6 +39,9 @@ impl Fractal for Dragon {
         "draw-dragon"
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
+        if 0 > c || self.max < c {
+            return Err(create_error!(ErrCode::E1021));
+        }
         self.draw(0.2777777777777778, 0.25, 0.5972222222222222, 0.625, c)?;
         Ok(())
     }
