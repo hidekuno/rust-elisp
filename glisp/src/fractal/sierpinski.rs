@@ -4,10 +4,8 @@
 
   hidekuno@gmail.com
 */
-use elisp::create_error;
 use elisp::draw::DrawLine;
 use elisp::draw::Fractal;
-use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
 
 pub struct Sierpinski {
@@ -52,11 +50,10 @@ impl Fractal for Sierpinski {
     fn get_func_name(&self) -> &'static str {
         "draw-sierpinski"
     }
+    fn get_max(&self) -> i32 {
+        self.max
+    }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
-        if 0 > c || self.max < c {
-            return Err(create_error!(ErrCode::E1021));
-        }
-
         self.draw(
             0.44428969359331477,
             0.07168458781362007,

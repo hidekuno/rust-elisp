@@ -5,9 +5,7 @@
    hidekuno@gmail.com
 */
 use crate::fractal::FractalMut;
-use elisp::create_error;
 use elisp::draw::DrawLine;
-use elisp::lisp::ErrCode;
 use elisp::lisp::Error;
 
 struct Coord {
@@ -121,11 +119,10 @@ impl FractalMut for Hilbert {
     fn get_func_name(&self) -> &'static str {
         "draw-hilbert"
     }
+    fn get_max(&self) -> i32 {
+        self.max
+    }
     fn do_demo(&mut self, c: i32) -> Result<(), Error> {
-        if 0 > c || self.max < c {
-            return Err(create_error!(ErrCode::E1021));
-        }
-
         let width = 1.0;
         self.lgth = ((width / 2.0) as f64).powi(c);
         let y = (width - (self.lgth * (2.0_f64).powi(c - 1))) / 3.6;

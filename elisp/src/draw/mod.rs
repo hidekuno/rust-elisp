@@ -12,6 +12,7 @@ use crate::lisp::Error;
 
 pub trait Fractal {
     fn get_func_name(&self) -> &'static str;
+    fn get_max(&self) -> i32;
     fn do_demo(&self, c: i32) -> Result<(), Error>;
 }
 pub type DrawLine = Box<dyn Fn(f64, f64, f64, f64) -> Result<(), Error> + 'static>;
