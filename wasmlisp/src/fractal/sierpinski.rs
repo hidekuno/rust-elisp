@@ -11,10 +11,11 @@ use elisp::lisp::Error;
 
 pub struct Sierpinski {
     draw_line: DrawLine,
+    max: i32,
 }
 impl Sierpinski {
     pub fn new(draw_line: DrawLine) -> Self {
-        Sierpinski { draw_line }
+        Sierpinski { draw_line, max: 15 }
     }
     pub fn draw(
         &self,
@@ -42,6 +43,9 @@ impl Sierpinski {
 impl Fractal for Sierpinski {
     fn get_func_name(&self) -> &'static str {
         "draw-sierpinski"
+    }
+    fn get_max(&self) -> i32 {
+        self.max
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
         self.draw(

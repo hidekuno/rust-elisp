@@ -256,16 +256,22 @@ mod tests {
     fn draw_koch() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-koch 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-koch 12)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-koch 0)", &env), "nil");
     }
     #[test]
     fn draw_tree() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-tree 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-tree 22)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-tree 0)", &env), "nil");
     }
     #[test]
     fn draw_sierpinski() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-sierpinski 15)", &env), "E1021");
+        assert_eq!(do_lisp_env("(draw-sierpinski 0)", &env), "E1021");
     }
 }
 #[cfg(test)]
@@ -517,6 +523,8 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-koch)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-koch 10 20)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-koch 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-koch 13)", &env), "E1021");
+        assert_eq!(do_lisp_env("(draw-koch -1)", &env), "E1021");
     }
     #[test]
     fn draw_tree() {
@@ -524,6 +532,8 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-tree)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-tree 10 20)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-tree 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-tree 23)", &env), "E1021");
+        assert_eq!(do_lisp_env("(draw-tree -1)", &env), "E1021");
     }
     #[test]
     fn draw_sierpinski() {
@@ -531,5 +541,7 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-sierpinski 10 20)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-sierpinski 10.5)", &env), "E1002");
+        assert_eq!(do_lisp_env("(draw-sierpinski 16)", &env), "E1021");
+        assert_eq!(do_lisp_env("(draw-sierpinski -1)", &env), "E1021");
     }
 }

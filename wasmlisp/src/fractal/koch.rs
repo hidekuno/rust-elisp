@@ -14,6 +14,7 @@ use std::f64::consts::PI;
 pub struct Koch {
     matrix: Matrix<f64>,
     draw_line: DrawLine,
+    max: i32,
 }
 impl Koch {
     pub fn new(draw_line: DrawLine) -> Self {
@@ -23,6 +24,7 @@ impl Koch {
         Koch {
             matrix: Matrix::new(cs, -sn, sn, cs),
             draw_line,
+            max: 12,
         }
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) -> Result<(), Error> {
@@ -44,6 +46,9 @@ impl Koch {
 impl Fractal for Koch {
     fn get_func_name(&self) -> &'static str {
         "draw-koch"
+    }
+    fn get_max(&self) -> i32 {
+        self.max
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
         self.draw(
