@@ -252,26 +252,26 @@ mod tests {
         let env = init();
         assert_eq!(do_lisp_env("(draw-eval (iota 20))", &env), "nil");
     }
-    #[test]
+    #[wasm_bindgen_test]
     fn draw_koch() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-koch 2)", &env), "nil");
         assert_eq!(do_lisp_env("(draw-koch 12)", &env), "nil");
         assert_eq!(do_lisp_env("(draw-koch 0)", &env), "nil");
     }
-    #[test]
+    #[wasm_bindgen_test]
     fn draw_tree() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-tree 2)", &env), "nil");
         assert_eq!(do_lisp_env("(draw-tree 22)", &env), "nil");
         assert_eq!(do_lisp_env("(draw-tree 0)", &env), "nil");
     }
-    #[test]
+    #[wasm_bindgen_test]
     fn draw_sierpinski() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-sierpinski 2)", &env), "nil");
-        assert_eq!(do_lisp_env("(draw-sierpinski 15)", &env), "E1021");
-        assert_eq!(do_lisp_env("(draw-sierpinski 0)", &env), "E1021");
+        assert_eq!(do_lisp_env("(draw-sierpinski 15)", &env), "nil");
+        assert_eq!(do_lisp_env("(draw-sierpinski 0)", &env), "nil");
     }
 }
 #[cfg(test)]
@@ -517,7 +517,7 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-eval)", &env), "E1007");
         assert_eq!(do_lisp_env("(draw-eval (iota 20) 10)", &env), "E1007");
     }
-    #[test]
+    #[wasm_bindgen_test]
     fn draw_koch() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-koch)", &env), "E1007");
@@ -526,7 +526,7 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-koch 13)", &env), "E1021");
         assert_eq!(do_lisp_env("(draw-koch -1)", &env), "E1021");
     }
-    #[test]
+    #[wasm_bindgen_test]
     fn draw_tree() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-tree)", &env), "E1007");
@@ -535,7 +535,7 @@ mod error_tests {
         assert_eq!(do_lisp_env("(draw-tree 23)", &env), "E1021");
         assert_eq!(do_lisp_env("(draw-tree -1)", &env), "E1021");
     }
-    #[test]
+    #[wasm_bindgen_test]
     fn draw_sierpinski() {
         let env = init();
         assert_eq!(do_lisp_env("(draw-sierpinski)", &env), "E1007");
