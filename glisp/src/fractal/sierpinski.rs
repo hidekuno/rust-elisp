@@ -1,8 +1,8 @@
 /*
-   Rust study program.
-   This is prototype program mini scheme subset what porting from go-scheme.
+  Rust study program.
+  This is prototype program mini scheme subset what porting from go-scheme.
 
-   hidekuno@gmail.com
+  hidekuno@gmail.com
 */
 use elisp::draw::DrawLine;
 use elisp::draw::Fractal;
@@ -10,10 +10,11 @@ use elisp::lisp::Error;
 
 pub struct Sierpinski {
     draw_line: DrawLine,
+    max: i32,
 }
 impl Sierpinski {
     pub fn new(draw_line: DrawLine) -> Self {
-        Sierpinski { draw_line }
+        Sierpinski { draw_line, max: 15 }
     }
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
@@ -48,6 +49,9 @@ impl Sierpinski {
 impl Fractal for Sierpinski {
     fn get_func_name(&self) -> &'static str {
         "draw-sierpinski"
+    }
+    fn get_max(&self) -> i32 {
+        self.max
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
         self.draw(

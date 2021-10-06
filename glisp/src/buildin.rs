@@ -360,7 +360,12 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
                 return Err(create_error!(ErrCode::E9999));
             }
             let mut fractal = fractal.unwrap();
-            fractal.do_demo(c as i32)?;
+
+            let c = c as i32;
+            if 0 > c || fractal.get_max() < c {
+                return Err(create_error!(ErrCode::E1021));
+            }
+            fractal.do_demo(c)?;
             Ok(Expression::Nil())
         });
     }

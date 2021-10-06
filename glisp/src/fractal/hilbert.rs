@@ -22,12 +22,14 @@ impl Coord {
 pub struct Hilbert {
     lgth: f64,
     draw_line: DrawLine,
+    max: i32,
 }
 impl Hilbert {
     pub fn new(draw_line: DrawLine) -> Self {
         Hilbert {
             lgth: 0.0,
             draw_line,
+            max: 9,
         }
     }
     fn draw(&self, coord: &mut Coord) -> Result<(), Error> {
@@ -116,6 +118,9 @@ impl Hilbert {
 impl FractalMut for Hilbert {
     fn get_func_name(&self) -> &'static str {
         "draw-hilbert"
+    }
+    fn get_max(&self) -> i32 {
+        self.max
     }
     fn do_demo(&mut self, c: i32) -> Result<(), Error> {
         let width = 1.0;

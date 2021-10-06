@@ -12,6 +12,7 @@ pub struct Koch {
     sin60: f64,
     cos60: f64,
     draw_line: DrawLine,
+    max: i32,
 }
 impl Koch {
     pub fn new(draw_line: DrawLine) -> Self {
@@ -19,6 +20,7 @@ impl Koch {
             sin60: ((std::f64::consts::PI * 60.0) / 180.0).sin(),
             cos60: ((std::f64::consts::PI * 60.0) / 180.0).cos(),
             draw_line,
+            max: 12,
         }
     }
     pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Error> {
@@ -44,6 +46,9 @@ impl Koch {
 impl Fractal for Koch {
     fn get_func_name(&self) -> &'static str {
         "draw-koch"
+    }
+    fn get_max(&self) -> i32 {
+        self.max
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
         self.draw(

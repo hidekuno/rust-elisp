@@ -121,6 +121,10 @@ pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
             Expression::Integer(c) => c,
             _ => return Err(create_error!(ErrCode::E1002)),
         };
+        let c = c as i32;
+        if 0 > c || fractal.get_max() < c {
+            return Err(create_error!(ErrCode::E1021));
+        }
         fractal.do_demo(c as i32)?;
         Ok(Expression::Nil())
     });

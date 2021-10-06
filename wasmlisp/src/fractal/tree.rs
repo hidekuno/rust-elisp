@@ -15,6 +15,7 @@ pub struct Tree {
     left: Matrix<f64>,
     right: Matrix<f64>,
     draw_line: DrawLine,
+    max: i32,
 }
 impl Tree {
     pub fn new(draw_line: DrawLine) -> Self {
@@ -25,6 +26,7 @@ impl Tree {
             left: Matrix::new(cs, -sn, sn, cs),
             right: Matrix::new(cs, sn, -sn, cs),
             draw_line,
+            max: 22,
         }
     }
     pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) -> Result<(), Error> {
@@ -47,6 +49,9 @@ impl Tree {
 impl Fractal for Tree {
     fn get_func_name(&self) -> &'static str {
         "draw-tree"
+    }
+    fn get_max(&self) -> i32 {
+        self.max
     }
     fn do_demo(&self, c: i32) -> Result<(), Error> {
         self.draw(
