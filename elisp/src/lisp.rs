@@ -24,12 +24,12 @@ use crate::number::Rat;
 use crate::syntax::Continuation;
 
 #[cfg(feature = "thread")]
-use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
+pub use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
-use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
+pub use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
@@ -64,6 +64,7 @@ pub enum ErrCode {
     E1019,
     E1020,
     E1021,
+    E1022,
     E9000,
     E9002,
     E9999,
@@ -97,6 +98,7 @@ impl ErrCode {
             ErrCode::E1019 => "E1019",
             ErrCode::E1020 => "E1020",
             ErrCode::E1021 => "E1021",
+            ErrCode::E1022 => "E1022",
             ErrCode::E9000 => "E9000",
             ErrCode::E9002 => "E9002",
             ErrCode::E9999 => "E9999",
@@ -137,6 +139,7 @@ lazy_static! {
         e.insert(ErrCode::E1019.as_str(), "Not Char");
         e.insert(ErrCode::E1020.as_str(), "Not Rat");
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
+        e.insert(ErrCode::E1022.as_str(), "Not Vector");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
         e.insert(
             ErrCode::E9002.as_str(),
@@ -236,6 +239,7 @@ pub enum Expression {
     Char(char),
     Boolean(bool),
     List(ListRc),
+    Vector(ListRc),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
     String(String),
@@ -250,6 +254,9 @@ pub enum Expression {
     Continuation(Box<Continuation>),
 }
 impl Expression {
+    pub fn is_vector(exp: &Expression) -> bool {
+        matches!(exp, Expression::Vector(_))
+    }
     pub fn is_list(exp: &Expression) -> bool {
         matches!(exp, Expression::List(_))
     }
@@ -299,24 +306,30 @@ impl Expression {
         let mut c = 1;
         let mut el = false;
         for e in exp {
-            if let Expression::List(l) = e {
-                let l = &*(referlence_list!(l));
-                s.push_str(Expression::list_string(&l[..]).as_str());
-                el = true;
-            } else {
-                if el {
-                    s.push(' ');
+            match e {
+                Expression::List(l) | Expression::Vector(l) => {
+                    let l = &*(referlence_list!(l));
+                    s.push_str(Expression::list_string(&l[..]).as_str());
+                    el = true;
                 }
-                s.push_str(e.to_string().as_str());
-                if c != exp.len() {
-                    s.push(' ');
+                _ => {
+                    if el {
+                        s.push(' ');
+                    }
+                    s.push_str(e.to_string().as_str());
+                    if c != exp.len() {
+                        s.push(' ');
+                    }
+                    el = false;
                 }
-                el = false;
             }
             c += 1;
         }
         s.push(')');
         s
+    }
+    fn vector_string(exp: &[Expression]) -> String {
+        format!("#{}", Expression::list_string(exp))
     }
 }
 impl ToString for Expression {
@@ -351,6 +364,11 @@ impl ToString for Expression {
                 let l = &*(referlence_list!(v));
                 return Expression::list_string(&l[..]);
             }
+            Expression::Vector(v) => {
+                let l = &*(referlence_list!(v));
+                return Expression::vector_string(&l[..]);
+            }
+
             Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
             Expression::Function(_) => "Function".into(),
             Expression::BuildInFunction(s, _) => format!("<{}> BuildIn Function", s),
@@ -767,6 +785,7 @@ impl TokenState {
 pub fn tokenize(program: &str) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
+    let mut vector_mode = false;
 
     macro_rules! set_token_name {
         ($c: expr) => {
@@ -818,6 +837,10 @@ pub fn tokenize(program: &str) -> Vec<String> {
                 '(' => {
                     token.left += 1;
                     token.tokens.push("(".into());
+                    if vector_mode {
+                        token.tokens.push("vector".into());
+                        vector_mode = false;
+                    }
                 }
                 ')' => {
                     token.right += 1;
@@ -830,7 +853,14 @@ pub fn tokenize(program: &str) -> Vec<String> {
                 }
                 ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
-                    set_token_name!(c);
+                    if c == '#'
+                        && token.idx + 1 < program.len()
+                        && program.as_bytes()[token.idx + 1] == 0x28
+                    {
+                        vector_mode = true;
+                    } else {
+                        set_token_name!(c);
+                    }
                 }
             }
         }

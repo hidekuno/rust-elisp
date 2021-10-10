@@ -36,6 +36,9 @@ where
 
     b.regist("list?", |exp, env| is_type(exp, env, Expression::is_list));
     b.regist("pair?", |exp, env| is_type(exp, env, Expression::is_pair));
+    b.regist("vector?", |exp, env| {
+        is_type(exp, env, Expression::is_vector)
+    });
     b.regist("char?", |exp, env| is_type(exp, env, Expression::is_char));
     b.regist("string?", |exp, env| {
         is_type(exp, env, Expression::is_string)

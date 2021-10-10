@@ -63,6 +63,9 @@ where
     b.regist("list->string", list_string);
     b.regist("string->list", string_list);
 
+    b.regist("vector->string", vector_string);
+    b.regist("string->vector", string_vector);
+
     b.regist("substring", substring);
     b.regist("symbol->string", symbol_string);
     b.regist("string->symbol", string_symbol);
@@ -239,12 +242,29 @@ fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
     Ok(v)
 }
 fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    seq_string(exp, env, ErrCode::E1005)
+}
+fn vector_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    seq_string(exp, env, ErrCode::E1022)
+}
+fn seq_string(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let l = match eval(&exp[1], env)? {
-        Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        Expression::List(l) => {
+            if err != ErrCode::E1005 {
+                return Err(create_error!(err));
+            }
+            l
+        }
+        Expression::Vector(l) => {
+            if err != ErrCode::E1022 {
+                return Err(create_error!(err));
+            }
+            l
+        }
+        _ => return Err(create_error!(err)),
     };
 
     let l = &*(referlence_list!(l));
@@ -259,6 +279,14 @@ fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::String(v))
 }
 fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+    let l = string_seq(exp, env)?;
+    Ok(Environment::create_list(l))
+}
+fn string_vector(exp: &[Expression], env: &Environment) -> ResultExpression {
+    let l = string_seq(exp, env)?;
+    Ok(Environment::create_vector(l))
+}
+fn string_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Error> {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -270,7 +298,7 @@ fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     for c in s.as_str().chars() {
         l.push(Expression::Char(c));
     }
-    Ok(Environment::create_list(l))
+    Ok(l)
 }
 fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 4 != exp.len() {

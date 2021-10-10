@@ -75,6 +75,9 @@ impl Environment {
     pub fn create_list(l: Vec<Expression>) -> Expression {
         Expression::List(Rc::new(RefCell::new(l)))
     }
+    pub fn create_vector(l: Vec<Expression>) -> Expression {
+        Expression::Vector(Rc::new(RefCell::new(l)))
+    }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Rc::new(func))
     }
