@@ -912,7 +912,7 @@ fn vector_list(exp: &[Expression], env: &Environment) -> ResultExpression {
 }
 fn vector_append(exp: &[Expression], env: &Environment) -> ResultExpression {
     let v = seq_append(exp, env, ErrCode::E1022)?;
-    Ok(Environment::create_list(v))
+    Ok(Environment::create_vector(v))
 }
 fn vector_append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     let v = seq_append_effect(exp, env, ErrCode::E1022)?;

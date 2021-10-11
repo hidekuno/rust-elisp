@@ -855,7 +855,7 @@ pub fn tokenize(program: &str) -> Vec<String> {
                 _ => {
                     if c == '#'
                         && token.idx + 1 < program.len()
-                        && program.as_bytes()[token.idx + 1] == 0x28
+                        && program.as_bytes()[token.idx + 1] == '(' as u8
                     {
                         vector_mode = true;
                     } else {
