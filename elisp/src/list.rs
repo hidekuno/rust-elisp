@@ -67,6 +67,21 @@ where
     b.regist("vector-ref ", vector_ref);
     b.regist("vector-set!", vector_set);
 }
+fn get_sequence(exp: Expression, err: ErrCode) -> Result<ListRc, Error> {
+    if let Expression::List(l) = exp {
+        if err != ErrCode::E1005 {
+            return Err(create_error!(err));
+        }
+        Ok(l)
+    } else if let Expression::Vector(l) = exp {
+        if err != ErrCode::E1022 {
+            return Err(create_error!(err));
+        }
+        Ok(l)
+    } else {
+        return Err(create_error!(err));
+    }
+}
 fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = seq(exp, env)?;
     Ok(Environment::create_list(l))
@@ -210,23 +225,9 @@ fn seq_append(
     }
     let mut v: Vec<Expression> = Vec::new();
     for e in &exp[1..] {
-        match eval(e, env)? {
-            Expression::List(l) => {
-                if err != ErrCode::E1005 {
-                    return Err(create_error!(err));
-                }
-                let l = referlence_list!(l);
-                v.append(&mut l.to_vec());
-            }
-            Expression::Vector(l) => {
-                if err != ErrCode::E1022 {
-                    return Err(create_error!(err));
-                }
-                let l = referlence_list!(l);
-                v.append(&mut l.to_vec());
-            }
-            _ => return Err(create_error!(err)),
-        }
+        let l = get_sequence(eval(e, env)?, err.clone())?;
+        let l = referlence_list!(l);
+        v.append(&mut l.to_vec());
     }
     Ok(v)
 }
@@ -243,25 +244,11 @@ fn seq_append_effect(exp: &[Expression], env: &Environment, err: ErrCode) -> Res
         _ => return Err(create_error!(ErrCode::E1005)),
     };
 
-    let mut l = mut_list!(&rc);
+    let mut v = mut_list!(&rc);
     for e in &exp[2..] {
-        match eval(e, env)? {
-            Expression::List(v) => {
-                if err != ErrCode::E1005 {
-                    return Err(create_error!(err));
-                }
-                let v = referlence_list!(v);
-                l.append(&mut v.to_vec());
-            }
-            Expression::Vector(v) => {
-                if err != ErrCode::E1022 {
-                    return Err(create_error!(err));
-                }
-                let v = referlence_list!(v);
-                l.append(&mut v.to_vec());
-            }
-            _ => return Err(create_error!(err)),
-        }
+        let l = get_sequence(eval(e, env)?, err.clone())?;
+        let l = referlence_list!(l);
+        v.append(&mut l.to_vec());
     }
     Ok(rc.clone())
 }
@@ -475,20 +462,7 @@ fn seq_list_ref(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultEx
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = eval(&exp[1], env)?;
-    let l = if let Expression::List(l) = v {
-        if err != ErrCode::E1005 {
-            return Err(create_error!(err));
-        }
-        l
-    } else if let Expression::Vector(l) = v {
-        if err != ErrCode::E1022 {
-            return Err(create_error!(err));
-        }
-        l
-    } else {
-        return Err(create_error!(err));
-    };
+    let l = get_sequence(eval(&exp[1], env)?, err)?;
     let l = &*(referlence_list!(l));
     match eval(&exp[2], env)? {
         Expression::Integer(i) => {
@@ -509,30 +483,14 @@ fn seq_list_set(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultEx
     if exp.len() != 4 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-
-    let v = eval(&exp[1], env)?;
-    let r = {
-        if let Expression::List(r) = v {
-            if err != ErrCode::E1005 {
-                return Err(create_error!(err));
-            }
-            r
-        } else if let Expression::Vector(r) = v {
-            if err != ErrCode::E1022 {
-                return Err(create_error!(err));
-            }
-            r
-        } else {
-            return Err(create_error!(err));
-        }
-    };
+    let l = get_sequence(eval(&exp[1], env)?, err)?;
     let i = match eval(&exp[2], env)? {
         Expression::Integer(i) => i,
         _ => {
             return Err(create_error!(ErrCode::E1002));
         }
     };
-    let mut l = mut_list!(r);
+    let mut l = mut_list!(l);
     if i < 0 || l.len() <= i as usize {
         return Err(create_error!(ErrCode::E1011));
     }
@@ -963,7 +921,6 @@ fn vector_append_effect(exp: &[Expression], env: &Environment) -> ResultExpressi
 fn vector_ref(exp: &[Expression], env: &Environment) -> ResultExpression {
     seq_list_ref(exp, env, ErrCode::E1022)
 }
-
 fn vector_set(exp: &[Expression], env: &Environment) -> ResultExpression {
     seq_list_set(exp, env, ErrCode::E1022)
 }
