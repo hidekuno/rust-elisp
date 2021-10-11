@@ -631,6 +631,20 @@ mod tests {
         assert_eq!(do_lisp("(string->list \"山田\")"), "(#\\山 #\\田)");
     }
     #[test]
+    fn vector_string() {
+        assert_eq!(do_lisp("(vector->string (vector))"), "\"\"");
+        assert_eq!(
+            do_lisp("(vector->string (vector #\\a #\\b #\\c))"),
+            "\"abc\""
+        );
+    }
+    #[test]
+    fn string_vector() {
+        assert_eq!(do_lisp("(string->vector \"\")"), "#()");
+        assert_eq!(do_lisp("(string->vector \"abc\")"), "#(#\\a #\\b #\\c)");
+        assert_eq!(do_lisp("(string->vector \"山田\")"), "#(#\\山 #\\田)");
+    }
+    #[test]
     fn substring() {
         assert_eq!(do_lisp("(substring \"1234567890\" 1 2)"), "\"2\"");
         assert_eq!(do_lisp("(substring \"1234567890\" 1 3)"), "\"23\"");
@@ -870,6 +884,17 @@ mod error_tests {
         assert_eq!(do_lisp("(list->string a)"), "E1008");
     }
     #[test]
+    fn vector_string() {
+        assert_eq!(do_lisp("(vector->string)"), "E1007");
+        assert_eq!(
+            do_lisp("(vector->string (list #\\a #\\b)(list #\\a #\\b))"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(vector->string 10)"), "E1022");
+        assert_eq!(do_lisp("(vector->string (vector #\\a 10))"), "E1019");
+        assert_eq!(do_lisp("(vector->string a)"), "E1008");
+    }
+    #[test]
     fn substring() {
         assert_eq!(do_lisp("(substring)"), "E1007");
         assert_eq!(do_lisp("(substring \"1234567890\" 1)"), "E1007");
@@ -899,13 +924,19 @@ mod error_tests {
         assert_eq!(do_lisp("(string->symbol \"abc\"  \"def\")"), "E1007");
         assert_eq!(do_lisp("(string->symbol #t)"), "E1015");
     }
-
     #[test]
     fn string_list() {
         assert_eq!(do_lisp("(string->list)"), "E1007");
         assert_eq!(do_lisp("(string->list \"a\" \"b\")"), "E1007");
         assert_eq!(do_lisp("(string->list #\\a)"), "E1015");
         assert_eq!(do_lisp("(string->list a)"), "E1008");
+    }
+    #[test]
+    fn string_vector() {
+        assert_eq!(do_lisp("(string->vector)"), "E1007");
+        assert_eq!(do_lisp("(string->vector \"a\" \"b\")"), "E1007");
+        assert_eq!(do_lisp("(string->vector #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string->vector a)"), "E1008");
     }
     #[test]
     fn make_string() {

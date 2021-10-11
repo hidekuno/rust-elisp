@@ -216,6 +216,11 @@ mod tests {
         assert_eq!(do_lisp("(list? 90)"), "#f");
     }
     #[test]
+    fn vector_f() {
+        assert_eq!(do_lisp("(vector? #(1 2 3))"), "#t");
+        assert_eq!(do_lisp("(vector? 90)"), "#f");
+    }
+    #[test]
     fn pair_f() {
         assert_eq!(do_lisp("(pair? (cons 1 2))"), "#t");
         assert_eq!(do_lisp("(pair? 110)"), "#f");
@@ -368,6 +373,12 @@ mod error_tests {
         assert_eq!(do_lisp("(list? a)"), "E1008");
     }
     #[test]
+    fn vector_f() {
+        assert_eq!(do_lisp("(vector?)"), "E1007");
+        assert_eq!(do_lisp("(vector? (vector 1)(vector 2))"), "E1007");
+        assert_eq!(do_lisp("(vector? a)"), "E1008");
+    }
+    #[test]
     fn pair_f() {
         assert_eq!(do_lisp("(pair?)"), "E1007");
         assert_eq!(do_lisp("(pair? (cons 1 2)(cons 3 4))"), "E1007");
@@ -409,7 +420,6 @@ mod error_tests {
         assert_eq!(do_lisp("(boolean? 10 20)"), "E1007");
         assert_eq!(do_lisp("(boolean? a)"), "E1008");
     }
-
     #[test]
     fn procedure_f() {
         assert_eq!(do_lisp("(procedure?)"), "E1007");
