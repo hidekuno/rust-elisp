@@ -619,8 +619,6 @@ pub const CARRIAGERETRUN: ControlChar = ControlChar(0x0D, "#\\return");
 
 const TRUE: &str = "#t";
 const FALSE: &str = "#f";
-
-const BACKSLASH: u8 = 0x5c;
 //========================================================================
 pub fn do_interactive() {
     #[cfg(feature = "signal")]
@@ -788,14 +786,14 @@ pub fn tokenize(program: &str) -> Vec<String> {
     let mut vector_mode = false;
 
     macro_rules! set_token_name {
-        ($c: expr) => {
+        ($i: expr, $c: expr) => {
             token.name.push($c);
-            if program.len() - $c.len_utf8() == token.idx {
+            if program.chars().count() - 1 == $i {
                 // ex. <rust-elisp> abc
                 token.push_if_quote(token.name.to_string());
             } else {
                 // ex. <rust-elisp> abc def ghi
-                match program.as_bytes()[token.idx + $c.len_utf8()] as char {
+                match program.chars().nth($i + 1).unwrap() {
                     ' ' | '\r' | '\n' | '\t' => {
                         token.push_if_quote(token.name.to_string());
                         token.name.clear();
@@ -813,25 +811,25 @@ pub fn tokenize(program: &str) -> Vec<String> {
     }
 
     //A String is a wrapper over a Vec<u8>.(https://doc.rust-lang.org/book/ch08-02-strings.html)
-    for c in program.chars() {
+    for (i, c) in program.chars().enumerate() {
         if token.string_mode {
             if c == '"' {
                 // ex. <rust-elisp> "abc \""
-                if program.as_bytes()[token.idx - 1] != BACKSLASH {
+                if program.chars().nth(i - 1).unwrap() != '\\' {
                     let ls = program.get(from..(token.idx + 1)).unwrap();
                     token.push_if_quote(ls.to_string());
                     token.string_mode = false;
                 }
             }
         } else if token.name.starts_with("#\\") {
-            set_token_name!(c);
+            set_token_name!(i, c);
         } else {
             match c {
                 '\'' => {
                     token.set_quote();
                 }
                 '"' => {
-                    from = token.idx;
+                    from = i;
                     token.string_mode = true;
                 }
                 '(' => {
@@ -854,12 +852,12 @@ pub fn tokenize(program: &str) -> Vec<String> {
                 ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
                     if c == '#'
-                        && token.idx + 1 < program.len()
-                        && program.as_bytes()[token.idx + 1] == '(' as u8
+                        && i + 1 < program.chars().count()
+                        && program.chars().nth(i + 1).unwrap() == '('
                     {
                         vector_mode = true;
                     } else {
-                        set_token_name!(c);
+                        set_token_name!(i, c);
                     }
                 }
             }
