@@ -1611,6 +1611,37 @@ mod tests {
         assert_eq!(do_lisp("(sorted? (list #\\a #\\b #\\c) char-ci<?)"), "#t");
         assert_eq!(do_lisp("(sorted? (list #\\c #\\b #\\a) char-ci>?)"), "#t");
     }
+    #[test]
+    fn vector() {
+        assert_eq!(do_lisp("(vector 1 2)"), "#(1 2)");
+        assert_eq!(do_lisp("(vector 0.5 1)"), "#(0.5 1)");
+        assert_eq!(do_lisp("(vector #t #f)"), "#(#t #f)");
+        assert_eq!(do_lisp("(vector (list 1)(list 2))"), "#((1)(2))");
+        assert_eq!(
+            do_lisp("(vector (vector (vector 1))(vector 2)(vector 3))"),
+            "#(#(#(1))#(2)#(3))"
+        );
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a 10)", &env);
+        do_lisp_env("(define b 20)", &env);
+        assert_eq!(do_lisp_env("(vector a b)", &env), "#(10 20)");
+    }
+    #[test]
+    fn make_vector() {
+        assert_eq!(do_lisp("(make-vector 10 0)"), "#(0 0 0 0 0 0 0 0 0 0)");
+        assert_eq!(
+            do_lisp("(make-vector 4 (list 1 2 3))"),
+            "#((1 2 3)(1 2 3)(1 2 3)(1 2 3))"
+        );
+        assert_eq!(do_lisp("(make-vector 8 'a)"), "#(a a a a a a a a)");
+        assert_eq!(do_lisp("(make-vector 0 'a)"), "#()");
+    }
+    #[test]
+    fn vector_length() {
+        assert_eq!(do_lisp("(vector-length (vector))"), "0");
+        assert_eq!(do_lisp("(vector-length (vector 3))"), "1");
+        assert_eq!(do_lisp("(vector-length (list->vector (iota 10)))"), "10");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1639,6 +1670,7 @@ mod error_tests {
         assert_eq!(do_lisp("(length)"), "E1007");
         assert_eq!(do_lisp("(length (list 1)(list 2))"), "E1007");
         assert_eq!(do_lisp("(length (cons 1 2))"), "E1005");
+        assert_eq!(do_lisp("(length (vector 1 2))"), "E1005");
         assert_eq!(do_lisp("(length a)"), "E1008");
     }
     #[test]
@@ -1877,5 +1909,26 @@ mod error_tests {
         assert_eq!(do_lisp("(sorted? (list 1) + +)"), "E1007");
         assert_eq!(do_lisp("(sorted? +)"), "E1005");
         assert_eq!(do_lisp("(sorted? (list 1) 10)"), "E1006");
+    }
+    #[test]
+    fn vector() {
+        assert_eq!(do_lisp("(vector c 10)"), "E1008");
+    }
+    #[test]
+    fn make_vector() {
+        assert_eq!(do_lisp("(make-vector)"), "E1007");
+        assert_eq!(do_lisp("(make-vector 10)"), "E1007");
+        assert_eq!(do_lisp("(make-vector 10 0 1)"), "E1007");
+        assert_eq!(do_lisp("(make-vector #t 0)"), "E1002");
+        assert_eq!(do_lisp("(make-vector -1 0)"), "E1011");
+        assert_eq!(do_lisp("(make-vector 10 c)"), "E1008");
+    }
+    #[test]
+    fn vector_length() {
+        assert_eq!(do_lisp("(vector-length)"), "E1007");
+        assert_eq!(do_lisp("(vector-length (vector 1)(vector 2))"), "E1007");
+        assert_eq!(do_lisp("(vector-length (list 1 2))"), "E1022");
+        assert_eq!(do_lisp("(vector-length (cons 1 2))"), "E1022");
+        assert_eq!(do_lisp("(vector-length a)"), "E1008");
     }
 }

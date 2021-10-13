@@ -307,7 +307,13 @@ impl Expression {
         let mut el = false;
         for e in exp {
             match e {
-                Expression::List(l) | Expression::Vector(l) => {
+                Expression::List(l) => {
+                    let l = &*(referlence_list!(l));
+                    s.push_str(Expression::list_string(&l[..]).as_str());
+                    el = true;
+                }
+                Expression::Vector(l) => {
+                    s.push('#');
                     let l = &*(referlence_list!(l));
                     s.push_str(Expression::list_string(&l[..]).as_str());
                     el = true;
