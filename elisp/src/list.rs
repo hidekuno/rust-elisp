@@ -1642,6 +1642,18 @@ mod tests {
         assert_eq!(do_lisp("(vector-length (vector 3))"), "1");
         assert_eq!(do_lisp("(vector-length (list->vector (iota 10)))"), "10");
     }
+    #[test]
+    fn vector_list() {
+        assert_eq!(do_lisp("(vector->list #(1 2 3))"), "(1 2 3)");
+        assert_eq!(do_lisp("(vector->list (vector 1 2 3))"), "(1 2 3)");
+        assert_eq!(do_lisp("(vector->list #())"), "()");
+    }
+    #[test]
+    fn list_vector() {
+        assert_eq!(do_lisp("(list->vector '(1 2 3))"), "#(1 2 3)");
+        assert_eq!(do_lisp("(list->vector (list 1 2 3))"), "#(1 2 3)");
+        assert_eq!(do_lisp("(list->vector '())"), "#()");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -1930,5 +1942,17 @@ mod error_tests {
         assert_eq!(do_lisp("(vector-length (list 1 2))"), "E1022");
         assert_eq!(do_lisp("(vector-length (cons 1 2))"), "E1022");
         assert_eq!(do_lisp("(vector-length a)"), "E1008");
+    }
+    #[test]
+    fn vector_list() {
+        assert_eq!(do_lisp("(vector->list)"), "E1007");
+        assert_eq!(do_lisp("(vector->list #(1 2 3) #(1 2 3))"), "E1007");
+        assert_eq!(do_lisp("(vector->list '(1 2 3))"), "E1022");
+    }
+    #[test]
+    fn list_vector() {
+        assert_eq!(do_lisp("(list->vector)"), "E1007");
+        assert_eq!(do_lisp("(list->vector (list 1 2 3) '(1 2 3))"), "E1007");
+        assert_eq!(do_lisp("(list->vector #(1 2 3))"), "E1005");
     }
 }
