@@ -70,16 +70,18 @@ where
 fn get_sequence(exp: Expression, err: ErrCode) -> Result<ListRc, Error> {
     if let Expression::List(l) = exp {
         if err != ErrCode::E1005 {
-            return Err(create_error!(err));
+            Err(create_error!(err))
+        } else {
+            Ok(l)
         }
-        Ok(l)
     } else if let Expression::Vector(l) = exp {
         if err != ErrCode::E1022 {
-            return Err(create_error!(err));
+            Err(create_error!(err))
+        } else {
+            Ok(l)
         }
-        Ok(l)
     } else {
-        return Err(create_error!(err));
+        Err(create_error!(err))
     }
 }
 fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
