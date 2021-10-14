@@ -239,10 +239,7 @@ fn seq_append_effect(exp: &[Expression], env: &Environment, err: ErrCode) -> Res
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let rc = match eval(&exp[1], env)? {
-        Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
-    };
+    let rc = get_sequence(eval(&exp[1], env)?, err.clone())?;
 
     let mut v = mut_list!(&rc);
     for e in &exp[2..] {
@@ -1613,6 +1610,7 @@ mod tests {
     }
     #[test]
     fn vector() {
+        assert_eq!(do_lisp("#(1 2)"), "#(1 2)");
         assert_eq!(do_lisp("(vector 1 2)"), "#(1 2)");
         assert_eq!(do_lisp("(vector 0.5 1)"), "#(0.5 1)");
         assert_eq!(do_lisp("(vector #t #f)"), "#(#t #f)");
@@ -1653,6 +1651,58 @@ mod tests {
         assert_eq!(do_lisp("(list->vector '(1 2 3))"), "#(1 2 3)");
         assert_eq!(do_lisp("(list->vector (list 1 2 3))"), "#(1 2 3)");
         assert_eq!(do_lisp("(list->vector '())"), "#()");
+    }
+    #[test]
+    fn vector_append() {
+        assert_eq!(do_lisp("(vector-append (vector 1)(vector 2))"), "#(1 2)");
+        assert_eq!(
+            do_lisp("(vector-append (vector 1)(vector 2)(vector 3))"),
+            "#(1 2 3)"
+        );
+        assert_eq!(
+            do_lisp("(vector-append (vector (vector 10))(vector 2)(vector 3))"),
+            "#(#(10) 2 3)"
+        );
+        assert_eq!(
+            do_lisp("(vector-append (list->vector (iota 5)) (vector 100))"),
+            "#(0 1 2 3 4 100)"
+        );
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list->vector (iota 5)))", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_eq!(
+            do_lisp_env("(vector-append (list->vector(iota 5 5)) a)", &env),
+            "#(5 6 7 8 9 0 1 2 3 4)"
+        );
+        assert_eq!(do_lisp_env("a", &env), "#(0 1 2 3 4)");
+        assert_eq!(do_lisp_env("b", &env), "#(0 1 2 3 4)");
+    }
+    #[test]
+    fn vector_append_effect() {
+        assert_eq!(do_lisp("(vector-append! (vector 1)(vector 2))"), "#(1 2)");
+        assert_eq!(
+            do_lisp("(vector-append! (vector 1)(vector 2)(vector 3))"),
+            "#(1 2 3)"
+        );
+        assert_eq!(
+            do_lisp("(vector-append! (vector (vector 10))(vector 2)(vector 3))"),
+            "#(#(10) 2 3)"
+        );
+        assert_eq!(
+            do_lisp("(vector-append! (list->vector (iota 5)) (vector 100))"),
+            "#(0 1 2 3 4 100)"
+        );
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (list->vector(iota 5)))", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_eq!(
+            do_lisp_env("(vector-append! a (list->vector (iota 5 5)))", &env),
+            "#(0 1 2 3 4 5 6 7 8 9)"
+        );
+        assert_eq!(do_lisp_env("a", &env), "#(0 1 2 3 4 5 6 7 8 9)");
+        assert_eq!(do_lisp_env("b", &env), "#(0 1 2 3 4 5 6 7 8 9)");
     }
 }
 #[cfg(test)]
@@ -1925,6 +1975,7 @@ mod error_tests {
     #[test]
     fn vector() {
         assert_eq!(do_lisp("(vector c 10)"), "E1008");
+        assert_eq!(do_lisp("#"), "E1008");
     }
     #[test]
     fn make_vector() {
@@ -1954,5 +2005,19 @@ mod error_tests {
         assert_eq!(do_lisp("(list->vector)"), "E1007");
         assert_eq!(do_lisp("(list->vector (list 1 2 3) '(1 2 3))"), "E1007");
         assert_eq!(do_lisp("(list->vector #(1 2 3))"), "E1005");
+    }
+    #[test]
+    fn vector_append() {
+        assert_eq!(do_lisp("(vector-append)"), "E1007");
+        assert_eq!(do_lisp("(vector-append 10)"), "E1022");
+        assert_eq!(do_lisp("(vector-append (vector 1) 105)"), "E1022");
+        assert_eq!(do_lisp("(vector-append (vector 1) a)"), "E1008");
+    }
+    #[test]
+    fn vector_append_effect() {
+        assert_eq!(do_lisp("(vector-append!)"), "E1007");
+        assert_eq!(do_lisp("(vector-append! 10)"), "E1022");
+        assert_eq!(do_lisp("(vector-append! (vector 1) 105)"), "E1022");
+        assert_eq!(do_lisp("(vector-append! (vector 1) a)"), "E1008");
     }
 }
