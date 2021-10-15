@@ -832,7 +832,7 @@ pub fn tokenize(program: &str) -> Vec<String> {
                     token.set_quote();
                 }
                 '"' => {
-                    from = i;
+                    from = token.idx;
                     token.string_mode = true;
                 }
                 '(' => {
