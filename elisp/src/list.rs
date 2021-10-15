@@ -64,7 +64,7 @@ where
     b.regist("list->vector", list_vector);
     b.regist("vector-append", vector_append);
     b.regist("vector-append!", vector_append_effect);
-    b.regist("vector-ref ", vector_ref);
+    b.regist("vector-ref", vector_ref);
     b.regist("vector-set!", vector_set);
 }
 fn get_sequence(exp: Expression, err: ErrCode) -> Result<ListRc, Error> {
@@ -1706,6 +1706,24 @@ mod tests {
         assert_eq!(do_lisp_env("a", &env), "#(0 1 2 3 4 5 6 7 8 9)");
         assert_eq!(do_lisp_env("b", &env), "#(0 1 2 3 4 5 6 7 8 9)");
     }
+    #[test]
+    fn vector_ref() {
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) 0)"), "0");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) 1)"), "1");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) 8)"), "8");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) 9)"), "9");
+        assert_eq!(do_lisp("(vector-ref #(#\\a #\\b #\\c) 1)"), "#\\b");
+        assert_eq!(do_lisp("(vector-ref #((vector 0 1) 1 2 3) 0)"), "#(0 1)");
+    }
+    #[test]
+    fn vector_set() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a #(1 2 3 4 5))", &env);
+        do_lisp_env("(define b a)", &env);
+        do_lisp_env("(vector-set! a 0 100)", &env);
+        assert_eq!(do_lisp_env("a", &env), "#(100 2 3 4 5)");
+        assert_eq!(do_lisp_env("b", &env), "#(100 2 3 4 5)");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -2021,5 +2039,52 @@ mod error_tests {
         assert_eq!(do_lisp("(vector-append! 10)"), "E1022");
         assert_eq!(do_lisp("(vector-append! (vector 1) 105)"), "E1022");
         assert_eq!(do_lisp("(vector-append! (vector 1) a)"), "E1008");
+    }
+    #[test]
+    fn vector_ref() {
+        assert_eq!(do_lisp("(vector-ref)"), "E1007");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)))"), "E1007");
+        assert_eq!(
+            do_lisp("(vector-ref (list->vector (iota 10)) 1 2)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(vector-ref 10 -1)"), "E1022");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) #t)"), "E1002");
+
+        assert_eq!(do_lisp("(vector-ref a #t)"), "E1008");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) a)"), "E1008");
+
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) -1)"), "E1011");
+        assert_eq!(do_lisp("(vector-ref (list->vector (iota 10)) 10)"), "E1011");
+    }
+    #[test]
+    fn vector_set() {
+        assert_eq!(do_lisp("(vector-set!)"), "E1007");
+        assert_eq!(do_lisp("(vector-set! (list->vector (iota 10)))"), "E1007");
+        assert_eq!(
+            do_lisp("(vector-set! (list->vector (iota 10)) 1 2 3)"),
+            "E1007"
+        );
+
+        assert_eq!(do_lisp("(vector-set! 10 0 -1)"), "E1022");
+        assert_eq!(
+            do_lisp("(vector-set! (list->vector (iota 10)) #t 0)"),
+            "E1002"
+        );
+
+        assert_eq!(do_lisp("(vector-set! a 0 #t)"), "E1008");
+        assert_eq!(
+            do_lisp("(vector-set! (list->vector (iota 10)) 0 a)"),
+            "E1008"
+        );
+
+        assert_eq!(
+            do_lisp("(vector-set! (list->vector (iota 10)) -1 0)"),
+            "E1011"
+        );
+        assert_eq!(
+            do_lisp("(vector-set! (list->vector (iota 10)) 10 0)"),
+            "E1011"
+        );
     }
 }
