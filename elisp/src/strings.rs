@@ -63,6 +63,9 @@ where
     b.regist("list->string", list_string);
     b.regist("string->list", string_list);
 
+    b.regist("vector->string", vector_string);
+    b.regist("string->vector", string_vector);
+
     b.regist("substring", substring);
     b.regist("symbol->string", symbol_string);
     b.regist("string->symbol", string_symbol);
@@ -239,12 +242,29 @@ fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
     Ok(v)
 }
 fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    seq_string(exp, env, ErrCode::E1005)
+}
+fn vector_string(exp: &[Expression], env: &Environment) -> ResultExpression {
+    seq_string(exp, env, ErrCode::E1022)
+}
+fn seq_string(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let l = match eval(&exp[1], env)? {
-        Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        Expression::List(l) => {
+            if err != ErrCode::E1005 {
+                return Err(create_error!(err));
+            }
+            l
+        }
+        Expression::Vector(l) => {
+            if err != ErrCode::E1022 {
+                return Err(create_error!(err));
+            }
+            l
+        }
+        _ => return Err(create_error!(err)),
     };
 
     let l = &*(referlence_list!(l));
@@ -259,6 +279,14 @@ fn list_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::String(v))
 }
 fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
+    let l = string_seq(exp, env)?;
+    Ok(Environment::create_list(l))
+}
+fn string_vector(exp: &[Expression], env: &Environment) -> ResultExpression {
+    let l = string_seq(exp, env)?;
+    Ok(Environment::create_vector(l))
+}
+fn string_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Error> {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -270,7 +298,7 @@ fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     for c in s.as_str().chars() {
         l.push(Expression::Char(c));
     }
-    Ok(Environment::create_list(l))
+    Ok(l)
 }
 fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 4 != exp.len() {
@@ -603,6 +631,20 @@ mod tests {
         assert_eq!(do_lisp("(string->list \"山田\")"), "(#\\山 #\\田)");
     }
     #[test]
+    fn vector_string() {
+        assert_eq!(do_lisp("(vector->string (vector))"), "\"\"");
+        assert_eq!(
+            do_lisp("(vector->string (vector #\\a #\\b #\\c))"),
+            "\"abc\""
+        );
+    }
+    #[test]
+    fn string_vector() {
+        assert_eq!(do_lisp("(string->vector \"\")"), "#()");
+        assert_eq!(do_lisp("(string->vector \"abc\")"), "#(#\\a #\\b #\\c)");
+        assert_eq!(do_lisp("(string->vector \"山田\")"), "#(#\\山 #\\田)");
+    }
+    #[test]
     fn substring() {
         assert_eq!(do_lisp("(substring \"1234567890\" 1 2)"), "\"2\"");
         assert_eq!(do_lisp("(substring \"1234567890\" 1 3)"), "\"23\"");
@@ -842,6 +884,17 @@ mod error_tests {
         assert_eq!(do_lisp("(list->string a)"), "E1008");
     }
     #[test]
+    fn vector_string() {
+        assert_eq!(do_lisp("(vector->string)"), "E1007");
+        assert_eq!(
+            do_lisp("(vector->string (list #\\a #\\b)(list #\\a #\\b))"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(vector->string 10)"), "E1022");
+        assert_eq!(do_lisp("(vector->string (vector #\\a 10))"), "E1019");
+        assert_eq!(do_lisp("(vector->string a)"), "E1008");
+    }
+    #[test]
     fn substring() {
         assert_eq!(do_lisp("(substring)"), "E1007");
         assert_eq!(do_lisp("(substring \"1234567890\" 1)"), "E1007");
@@ -871,13 +924,19 @@ mod error_tests {
         assert_eq!(do_lisp("(string->symbol \"abc\"  \"def\")"), "E1007");
         assert_eq!(do_lisp("(string->symbol #t)"), "E1015");
     }
-
     #[test]
     fn string_list() {
         assert_eq!(do_lisp("(string->list)"), "E1007");
         assert_eq!(do_lisp("(string->list \"a\" \"b\")"), "E1007");
         assert_eq!(do_lisp("(string->list #\\a)"), "E1015");
         assert_eq!(do_lisp("(string->list a)"), "E1008");
+    }
+    #[test]
+    fn string_vector() {
+        assert_eq!(do_lisp("(string->vector)"), "E1007");
+        assert_eq!(do_lisp("(string->vector \"a\" \"b\")"), "E1007");
+        assert_eq!(do_lisp("(string->vector #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string->vector a)"), "E1008");
     }
     #[test]
     fn make_string() {
