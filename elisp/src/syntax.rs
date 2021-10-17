@@ -32,7 +32,6 @@ where
     b.regist("if", if_f);
     b.regist("and", and);
     b.regist("or", or);
-    b.regist("not", not);
     b.regist("cond", cond);
     b.regist("case", case);
     b.regist("begin", begin);
@@ -278,15 +277,6 @@ fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
         }
     }
     Ok(Expression::Boolean(false))
-}
-fn not(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    match eval(&exp[1], env)? {
-        Expression::Boolean(b) => Ok(Expression::Boolean(!b)),
-        _ => Err(create_error!(ErrCode::E1001)),
-    }
 }
 fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() < 2 {
@@ -642,11 +632,6 @@ mod tests {
         assert_eq!(do_lisp("(or (= 0 1)(= 2 3))"), "#f");
     }
     #[test]
-    fn not() {
-        assert_eq!(do_lisp("(not (= 1 1))"), "#f");
-        assert_eq!(do_lisp("(not (= 2 1))"), "#t");
-    }
-    #[test]
     fn cond() {
         assert_eq!(do_lisp("(cond ((= 10 10)))"), "#t");
         assert_eq!(do_lisp("(cond ((= 100 10)))"), "nil");
@@ -895,12 +880,6 @@ mod error_tests {
         assert_eq!(do_lisp("(or (= 1 1))"), "E1007");
         assert_eq!(do_lisp("(or (= 1 2) 10)"), "E1001");
         assert_eq!(do_lisp("(or a (= 1 2) 10)"), "E1008");
-    }
-    #[test]
-    fn not() {
-        assert_eq!(do_lisp("(not)"), "E1007");
-        assert_eq!(do_lisp("(not 10)"), "E1001");
-        assert_eq!(do_lisp("(not a)"), "E1008");
     }
     #[test]
     fn cond() {
