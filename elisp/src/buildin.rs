@@ -9,6 +9,7 @@ use log::{debug, error, info, warn};
 
 use crate::lisp::BasicBuiltIn;
 
+use crate::boolean;
 use crate::chars;
 use crate::io;
 use crate::list;
@@ -26,6 +27,8 @@ pub fn create_function<T>(b: &mut T)
 where
     T: BuildInTable + ?Sized,
 {
+    boolean::create_function(b);
+
     chars::create_function(b);
 
     list::create_function(b);
