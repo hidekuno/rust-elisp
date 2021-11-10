@@ -21,27 +21,27 @@ pub type ListRc = Rc<RefCell<Vec<Expression>>>;
 #[macro_export]
 macro_rules! referlence_list {
     ($e: expr) => {
-        $e.borrow();
+        $e.borrow()
     };
 }
 #[macro_export]
 macro_rules! mut_list {
     ($e: expr) => {
-        $e.borrow_mut();
+        $e.borrow_mut()
     };
 }
 
 #[macro_export]
 macro_rules! referlence_env {
     ($e: expr) => {
-        $e.borrow();
+        $e.borrow()
     };
 }
 
 #[macro_export]
 macro_rules! mut_env {
     ($e: expr) => {
-        $e.borrow_mut();
+        $e.borrow_mut()
     };
 }
 

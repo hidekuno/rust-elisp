@@ -48,14 +48,14 @@ macro_rules! mut_list {
 #[macro_export]
 macro_rules! referlence_env {
     ($e: expr) => {
-        $e.lock().unwrap();
+        $e.lock().unwrap()
     };
 }
 
 #[macro_export]
 macro_rules! mut_env {
     ($e: expr) => {
-        $e.lock().unwrap();
+        $e.lock().unwrap()
     };
 }
 #[macro_export]
