@@ -303,9 +303,7 @@ impl Expression {
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
 
-        let mut c = 1;
-        let mut el = false;
-        for e in exp {
+        for (c, e) in exp.iter().enumerate() {
             match e {
                 Expression::List(l) | Expression::Vector(l) => {
                     if let Expression::Vector(_) = e {
@@ -313,20 +311,14 @@ impl Expression {
                     }
                     let l = &*(referlence_list!(l));
                     s.push_str(Expression::list_string(&l[..]).as_str());
-                    el = true;
                 }
                 _ => {
-                    if el {
-                        s.push(' ');
-                    }
                     s.push_str(e.to_string().as_str());
-                    if c != exp.len() {
-                        s.push(' ');
-                    }
-                    el = false;
                 }
             }
-            c += 1;
+            if c != exp.len() - 1 {
+                s.push(' ');
+            }
         }
         s.push(')');
         s
