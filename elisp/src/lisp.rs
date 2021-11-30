@@ -775,7 +775,7 @@ impl TokenState {
         self.tokens
     }
 }
-pub fn tokenize(program: &str) -> Vec<String> {
+pub(crate) fn tokenize(program: &str) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
     let mut vector_mode = false;
@@ -867,7 +867,7 @@ pub fn tokenize(program: &str) -> Vec<String> {
     debug!("{:?}", token.tokens);
     token.tokens()
 }
-pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
+pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.is_empty() {
         return Err(create_error!(ErrCode::E0001));
     }
