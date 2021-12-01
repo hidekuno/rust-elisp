@@ -74,11 +74,11 @@ fn hanoi() {
     );
     assert_eq!(
         do_lisp_env("(hanoi (quote a)(quote b)(quote c) 3)", &env),
-        "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
+        "(((a . b) 1) ((a . c) 2) ((b . c) 1) ((a . b) 3) ((c . a) 1) ((c . b) 2) ((a . b) 1))"
     );
     assert_eq!(
         do_lisp_env("(hanoi 'a 'b 'c 3)", &env),
-        "(((a . b) 1)((a . c) 2)((b . c) 1)((a . b) 3)((c . a) 1)((c . b) 2)((a . b) 1))"
+        "(((a . b) 1) ((a . c) 2) ((b . c) 1) ((a . b) 3) ((c . a) 1) ((c . b) 2) ((a . b) 1))"
     );
 }
 #[test]
@@ -111,11 +111,11 @@ fn perm() {
     assert_eq!(do_lisp_env("(perm-count 3 2)", &env), "6");
     assert_eq!(
         do_lisp_env("(perm (list 1 2 3) 2)", &env),
-        "((1 2)(1 3)(2 1)(2 3)(3 1)(3 2))"
+        "((1 2) (1 3) (2 1) (2 3) (3 1) (3 2))"
     );
     assert_eq!(
         do_lisp_env("(perm '(a b c) 2)", &env),
-        "((a b)(a c)(b a)(b c)(c a)(c b))"
+        "((a b) (a c) (b a) (b c) (c a) (c b))"
     );
 }
 #[test]
@@ -135,9 +135,12 @@ fn comb() {
     assert_eq!(do_lisp_env("(comb-count 3 2)", &env), "3");
     assert_eq!(
         do_lisp_env("(comb (list 1 2 3) 2)", &env),
-        "((1 2)(1 3)(2 3))"
+        "((1 2) (1 3) (2 3))"
     );
-    assert_eq!(do_lisp_env("(comb '(a b c) 2)", &env), "((a b)(a c)(b c))");
+    assert_eq!(
+        do_lisp_env("(comb '(a b c) 2)", &env),
+        "((a b) (a c) (b c))"
+    );
 }
 #[test]
 fn quick_sort() {

@@ -303,9 +303,7 @@ impl Expression {
     fn list_string(exp: &[Expression]) -> String {
         let mut s = String::from("(");
 
-        let mut c = 1;
-        let mut el = false;
-        for e in exp {
+        for (c, e) in exp.iter().enumerate() {
             match e {
                 Expression::List(l) | Expression::Vector(l) => {
                     if let Expression::Vector(_) = e {
@@ -313,20 +311,14 @@ impl Expression {
                     }
                     let l = &*(referlence_list!(l));
                     s.push_str(Expression::list_string(&l[..]).as_str());
-                    el = true;
                 }
                 _ => {
-                    if el {
-                        s.push(' ');
-                    }
                     s.push_str(e.to_string().as_str());
-                    if c != exp.len() {
-                        s.push(' ');
-                    }
-                    el = false;
                 }
             }
-            c += 1;
+            if c != exp.len() - 1 {
+                s.push(' ');
+            }
         }
         s.push(')');
         s
@@ -783,7 +775,7 @@ impl TokenState {
         self.tokens
     }
 }
-pub fn tokenize(program: &str) -> Vec<String> {
+pub(crate) fn tokenize(program: &str) -> Vec<String> {
     let mut token = TokenState::new();
     let mut from = 0;
     let mut vector_mode = false;
@@ -875,7 +867,7 @@ pub fn tokenize(program: &str) -> Vec<String> {
     debug!("{:?}", token.tokens);
     token.tokens()
 }
-pub fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
+pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> ResultExpression {
     if tokens.is_empty() {
         return Err(create_error!(ErrCode::E0001));
     }

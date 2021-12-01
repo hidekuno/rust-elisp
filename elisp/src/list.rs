@@ -933,10 +933,10 @@ mod tests {
         assert_eq!(do_lisp("(list 1 2)"), "(1 2)");
         assert_eq!(do_lisp("(list 0.5 1)"), "(0.5 1)");
         assert_eq!(do_lisp("(list #t #f)"), "(#t #f)");
-        assert_eq!(do_lisp("(list (list 1)(list 2))"), "((1)(2))");
+        assert_eq!(do_lisp("(list (list 1)(list 2))"), "((1) (2))");
         assert_eq!(
             do_lisp("(list (list (list 1))(list 2)(list 3))"),
-            "(((1))(2)(3))"
+            "(((1)) (2) (3))"
         );
         let env = lisp::Environment::new();
         do_lisp_env("(define a 10)", &env);
@@ -948,7 +948,7 @@ mod tests {
         assert_eq!(do_lisp("(make-list 10 0)"), "(0 0 0 0 0 0 0 0 0 0)");
         assert_eq!(
             do_lisp("(make-list 4 (list 1 2 3))"),
-            "((1 2 3)(1 2 3)(1 2 3)(1 2 3))"
+            "((1 2 3) (1 2 3) (1 2 3) (1 2 3))"
         );
         assert_eq!(do_lisp("(make-list 8 'a)"), "(a a a a a a a a)");
         assert_eq!(do_lisp("(make-list 0 'a)"), "()");
@@ -1141,7 +1141,7 @@ mod tests {
             do_lisp("(map (lambda (n) (* n 10)) (iota 10 1))"),
             "(10 20 30 40 50 60 70 80 90 100)"
         );
-        assert_eq!(do_lisp("(map list (list 1 2 3))"), "((1)(2)(3))");
+        assert_eq!(do_lisp("(map list (list 1 2 3))"), "((1) (2) (3))");
         assert_eq!(do_lisp("(map (lambda (n) (car n)) (list))"), "()");
         assert_eq!(
             do_lisp("(map car (list (list 1 2 3)(list 4 5 6) (list 7 8 9)))"),
@@ -1169,11 +1169,11 @@ mod tests {
                 "(map (lambda (n)(map (lambda (m)(/ m 10)) n))(list (list 10 20 30)(list a b c)))",
                 &env
             ),
-            "((1 2 3)(10 20 30))"
+            "((1 2 3) (10 20 30))"
         );
         assert_eq!(
             do_lisp_env("(map (lambda (n) (car n)) d)", &env),
-            "((1)(2)(3))"
+            "((1) (2) (3))"
         );
     }
     #[test]
@@ -1616,10 +1616,10 @@ mod tests {
         assert_eq!(do_lisp("(vector 1 2)"), "#(1 2)");
         assert_eq!(do_lisp("(vector 0.5 1)"), "#(0.5 1)");
         assert_eq!(do_lisp("(vector #t #f)"), "#(#t #f)");
-        assert_eq!(do_lisp("(vector (list 1)(list 2))"), "#((1)(2))");
+        assert_eq!(do_lisp("(vector (list 1)(list 2))"), "#((1) (2))");
         assert_eq!(
             do_lisp("(vector (vector (vector 1))(vector 2)(vector 3))"),
-            "#(#(#(1))#(2)#(3))"
+            "#(#(#(1)) #(2) #(3))"
         );
         let env = lisp::Environment::new();
         do_lisp_env("(define a 10)", &env);
@@ -1631,7 +1631,7 @@ mod tests {
         assert_eq!(do_lisp("(make-vector 10 0)"), "#(0 0 0 0 0 0 0 0 0 0)");
         assert_eq!(
             do_lisp("(make-vector 4 (list 1 2 3))"),
-            "#((1 2 3)(1 2 3)(1 2 3)(1 2 3))"
+            "#((1 2 3) (1 2 3) (1 2 3) (1 2 3))"
         );
         assert_eq!(do_lisp("(make-vector 8 'a)"), "#(a a a a a a a a)");
         assert_eq!(do_lisp("(make-vector 0 'a)"), "#()");
