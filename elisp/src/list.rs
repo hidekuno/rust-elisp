@@ -132,23 +132,9 @@ fn seq_length(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpr
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    match eval(&exp[1], env)? {
-        Expression::List(l) => {
-            if err != ErrCode::E1005 {
-                return Err(create_error!(err));
-            }
-            let l = &*(referlence_list!(l));
-            Ok(Expression::Integer(l.len() as Int))
-        }
-        Expression::Vector(l) => {
-            if err != ErrCode::E1022 {
-                return Err(create_error!(err));
-            }
-            let l = &*(referlence_list!(l));
-            Ok(Expression::Integer(l.len() as Int))
-        }
-        _ => Err(create_error!(err)),
-    }
+    let l = get_sequence(eval(&exp[1], env)?, err)?;
+    let l = &*(referlence_list!(l));
+    Ok(Expression::Integer(l.len() as Int))
 }
 fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
