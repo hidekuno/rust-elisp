@@ -21,6 +21,7 @@ use crate::draw::create_draw_string;
 use crate::draw::Graphics;
 use crate::fractal::build_demo_function;
 use elisp::create_error;
+use elisp::create_error_value;
 use elisp::draw::util::regist_draw_arc;
 use elisp::draw::util::regist_draw_image;
 use elisp::draw::util::regist_draw_line;
@@ -151,7 +152,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let g = graphics.clone();
     env.add_builtin_ext_func("draw-clear", move |exp, _| {
         if exp.len() != 1 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         if let Some(color) = &g.borrow().bg {
             ctx.set_fill_style(color);
@@ -174,7 +175,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     env.add_builtin_ext_func("gtk-major-version", move |exp, _env| {
         if exp.len() != 1 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         // It's dummy code
         Ok(Expression::Integer(-1))
@@ -185,7 +186,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let c = canvas.clone();
     env.add_builtin_ext_func("screen-width", move |exp, _env| {
         if exp.len() != 1 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         Ok(Expression::Float(c.width() as f64))
     });
@@ -195,7 +196,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let c = canvas.clone();
     env.add_builtin_ext_func("screen-height", move |exp, _env| {
         if exp.len() != 1 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         Ok(Expression::Float(c.height() as f64))
     });
@@ -211,15 +212,15 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let doc = document.clone();
     env.add_builtin_ext_func("load-image", move |exp, env| {
         if exp.len() != 3 && exp.len() != 4 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let symbol = match eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         let url = match eval(&exp[2], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         // update if it exists
         let (img, exists) = match doc.get_element_by_id(&symbol) {
@@ -273,11 +274,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     env.add_builtin_ext_func("load-url", move |exp, env| {
         if exp.len() != 2 && exp.len() != 3 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let scm = match eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         let env_ = env.clone();
         let program = scm.to_string();
@@ -314,7 +315,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     env.add_builtin_ext_func("wasm-time", move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
 
         // std::time::SystemTime::now() causes panic on wasm32
@@ -332,11 +333,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     //--------------------------------------------------------
     env.add_builtin_ext_func("add-timeout", move |exp, env| {
         if exp.len() != 3 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let t = match eval(&exp[2], env)? {
             Expression::Integer(t) => t as i32,
-            _ => return Err(create_error!(ErrCode::E1002)),
+            e => return Err(create_error_value!(ErrCode::E1002, e)),
         };
         if t < 1 {
             return Err(create_error!(ErrCode::E1021));
@@ -366,11 +367,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let ctx = context.clone();
     env.add_builtin_ext_func("set-foreground", move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let color = match eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         ctx.set_stroke_style(&JsValue::from(color));
         Ok(Expression::Nil())
@@ -382,11 +383,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let ctx = context.clone();
     env.add_builtin_ext_func("set-background", move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let color = match eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         let js = JsValue::from(color);
         ctx.set_fill_style(&js);
@@ -403,11 +404,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let ctx = context.clone();
     env.add_builtin_ext_func("set-line-width", move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let width = match eval(&exp[1], env)? {
             Expression::Float(f) => f,
-            _ => return Err(create_error!(ErrCode::E1003)),
+            e => return Err(create_error_value!(ErrCode::E1003, e)),
         };
         ctx.set_line_width(width);
         Ok(Expression::Nil())
@@ -426,24 +427,24 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let draw_string = create_draw_string(&context);
     env.add_builtin_ext_func("draw-string", move |exp, env| {
         if exp.len() < 4 || 5 < exp.len() {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let text = match eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         const N: usize = 2;
         let mut prm: [f64; N] = [0.0; N];
         for (i, e) in exp[2..4].iter().enumerate() {
             prm[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
-                _ => return Err(create_error!(ErrCode::E1003)),
+                e => return Err(create_error_value!(ErrCode::E1003, e)),
             };
         }
         let font = if exp.len() == 5 {
             match lisp::eval(&exp[4], env)? {
                 Expression::String(s) => s,
-                _ => return Err(create_error!(ErrCode::E1015)),
+                e => return Err(create_error_value!(ErrCode::E1015, e)),
             }
         } else {
             "bold 20px sans-serif".to_string()
@@ -459,7 +460,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
     let draw_string = create_draw_string(&context);
     env.add_builtin_ext_func("draw-eval", move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let result = match lisp::eval(&exp[1], env) {
             Ok(r) => r.to_string(),
@@ -474,11 +475,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
 // ----------------------------------------------------------------
 fn image_size(exp: &[Expression], env: &Environment, doc: &Document) -> Result<(f64, f64), Error> {
     if exp.len() != 2 {
-        return Err(create_error!(ErrCode::E1007));
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let symbol = match eval(&exp[1], env)? {
         Expression::String(s) => s,
-        _ => return Err(create_error!(ErrCode::E1015)),
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
     let img = match doc.get_element_by_id(&symbol) {
         Some(e) => e.dyn_into::<HtmlImageElement>().unwrap(),

@@ -7,6 +7,7 @@
    hidekuno@gmail.com
 */
 use crate::create_error;
+use crate::create_error_value;
 use crate::draw::DrawArc;
 use crate::draw::DrawImage;
 use crate::draw::DrawLine;
@@ -23,7 +24,7 @@ use crate::lisp::Expression;
 pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawLine) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 5 && exp.len() != 3 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         const N: usize = 4;
         let mut loc: [f64; N] = [0.0; N];
@@ -38,11 +39,11 @@ pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawL
 pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: DrawImage) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 8 && exp.len() != 5 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let symbol = match eval(&exp[1], env)? {
             Expression::String(s) => s,
-            _ => return Err(create_error!(ErrCode::E1015)),
+            e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         const N: usize = 6;
         let mut ctm: [f64; N] = [0.0; N];
@@ -57,7 +58,7 @@ pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: Dra
 pub fn regist_draw_arc(fname: &'static str, env: &Environment, draw_arc: DrawArc) {
     env.add_builtin_ext_func(fname, move |exp, env| {
         if exp.len() != 5 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         const N: usize = 4;
         let mut prm: [f64; N] = [0.0; N];
@@ -83,7 +84,7 @@ fn set_loc(
                 if let Expression::Float(f) = eval(e, env)? {
                     *l = f;
                 } else {
-                    return Err(create_error!(ErrCode::E1003));
+                    return Err(create_error_value!(ErrCode::E1003, e));
                 }
             }
         }
@@ -94,15 +95,15 @@ fn set_loc(
                     if let Expression::Float(f) = eval(&x, env)? {
                         loc[i] = f;
                     } else {
-                        return Err(create_error!(ErrCode::E1003));
+                        return Err(create_error_value!(ErrCode::E1003, e));
                     }
                     if let Expression::Float(f) = eval(&y, env)? {
                         loc[i + 1] = f;
                     } else {
-                        return Err(create_error!(ErrCode::E1003));
+                        return Err(create_error_value!(ErrCode::E1003, e));
                     }
                 } else {
-                    return Err(create_error!(ErrCode::E1005));
+                    return Err(create_error_value!(ErrCode::E1003, e));
                 }
             }
         }
@@ -115,11 +116,11 @@ fn set_loc(
 pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
     env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
         if exp.len() != 2 {
-            return Err(create_error!(ErrCode::E1007));
+            return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         let c = match eval(&exp[1], env)? {
             Expression::Integer(c) => c,
-            _ => return Err(create_error!(ErrCode::E1002)),
+            e => return Err(create_error_value!(ErrCode::E1002, e)),
         };
         let c = c as i32;
         if 0 > c || fractal.get_max() < c {

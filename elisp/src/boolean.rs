@@ -5,7 +5,6 @@
   hidekuno@gmail.com
 */
 use crate::buildin::BuildInTable;
-use crate::create_error;
 use crate::create_error_value;
 use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
@@ -34,12 +33,12 @@ fn boolean_eq(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let a = match eval(&exp[1], env)? {
         Expression::Boolean(b) => b,
-        _ => return Err(create_error!(ErrCode::E1001)),
+        e => return Err(create_error_value!(ErrCode::E1001, e)),
     };
     for e in &exp[2..] {
         let b = match eval(e, env)? {
             Expression::Boolean(b) => b,
-            _ => return Err(create_error!(ErrCode::E1001)),
+            e => return Err(create_error_value!(ErrCode::E1001, e)),
         };
         if a != b {
             return Ok(Expression::Boolean(false));

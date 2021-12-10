@@ -105,7 +105,7 @@ fn make_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Er
     }
     let n = match eval(&exp[1], env)? {
         Expression::Integer(v) => v,
-        _ => return Err(create_error!(ErrCode::E1002)),
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
     if n < 0 {
         return Err(create_error!(ErrCode::E1011));
@@ -149,7 +149,7 @@ fn car(exp: &[Expression], env: &Environment) -> ResultExpression {
             Ok(l[0].clone())
         }
         Expression::Pair(car, _cdr) => Ok((*car).clone()),
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -166,7 +166,7 @@ fn cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
         }
         Expression::Pair(_car, cdr) => Ok((*cdr).clone()),
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn cadr(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -247,14 +247,14 @@ fn take_drop(
     }
     let l = match eval(&exp[1], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
 
     let l = referlence_list!(l);
 
     let n = match eval(&exp[2], env)? {
         Expression::Integer(n) => n,
-        _ => return Err(create_error!(ErrCode::E1002)),
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
     if l.len() < n as usize || n < 0 {
         return Err(create_error!(ErrCode::E1011));
@@ -271,7 +271,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     let other = eval(&exp[1], env)?;
     let l = match eval(&exp[2], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
 
     let l = &*(referlence_list!(l));
@@ -291,7 +291,7 @@ fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     let other = eval(&exp[1], env)?;
     let rc = match eval(&exp[2], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
 
     let mut l = mut_list!(&rc);
@@ -319,7 +319,7 @@ fn last(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
         }
         Expression::Pair(car, _) => Ok(*car),
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -333,7 +333,7 @@ fn reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
             l.reverse();
             Ok(Environment::create_list(l))
         }
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -346,7 +346,7 @@ fn iota(exp: &[Expression], env: &Environment) -> ResultExpression {
             Expression::Integer(v) => {
                 param[i] = v;
             }
-            _ => return Err(create_error!(ErrCode::E1002)),
+            e => return Err(create_error_value!(ErrCode::E1002, e)),
         }
     }
     let (to, from, step) = (param[0] + param[1], param[1], param[2]);
@@ -388,7 +388,7 @@ fn filter(exp: &[Expression], env: &Environment) -> ResultExpression {
                     result.push(e.clone());
                 }
             }
-            _ => return Err(create_error!(ErrCode::E1001)),
+            e => return Err(create_error_value!(ErrCode::E1001, e)),
         }
         Ok(Expression::Nil())
     }
@@ -413,7 +413,7 @@ fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
             Ok(Expression::Nil())
         }
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -457,7 +457,7 @@ fn seq_list_ref(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultEx
                 Ok(l[i as usize].clone())
             }
         }
-        _ => Err(create_error!(ErrCode::E1002)),
+        e => Err(create_error_value!(ErrCode::E1002, e)),
     }
 }
 fn list_set(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -544,7 +544,7 @@ fn do_list_proc(
             }
             Ok(Environment::create_list(result))
         }
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn set_car(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -560,7 +560,7 @@ fn set_car(exp: &[Expression], env: &Environment) -> ResultExpression {
             l[0] = eval(&exp[2], env)?;
             Ok(Expression::Nil())
         }
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn set_cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -589,7 +589,7 @@ fn set_cdr(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
             Ok(Expression::Nil())
         }
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 enum ListProcKind {
@@ -668,7 +668,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
                     _ => {}
                 },
                 Expression::Function(_) => {}
-                _ => return Err(create_error!(ErrCode::E1006)),
+                e => return Err(create_error_value!(ErrCode::E1006, e)),
             }
             let sort_by_impl = |a: &Expression, b: &Expression| {
                 let v = vec![func.clone(), a.clone(), b.clone()];
@@ -696,7 +696,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
     }
     let rc = match eval(&exp[1], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
     let effect = match &kind {
         SortKind::Stable(k) => k,
@@ -760,7 +760,7 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
             let result = match &func {
                 Expression::BuildInFunction(_, f) => f(&ql, env),
                 Expression::Function(f) => f.execute(&ql, env),
-                _ => return Err(create_error!(ErrCode::E1006)),
+                e => return Err(create_error_value!(ErrCode::E1006, e)),
             };
             match result {
                 Ok(e) => match e {
@@ -773,7 +773,7 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
                             j += 1;
                         }
                     }
-                    _ => return Err(create_error!(ErrCode::E1001)),
+                    e => return Err(create_error_value!(ErrCode::E1001, e)),
                 },
                 Err(e) => return Err(e),
             };
@@ -790,13 +790,13 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let l1 = match eval(&exp[1], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
     let l1 = &*(referlence_list!(l1));
 
     let l2 = match eval(&exp[2], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
     let l2 = &*(referlence_list!(l2));
 
@@ -805,7 +805,7 @@ fn merge(exp: &[Expression], env: &Environment) -> ResultExpression {
         match func {
             Expression::BuildInFunction(_, _) => {}
             Expression::Function(_) => {}
-            _ => return Err(create_error!(ErrCode::E1006)),
+            e => return Err(create_error_value!(ErrCode::E1006, e)),
         }
         merge_iter_by(l1, l2, env, func)
     } else {
@@ -818,7 +818,7 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let l = match eval(&exp[1], env)? {
         Expression::List(l) => l,
-        _ => return Err(create_error!(ErrCode::E1005)),
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
 
     let l = &*(referlence_list!(l));
@@ -862,7 +862,7 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
                 let b = &l[..].windows(2).all(|w| cmp(&w[0], &w[1]));
                 Ok(Expression::Boolean(*b))
             }
-            _ => Err(create_error!(ErrCode::E1006)),
+            e => Err(create_error_value!(ErrCode::E1006, e)),
         }
     }
 }
@@ -883,7 +883,7 @@ fn list_vector(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     match eval(&exp[1], env)? {
         Expression::List(l) => Ok(Expression::Vector(l)),
-        _ => Err(create_error!(ErrCode::E1005)),
+        e => Err(create_error_value!(ErrCode::E1005, e)),
     }
 }
 fn vector_list(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -892,7 +892,7 @@ fn vector_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     match eval(&exp[1], env)? {
         Expression::Vector(l) => Ok(Expression::List(l)),
-        _ => Err(create_error!(ErrCode::E1022)),
+        e => Err(create_error_value!(ErrCode::E1022, e)),
     }
 }
 fn vector_append(exp: &[Expression], env: &Environment) -> ResultExpression {

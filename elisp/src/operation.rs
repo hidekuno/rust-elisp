@@ -133,7 +133,7 @@ fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
     for (i, e) in exp[1..].iter().enumerate() {
         x[i] = match eval(e, env)? {
             Expression::Integer(v) => v,
-            _ => return Err(create_error!(ErrCode::E1002)),
+            e => return Err(create_error_value!(ErrCode::E1002, e)),
         };
     }
     Ok(Expression::Integer(if x[1] >= 0 {
@@ -152,7 +152,7 @@ fn bit(exp: &[Expression], env: &Environment, func: fn(x: Int, y: Int) -> Int) -
     for e in &exp[1..] {
         let param = match eval(e, env)? {
             Expression::Integer(v) => v,
-            _ => return Err(create_error!(ErrCode::E1002)),
+            e => return Err(create_error_value!(ErrCode::E1002, e)),
         };
         if first {
             result = param;
@@ -169,7 +169,7 @@ fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         match eval(&exp[1], env)? {
             Expression::Integer(v) => Ok(Expression::Integer(!v)),
-            _ => Err(create_error!(ErrCode::E1002)),
+            e => Err(create_error_value!(ErrCode::E1002, e)),
         }
     }
 }
@@ -196,7 +196,7 @@ fn bitcount(
 
                 Ok(Expression::Integer(n))
             }
-            _ => Err(create_error!(ErrCode::E1002)),
+            e => Err(create_error_value!(ErrCode::E1002, e)),
         }
     }
 }
@@ -206,7 +206,7 @@ fn twos_exponent(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let v = match eval(&exp[1], env)? {
         Expression::Integer(v) => v,
-        _ => return Err(create_error!(ErrCode::E1002)),
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
     if 0 >= v {
         return Ok(Expression::Boolean(false));

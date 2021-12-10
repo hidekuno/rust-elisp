@@ -78,7 +78,7 @@ fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, Error> {
         Expression::Float(f) => Ok(f),
         Expression::Integer(i) => Ok(i as f64),
         Expression::Rational(r) => Ok(r.div_float()),
-        _ => Err(create_error!(ErrCode::E1003)),
+        e => Err(create_error_value!(ErrCode::E1003, e)),
     }
 }
 fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -89,7 +89,7 @@ fn abs(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::Float(v) => Expression::Float(v.abs()),
         Expression::Integer(v) => Expression::Integer(v.abs()),
         Expression::Rational(v) => Expression::Rational(v.abs()),
-        _ => return Err(create_error!(ErrCode::E1003)),
+        e => return Err(create_error_value!(ErrCode::E1003, e)),
     })
 }
 fn rand_integer(exp: &[Expression], _env: &Environment) -> ResultExpression {
@@ -124,7 +124,7 @@ fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::Float(x) => match eval(&exp[2], env)? {
             Expression::Float(y) => Ok(Expression::Float(x.powf(y))),
             Expression::Integer(y) => Ok(Expression::Float(x.powf(y as f64))),
-            _ => Err(create_error!(ErrCode::E1003)),
+            e => Err(create_error_value!(ErrCode::E1003, e)),
         },
         Expression::Integer(x) => match eval(&exp[2], env)? {
             Expression::Float(y) => Ok(Expression::Float((x as f64).powf(y))),
@@ -135,9 +135,9 @@ fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
                     Ok(Expression::Rational(Rat::new(1, x.pow(y.abs() as u32))))
                 }
             }
-            _ => Err(create_error!(ErrCode::E1003)),
+            e => Err(create_error_value!(ErrCode::E1003, e)),
         },
-        _ => Err(create_error!(ErrCode::E1003)),
+        e => Err(create_error_value!(ErrCode::E1003, e)),
     }
 }
 #[cfg(test)]
