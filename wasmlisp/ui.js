@@ -14,7 +14,7 @@ const ANIMATION_DEMO_CODE = `(draw-clear)
 
 const ALBUM_IMAGE_CODE = `(draw-clear)
 ((square-limit (below(beside rv ps)(beside sd am)) 0)
-               (make-image-frame-rectangle "am" 2.2 2.2))`;
+               (make-image-frame-rectangle "am" 1.74 1.74))`;
 
 const WEB_FONT = "<i class='fa fa-spinner fa-spin fa-5x fa-fw'></i><br><br>";
 
