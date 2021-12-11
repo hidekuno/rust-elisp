@@ -77,7 +77,7 @@ fn odd_even(exp: &[Expression], env: &Environment, func: fn(Int) -> bool) -> Res
     }
     match eval(&exp[1], env)? {
         Expression::Integer(i) => Ok(Expression::Boolean(func(i))),
-        _ => Err(create_error!(ErrCode::E1002)),
+        e => Err(create_error_value!(ErrCode::E1002, e)),
     }
 }
 fn is_sign(exp: &[Expression], env: &Environment, func: fn(&Number) -> bool) -> ResultExpression {
@@ -109,7 +109,7 @@ fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
             Ok(v) => Ok(Expression::String(v)),
             Err(_) => Ok(Expression::Boolean(false)),
         },
-        _ => Err(create_error!(ErrCode::E1015)),
+        e => Err(create_error_value!(ErrCode::E1015, e)),
     }
 }
 fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {

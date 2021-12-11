@@ -297,7 +297,7 @@ impl Expression {
             Expression::Float(v) => Ok(Number::Float(*v)),
             Expression::Integer(v) => Ok(Number::Integer(*v)),
             Expression::Rational(v) => Ok(Number::Rational(*v)),
-            _ => Err(create_error!(ErrCode::E1003)),
+            e => Err(create_error_value!(ErrCode::E1003, e)),
         }
     }
     fn list_string(exp: &[Expression]) -> String {
@@ -974,7 +974,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                 Expression::BuildInFunction(_, f) => f(&v[..], env),
                 Expression::BuildInFunctionExt(f) => f(&v[..], env),
                 Expression::Continuation(f) => f.execute(&v[..], env),
-                _ => Err(create_error!(ErrCode::E1006)),
+                e => Err(create_error_value!(ErrCode::E1006, e)),
             },
         }
     } else {

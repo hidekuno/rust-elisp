@@ -94,7 +94,7 @@ fn charcmp(
     for (i, e) in exp[1..].iter().enumerate() {
         v[i] = match eval(e, env)? {
             Expression::Char(c) => c,
-            _ => return Err(create_error!(ErrCode::E1019)),
+            e => return Err(create_error_value!(ErrCode::E1019, e)),
         }
     }
     Ok(Expression::Boolean(func(v[0], v[1])))
@@ -109,7 +109,7 @@ fn char_kind(
     }
     let c = match eval(&exp[1], env)? {
         Expression::Char(c) => c,
-        _ => return Err(create_error!(ErrCode::E1019)),
+        e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
     Ok(func(c))
 }
@@ -119,7 +119,7 @@ fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let i = match eval(&exp[1], env)? {
         Expression::Integer(i) => i,
-        _ => return Err(create_error!(ErrCode::E1002)),
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
     let i = i as u32;
     if let Some(c) = char::from_u32(i) {
@@ -134,7 +134,7 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let c = match eval(&exp[1], env)? {
         Expression::Char(c) => c,
-        _ => return Err(create_error!(ErrCode::E1019)),
+        e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
     let a = c as u32;
     Ok(Expression::Integer(a as Int))
@@ -142,7 +142,7 @@ fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
 fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
     let c = match eval(exp, env)? {
         Expression::Char(c) => c,
-        _ => return Err(create_error!(ErrCode::E1019)),
+        e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
     match c.to_digit(r as u32) {
         Some(i) => Ok(Expression::Integer(i as Int)),
@@ -152,7 +152,7 @@ fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
 fn integer_digit(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
     let i = match eval(exp, env)? {
         Expression::Integer(c) => c,
-        _ => return Err(create_error!(ErrCode::E1002)),
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
     match char::from_digit(i as u32, r as u32) {
         Some(c) => Ok(Expression::Char(c)),
