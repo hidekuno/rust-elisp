@@ -96,14 +96,9 @@ mod tests {
     use super::*;
     use wasm_bindgen_test::*;
 
-    const SD_URL: &str =
-        "https://coverartarchive.org/release-group/9b1acd78-3d19-37bb-8ca0-5816d44da439/front-250.jpg";
-
-    const RV_URL: &str =
-        "https://coverartarchive.org/release-group/72d15666-99a7-321e-b1f3-a3f8c09dff9f/front-250.jpg";
-
-    const PS_URL: &str =
-        "https://coverartarchive.org/release-group/fdd96703-7b21-365e-bdea-38029fbeb84e/front-250.jpg";
+    const SD_URL: &str = "https://m.media-amazon.com/images/I/51M-Dh4hDTL._AC_UL320_.jpg";
+    const RV_URL: &str = "https://m.media-amazon.com/images/I/617oXibcXRL._AC_UL320_.jpg";
+    const PS_URL: &str = "https://m.media-amazon.com/images/I/51D4ZYSXJ6L._AC_UL320_.jpg";
 
     wasm_bindgen_test_configure!(run_in_browser);
 
