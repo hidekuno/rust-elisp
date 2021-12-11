@@ -103,7 +103,7 @@ fn set_loc(
                         return Err(create_error_value!(ErrCode::E1003, e));
                     }
                 } else {
-                    return Err(create_error_value!(ErrCode::E1003, e));
+                    return Err(create_error_value!(ErrCode::E1005, e));
                 }
             }
         }
