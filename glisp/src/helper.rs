@@ -125,15 +125,15 @@ impl SourceView {
                     Status::Ready => match c {
                         '(' | ')' | ' ' | '\n' => state = Status::Ready,
                         '"' => {
-                            vec = Some(start.clone());
+                            vec = Some(start);
                             state = Status::String;
                         }
                         _ => {
                             if c.is_digit(10) {
-                                vec = Some(start.clone());
+                                vec = Some(start);
                                 state = Status::Number;
                             } else if c.is_lowercase() {
-                                vec = Some(start.clone());
+                                vec = Some(start);
                                 state = Status::Keyword;
                             } else {
                                 state = Status::Ready;
