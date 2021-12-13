@@ -1,10 +1,8 @@
-FROM ubuntu:18.04 as builder
+FROM rust:1.57 as builder
 MAINTAINER hidekuno@gmail.com
 
 ENV HOME /root
-RUN apt-get update && apt-get -y install git curl libgtk-3-dev |true
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-ENV PATH $PATH:$HOME/.cargo/bin
+RUN apt-get update && apt-get -y install libgtk-3-dev |true
 
 WORKDIR $HOME
 RUN git clone https://github.com/hidekuno/rust-elisp && git clone https://github.com/hidekuno/picture-language
