@@ -328,7 +328,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     let text_view = ui.text_view();
     let source_view = ui.source_view().clone();
-    let scroll = gtk::ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+    let scroll = gtk::ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
     scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
     scroll.add(text_view);
     scroll.set_size_request(DRAW_WIDTH, 160);
@@ -542,7 +542,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     set_message!(status_bar, result.as_str());
 
     #[cfg(feature = "animation")]
-    glib::source::source_remove(sid);
+    sid.remove();
 
     canvas.queue_draw();
 }
