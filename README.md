@@ -51,6 +51,11 @@ docker pull hidekuno/rust-elisp
 xhost + 
 docker run --name glisp -e DISPLAY=${host_ipaddr}:0.0 hidekuno/rust-elisp /root/glisp
 ```
+### Windows11+WSL2+WSLg
+```
+docker pull hidekuno/rust-elisp
+docker run -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 --name glisp hidekuno/rust-elisp /root/glisp
+```
 
 ### For environments where the X server is not running
 ```
