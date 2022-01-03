@@ -5,11 +5,14 @@
    ref) https://doc.rust-jp.rs/book/second-edition/ch20-00-final-project-a-web-server.html
    ex) curl 'http://127.0.0.1:9000/lisp' --get --data-urlencode 'expr=(define a 100)'
 
+   ex) curl -v -c /tmp/cookie.txt http://localhost:9000/samples/test.scm
+       curl -v -b /tmp/cookie.txt http://localhost:9000/samples/test.scm
    hidekuno@gmail.com
 */
 extern crate elisp;
 use elisp::lisp;
 
+use chrono::Duration;
 use chrono::Utc;
 use std::env;
 use std::error::Error;
@@ -39,9 +42,11 @@ const MIME_HTML: MimeType = MimeType("html", "text/html");
 const MIME_PNG: MimeType = MimeType("png", "image/png");
 const DEFALUT_MIME: &str = "application/octet-stream";
 const CGI_EXT: &str = ".cgi";
+const LISP_EXT: &str = ".scm";
 
 const LISP: &str = "/lisp";
 const LISP_PARAMNAME: &str = "expr=";
+const SESSION_ID: &str = "RUST-ELISP-SID";
 
 #[derive(Debug)]
 struct UriParseError {
@@ -94,6 +99,20 @@ macro_rules! http_value_error {
             Some(MIME_PLAIN.1),
         )
     };
+}
+macro_rules! make_path {
+    ($f: expr) => {{
+        let mut path = match env::current_dir() {
+            Ok(f) => f,
+            Err(e) => return http_value_error!(RESPONSE_500, e),
+        };
+        set_path_security(&mut path, $f);
+
+        if !path.as_path().exists() {
+            return http_error!(RESPONSE_404);
+        }
+        path
+    }};
 }
 #[derive(Clone)]
 pub enum Method {
@@ -208,7 +227,7 @@ impl Contents {
 }
 macro_rules! is_head_method {
     ($result: expr) => {
-        if let Ok(req) = $result {
+        if let Ok(ref req) = $result {
             if let Some(Method::Head) = req.get_method() {
                 true
             } else {
@@ -219,13 +238,13 @@ macro_rules! is_head_method {
         }
     };
 }
-pub fn core_proc(
+pub fn entry_proc(
     mut stream: TcpStream,
     env: lisp::Environment,
     buffer: &[u8],
+    id: usize,
 ) -> Result<(), Box<dyn Error>> {
     let r = parse_request(buffer);
-
     let (status_line, mut contents, mime) = match &r {
         Ok(r) => dispatch(r, env),
         Err(e) => http_value_error!(RESPONSE_400, e),
@@ -234,7 +253,7 @@ pub fn core_proc(
     info!("{}", status_line);
     http_write!(stream, format!("{} {}", PROTOCOL, status_line));
 
-    let header: [&str; 3] = [
+    let res_header: [&str; 3] = [
         &Utc::now()
             .format("Date: %a, %d %h %Y %H:%M:%S GMT")
             .to_string()
@@ -242,13 +261,37 @@ pub fn core_proc(
         "Server: Rust eLisp",
         "Connection: closed",
     ];
-    for h in &header {
+    for h in &res_header {
         http_write!(stream, h);
     }
-
     if let Some(v) = mime {
         http_write!(stream, format!("Content-type: {}", v));
         http_write!(stream, format!("Content-length: {}", contents.len()));
+
+        if let Ok(ref r) = r {
+            for (i, e) in r.get_headers().iter().enumerate() {
+                if e.starts_with("Cookie:") && e.contains(SESSION_ID) {
+                    break;
+                } else if i + 1 == r.get_headers().len() {
+                    let expire = Utc::now();
+                    let offset = Duration::days(365);
+                    let expire = expire + offset;
+                    http_write!(
+                        stream,
+                        format!(
+                            "Set-Cookie: {}=RE-{}-{};expires={};",
+                            SESSION_ID,
+                            Utc::now().timestamp(),
+                            id,
+                            expire
+                                .format("%a, %d %h %Y %H:%M:%S GMT")
+                                .to_string()
+                                .into_boxed_str()
+                        )
+                    );
+                }
+            }
+        }
         stream.write_all(CRLF.as_bytes())?;
     }
     let head = is_head_method!(r);
@@ -392,6 +435,8 @@ fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Opt
         (RESPONSE_200, Contents::String(result), Some(MIME_PLAIN.1))
     } else if r.get_resource().ends_with(CGI_EXT) {
         do_cgi(r)
+    } else if r.get_resource().ends_with(LISP_EXT) {
+        do_scm(r, env)
     } else {
         static_contents(r.get_resource())
     };
@@ -411,14 +456,7 @@ fn set_path_security(path: &mut PathBuf, filename: &str) {
     }
 }
 fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
-    let mut path = match env::current_dir() {
-        Ok(f) => f,
-        Err(e) => return http_value_error!(RESPONSE_500, e),
-    };
-    set_path_security(&mut path, filename);
-    if !path.as_path().exists() {
-        return http_error!(RESPONSE_404);
-    }
+    let path = make_path!(filename);
     let file = match File::open(path) {
         Ok(file) => file,
         Err(e) => return http_value_error!(RESPONSE_500, e),
@@ -455,15 +493,7 @@ fn get_mime(filename: &str) -> &'static str {
     }
 }
 fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
-    let mut path = match env::current_dir() {
-        Ok(f) => f,
-        Err(e) => return http_value_error!(RESPONSE_500, e),
-    };
-    set_path_security(&mut path, r.get_resource());
-
-    if !path.as_path().exists() {
-        return http_error!(RESPONSE_404);
-    }
+    let path = make_path!(r.get_resource());
     let mut cgi = match Command::new(path)
         .arg(r.get_parameter())
         .stdin(Stdio::piped())
@@ -477,4 +507,26 @@ fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
     stdin.write_all(r.get_body().as_bytes()).unwrap();
     stdin.write_all(b"\n").unwrap();
     (RESPONSE_200, Contents::Cgi(cgi), None)
+}
+fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Option<&'static str>) {
+    let path = make_path!(r.get_resource());
+    let load_file = format!("(load-file {:#?})", path);
+
+    match lisp::do_core_logic(&load_file, &env) {
+        Ok(_) => {}
+        Err(_) => return http_error!(RESPONSE_500),
+    };
+
+    // param-data is not implement.
+    // param-data will be a request parameter.
+    let lisp = format!("((lambda () (do-web-application {:#?})))", "param-data");
+    let result = match lisp::do_core_logic(&lisp, &env) {
+        Ok(v) => v,
+        Err(_) => return http_error!(RESPONSE_500),
+    };
+    (
+        RESPONSE_200,
+        Contents::String(result.to_string()),
+        Some(MIME_PLAIN.1),
+    )
 }

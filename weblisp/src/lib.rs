@@ -23,7 +23,7 @@ mod tests {
     use crate::server::BIND_ADDRESS;
     use crate::web::CRLF;
     use crate::web::PROTOCOL;
-    const TEST_COUNT: usize = 21;
+    const TEST_COUNT: usize = 22;
 
     macro_rules! make_request {
         ($method: expr, $resource: expr) => {
@@ -503,11 +503,12 @@ mod tests {
         assert_str!("Content-type: text/plain", iter.next());
         assert_str!("Content-length: 3", iter.next());
         iter.next();
+        iter.next();
         assert_str!("b", iter.next());
     }
     #[test]
     fn test_case_21_post_lisp() {
-        let r = make_request!("POST", " /lisp");
+        let r = make_request!("POST", "/lisp");
         let s = vec![
             r.as_str(),
             "User-Agent: rust",
@@ -529,7 +530,37 @@ mod tests {
         assert_str!("Content-type: text/plain", iter.next());
         assert_str!("Content-length: 5", iter.next());
         iter.next();
+        iter.next();
         assert_str!("200", iter.next());
+    }
+    #[test]
+    fn test_case_22_get_lispfile() {
+        let r = make_request!("GET", "/test.scm");
+        let s = vec![
+            r.as_str(),
+            "HTTP/1.1",
+            "User-Agent: rust",
+            "Host: 127.0.0.1:9000",
+            "",
+        ];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 14", iter.next());
+        iter.next();
+        iter.next();
+        assert_str!(
+            "\"Hello, World\"",
+            iter.next()
+        );
     }
     #[test]
     fn test_case_90() {

@@ -43,8 +43,8 @@ pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
         match stream {
             Ok(stream) => {
                 let env = env.clone();
-                pool.execute(|| {
-                    handle_connection(stream, env);
+                pool.execute(|id| {
+                    handle_connection(stream, env, id);
                 });
             }
             Err(ref e) => {
@@ -59,7 +59,7 @@ pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
     }
     Ok(())
 }
-fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
+fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
     stream
         .set_read_timeout(Some(Duration::from_secs(READ_TIMEOUT)))
         .unwrap();
@@ -81,7 +81,7 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment) {
             }
         }
     }
-    if let Err(e) = web::core_proc(stream, env, &buffer) {
+    if let Err(e) = web::entry_proc(stream, env, &buffer, id) {
         error!("core proc {}", e);
     }
 }
