@@ -19,7 +19,7 @@ enum Message {
     Terminate,
 }
 
-type Job = Box<dyn FnOnce() + Send + 'static>;
+type Job = Box<dyn FnOnce(usize) + Send + 'static>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -40,7 +40,7 @@ impl ThreadPool {
     }
     pub fn execute<F>(&self, f: F)
     where
-        F: FnOnce() + Send + 'static,
+        F: FnOnce(usize) + Send + 'static,
     {
         let job = Box::new(f);
         if let Err(e) = self.sender.send(Message::NewJob(job)) {
@@ -85,7 +85,7 @@ impl Worker {
             match message {
                 Message::NewJob(job) => {
                     debug!("workder {} job; start.", id);
-                    job();
+                    job(id);
                 }
                 Message::Terminate => {
                     debug!("workder {} get a job; terminate.", id);
