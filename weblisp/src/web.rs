@@ -21,6 +21,7 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::net::TcpStream;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 
@@ -510,8 +511,17 @@ fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
 }
 fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Option<&'static str>) {
     let path = make_path!(r.get_resource());
-    let load_file = format!("(load-file {:#?})", path);
 
+    let load_file = format!("(load-file {:#?})", path);
+    let path = Path::new(r.get_resource());
+
+    let f = match path.file_name() {
+        Some(f) => match f.to_str() {
+            Some(f) => f.replace(LISP_EXT, ""),
+            None => return http_error!(RESPONSE_500),
+        },
+        None => return http_error!(RESPONSE_500),
+    };
     match lisp::do_core_logic(&load_file, &env) {
         Ok(_) => {}
         Err(_) => return http_error!(RESPONSE_500),
@@ -519,7 +529,10 @@ fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Optio
 
     // param-data is not implement.
     // param-data will be a request parameter.
-    let lisp = format!("((lambda () (do-web-application {:#?})))", "param-data");
+    let lisp = format!(
+        "((lambda () ({}::do-web-application {:#?})))",
+        f, "param-data",
+    );
     let result = match lisp::do_core_logic(&lisp, &env) {
         Ok(v) => v,
         Err(_) => return http_error!(RESPONSE_500),
