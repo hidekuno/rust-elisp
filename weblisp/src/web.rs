@@ -1,12 +1,13 @@
 /*
    Rust study program.
    This is prototype program mini scheme subset what porting from go-scheme.
-
    ref) https://doc.rust-jp.rs/book/second-edition/ch20-00-final-project-a-web-server.html
+
    ex) curl 'http://127.0.0.1:9000/lisp' --get --data-urlencode 'expr=(define a 100)'
 
    ex) curl -v -c /tmp/cookie.txt http://localhost:9000/samples/test.scm
        curl -v -b /tmp/cookie.txt http://localhost:9000/samples/test.scm
+
    hidekuno@gmail.com
 */
 extern crate elisp;
@@ -180,8 +181,29 @@ impl Request {
     pub fn get_body(&self) -> &String {
         &self.body
     }
+    fn get_parsed_list(&self, vec_str: Vec<&str>, del: char) -> String {
+        let mut param = String::from("(list ");
+
+        for rec in vec_str {
+            if let Some(idx) = rec.find(del) {
+                let v0 = &rec[0..idx];
+                let v1 = &rec[(idx + 1)..].trim_start_matches(' ');
+                param.push_str(format!("(cons {:#?} {:#?})", v0, v1).as_str());
+            }
+        }
+        param.push_str(")");
+        debug!("{:#?}", param);
+        param
+    }
+    pub fn get_lisp_param(&self) -> String {
+        self.get_parsed_list(self.parameter.split('&').collect(), '=')
+    }
+    pub fn get_lisp_header(&self) -> String {
+        // A little sloppy implements
+        self.get_parsed_list(self.headers.iter().map(|x| x.as_str()).collect(), ':')
+    }
 }
-pub struct WebFile {
+struct WebFile {
     file: File,
     length: u64,
 }
@@ -524,18 +546,25 @@ fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Optio
     };
     match lisp::do_core_logic(&load_file, &env) {
         Ok(_) => {}
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => {
+            error!("{}", e.get_msg());
+            return http_value_error!(RESPONSE_500, e.get_msg());
+        }
     };
 
-    // param-data is not implement.
-    // param-data will be a request parameter.
+    // parameter is temporarily implemented.
     let lisp = format!(
-        "((lambda () ({}::do-web-application {:#?})))",
-        f, "param-data",
+        "((lambda () ({}::do-web-application {} {})))",
+        f,
+        r.get_lisp_param(),
+        r.get_lisp_header(),
     );
     let result = match lisp::do_core_logic(&lisp, &env) {
         Ok(v) => v,
-        Err(_) => return http_error!(RESPONSE_500),
+        Err(e) => {
+            error!("{}", e.get_msg());
+            return http_value_error!(RESPONSE_500, e.get_msg());
+        }
     };
     (
         RESPONSE_200,
