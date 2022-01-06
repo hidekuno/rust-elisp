@@ -191,7 +191,7 @@ impl Request {
                 param.push_str(format!("(cons {:#?} {:#?})", v0, v1).as_str());
             }
         }
-        param.push_str(")");
+        param.push(')');
         debug!("{:#?}", param);
         param
     }
