@@ -2,5 +2,6 @@
   (define (hello) "Hello,")
   (define (world) "World")
 
-  (filter (lambda (l) (string=? (car l) "FOO")) req)
+  (display (get-header "User-Agent" hdr))
+  (newline)
   (string-append (hello)(world)))

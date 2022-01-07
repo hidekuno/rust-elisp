@@ -7,6 +7,7 @@
 
    hidekuno@gmail.com
 */
+pub mod buildin;
 pub mod concurrency;
 pub mod server;
 pub mod web;
