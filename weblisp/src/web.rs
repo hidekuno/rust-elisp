@@ -552,12 +552,19 @@ fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Optio
         }
     };
 
-    // parameter is temporarily implemented.
+    let method = if let Some(method) = r.get_method() {
+        method.as_ref().to_string()
+    } else {
+        String::from("")
+    };
+
     let lisp = format!(
-        "((lambda () ({}::do-web-application {} {})))",
+        "((lambda () ({}::do-web-application #({:#?} {} {} {:#?}))))",
         f,
-        r.get_lisp_param(),
+        method,
         r.get_lisp_header(),
+        r.get_lisp_param(),
+        r.get_resource(),
     );
     let result = match lisp::do_core_logic(&lisp, &env) {
         Ok(v) => v,
