@@ -8,6 +8,7 @@
 */
 extern crate elisp;
 
+use crate::buildin;
 use crate::concurrency::ThreadPool;
 use crate::web;
 use elisp::lisp;
@@ -39,6 +40,8 @@ pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
 
     let pool = ThreadPool::new(MAX_CONCURRENCY);
     let env = lisp::Environment::new();
+    buildin::build_lisp_function(&env);
+
     for stream in listenner.incoming().take(count) {
         match stream {
             Ok(stream) => {

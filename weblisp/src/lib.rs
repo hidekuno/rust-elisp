@@ -7,6 +7,7 @@
 
    hidekuno@gmail.com
 */
+pub mod buildin;
 pub mod concurrency;
 pub mod server;
 pub mod web;
@@ -555,10 +556,10 @@ mod tests {
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
         assert_str!("Content-type: text/plain", iter.next());
-        assert_str!("Content-length: 13", iter.next());
+        assert_str!("Content-length: 18", iter.next());
         iter.next();
         iter.next();
-        assert_str!("\"Hello,World\"", iter.next());
+        assert_str!("\"Hello,World rust\"", iter.next());
     }
     #[test]
     fn test_case_90() {
