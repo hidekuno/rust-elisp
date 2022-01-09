@@ -505,7 +505,6 @@ mod tests {
         assert_str!("Content-type: text/plain", iter.next());
         assert_str!("Content-length: 3", iter.next());
         iter.next();
-        iter.next();
         assert_str!("b", iter.next());
     }
     #[test]
@@ -531,7 +530,6 @@ mod tests {
         assert_str!("Connection: closed", iter.next());
         assert_str!("Content-type: text/plain", iter.next());
         assert_str!("Content-length: 5", iter.next());
-        iter.next();
         iter.next();
         assert_str!("200", iter.next());
     }
