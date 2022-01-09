@@ -11,6 +11,7 @@
    hidekuno@gmail.com
 */
 extern crate elisp;
+use crate::buildin;
 use elisp::lisp;
 
 use chrono::Duration;
@@ -32,11 +33,12 @@ use log::{debug, error, info, warn};
 pub const PROTOCOL: &str = "HTTP/1.1";
 pub const CRLF: &str = "\r\n";
 
-const RESPONSE_200: &str = "200 OK";
-const RESPONSE_400: &str = "400 Bad Request";
-const RESPONSE_404: &str = "404 Not Found";
-const RESPONSE_405: &str = "405 Method Not Allowed";
-const RESPONSE_500: &str = "500 Internal Server Error";
+struct Response(u32, &'static str);
+const RESPONSE_200: Response = Response(200, "OK");
+const RESPONSE_400: Response = Response(400, "Bad Request");
+const RESPONSE_404: Response = Response(404, "Not Found");
+const RESPONSE_405: Response = Response(405, "Method Not Allowed");
+const RESPONSE_500: Response = Response(500, "Internal Server Error");
 
 struct MimeType(&'static str, &'static str);
 const MIME_PLAIN: MimeType = MimeType("txt", "text/plain");
@@ -49,6 +51,8 @@ const LISP_EXT: &str = ".scm";
 const LISP: &str = "/lisp";
 const LISP_PARAMNAME: &str = "expr=";
 const SESSION_ID: &str = "RUST-ELISP-SID";
+
+type WebResult = (Response, Contents, Option<&'static str>, Option<String>);
 
 #[derive(Debug)]
 struct UriParseError {
@@ -82,8 +86,9 @@ macro_rules! http_error {
     ($c: expr) => {
         (
             $c,
-            Contents::String(String::from(&$c[4..]) + CRLF),
+            Contents::String(String::from($c.1) + CRLF),
             Some(MIME_PLAIN.1),
+            None,
         )
     };
 }
@@ -93,12 +98,13 @@ macro_rules! http_value_error {
             $c,
             Contents::String(format!(
                 "{}\r\n{}[{}:{}]\r\n",
-                String::from(&$c[4..]),
+                String::from($c.1),
                 $err,
                 file!(),
                 line!()
             )),
             Some(MIME_PLAIN.1),
+            None,
         )
     };
 }
@@ -268,13 +274,13 @@ pub fn entry_proc(
     id: usize,
 ) -> Result<(), Box<dyn Error>> {
     let r = parse_request(buffer);
-    let (status_line, mut contents, mime) = match &r {
-        Ok(r) => dispatch(r, env),
+    let (status, mut contents, mime, cookie) = match &r {
+        Ok(r) => dispatch(r, env, id),
         Err(e) => http_value_error!(RESPONSE_400, e),
     };
 
-    info!("{}", status_line);
-    http_write!(stream, format!("{} {}", PROTOCOL, status_line));
+    info!("{} {}", status.0, status.1);
+    http_write!(stream, format!("{} {} {}", PROTOCOL, status.0, status.1));
 
     let res_header: [&str; 3] = [
         &Utc::now()
@@ -291,29 +297,20 @@ pub fn entry_proc(
         http_write!(stream, format!("Content-type: {}", v));
         http_write!(stream, format!("Content-length: {}", contents.len()));
 
-        if let Ok(ref r) = r {
-            for (i, e) in r.get_headers().iter().enumerate() {
-                if e.starts_with("Cookie:") && e.contains(SESSION_ID) {
-                    break;
-                } else if i + 1 == r.get_headers().len() {
-                    let expire = Utc::now();
-                    let offset = Duration::days(365);
-                    let expire = expire + offset;
-                    http_write!(
-                        stream,
-                        format!(
-                            "Set-Cookie: {}=RE-{}-{};expires={};",
-                            SESSION_ID,
-                            Utc::now().timestamp(),
-                            id,
-                            expire
-                                .format("%a, %d %h %Y %H:%M:%S GMT")
-                                .to_string()
-                                .into_boxed_str()
-                        )
-                    );
-                }
-            }
+        if let Some(cookie) = cookie {
+            let expire = Utc::now() + Duration::days(365);
+            http_write!(
+                stream,
+                format!(
+                    "Set-Cookie: {}={};expires={};",
+                    SESSION_ID,
+                    cookie,
+                    expire
+                        .format("%a, %d %h %Y %H:%M:%S GMT")
+                        .to_string()
+                        .into_boxed_str()
+                )
+            );
         }
         stream.write_all(CRLF.as_bytes())?;
     }
@@ -434,7 +431,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
     }
     Ok(r)
 }
-fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Option<&'static str>) {
+fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     if None == r.get_method() {
         return http_error!(RESPONSE_405);
     }
@@ -455,11 +452,16 @@ fn dispatch(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Opt
             }
         };
         result.push_str(CRLF);
-        (RESPONSE_200, Contents::String(result), Some(MIME_PLAIN.1))
+        (
+            RESPONSE_200,
+            Contents::String(result),
+            Some(MIME_PLAIN.1),
+            None,
+        )
     } else if r.get_resource().ends_with(CGI_EXT) {
         do_cgi(r)
     } else if r.get_resource().ends_with(LISP_EXT) {
-        do_scm(r, env)
+        do_scm(r, env, id)
     } else {
         static_contents(r.get_resource())
     };
@@ -478,7 +480,7 @@ fn set_path_security(path: &mut PathBuf, filename: &str) {
         path.push(s);
     }
 }
-fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
+fn static_contents(filename: &str) -> WebResult {
     let path = make_path!(filename);
     let file = match File::open(path) {
         Ok(file) => file,
@@ -498,6 +500,7 @@ fn static_contents<'a>(filename: &str) -> (&'a str, Contents, Option<&'a str>) {
             length: meta.len(),
         }),
         Some(get_mime(filename)),
+        None,
     )
 }
 fn get_mime(filename: &str) -> &'static str {
@@ -515,7 +518,7 @@ fn get_mime(filename: &str) -> &'static str {
         DEFALUT_MIME
     }
 }
-fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
+fn do_cgi(r: &Request) -> WebResult {
     let path = make_path!(r.get_resource());
     let mut cgi = match Command::new(path)
         .arg(r.get_parameter())
@@ -529,9 +532,9 @@ fn do_cgi(r: &Request) -> (&'static str, Contents, Option<&'static str>) {
     let stdin = cgi.stdin.as_mut().unwrap();
     stdin.write_all(r.get_body().as_bytes()).unwrap();
     stdin.write_all(b"\n").unwrap();
-    (RESPONSE_200, Contents::Cgi(cgi), None)
+    (RESPONSE_200, Contents::Cgi(cgi), None, None)
 }
-fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Option<&'static str>) {
+fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     let path = make_path!(r.get_resource());
 
     let load_file = format!("(load-file {:#?})", path);
@@ -557,15 +560,18 @@ fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Optio
     } else {
         String::from("")
     };
+    let (sid, new) = get_session_id(r, id);
 
     let lisp = format!(
-        "((lambda () ({}::do-web-application #({:#?} {} {} {:#?}))))",
+        "((lambda () ({}::do-web-application #({:#?} {} {} {:#?} {:#?}))))",
         f,
         method,
         r.get_lisp_header(),
         r.get_lisp_param(),
         r.get_resource(),
+        r.get_protocol(),
     );
+
     let result = match lisp::do_core_logic(&lisp, &env) {
         Ok(v) => v,
         Err(e) => {
@@ -573,9 +579,68 @@ fn do_scm(r: &Request, env: lisp::Environment) -> (&'static str, Contents, Optio
             return http_value_error!(RESPONSE_500, e.get_msg());
         }
     };
+    let cookie = if new { Some(sid) } else { None };
+    parse_lisp_result(result, env, cookie)
+}
+fn get_session_id(r: &Request, id: usize) -> (String, bool) {
+    for e in r.get_headers() {
+        if e.starts_with("Cookie:") && e.contains(SESSION_ID) {
+            // Cookie: RUST-ELISP-SID=RE-1641713444-1
+            let s = "Cookie: RUST-ELISP-SID=";
+            if e.contains(s) {
+                return (e[s.len()..].to_string(), false);
+            }
+        }
+    }
+    let session_id = format!("RE-{}-{}", Utc::now().timestamp(), id);
+    (session_id, true)
+}
+fn parse_lisp_result(
+    exp: lisp::Expression,
+    env: lisp::Environment,
+    cookie: Option<String>,
+) -> WebResult {
+    let l = match lisp::eval(&exp, &env) {
+        Ok(v) => match v {
+            lisp::Expression::Vector(l) => l,
+            _ => return http_error!(RESPONSE_500),
+        },
+        Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
+    };
+    let l = &*(elisp::referlence_list!(l));
+    if l.len() != buildin::RESPONSE_COLUMNS {
+        return http_error!(RESPONSE_500);
+    }
+
+    let status = match lisp::eval(&l[0], &env) {
+        Ok(v) => match v {
+            lisp::Expression::Integer(i) => i,
+            _ => return http_error!(RESPONSE_500),
+        },
+        Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
+    };
+
+    let mime = match lisp::eval(&l[1], &env) {
+        Ok(v) => match v {
+            lisp::Expression::String(s) => s,
+            _ => return http_error!(RESPONSE_500),
+        },
+        Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
+    };
     (
-        RESPONSE_200,
-        Contents::String(result.to_string()),
-        Some(MIME_PLAIN.1),
+        get_status(status),
+        Contents::String(l[2].to_string()),
+        Some(get_mime(&(".".to_owned() + &mime))),
+        cookie,
     )
+}
+fn get_status(status: i64) -> Response {
+    match status as u32 {
+        200 => RESPONSE_200,
+        400 => RESPONSE_400,
+        404 => RESPONSE_404,
+        405 => RESPONSE_405,
+        500 => RESPONSE_500,
+        _ => RESPONSE_500,
+    }
 }

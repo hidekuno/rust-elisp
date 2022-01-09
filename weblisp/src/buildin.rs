@@ -19,7 +19,8 @@ use lisp::Error;
 use lisp::Expression;
 use lisp::ResultExpression;
 
-const DATA_COLUMNS: usize = 4;
+const REQUEST_COLUMNS: usize = 5;
+pub const RESPONSE_COLUMNS: usize = 3;
 
 pub fn build_lisp_function(env: &Environment) {
     //--------------------------------------------------------
@@ -41,10 +42,22 @@ pub fn build_lisp_function(env: &Environment) {
     env.add_builtin_ext_func("web-get-parameter", |exp, env| get_key_value(exp, env, 2));
 
     //--------------------------------------------------------
-    // get method
+    // get resource
     // ex. (web-get-resource request)
     //--------------------------------------------------------
     env.add_builtin_ext_func("web-get-resource", |exp, env| get_value(exp, env, 3));
+
+    //--------------------------------------------------------
+    // get protocol
+    // ex. (web-get-protocol request)
+    //--------------------------------------------------------
+    env.add_builtin_ext_func("web-get-protocol", |exp, env| get_value(exp, env, 4));
+
+    //--------------------------------------------------------
+    // create response
+    // ex. (web-create-response status mime data)
+    //--------------------------------------------------------
+    env.add_builtin_ext_func("web-create-response", create_response);
 }
 fn get_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpression {
     if exp.len() != 2 {
@@ -55,7 +68,7 @@ fn get_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpress
         e => return Err(create_error_value!(ErrCode::E1022, e)),
     };
     let l = &*(referlence_list!(l));
-    if l.len() != DATA_COLUMNS {
+    if l.len() != REQUEST_COLUMNS {
         return Err(create_error!(ErrCode::E1021));
     }
     match &l[idx] {
@@ -76,7 +89,7 @@ fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExp
         e => return Err(create_error_value!(ErrCode::E1022, e)),
     };
     let l = &*(referlence_list!(l));
-    if l.len() != DATA_COLUMNS {
+    if l.len() != REQUEST_COLUMNS {
         return Err(create_error!(ErrCode::E1021));
     }
     let l = match &l[idx] {
@@ -102,6 +115,26 @@ fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExp
     }
     Ok(Expression::Nil())
 }
+fn create_response(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != RESPONSE_COLUMNS + 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let status = match lisp::eval(&exp[1], env)? {
+        Expression::Integer(i) => i,
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
+    };
+
+    let mime = match lisp::eval(&exp[2], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+
+    Ok(Environment::create_vector(vec![
+        Expression::Integer(status),
+        Expression::String(mime),
+        lisp::eval(&exp[3], env)?,
+    ]))
+}
 #[cfg(test)]
 fn do_lisp_env(program: &str, env: &Environment) -> String {
     match elisp::lisp::do_core_logic(program, env) {
@@ -122,7 +155,9 @@ fn create_data<'a>() -> &'a str {
 #(\"GET\"
   (list (cons \"Host\" \"www.mukogawa.or.jp\")(cons \"User-Agent\" \"rust\"))
   (list (cons \"Value1\" \"10\")(cons \"Value2\" \"20\"))
-  \"/test.scm\")
+  \"/test.scm\"
+  \"HTTP/1.0\"
+)
 "
 }
 
@@ -141,6 +176,12 @@ mod tests {
         let env = init();
         let lisp = format!("(web-get-resource {})", create_data());
         assert_eq!(do_lisp_env(&lisp, &env), "\"/test.scm\"");
+    }
+    #[test]
+    fn web_get_protocol() {
+        let env = init();
+        let lisp = format!("(web-get-protocol {})", create_data());
+        assert_eq!(do_lisp_env(&lisp, &env), "\"HTTP/1.0\"");
     }
     #[test]
     fn web_get_header() {
@@ -162,6 +203,15 @@ mod tests {
         let lisp = format!("(web-get-parameter \"No-Data\" {})", create_data());
         assert_eq!(do_lisp_env(&lisp, &env), "nil");
     }
+
+    #[test]
+    fn web_create_response() {
+        let env = init();
+        assert_eq!(
+            do_lisp_env("(web-create-response 200 \"txt\" 10)", &env),
+            "#(200 \"txt\" 10)"
+        );
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -175,7 +225,7 @@ mod error_tests {
         assert_eq!(do_lisp_env("(web-get-method 10)", &env), "E1022");
         assert_eq!(do_lisp_env("(web-get-method #(10))", &env), "E1021");
         assert_eq!(
-            do_lisp_env("(web-get-method #(10 10 10 10))", &env),
+            do_lisp_env("(web-get-method #(10 10 10 10 10))", &env),
             "E1005"
         );
     }
@@ -195,19 +245,22 @@ mod error_tests {
             "E1021"
         );
         assert_eq!(
-            do_lisp_env("(web-get-header \"User-Agent\" #(1 (list 10) 10 10))", &env),
+            do_lisp_env(
+                "(web-get-header \"User-Agent\" #(1 (list 10) 10 10 10))",
+                &env
+            ),
             "E1005"
         );
         assert_eq!(
             do_lisp_env(
-                "(web-get-header \"User-Agent\" #(1 (list (cons 10 20)) 10 10))",
+                "(web-get-header \"User-Agent\" #(1 (list (cons 10 20)) 10 10 10))",
                 &env
             ),
             "E1015"
         );
         assert_eq!(
             do_lisp_env(
-                "(web-get-header \"User-Agent\" #(1 (list (cons \"User-Agent\" 20)) 10 10))",
+                "(web-get-header \"User-Agent\" #(1 (list (cons \"User-Agent\" 20)) 10 10 10))",
                 &env
             ),
             "E1015"
@@ -229,19 +282,22 @@ mod error_tests {
             "E1021"
         );
         assert_eq!(
-            do_lisp_env("(web-get-parameter \"Value1\" #(1 10 (list 10) 10))", &env),
+            do_lisp_env(
+                "(web-get-parameter \"Value1\" #(1 10 (list 10) 10 10))",
+                &env
+            ),
             "E1005"
         );
         assert_eq!(
             do_lisp_env(
-                "(web-get-parameter \"Value1\" #(1 10 (list (cons 10 20)) 10))",
+                "(web-get-parameter \"Value1\" #(1 10 (list (cons 10 20)) 10 10))",
                 &env
             ),
             "E1015"
         );
         assert_eq!(
             do_lisp_env(
-                "(web-get-parameter \"Value1\" #(1 10 (list (cons \"Value1\" 20)) 10))",
+                "(web-get-parameter \"Value1\" #(1 10 (list (cons \"Value1\" 20)) 10 10))",
                 &env
             ),
             "E1015"
@@ -255,8 +311,32 @@ mod error_tests {
         assert_eq!(do_lisp_env("(web-get-resource 10)", &env), "E1022");
         assert_eq!(do_lisp_env("(web-get-resource #(10))", &env), "E1021");
         assert_eq!(
-            do_lisp_env("(web-get-resource #(10 10 10 10))", &env),
+            do_lisp_env("(web-get-resource #(10 10 10 10 10))", &env),
             "E1005"
+        );
+    }
+    #[test]
+    fn web_get_protocol() {
+        let env = init();
+        assert_eq!(do_lisp_env("(web-get-protocol)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-get-protocol 1 3)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-get-protocol 10)", &env), "E1022");
+        assert_eq!(do_lisp_env("(web-get-protocol #(10))", &env), "E1021");
+        assert_eq!(
+            do_lisp_env("(web-get-protocol #(10 10 10 10 10))", &env),
+            "E1005"
+        );
+    }
+    #[test]
+    fn web_create_response() {
+        let env = init();
+        assert_eq!(do_lisp_env("(web-create-response)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-create-response 1 2 3 4)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-create-response #\\a 2 3)", &env), "E1002");
+        assert_eq!(do_lisp_env("(web-create-response 200 2 3)", &env), "E1015");
+        assert_eq!(
+            do_lisp_env("(web-create-response 200 \"txt\" a)", &env),
+            "E1008"
         );
     }
 }
