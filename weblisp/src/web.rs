@@ -293,25 +293,24 @@ pub fn entry_proc(
     for h in &res_header {
         http_write!(stream, h);
     }
+    if let Some(cookie) = cookie {
+        let expire = Utc::now() + Duration::days(365);
+        http_write!(
+            stream,
+            format!(
+                "Set-Cookie: {}={};expires={};",
+                SESSION_ID,
+                cookie,
+                expire
+                    .format("%a, %d %h %Y %H:%M:%S GMT")
+                    .to_string()
+                    .into_boxed_str()
+            )
+        );
+    }
     if let Some(v) = mime {
         http_write!(stream, format!("Content-type: {}", v));
         http_write!(stream, format!("Content-length: {}", contents.len()));
-
-        if let Some(cookie) = cookie {
-            let expire = Utc::now() + Duration::days(365);
-            http_write!(
-                stream,
-                format!(
-                    "Set-Cookie: {}={};expires={};",
-                    SESSION_ID,
-                    cookie,
-                    expire
-                        .format("%a, %d %h %Y %H:%M:%S GMT")
-                        .to_string()
-                        .into_boxed_str()
-                )
-            );
-        }
         stream.write_all(CRLF.as_bytes())?;
     }
     let head = is_head_method!(r);
@@ -537,9 +536,11 @@ fn do_cgi(r: &Request) -> WebResult {
 fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     let path = make_path!(r.get_resource());
 
-    let load_file = format!("(load-file {:#?})", path);
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(e) => return http_value_error!(RESPONSE_500, e),
+    };
     let path = Path::new(r.get_resource());
-
     let f = match path.file_name() {
         Some(f) => match f.to_str() {
             Some(f) => f.replace(LISP_EXT, ""),
@@ -547,6 +548,11 @@ fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
         },
         None => return http_error!(RESPONSE_500),
     };
+
+    let mut load_file = String::new();
+    if file.read_to_string(&mut load_file).is_err() {
+        return http_error!(RESPONSE_500);
+    }
     match lisp::do_core_logic(&load_file, &env) {
         Ok(_) => {}
         Err(e) => {
@@ -560,16 +566,17 @@ fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     } else {
         String::from("")
     };
-    let (sid, new) = get_session_id(r, id);
+    let (sid, first) = get_session_id(r, id);
 
     let lisp = format!(
-        "((lambda () ({}::do-web-application #({:#?} {} {} {:#?} {:#?}))))",
+        "((lambda () ({}::main #({:#?} {} {} {:#?} {:#?}) {:#?})))",
         f,
         method,
         r.get_lisp_header(),
         r.get_lisp_param(),
         r.get_resource(),
         r.get_protocol(),
+        sid,
     );
 
     let result = match lisp::do_core_logic(&lisp, &env) {
@@ -579,7 +586,7 @@ fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
             return http_value_error!(RESPONSE_500, e.get_msg());
         }
     };
-    let cookie = if new { Some(sid) } else { None };
+    let cookie = if first { Some(sid) } else { None };
     parse_lisp_result(result, env, cookie)
 }
 fn get_session_id(r: &Request, id: usize) -> (String, bool) {

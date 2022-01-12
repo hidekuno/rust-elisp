@@ -64,6 +64,10 @@ where
     b.regist("identity", identity);
     b.regist("get-environment-variable", get_env);
     b.regist("native-endian", native_endian);
+    b.regist("undefined?", |exp, env| {
+        is_type(exp, env, Expression::is_undefined)
+    });
+    b.regist("undefined", undefined);
 }
 pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -153,6 +157,12 @@ fn native_endian(exp: &[Expression], _env: &Environment) -> ResultExpression {
         return Ok(Expression::Symbol("little-endian".to_string()));
     }
     Err(create_error!(ErrCode::E9999))
+}
+pub fn undefined(exp: &[Expression], _env: &Environment) -> ResultExpression {
+    if exp.len() != 1 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    Ok(Expression::Nil())
 }
 #[cfg(test)]
 mod tests {
@@ -323,6 +333,15 @@ mod tests {
             assert_eq!(do_lisp("(native-endian)"), "big-endian");
         }
     }
+    #[test]
+    fn undefined_bool() {
+        assert_eq!(do_lisp("(undefined? (if #t (display 1)(display 2)))"), "#t");
+        assert_eq!(do_lisp("(undefined? 90)"), "#f");
+    }
+    #[test]
+    fn undefined() {
+        assert_eq!(do_lisp("(undefined)"), "nil");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -463,5 +482,15 @@ mod error_tests {
     #[test]
     fn native_endian() {
         assert_eq!(do_lisp("(native-endian 1)"), "E1007");
+    }
+    #[test]
+    fn undefined_bool() {
+        assert_eq!(do_lisp("(undefined?)"), "E1007");
+        assert_eq!(do_lisp("(undefined? (list 1)(list 2))"), "E1007");
+        assert_eq!(do_lisp("(undefined? a)"), "E1008");
+    }
+    #[test]
+    fn undefined() {
+        assert_eq!(do_lisp("(undefined 1)"), "E1007");
     }
 }

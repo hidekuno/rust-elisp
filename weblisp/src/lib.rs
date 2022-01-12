@@ -4,6 +4,7 @@
    ref) https://doc.rust-jp.rs/book/second-edition/ch20-00-final-project-a-web-server.html
 
    ex) cargo test --lib -- --test-threads=1
+   ex) cargo test --lib -- --test-threads=1 --nocapture
 
    hidekuno@gmail.com
 */
@@ -90,7 +91,7 @@ mod tests {
         }
         thread::sleep(Duration::from_millis(10));
         thread::spawn(|| {
-            if let Err(e) = run_web_service(TEST_COUNT) {
+            if let Err(e) = run_web_service(TEST_COUNT, false) {
                 eprintln!("test_case_00 fault: {:?}", e);
             }
         });
@@ -553,9 +554,11 @@ mod tests {
         }
         assert_str!("Server: Rust eLisp", iter.next());
         assert_str!("Connection: closed", iter.next());
+        if let Some(e) = iter.next() {
+            assert_str!("Set-Cookie: RUST-ELISP-SID=", Some(&e[0..27].into()))
+        }
         assert_str!("Content-type: text/plain", iter.next());
         assert_str!("Content-length: 18", iter.next());
-        iter.next();
         iter.next();
         assert_str!("\"Hello,World rust\"", iter.next());
     }
@@ -563,7 +566,7 @@ mod tests {
     fn test_case_90() {
         thread::sleep(Duration::from_millis(30));
         thread::spawn(|| {
-            if let Err(e) = run_web_service(1024) {
+            if let Err(e) = run_web_service(1024, false) {
                 eprintln!("test_case_16 fault: {:?}", e);
             }
         });

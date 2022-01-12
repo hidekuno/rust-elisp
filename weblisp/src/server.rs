@@ -25,6 +25,7 @@ use std::time::Duration;
 use log::{debug, error, info, warn};
 
 pub const MAX_TRANSACTION: usize = 1000;
+pub const DEFAULT_NONBLOK: bool = true;
 const MAX_CONCURRENCY: usize = 4;
 const READ_TIMEOUT: u64 = 60;
 
@@ -34,32 +35,51 @@ pub const BIND_ADDRESS: &str = "127.0.0.1:9000";
 #[cfg(feature = "all-interface")]
 pub const BIND_ADDRESS: &str = "0.0.0.0:9000";
 
-pub fn run_web_service(count: usize) -> Result<(), Box<dyn Error>> {
-    let listenner = TcpListener::bind(BIND_ADDRESS)?;
-    listenner.set_nonblocking(false)?;
+pub fn run_web_service(count: usize, nonblock: bool) -> Result<(), Box<dyn Error>> {
+    let listener = TcpListener::bind(BIND_ADDRESS)?;
+    listener.set_nonblocking(nonblock)?;
 
     let pool = ThreadPool::new(MAX_CONCURRENCY);
     let env = lisp::Environment::new();
     buildin::build_lisp_function(&env);
 
-    for stream in listenner.incoming().take(count) {
-        match stream {
-            Ok(stream) => {
-                let env = env.clone();
-                pool.execute(|id| {
-                    handle_connection(stream, env, id);
-                });
+    if nonblock {
+        loop {
+            match listener.accept() {
+                Ok((socket, addr)) => {
+                    info!("{}", addr);
+                    let env = env.clone();
+                    pool.execute(|id| {
+                        handle_connection(socket, env, id);
+                    });
+                }
+                Err(e) => {
+                    if e.kind() != ErrorKind::WouldBlock {
+                        error!("accept fault: {:?}", e);
+                        break;
+                    }
+                    // listener.set_nonblocking(true)
+                    thread::sleep(Duration::from_secs(1));
+                }
             }
-            Err(ref e) => {
-                if e.kind() != ErrorKind::WouldBlock {
+        }
+    } else {
+        for stream in listener.incoming().take(count) {
+            match stream {
+                Ok(stream) => {
+                    let env = env.clone();
+                    pool.execute(|id| {
+                        handle_connection(stream, env, id);
+                    });
+                }
+                Err(ref e) => {
                     error!("take fault: {:?}", e);
                     break;
                 }
-                // listenner.set_nonblocking(true)
-                thread::sleep(Duration::from_secs(1));
             }
         }
     }
+
     Ok(())
 }
 fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
