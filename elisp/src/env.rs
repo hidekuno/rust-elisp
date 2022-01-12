@@ -87,6 +87,15 @@ impl SimpleEnv {
             mut_env!(p).update(key, exp)
         }
     }
+    #[cfg(feature = "thread")]
+    pub fn regist_root(&mut self, key: String, exp: Expression) {
+        match &self.parent {
+            Some(p) => referlence_env!(p).regist_root(key, exp),
+            None => {
+                self.env_tbl.insert(key, exp);
+            }
+        }
+    }
 }
 #[test]
 fn global_tbl() {

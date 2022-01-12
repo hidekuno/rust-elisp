@@ -8,6 +8,7 @@
 */
 extern crate elisp;
 
+use chrono::Utc;
 use elisp::create_error;
 use elisp::create_error_value;
 use elisp::lisp;
@@ -18,6 +19,7 @@ use lisp::ErrCode;
 use lisp::Error;
 use lisp::Expression;
 use lisp::ResultExpression;
+use std::vec::Vec;
 
 const REQUEST_COLUMNS: usize = 5;
 pub const RESPONSE_COLUMNS: usize = 3;
@@ -58,6 +60,24 @@ pub fn build_lisp_function(env: &Environment) {
     // ex. (web-create-response status mime data)
     //--------------------------------------------------------
     env.add_builtin_ext_func("web-create-response", create_response);
+
+    //--------------------------------------------------------
+    // set session
+    // ex. (web-set-session sid data)
+    //--------------------------------------------------------
+    env.add_builtin_ext_func("web-set-session", set_session);
+
+    //--------------------------------------------------------
+    // create response
+    // ex. (web-create-response sid)
+    //--------------------------------------------------------
+    env.add_builtin_ext_func("web-get-session", get_session);
+
+    //--------------------------------------------------------
+    // debug log
+    // ex. (web-debug-log exp)
+    //--------------------------------------------------------
+    env.add_builtin_ext_func("web-debug", log_debug);
 }
 fn get_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpression {
     if exp.len() != 2 {
@@ -135,6 +155,48 @@ fn create_response(exp: &[Expression], env: &Environment) -> ResultExpression {
         lisp::eval(&exp[3], env)?,
     ]))
 }
+fn set_session(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let key = match lisp::eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let value = lisp::eval(&exp[2], env)?;
+
+    if env.find(&key).is_some() {
+        env.update(&key, value);
+    } else {
+        env.regist_root(key.to_string(), value);
+    }
+    Ok(Expression::String(key))
+}
+fn get_session(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let key = match lisp::eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    match env.find(&key) {
+        Some(e) => Ok(e),
+        None => Ok(Environment::create_list(Vec::new())),
+    }
+}
+fn log_debug(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let value = lisp::eval(&exp[1], env)?;
+    println!(
+        "SCM-DEBUG [{}]: {}",
+        Utc::now().to_string(),
+        value.to_string()
+    );
+    Ok(Expression::Nil())
+}
 #[cfg(test)]
 fn do_lisp_env(program: &str, env: &Environment) -> String {
     match elisp::lisp::do_core_logic(program, env) {
@@ -211,6 +273,28 @@ mod tests {
             do_lisp_env("(web-create-response 200 \"txt\" 10)", &env),
             "#(200 \"txt\" 10)"
         );
+    }
+    #[test]
+    fn web_set_session() {
+        let env = init();
+        assert_eq!(
+            do_lisp_env("(web-set-session \"RE-1641717077-3\" 10)", &env),
+            "\"RE-1641717077-3\""
+        );
+    }
+    #[test]
+    fn web_get_session() {
+        let env = init();
+        do_lisp_env("(web-set-session \"RE-1641717077-3\" 20)", &env);
+        assert_eq!(
+            do_lisp_env("(web-get-session \"RE-1641717077-3\")", &env),
+            "20"
+        );
+    }
+    #[test]
+    fn web_debug() {
+        let env = init();
+        assert_eq!(do_lisp_env("(web-debug 10)", &env), "nil");
     }
 }
 #[cfg(test)]
@@ -338,5 +422,27 @@ mod error_tests {
             do_lisp_env("(web-create-response 200 \"txt\" a)", &env),
             "E1008"
         );
+    }
+    #[test]
+    fn web_set_session() {
+        let env = init();
+        assert_eq!(do_lisp_env("(web-set-session 1)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-set-session 1 2 3)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-set-session 10 3)", &env), "E1015");
+        assert_eq!(do_lisp_env("(web-set-session \"a\" a)", &env), "E1008");
+    }
+    #[test]
+    fn web_get_session() {
+        let env = init();
+        assert_eq!(do_lisp_env("(web-get-session)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-get-session 1 2)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-get-session 10)", &env), "E1015");
+    }
+    #[test]
+    fn web_debug() {
+        let env = init();
+        assert_eq!(do_lisp_env("(web-debug)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-debug 10 10)", &env), "E1007");
+        assert_eq!(do_lisp_env("(web-get-session a)", &env), "E1008");
     }
 }

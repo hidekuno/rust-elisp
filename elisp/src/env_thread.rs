@@ -98,6 +98,9 @@ impl Environment {
     pub fn regist(&self, key: String, exp: Expression) {
         self.core.lock().unwrap().regist(key, exp);
     }
+    pub fn regist_root(&self, key: String, exp: Expression) {
+        self.core.lock().unwrap().regist_root(key, exp);
+    }
     #[inline]
     pub fn find(&self, key: &str) -> Option<Expression> {
         self.core.lock().unwrap().find(key)

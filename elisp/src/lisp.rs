@@ -292,6 +292,9 @@ impl Expression {
     pub fn is_boolean(exp: &Expression) -> bool {
         matches!(exp, Expression::Boolean(_))
     }
+    pub fn is_undefined(exp: &Expression) -> bool {
+        matches!(exp, Expression::Nil())
+    }
     pub fn to_number(x: &Expression) -> Result<Number, Error> {
         match x {
             Expression::Float(v) => Ok(Number::Float(*v)),

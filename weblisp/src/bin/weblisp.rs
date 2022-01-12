@@ -3,6 +3,9 @@
    This is prototype program mini scheme subset what porting from go-scheme.
    ref) https://doc.rust-jp.rs/book/second-edition/ch20-00-final-project-a-web-server.html
 
+   ex) RUST_LOG=info cargo run --bin weblisp
+   ex) RUST_LOG=debug cargo run --bin weblisp
+
    hidekuno@gmail.com
 */
 extern crate weblisp;
@@ -51,7 +54,7 @@ fn main() {
         return;
     };
 
-    if let Err(e) = run_web_service(t) {
+    if let Err(e) = run_web_service(t, server::DEFAULT_NONBLOK) {
         error!("main fault: {:?}", e);
     }
 }
