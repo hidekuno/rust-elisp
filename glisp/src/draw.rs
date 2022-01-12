@@ -209,6 +209,7 @@ pub fn draw_clear(draw_table: &DrawTable) {
 // ----------------------------------------------------------------
 // create new cairo from imagetable, and draw line
 // ----------------------------------------------------------------
+#[allow(unused_variables)]
 pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine {
     let surface = draw_table.get_default_surface();
     let cr = Context::new(&*surface).unwrap();
@@ -216,7 +217,9 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
 
     let draw_table = draw_table.clone();
 
+    #[cfg(feature = "animation")]
     let count = RefCell::new(0);
+
     let draw_line = move |x0, y0, x1, y1| {
         let fg = &draw_table.core.borrow().fg;
         cr.set_source_rgb(fg.red, fg.green, fg.blue);
