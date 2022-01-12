@@ -46,6 +46,7 @@ use gdk_pixbuf::Pixbuf;
 use std::cell::RefCell;
 use std::fs::File;
 use std::rc::Rc;
+const REDRAW_TIMES: usize = 10;
 
 pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
@@ -66,7 +67,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // ex. (draw-line 0.0 0.0 1.0 1.0)
     // ex. (draw-line (cons 0.0 0.0) (cons 1.0 1.0))
     //--------------------------------------------------------
-    regist_draw_line("draw-line", env, create_draw_line(draw_table, 1));
+    regist_draw_line("draw-line", env, create_draw_line(draw_table, REDRAW_TIMES));
 
     //--------------------------------------------------------
     // Draw Image (draw-image image xorg yorg x0 y0 x1 y1)
