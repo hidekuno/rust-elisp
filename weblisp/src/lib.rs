@@ -51,12 +51,7 @@ mod tests {
         };
     }
     fn make_config(count: usize) -> Config {
-        parse_arg(&vec![
-            "--limit".to_string(),
-            "-c".to_string(),
-            count.to_string(),
-        ])
-        .unwrap()
+        parse_arg(&["--limit".to_string(), "-c".to_string(), count.to_string()]).unwrap()
     }
     fn web_test_client(msg: &[&str], vec: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
         let requst = msg.join(CRLF);

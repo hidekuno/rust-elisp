@@ -16,7 +16,7 @@ pub const BIND_ADDRESS: &str = "127.0.0.1:9000";
 #[cfg(feature = "all-interface")]
 pub const BIND_ADDRESS: &str = "0.0.0.0:9000";
 
-pub const MAX_TRANSACTION: usize = 10000;
+pub const MAX_TRANSACTION: usize = 1000;
 pub const DEFAULT_NONBLOK: bool = false;
 pub const MAX_CONCURRENCY: usize = 4;
 
@@ -28,8 +28,9 @@ const THREAD_MAX_PARAM: &str = "-m";
 const TRANSACTION_MAX_PARAM: &str = "-c";
 
 #[derive(Debug, Clone)]
-struct InvalidOptionError;
-
+struct InvalidOptionError {
+    _line: u32,
+}
 impl Display for InvalidOptionError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "invalid option")
@@ -40,7 +41,11 @@ impl Error for InvalidOptionError {
         None
     }
 }
-
+macro_rules! create_error {
+    () => {
+        Box::new(InvalidOptionError { _line: line!() })
+    };
+}
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum OperationMode {
     Limit,
@@ -64,12 +69,12 @@ impl ParamParse {
     fn parse_number(arg: &str, max: usize) -> Result<usize, Box<dyn Error>> {
         let n = match arg.parse::<usize>() {
             Ok(n) => n,
-            Err(_) => return Err(Box::new(InvalidOptionError {})),
+            Err(_) => return Err(create_error!()),
         };
-        if 0 < n && n <= max {
+        if 0 < n && n <= (max * 2) {
             Ok(n)
         } else {
-            Err(Box::new(InvalidOptionError {}))
+            Err(create_error!())
         }
     }
 }
@@ -108,7 +113,7 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
     let mut config = Config::new();
     let mut mode_count = 0;
     let mut option_status = OptionStatus(false, false);
-
+    println!("{:?}", args);
     for arg in args {
         match parse {
             ParamParse::Off => {
@@ -130,21 +135,21 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
                     parse = ParamParse::TransactionMaxOn;
                     option_status.1 = true;
                 } else {
-                    return Err(Box::new(InvalidOptionError {}));
+                    return Err(create_error!());
                 }
-            }
-            ParamParse::TransactionMaxOn => {
-                if ParamParse::check_option(arg) {
-                    return Err(Box::new(InvalidOptionError {}));
-                }
-                config.transaction_max = ParamParse::parse_number(arg, MAX_TRANSACTION)?;
-                parse = ParamParse::Off;
             }
             ParamParse::ThreadMaxOn => {
                 if ParamParse::check_option(arg) {
-                    return Err(Box::new(InvalidOptionError {}));
+                    return Err(create_error!());
                 }
                 config.thread_max = ParamParse::parse_number(arg, MAX_CONCURRENCY)?;
+                parse = ParamParse::Off;
+            }
+            ParamParse::TransactionMaxOn => {
+                if ParamParse::check_option(arg) {
+                    return Err(create_error!());
+                }
+                config.transaction_max = ParamParse::parse_number(arg, MAX_TRANSACTION)?;
                 parse = ParamParse::Off;
             }
         }
@@ -154,7 +159,77 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
         || (config.mode != OperationMode::Limit && option_status.1)
         || (config.mode != OperationMode::ThreadPool && config.nonblock)
     {
-        return Err(Box::new(InvalidOptionError {}));
+        return Err(create_error!());
     }
     Ok(config)
+}
+#[test]
+fn test_parse_arg_01() {
+    let vec: Vec<String> = Vec::new();
+    let config = parse_arg(&vec).unwrap();
+
+    assert_eq!(config.mode, OperationMode::ThreadPool);
+    assert!(!config.nonblock);
+    assert_eq!(config.thread_max, MAX_CONCURRENCY);
+    assert_eq!(config.transaction_max, MAX_TRANSACTION);
+}
+#[test]
+fn test_parse_arg_02() {
+    let args = vec!["--nb"];
+    let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
+
+    assert_eq!(config.mode, OperationMode::ThreadPool);
+    assert!(config.nonblock);
+    assert_eq!(config.thread_max, MAX_CONCURRENCY);
+    assert_eq!(config.transaction_max, MAX_TRANSACTION);
+}
+#[test]
+fn test_parse_arg_03() {
+    let args = vec!["--limit"];
+    let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
+
+    assert_eq!(config.mode, OperationMode::Limit);
+    assert!(!config.nonblock);
+    assert_eq!(config.thread_max, MAX_CONCURRENCY);
+    assert_eq!(config.transaction_max, MAX_TRANSACTION);
+}
+#[test]
+fn test_parse_arg_04() {
+    let args = vec!["--tp"];
+    let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
+
+    assert_eq!(config.mode, OperationMode::ThreadPool);
+    assert!(!config.nonblock);
+    assert_eq!(config.thread_max, MAX_CONCURRENCY);
+    assert_eq!(config.transaction_max, MAX_TRANSACTION);
+}
+#[test]
+fn test_parse_arg_05() {
+    let args = vec!["--epoll"];
+    let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
+
+    assert_eq!(config.mode, OperationMode::Epoll);
+    assert!(!config.nonblock);
+    assert_eq!(config.thread_max, MAX_CONCURRENCY);
+    assert_eq!(config.transaction_max, MAX_TRANSACTION);
+}
+#[test]
+fn test_parse_arg_06() {
+    let args = vec!["-m", "8"];
+    let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
+
+    assert_eq!(config.mode, OperationMode::ThreadPool);
+    assert!(!config.nonblock);
+    assert_eq!(config.thread_max, 8);
+    assert_eq!(config.transaction_max, MAX_TRANSACTION);
+}
+#[test]
+fn test_parse_arg_07() {
+    let args = vec!["--limit", "-c", "2000"];
+    let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
+
+    assert_eq!(config.mode, OperationMode::Limit);
+    assert!(!config.nonblock);
+    assert_eq!(config.thread_max, MAX_CONCURRENCY);
+    assert_eq!(config.transaction_max, 2000);
 }
