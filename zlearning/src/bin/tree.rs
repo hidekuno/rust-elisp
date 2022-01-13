@@ -21,7 +21,9 @@ use visitor::ItemVisitor;
 use visitor::LineItemVisitor;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let config = parse_arg(env::args().collect())?;
+    let args: Vec<String> = env::args().collect();
+    let config = parse_arg(&args[1..])?;
+
     let cache = create_tree(&config)?;
 
     if let Some(top) = cache.top {
