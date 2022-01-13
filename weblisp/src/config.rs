@@ -113,7 +113,7 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
     let mut config = Config::new();
     let mut mode_count = 0;
     let mut option_status = OptionStatus(false, false);
-    println!("{:?}", args);
+
     for arg in args {
         match parse {
             ParamParse::Off => {
@@ -232,4 +232,121 @@ fn test_parse_arg_07() {
     assert!(!config.nonblock);
     assert_eq!(config.thread_max, MAX_CONCURRENCY);
     assert_eq!(config.transaction_max, 2000);
+}
+#[test]
+fn test_parse_arg_err_01() {
+    let args = vec!["--hoge"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_02() {
+    let args = vec!["--limit", "--tp"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_03() {
+    let args = vec!["--tp", "--epoll"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_04() {
+    let args = vec!["--epoll", "--limit"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_05() {
+    let args = vec!["--epoll", "-m", "2"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_06() {
+    let args = vec!["--epoll", "-c", "2"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_07() {
+    let args = vec!["--epoll", "--nb"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_08() {
+    let args = vec!["--tp", "-m", "a"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_09() {
+    let args = vec!["--tp", "-m", "-1"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_10() {
+    let args = vec!["--tp", "-m", "10"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_11() {
+    let args = vec!["--limit", "-c", "a"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_12() {
+    let args = vec!["--limit", "-c", "-1"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
+}
+#[test]
+fn test_parse_arg_err_13() {
+    let args = vec!["--limit", "-c", "100000"];
+
+    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
+        Ok(_) => panic!("test fail"),
+        Err(e) => assert_eq!(e.to_string(), "invalid option"),
+    }
 }
