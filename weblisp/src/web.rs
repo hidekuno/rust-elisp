@@ -16,13 +16,13 @@ use elisp::lisp;
 
 use chrono::Duration;
 use chrono::Utc;
+use mio::net::TcpStream;
 use std::env;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::net::TcpStream;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};

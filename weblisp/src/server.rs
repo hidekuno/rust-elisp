@@ -9,8 +9,11 @@
 extern crate elisp;
 
 use crate::buildin;
-use crate::concurrency::ThreadPool;
+use crate::concurrency;
+use crate::config;
 use crate::web;
+
+use concurrency::ThreadPool;
 use elisp::lisp;
 
 use std::error::Error;
@@ -21,29 +24,26 @@ use std::net::TcpStream;
 use std::thread;
 use std::time::Duration;
 
+use config::Config;
+use config::OperationMode;
+use config::BIND_ADDRESS;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-pub const MAX_TRANSACTION: usize = 1000;
-pub const DEFAULT_NONBLOK: bool = true;
-const MAX_CONCURRENCY: usize = 4;
 const READ_TIMEOUT: u64 = 60;
-
-#[cfg(not(feature = "all-interface"))]
-pub const BIND_ADDRESS: &str = "127.0.0.1:9000";
-
-#[cfg(feature = "all-interface")]
-pub const BIND_ADDRESS: &str = "0.0.0.0:9000";
-
-pub fn run_web_service(count: usize, nonblock: bool) -> Result<(), Box<dyn Error>> {
+pub fn run_web_service(config: Config) -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind(BIND_ADDRESS)?;
-    listener.set_nonblocking(nonblock)?;
 
-    let pool = ThreadPool::new(MAX_CONCURRENCY);
+    if config.is_nonblock() {
+        listener.set_nonblocking(true)?;
+    }
+
+    let pool = ThreadPool::new(config.thread_max());
     let env = lisp::Environment::new();
     buildin::build_lisp_function(&env);
 
-    if nonblock {
+    if config.mode() == OperationMode::ThreadPool {
         loop {
             match listener.accept() {
                 Ok((socket, addr)) => {
@@ -59,12 +59,14 @@ pub fn run_web_service(count: usize, nonblock: bool) -> Result<(), Box<dyn Error
                         break;
                     }
                     // listener.set_nonblocking(true)
-                    thread::sleep(Duration::from_secs(1));
+                    if config.is_nonblock() {
+                        thread::sleep(Duration::from_secs(1));
+                    }
                 }
             }
         }
     } else {
-        for stream in listener.incoming().take(count) {
+        for stream in listener.incoming().take(config.transaction_max()) {
             match stream {
                 Ok(stream) => {
                     let env = env.clone();
@@ -79,7 +81,6 @@ pub fn run_web_service(count: usize, nonblock: bool) -> Result<(), Box<dyn Error
             }
         }
     }
-
     Ok(())
 }
 fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
@@ -104,7 +105,7 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
             }
         }
     }
-    if let Err(e) = web::entry_proc(stream, env, &buffer, id) {
+    if let Err(e) = web::entry_proc(mio::net::TcpStream::from_std(stream), env, &buffer, id) {
         error!("core proc {}", e);
     }
 }

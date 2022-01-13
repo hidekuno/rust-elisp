@@ -8,23 +8,30 @@
 
    hidekuno@gmail.com
 */
+extern crate env_logger;
 extern crate weblisp;
 
-use server::run_web_service;
+use weblisp::config;
+use weblisp::epoll;
 use weblisp::server;
 
-use std::env;
-extern crate env_logger;
+use config::parse_arg;
+use config::OperationMode;
+use epoll::run_web_epoll_service;
+use server::run_web_service;
 
 use chrono::Local;
 use env_logger::Builder;
+use std::env;
+use std::error::Error;
 use std::io::Write;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
+    let config = parse_arg(&args[1..])?;
 
     let mut builder = Builder::from_default_env();
     builder
@@ -45,16 +52,17 @@ fn main() {
         })
         .init();
 
-    let t = if args.len() < 2 {
-        server::MAX_TRANSACTION
-    } else if let Ok(n) = args[1].parse::<usize>() {
-        n
-    } else {
-        error!("bad paramemter: {}", args[1]);
-        return;
-    };
-
-    if let Err(e) = run_web_service(t, server::DEFAULT_NONBLOK) {
-        error!("main fault: {:?}", e);
+    match config.mode() {
+        OperationMode::ThreadPool | OperationMode::Limit => {
+            if let Err(e) = run_web_service(config) {
+                error!("main fault: {:?}", e);
+            }
+        }
+        OperationMode::Epoll => {
+            if let Err(e) = run_web_epoll_service() {
+                error!("main fault: {:?}", e);
+            }
+        }
     }
+    Ok(())
 }
