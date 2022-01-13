@@ -28,14 +28,14 @@ const THREAD_MAX_PARAM: &str = "-m";
 const TRANSACTION_MAX_PARAM: &str = "-c";
 
 #[derive(Debug, Clone)]
-struct IvalidOptionError;
+struct InvalidOptionError;
 
-impl Display for IvalidOptionError {
+impl Display for InvalidOptionError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "ivalid option")
+        write!(f, "invalid option")
     }
 }
-impl Error for IvalidOptionError {
+impl Error for InvalidOptionError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         None
     }
@@ -64,12 +64,12 @@ impl ParamParse {
     fn parse_number(arg: &str, max: usize) -> Result<usize, Box<dyn Error>> {
         let n = match arg.parse::<usize>() {
             Ok(n) => n,
-            Err(_) => return Err(Box::new(IvalidOptionError {})),
+            Err(_) => return Err(Box::new(InvalidOptionError {})),
         };
         if 0 < n && n <= max {
             Ok(n)
         } else {
-            Err(Box::new(IvalidOptionError {}))
+            Err(Box::new(InvalidOptionError {}))
         }
     }
 }
@@ -130,21 +130,21 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
                     parse = ParamParse::TransactionMaxOn;
                     option_status.1 = true;
                 } else {
-                    return Err(Box::new(IvalidOptionError {}));
+                    return Err(Box::new(InvalidOptionError {}));
                 }
             }
             ParamParse::TransactionMaxOn => {
                 if ParamParse::check_option(arg) {
-                    return Err(Box::new(IvalidOptionError {}));
+                    return Err(Box::new(InvalidOptionError {}));
                 }
-                config.transaction_max = ParamParse::parse_number(arg, MAX_CONCURRENCY)?;
+                config.transaction_max = ParamParse::parse_number(arg, MAX_TRANSACTION)?;
                 parse = ParamParse::Off;
             }
             ParamParse::ThreadMaxOn => {
                 if ParamParse::check_option(arg) {
-                    return Err(Box::new(IvalidOptionError {}));
+                    return Err(Box::new(InvalidOptionError {}));
                 }
-                config.thread_max = ParamParse::parse_number(arg, MAX_TRANSACTION)?;
+                config.thread_max = ParamParse::parse_number(arg, MAX_CONCURRENCY)?;
                 parse = ParamParse::Off;
             }
         }
@@ -154,7 +154,7 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
         || (config.mode != OperationMode::Limit && option_status.1)
         || (config.mode != OperationMode::ThreadPool && config.nonblock)
     {
-        return Err(Box::new(IvalidOptionError {}));
+        return Err(Box::new(InvalidOptionError {}));
     }
     Ok(config)
 }
