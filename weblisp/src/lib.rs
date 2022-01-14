@@ -26,7 +26,7 @@ mod tests {
     use std::time::Duration;
 
     use crate::config;
-    use crate::server::run_web_service;
+    use crate::server::run_web_limit_service;
     use crate::web::CRLF;
     use crate::web::PROTOCOL;
     use config::parse_arg;
@@ -101,7 +101,7 @@ mod tests {
         }
         thread::sleep(Duration::from_millis(10));
         thread::spawn(|| {
-            if let Err(e) = run_web_service(make_config(TEST_COUNT)) {
+            if let Err(e) = run_web_limit_service(make_config(TEST_COUNT)) {
                 eprintln!("test_case_00 fault: {:?}", e);
             }
         });
@@ -576,7 +576,7 @@ mod tests {
     fn test_case_90() {
         thread::sleep(Duration::from_millis(30));
         thread::spawn(|| {
-            if let Err(e) = run_web_service(make_config(1024)) {
+            if let Err(e) = run_web_limit_service(make_config(1024)) {
                 eprintln!("test_case_90 fault: {:?}", e);
             }
         });

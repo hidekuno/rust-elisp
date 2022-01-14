@@ -25,13 +25,13 @@ use std::thread;
 use std::time::Duration;
 
 use config::Config;
-use config::OperationMode;
 use config::BIND_ADDRESS;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
 const READ_TIMEOUT: u64 = 60;
+
 pub fn run_web_service(config: Config) -> Result<(), Box<dyn Error>> {
     let listener = TcpListener::bind(BIND_ADDRESS)?;
 
@@ -43,48 +43,53 @@ pub fn run_web_service(config: Config) -> Result<(), Box<dyn Error>> {
     let env = lisp::Environment::new();
     buildin::build_lisp_function(&env);
 
-    if config.mode() == OperationMode::ThreadPool {
-        loop {
-            match listener.accept() {
-                Ok((stream, addr)) => {
-                    info!("{}", addr);
+    loop {
+        match listener.accept() {
+            Ok((stream, addr)) => {
+                info!("{}", addr);
 
-                    let env = env.clone();
-                    pool.execute(|id| {
-                        handle_connection(stream, env, id);
-                    });
-                }
-                Err(e) => {
-                    if e.kind() != ErrorKind::WouldBlock {
-                        error!("accept fault: {:?}", e);
-                        break;
-                    }
-                    // listener.set_nonblocking(true)
-                    if config.is_nonblock() {
-                        thread::sleep(Duration::from_secs(1));
-                    }
-                }
+                let env = env.clone();
+                pool.execute(|id| {
+                    handle_connection(stream, env, id);
+                });
             }
-        }
-    } else if config.mode() == OperationMode::Limit {
-        // It's only testing.
-        // ex) cargo test --lib -- --test-threads=1
-        for stream in listener.incoming().take(config.transaction_max()) {
-            match stream {
-                Ok(stream) => {
-                    let env = env.clone();
-                    pool.execute(|id| {
-                        handle_connection(stream, env, id);
-                    });
-                }
-                Err(ref e) => {
-                    error!("take fault: {:?}", e);
+            Err(e) => {
+                if e.kind() != ErrorKind::WouldBlock {
+                    error!("accept fault: {:?}", e);
                     break;
                 }
+                // listener.set_nonblocking(true)
+                if config.is_nonblock() {
+                    thread::sleep(Duration::from_secs(1));
+                }
             }
         }
-    } else {
-        error!("not reachable");
+    }
+    Ok(())
+}
+pub fn run_web_limit_service(config: Config) -> Result<(), Box<dyn Error>> {
+    // It's only testing.
+    // ex) cargo test --lib -- --test-threads=1
+
+    let listener = TcpListener::bind(BIND_ADDRESS)?;
+
+    let pool = ThreadPool::new(config.thread_max());
+    let env = lisp::Environment::new();
+    buildin::build_lisp_function(&env);
+
+    for stream in listener.incoming().take(config.transaction_max()) {
+        match stream {
+            Ok(stream) => {
+                let env = env.clone();
+                pool.execute(|id| {
+                    handle_connection(stream, env, id);
+                });
+            }
+            Err(ref e) => {
+                error!("take fault: {:?}", e);
+                break;
+            }
+        }
     }
     Ok(())
 }

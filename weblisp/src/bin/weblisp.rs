@@ -18,6 +18,7 @@ use weblisp::server;
 use config::parse_arg;
 use config::OperationMode;
 use epoll::run_web_epoll_service;
+use server::run_web_limit_service;
 use server::run_web_service;
 
 use chrono::Local;
@@ -53,14 +54,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     match config.mode() {
-        OperationMode::ThreadPool | OperationMode::Limit => {
+        OperationMode::ThreadPool => {
             if let Err(e) = run_web_service(config) {
+                error!("run_web_service fault: {:?}", e);
+                return Err(e);
+            }
+        }
+        OperationMode::Limit => {
+            if let Err(e) = run_web_limit_service(config) {
                 error!("main fault: {:?}", e);
+                return Err(e);
             }
         }
         OperationMode::Epoll => {
             if let Err(e) = run_web_epoll_service() {
-                error!("main fault: {:?}", e);
+                error!("run_web_limit_service fault: {:?}", e);
+                return Err(e);
             }
         }
     }
