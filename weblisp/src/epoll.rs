@@ -41,6 +41,7 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
     buildin::build_lisp_function(&env);
 
     let mut connections = HashMap::new();
+    let mut requests = HashMap::new();
     let mut id: usize = 1;
     loop {
         poll.poll(&mut events, None)?;
@@ -64,7 +65,22 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                     if event.is_readable() {
                         let mut stream = connections.remove(&conn_id).unwrap();
                         poll.registry().deregister(&mut stream)?;
-                        handle_connection(stream, env.clone(), conn_id);
+
+                        let buffer = handle_connection(&stream);
+
+                        poll.registry().register(
+                            &mut stream,
+                            Token(conn_id),
+                            Interest::WRITABLE,
+                        )?;
+                        requests.insert(conn_id, (stream, buffer));
+                    } else if event.is_writable() {
+                        let (mut stream, buffer) = requests.remove(&conn_id).unwrap();
+                        poll.registry().deregister(&mut stream)?;
+
+                        if let Err(e) = web::entry_proc(stream, env.clone(), &buffer, conn_id) {
+                            error!("entry_proc {}", e);
+                        }
                     }
                 }
             }
@@ -74,9 +90,7 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
         }
     }
 }
-fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
-    // read() is Not Good.(because it's not detected EOF)
-    // I try read_to_end() and read_exact(), But it was NG
+fn handle_connection(mut stream: &TcpStream) -> [u8; 2048] {
     let mut buffer = [0; 2048];
     loop {
         match stream.read(&mut buffer) {
@@ -88,11 +102,8 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
             }
             Err(e) => {
                 error!("read {}", e);
-                return;
             }
         }
     }
-    if let Err(e) = web::entry_proc(stream, env, &buffer, id) {
-        error!("entry_proc {}", e);
-    }
+    buffer
 }
