@@ -12,6 +12,7 @@ pub mod buildin;
 pub mod concurrency;
 pub mod config;
 pub mod epoll;
+pub mod lisp;
 pub mod server;
 pub mod web;
 
