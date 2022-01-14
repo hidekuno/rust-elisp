@@ -127,8 +127,8 @@ fn get_session_id(r: &Request, id: usize) -> (String, bool) {
     for e in r.get_headers() {
         if e.starts_with("Cookie:") && e.contains(SESSION_ID) {
             // Cookie: RUST-ELISP-SID=RE-1641713444-1
-            let s = "Cookie: RUST-ELISP-SID=";
-            if e.contains(s) {
+            let s = format!("Cookie: {}=", SESSION_ID);
+            if e.contains(&s) {
                 return (e[s.len()..].to_string(), false);
             }
         }
