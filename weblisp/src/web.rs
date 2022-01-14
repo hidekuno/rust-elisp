@@ -22,8 +22,9 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{ChildStdout, Command, Stdio};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -45,7 +46,7 @@ pub const MIME_PNG: MimeType = MimeType("png", "image/png");
 pub const DEFALUT_MIME: &str = "application/octet-stream";
 pub const SESSION_ID: &str = "RUST-ELISP-SID";
 pub const LISP_EXT: &str = ".scm";
-pub type WebResult = (Response, Contents, Option<&'static str>, Option<String>);
+pub type WebResult = (Response, Contents, String, Option<String>);
 
 const CGI_EXT: &str = ".cgi";
 const LISP: &str = "/lisp";
@@ -84,7 +85,7 @@ macro_rules! http_error {
         (
             $c,
             Contents::String(String::from($c.1) + CRLF),
-            Some(MIME_PLAIN.1),
+            MIME_PLAIN.1.to_string(),
             None,
         )
     };
@@ -101,7 +102,7 @@ macro_rules! http_value_error {
                 file!(),
                 line!()
             )),
-            Some(MIME_PLAIN.1),
+            MIME_PLAIN.1.to_string(),
             None,
         )
     };
@@ -215,7 +216,7 @@ pub struct WebFile {
 pub enum Contents {
     String(String),
     File(WebFile),
-    Cgi(Child),
+    Cgi(BufReader<ChildStdout>),
 }
 impl Contents {
     fn http_write(&mut self, stream: &mut TcpStream) {
@@ -230,15 +231,8 @@ impl Contents {
                     print_error!("copy", e);
                 }
             }
-            Contents::Cgi(cgi) => {
-                let out = match cgi.stdout.as_mut() {
-                    Some(out) => out,
-                    None => {
-                        error!("as_mut err");
-                        return;
-                    }
-                };
-                if let Err(e) = io::copy(out, stream) {
+            Contents::Cgi(v) => {
+                if let Err(e) = io::copy(v, stream) {
                     print_error!("copy", e);
                 }
             }
@@ -248,6 +242,7 @@ impl Contents {
         match self {
             Contents::String(v) => v.len(),
             Contents::File(v) => v.length as usize,
+
             // unknown size
             Contents::Cgi(_) => 0,
         }
@@ -307,13 +302,15 @@ pub fn entry_proc(
             )
         );
     }
-    if let Some(v) = mime {
-        http_write!(stream, format!("Content-type: {}", v));
+
+    http_write!(stream, format!("Content-type: {}", mime));
+    if contents.len() != 0 {
         http_write!(stream, format!("Content-length: {}", contents.len()));
-        stream.write_all(CRLF.as_bytes())?;
     }
+
     let head = is_head_method!(r);
     if !head {
+        stream.write_all(CRLF.as_bytes())?;
         contents.http_write(&mut stream);
     }
     stream.flush()?;
@@ -478,7 +475,7 @@ fn static_contents(filename: &str) -> WebResult {
             file,
             length: meta.len(),
         }),
-        Some(get_mime(filename)),
+        get_mime(filename).to_string(),
         None,
     )
 }
@@ -511,7 +508,50 @@ fn do_cgi(r: &Request) -> WebResult {
     let stdin = cgi.stdin.as_mut().unwrap();
     stdin.write_all(r.get_body().as_bytes()).unwrap();
     stdin.write_all(b"\n").unwrap();
-    (RESPONSE_200, Contents::Cgi(cgi), None, None)
+
+    let out = match cgi.stdout {
+        Some(out) => out,
+        None => return http_error!(RESPONSE_500),
+    };
+    let mut br = BufReader::new(out);
+
+    // Max 2 lines
+    // It's Support for Content-Type, Status,
+    // It's Not support Location, etc..
+    let (content_type, status) = {
+        let mut content_type: Option<String> = None;
+        let mut status: Option<String> = None;
+
+        for _ in 1..=3 {
+            let mut guess = String::new();
+            if br.read_line(&mut guess).is_err() {
+                return http_error!(RESPONSE_500);
+            }
+            if guess == "" {
+                break;
+            }
+            if guess.starts_with("Content-Type: ") {
+                content_type = Some(guess["Content-Type: ".len()..].trim().to_owned())
+            }
+            if guess.starts_with("Status: ") {
+                status = Some(guess["Status: ".len()..].trim().to_owned())
+            }
+        }
+        (content_type, status)
+    };
+
+    let mime = match content_type {
+        Some(n) => n,
+        None => DEFALUT_MIME.to_string(),
+    };
+    let response = match status {
+        Some(n) => match n.parse::<i64>() {
+            Ok(n) => get_status(n),
+            Err(_) => return http_error!(RESPONSE_500),
+        },
+        None => RESPONSE_200,
+    };
+    (response, Contents::Cgi(br), mime, None)
 }
 pub fn get_status(status: i64) -> Response {
     match status as u32 {

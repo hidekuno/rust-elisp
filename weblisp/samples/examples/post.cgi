@@ -2,7 +2,8 @@
 import sys
 from os import environ
 
-print("Content-type: text/plain")
+print("Content-Type: text/plain")
+print("Status: 200")
 print("")
 
 line = sys.stdin.readline()

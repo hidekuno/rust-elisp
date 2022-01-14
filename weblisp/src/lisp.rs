@@ -63,7 +63,7 @@ pub fn do_repl(r: &Request, env: lisp::Environment) -> WebResult {
     (
         RESPONSE_200,
         Contents::String(result),
-        Some(MIME_PLAIN.1),
+        MIME_PLAIN.1.to_string(),
         None,
     )
 }
@@ -171,7 +171,7 @@ fn parse_lisp_result(
     (
         get_status(status),
         Contents::String(l[2].to_string()),
-        Some(get_mime(&(".".to_owned() + &mime))),
+        get_mime(&(".".to_owned() + &mime)).to_string(),
         cookie,
     )
 }
