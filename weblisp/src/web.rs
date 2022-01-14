@@ -518,27 +518,23 @@ fn do_cgi(r: &Request) -> WebResult {
     // Max 2 lines
     // It's Support for Content-Type, Status,
     // It's Not support Location, etc..
-    let (content_type, status) = {
-        let mut content_type: Option<String> = None;
-        let mut status: Option<String> = None;
-
-        for _ in 1..=3 {
-            let mut guess = String::new();
-            if br.read_line(&mut guess).is_err() {
-                return http_error!(RESPONSE_500);
-            }
-            if guess == "" {
-                break;
-            }
-            if guess.starts_with("Content-Type: ") {
-                content_type = Some(guess["Content-Type: ".len()..].trim().to_owned())
-            }
-            if guess.starts_with("Status: ") {
-                status = Some(guess["Status: ".len()..].trim().to_owned())
-            }
+    let mut content_type: Option<String> = None;
+    let mut status: Option<String> = None;
+    for _ in 1..=3 {
+        let mut line = String::new();
+        if br.read_line(&mut line).is_err() {
+            return http_error!(RESPONSE_500);
         }
-        (content_type, status)
-    };
+        if line.trim() == "" {
+            break;
+        }
+        if line.starts_with("Content-Type: ") {
+            content_type = Some(line["Content-Type: ".len()..].trim().to_owned())
+        }
+        if line.starts_with("Status: ") {
+            status = Some(line["Status: ".len()..].trim().to_owned())
+        }
+    }
 
     let mime = match content_type {
         Some(n) => n,
