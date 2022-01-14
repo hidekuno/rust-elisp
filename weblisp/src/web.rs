@@ -435,7 +435,7 @@ fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     }
     return if r.get_resource() == "/" {
         static_contents("index.html")
-    } else if r.get_resource().starts_with(LISP) {
+    } else if r.get_resource() == LISP {
         crate::lisp::do_repl(r, env)
     } else if r.get_resource().ends_with(CGI_EXT) {
         do_cgi(r)
