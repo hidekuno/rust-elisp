@@ -96,7 +96,7 @@ pub fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     };
 
     let method = if let Some(method) = r.get_method() {
-        method.as_ref().to_string()
+        method.as_str().to_string()
     } else {
         String::from("")
     };

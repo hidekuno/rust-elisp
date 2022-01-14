@@ -128,7 +128,7 @@ pub enum Method {
     Head,
 }
 impl Method {
-    pub fn as_ref(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             Method::Get => "GET",
             Method::Post => "POST",
@@ -151,12 +151,12 @@ impl PartialEq<Method> for Method {
 }
 impl PartialEq<str> for Method {
     fn eq(&self, other: &str) -> bool {
-        self.as_ref() == other
+        self.as_str() == other
     }
 }
 impl PartialEq<Method> for str {
     fn eq(&self, other: &Method) -> bool {
-        self == other.as_ref()
+        self == other.as_str()
     }
 }
 pub struct Request {
