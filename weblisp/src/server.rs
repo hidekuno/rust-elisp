@@ -46,11 +46,12 @@ pub fn run_web_service(config: Config) -> Result<(), Box<dyn Error>> {
     if config.mode() == OperationMode::ThreadPool {
         loop {
             match listener.accept() {
-                Ok((socket, addr)) => {
+                Ok((stream, addr)) => {
                     info!("{}", addr);
+
                     let env = env.clone();
                     pool.execute(|id| {
-                        handle_connection(socket, env, id);
+                        handle_connection(stream, env, id);
                     });
                 }
                 Err(e) => {
@@ -65,7 +66,9 @@ pub fn run_web_service(config: Config) -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-    } else {
+    } else if config.mode() == OperationMode::Limit {
+        // It's only testing.
+        // ex) cargo test --lib -- --test-threads=1
         for stream in listener.incoming().take(config.transaction_max()) {
             match stream {
                 Ok(stream) => {
@@ -80,6 +83,8 @@ pub fn run_web_service(config: Config) -> Result<(), Box<dyn Error>> {
                 }
             }
         }
+    } else {
+        error!("not reachable");
     }
     Ok(())
 }

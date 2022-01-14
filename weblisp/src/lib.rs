@@ -577,7 +577,7 @@ mod tests {
         thread::sleep(Duration::from_millis(30));
         thread::spawn(|| {
             if let Err(e) = run_web_service(make_config(1024)) {
-                eprintln!("test_case_16 fault: {:?}", e);
+                eprintln!("test_case_90 fault: {:?}", e);
             }
         });
     }
@@ -593,7 +593,7 @@ mod tests {
         test_skelton(&s);
 
         if let Err(e) = t.join() {
-            eprintln!("test_case_17 fault: {:?}", e);
+            eprintln!("test_case_91 fault: {:?}", e);
         }
         let iter = test_skelton(&s);
         let mut iter = iter.iter();
