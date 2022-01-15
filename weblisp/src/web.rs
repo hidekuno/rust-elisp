@@ -11,21 +11,20 @@
    hidekuno@gmail.com
 */
 extern crate elisp;
-use crate::buildin;
 use elisp::lisp;
 
 use chrono::Duration;
 use chrono::Utc;
+use mio::net::TcpStream;
 use std::env;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::net::TcpStream;
-use std::path::Path;
+use std::io::BufReader;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{ChildStdout, Command, Stdio};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
@@ -33,26 +32,24 @@ use log::{debug, error, info, warn};
 pub const PROTOCOL: &str = "HTTP/1.1";
 pub const CRLF: &str = "\r\n";
 
-struct Response(u32, &'static str);
-const RESPONSE_200: Response = Response(200, "OK");
-const RESPONSE_400: Response = Response(400, "Bad Request");
-const RESPONSE_404: Response = Response(404, "Not Found");
-const RESPONSE_405: Response = Response(405, "Method Not Allowed");
-const RESPONSE_500: Response = Response(500, "Internal Server Error");
+pub struct Response(pub u32, pub &'static str);
+pub const RESPONSE_200: Response = Response(200, "OK");
+pub const RESPONSE_400: Response = Response(400, "Bad Request");
+pub const RESPONSE_404: Response = Response(404, "Not Found");
+pub const RESPONSE_405: Response = Response(405, "Method Not Allowed");
+pub const RESPONSE_500: Response = Response(500, "Internal Server Error");
 
-struct MimeType(&'static str, &'static str);
-const MIME_PLAIN: MimeType = MimeType("txt", "text/plain");
-const MIME_HTML: MimeType = MimeType("html", "text/html");
-const MIME_PNG: MimeType = MimeType("png", "image/png");
-const DEFALUT_MIME: &str = "application/octet-stream";
+pub struct MimeType(pub &'static str, pub &'static str);
+pub const MIME_PLAIN: MimeType = MimeType("txt", "text/plain");
+pub const MIME_HTML: MimeType = MimeType("html", "text/html");
+pub const MIME_PNG: MimeType = MimeType("png", "image/png");
+pub const DEFALUT_MIME: &str = "application/octet-stream";
+pub const SESSION_ID: &str = "RUST-ELISP-SID";
+pub const LISP_EXT: &str = ".scm";
+pub type WebResult = (Response, Contents, String, Option<String>);
+
 const CGI_EXT: &str = ".cgi";
-const LISP_EXT: &str = ".scm";
-
 const LISP: &str = "/lisp";
-const LISP_PARAMNAME: &str = "expr=";
-const SESSION_ID: &str = "RUST-ELISP-SID";
-
-type WebResult = (Response, Contents, Option<&'static str>, Option<String>);
 
 #[derive(Debug)]
 struct UriParseError {
@@ -82,16 +79,18 @@ macro_rules! http_write {
         $s.write_all(CRLF.as_bytes())?;
     };
 }
+#[macro_export]
 macro_rules! http_error {
     ($c: expr) => {
         (
             $c,
             Contents::String(String::from($c.1) + CRLF),
-            Some(MIME_PLAIN.1),
+            MIME_PLAIN.1.to_string(),
             None,
         )
     };
 }
+#[macro_export]
 macro_rules! http_value_error {
     ($c: expr, $err: expr) => {
         (
@@ -103,11 +102,12 @@ macro_rules! http_value_error {
                 file!(),
                 line!()
             )),
-            Some(MIME_PLAIN.1),
+            MIME_PLAIN.1.to_string(),
             None,
         )
     };
 }
+#[macro_export]
 macro_rules! make_path {
     ($f: expr) => {{
         let mut path = match env::current_dir() {
@@ -129,14 +129,14 @@ pub enum Method {
     Head,
 }
 impl Method {
-    fn as_ref(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             Method::Get => "GET",
             Method::Post => "POST",
             Method::Head => "HEAD",
         }
     }
-    fn create(other: &str) -> Option<Method> {
+    pub fn create(other: &str) -> Option<Method> {
         match other {
             "GET" => Some(Method::Get),
             "POST" => Some(Method::Post),
@@ -152,12 +152,12 @@ impl PartialEq<Method> for Method {
 }
 impl PartialEq<str> for Method {
     fn eq(&self, other: &str) -> bool {
-        self.as_ref() == other
+        self.as_str() == other
     }
 }
 impl PartialEq<Method> for str {
     fn eq(&self, other: &Method) -> bool {
-        self == other.as_ref()
+        self == other.as_str()
     }
 }
 pub struct Request {
@@ -209,14 +209,14 @@ impl Request {
         self.get_parsed_list(self.headers.iter().map(|x| x.as_str()).collect(), ':')
     }
 }
-struct WebFile {
+pub struct WebFile {
     file: File,
     length: u64,
 }
-enum Contents {
+pub enum Contents {
     String(String),
     File(WebFile),
-    Cgi(Child),
+    Cgi(BufReader<ChildStdout>),
 }
 impl Contents {
     fn http_write(&mut self, stream: &mut TcpStream) {
@@ -231,15 +231,8 @@ impl Contents {
                     print_error!("copy", e);
                 }
             }
-            Contents::Cgi(cgi) => {
-                let out = match cgi.stdout.as_mut() {
-                    Some(out) => out,
-                    None => {
-                        error!("as_mut err");
-                        return;
-                    }
-                };
-                if let Err(e) = io::copy(out, stream) {
+            Contents::Cgi(v) => {
+                if let Err(e) = io::copy(v, stream) {
                     print_error!("copy", e);
                 }
             }
@@ -249,6 +242,7 @@ impl Contents {
         match self {
             Contents::String(v) => v.len(),
             Contents::File(v) => v.length as usize,
+
             // unknown size
             Contents::Cgi(_) => 0,
         }
@@ -308,13 +302,15 @@ pub fn entry_proc(
             )
         );
     }
-    if let Some(v) = mime {
-        http_write!(stream, format!("Content-type: {}", v));
+
+    http_write!(stream, format!("Content-type: {}", mime));
+    if contents.len() != 0 {
         http_write!(stream, format!("Content-length: {}", contents.len()));
-        stream.write_all(CRLF.as_bytes())?;
     }
+
     let head = is_head_method!(r);
     if !head {
+        stream.write_all(CRLF.as_bytes())?;
         contents.http_write(&mut stream);
     }
     stream.flush()?;
@@ -436,36 +432,17 @@ fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     }
     return if r.get_resource() == "/" {
         static_contents("index.html")
-    } else if r.get_resource().starts_with(LISP) {
-        if !r.get_parameter().starts_with(LISP_PARAMNAME) {
-            return http_error!(RESPONSE_400);
-        }
-        let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
-        let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
-            Ok(r) => r.to_string(),
-            Err(e) => {
-                if lisp::ErrCode::E9000.as_str() == e.get_code() {
-                    env.set_force_stop(false);
-                }
-                e.get_msg()
-            }
-        };
-        result.push_str(CRLF);
-        (
-            RESPONSE_200,
-            Contents::String(result),
-            Some(MIME_PLAIN.1),
-            None,
-        )
+    } else if r.get_resource() == LISP {
+        crate::lisp::do_repl(r, env)
     } else if r.get_resource().ends_with(CGI_EXT) {
         do_cgi(r)
     } else if r.get_resource().ends_with(LISP_EXT) {
-        do_scm(r, env, id)
+        crate::lisp::do_scm(r, env, id)
     } else {
         static_contents(r.get_resource())
     };
 }
-fn set_path_security(path: &mut PathBuf, filename: &str) {
+pub fn set_path_security(path: &mut PathBuf, filename: &str) {
     for s in filename.split('/') {
         if s.is_empty() {
             continue;
@@ -498,11 +475,11 @@ fn static_contents(filename: &str) -> WebResult {
             file,
             length: meta.len(),
         }),
-        Some(get_mime(filename)),
+        get_mime(filename).to_string(),
         None,
     )
 }
-fn get_mime(filename: &str) -> &'static str {
+pub fn get_mime(filename: &str) -> &'static str {
     let ext = match filename.rfind('.') {
         Some(i) => &filename[i + 1..],
         None => "",
@@ -531,117 +508,48 @@ fn do_cgi(r: &Request) -> WebResult {
     let stdin = cgi.stdin.as_mut().unwrap();
     stdin.write_all(r.get_body().as_bytes()).unwrap();
     stdin.write_all(b"\n").unwrap();
-    (RESPONSE_200, Contents::Cgi(cgi), None, None)
-}
-fn do_scm(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
-    let path = make_path!(r.get_resource());
 
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(e) => return http_value_error!(RESPONSE_500, e),
-    };
-    let path = Path::new(r.get_resource());
-    let f = match path.file_name() {
-        Some(f) => match f.to_str() {
-            Some(f) => f.replace(LISP_EXT, ""),
-            None => return http_error!(RESPONSE_500),
-        },
+    let out = match cgi.stdout {
+        Some(out) => out,
         None => return http_error!(RESPONSE_500),
     };
+    let mut br = BufReader::new(out);
 
-    let mut load_file = String::new();
-    if file.read_to_string(&mut load_file).is_err() {
-        return http_error!(RESPONSE_500);
-    }
-    match lisp::do_core_logic(&load_file, &env) {
-        Ok(_) => {}
-        Err(e) => {
-            error!("{}", e.get_msg());
-            return http_value_error!(RESPONSE_500, e.get_msg());
+    // Max 2 lines
+    // It's Support for Content-Type, Status,
+    // It's Not support Location, etc..
+    let mut content_type: Option<String> = None;
+    let mut status: Option<String> = None;
+    for _ in 1..=3 {
+        let mut line = String::new();
+        if br.read_line(&mut line).is_err() {
+            return http_error!(RESPONSE_500);
         }
-    };
-
-    let method = if let Some(method) = r.get_method() {
-        method.as_ref().to_string()
-    } else {
-        String::from("")
-    };
-    let (sid, first) = get_session_id(r, id);
-
-    let lisp = format!(
-        "((lambda () ({}::main #({:#?} {} {} {:#?} {:#?}) {:#?})))",
-        f,
-        method,
-        r.get_lisp_header(),
-        r.get_lisp_param(),
-        r.get_resource(),
-        r.get_protocol(),
-        sid,
-    );
-
-    let result = match lisp::do_core_logic(&lisp, &env) {
-        Ok(v) => v,
-        Err(e) => {
-            error!("{}", e.get_msg());
-            return http_value_error!(RESPONSE_500, e.get_msg());
+        if line.trim() == "" {
+            break;
         }
-    };
-    let cookie = if first { Some(sid) } else { None };
-    parse_lisp_result(result, env, cookie)
-}
-fn get_session_id(r: &Request, id: usize) -> (String, bool) {
-    for e in r.get_headers() {
-        if e.starts_with("Cookie:") && e.contains(SESSION_ID) {
-            // Cookie: RUST-ELISP-SID=RE-1641713444-1
-            let s = "Cookie: RUST-ELISP-SID=";
-            if e.contains(s) {
-                return (e[s.len()..].to_string(), false);
-            }
+        if line.starts_with("Content-Type: ") {
+            content_type = Some(line["Content-Type: ".len()..].trim().to_owned())
+        }
+        if line.starts_with("Status: ") {
+            status = Some(line["Status: ".len()..].trim().to_owned())
         }
     }
-    let session_id = format!("RE-{}-{}", Utc::now().timestamp(), id);
-    (session_id, true)
-}
-fn parse_lisp_result(
-    exp: lisp::Expression,
-    env: lisp::Environment,
-    cookie: Option<String>,
-) -> WebResult {
-    let l = match lisp::eval(&exp, &env) {
-        Ok(v) => match v {
-            lisp::Expression::Vector(l) => l,
-            _ => return http_error!(RESPONSE_500),
-        },
-        Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
-    };
-    let l = &*(elisp::referlence_list!(l));
-    if l.len() != buildin::RESPONSE_COLUMNS {
-        return http_error!(RESPONSE_500);
-    }
 
-    let status = match lisp::eval(&l[0], &env) {
-        Ok(v) => match v {
-            lisp::Expression::Integer(i) => i,
-            _ => return http_error!(RESPONSE_500),
-        },
-        Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
+    let mime = match content_type {
+        Some(n) => n,
+        None => DEFALUT_MIME.to_string(),
     };
-
-    let mime = match lisp::eval(&l[1], &env) {
-        Ok(v) => match v {
-            lisp::Expression::String(s) => s,
-            _ => return http_error!(RESPONSE_500),
+    let response = match status {
+        Some(n) => match n.parse::<i64>() {
+            Ok(n) => get_status(n),
+            Err(_) => return http_error!(RESPONSE_500),
         },
-        Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
+        None => RESPONSE_200,
     };
-    (
-        get_status(status),
-        Contents::String(l[2].to_string()),
-        Some(get_mime(&(".".to_owned() + &mime))),
-        cookie,
-    )
+    (response, Contents::Cgi(br), mime, None)
 }
-fn get_status(status: i64) -> Response {
+pub fn get_status(status: i64) -> Response {
     match status as u32 {
         200 => RESPONSE_200,
         400 => RESPONSE_400,

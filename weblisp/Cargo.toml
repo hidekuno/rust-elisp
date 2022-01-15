@@ -9,6 +9,7 @@ chrono = "0.4"
 elisp = { path = "../elisp", version = "0.8.5", features = ["thread"] }
 log = "*"
 env_logger = "*"
+mio = { version = "0.8", features = ["os-poll", "net"] }
 
 [features]
 all-interface = []

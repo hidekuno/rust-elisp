@@ -10,6 +10,9 @@
 */
 pub mod buildin;
 pub mod concurrency;
+pub mod config;
+pub mod epoll;
+pub mod lisp;
 pub mod server;
 pub mod web;
 
@@ -22,10 +25,14 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    use crate::server::run_web_service;
-    use crate::server::BIND_ADDRESS;
+    use crate::config;
+    use crate::server::run_web_limit_service;
     use crate::web::CRLF;
     use crate::web::PROTOCOL;
+    use config::parse_arg;
+    use config::Config;
+    use config::BIND_ADDRESS;
+
     const TEST_COUNT: usize = 22;
 
     macro_rules! make_request {
@@ -43,6 +50,9 @@ mod tests {
          $b: expr) => {
             assert!(Some(&String::from($a)) == $b)
         };
+    }
+    fn make_config(count: usize) -> Config {
+        parse_arg(&["--limit".to_string(), "-c".to_string(), count.to_string()]).unwrap()
     }
     fn web_test_client(msg: &[&str], vec: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
         let requst = msg.join(CRLF);
@@ -91,7 +101,7 @@ mod tests {
         }
         thread::sleep(Duration::from_millis(10));
         thread::spawn(|| {
-            if let Err(e) = run_web_service(TEST_COUNT, false) {
+            if let Err(e) = run_web_limit_service(make_config(TEST_COUNT)) {
                 eprintln!("test_case_00 fault: {:?}", e);
             }
         });
@@ -566,8 +576,8 @@ mod tests {
     fn test_case_90() {
         thread::sleep(Duration::from_millis(30));
         thread::spawn(|| {
-            if let Err(e) = run_web_service(1024, false) {
-                eprintln!("test_case_16 fault: {:?}", e);
+            if let Err(e) = run_web_limit_service(make_config(1024)) {
+                eprintln!("test_case_90 fault: {:?}", e);
             }
         });
     }
@@ -583,7 +593,7 @@ mod tests {
         test_skelton(&s);
 
         if let Err(e) = t.join() {
-            eprintln!("test_case_17 fault: {:?}", e);
+            eprintln!("test_case_91 fault: {:?}", e);
         }
         let iter = test_skelton(&s);
         let mut iter = iter.iter();
