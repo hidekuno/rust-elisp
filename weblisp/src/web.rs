@@ -520,7 +520,7 @@ fn do_cgi(r: &Request) -> WebResult {
     // It's Not support Location, etc..
     let mut content_type: Option<String> = None;
     let mut status: Option<String> = None;
-    for _ in 1..=3 {
+    for i in 1..=3 {
         let mut line = String::new();
         if br.read_line(&mut line).is_err() {
             return http_error!(RESPONSE_500);
@@ -530,9 +530,14 @@ fn do_cgi(r: &Request) -> WebResult {
         }
         if line.starts_with("Content-Type: ") {
             content_type = Some(line["Content-Type: ".len()..].trim().to_owned())
-        }
-        if line.starts_with("Status: ") {
+        } else if line.starts_with("Status: ") {
             status = Some(line["Status: ".len()..].trim().to_owned())
+        } else {
+            return http_error!(RESPONSE_500);
+        }
+        if i == 3 {
+            // Content-Type: a,Content-Type: b ...
+            return http_error!(RESPONSE_500);
         }
     }
 
