@@ -42,8 +42,13 @@ pub const RESPONSE_500: Response = Response(500, "Internal Server Error");
 pub struct MimeType(pub &'static str, pub &'static str);
 pub const MIME_PLAIN: MimeType = MimeType("txt", "text/plain");
 pub const MIME_HTML: MimeType = MimeType("html", "text/html");
+pub const MIME_CSS: MimeType = MimeType("css", "text/css");
+pub const MIME_JS: MimeType = MimeType("js", "text/javascript");
 pub const MIME_PNG: MimeType = MimeType("png", "image/png");
+pub const MIME_JPG: MimeType = MimeType("jpg", "image/jpeg");
+pub const MIME_GIF: MimeType = MimeType("gif", "image/gif");
 pub const DEFALUT_MIME: &str = "application/octet-stream";
+
 pub const SESSION_ID: &str = "RUST-ELISP-SID";
 pub const LISP_EXT: &str = ".scm";
 pub type WebResult = (Response, Contents, String, Option<String>);
@@ -488,8 +493,16 @@ pub fn get_mime(filename: &str) -> &'static str {
         MIME_HTML.1
     } else if ext == MIME_PLAIN.0 {
         MIME_PLAIN.1
+    } else if ext == MIME_CSS.0 {
+        MIME_CSS.1
+    } else if ext == MIME_JS.0 {
+        MIME_JS.1
     } else if ext == MIME_PNG.0 {
         MIME_PNG.1
+    } else if ext == MIME_JPG.0 {
+        MIME_JPG.1
+    } else if ext == MIME_GIF.0 {
+        MIME_GIF.1
     } else {
         DEFALUT_MIME
     }
