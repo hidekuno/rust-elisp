@@ -33,7 +33,7 @@ mod tests {
     use config::Config;
     use config::BIND_ADDRESS;
 
-    const TEST_COUNT: usize = 22;
+    const TEST_COUNT: usize = 23;
 
     macro_rules! make_request {
         ($method: expr, $resource: expr) => {
@@ -391,6 +391,29 @@ mod tests {
     #[test]
     fn test_case_15_cgi_error() {
         let r = make_request!("GET", "/examples/ng.cgi?hogehoge=hoge");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!(
+            make_response!("500", "Internal Server Error").as_str(),
+            iter.next()
+        );
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        iter.next();
+        iter.next();
+        assert_str!("Internal Server Error", iter.next());
+    }
+    #[test]
+    fn test_case_15_1_cgi_error() {
+        let r = make_request!("GET", "/examples/ng2.cgi");
         let s = vec![r.as_str()];
 
         let iter = test_skelton(&s);

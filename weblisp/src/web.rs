@@ -49,6 +49,10 @@ pub const MIME_JPG: MimeType = MimeType("jpg", "image/jpeg");
 pub const MIME_GIF: MimeType = MimeType("gif", "image/gif");
 pub const DEFALUT_MIME: &str = "application/octet-stream";
 
+static MIME_TYPES: &[MimeType] = &[
+    MIME_PLAIN, MIME_HTML, MIME_CSS, MIME_JS, MIME_PNG, MIME_JPG, MIME_GIF,
+];
+
 pub const SESSION_ID: &str = "RUST-ELISP-SID";
 pub const LISP_EXT: &str = ".scm";
 pub type WebResult = (Response, Contents, String, Option<String>);
@@ -489,28 +493,17 @@ pub fn get_mime(filename: &str) -> &'static str {
         Some(i) => &filename[i + 1..],
         None => "",
     };
-    if ext == MIME_HTML.0 {
-        MIME_HTML.1
-    } else if ext == MIME_PLAIN.0 {
-        MIME_PLAIN.1
-    } else if ext == MIME_CSS.0 {
-        MIME_CSS.1
-    } else if ext == MIME_JS.0 {
-        MIME_JS.1
-    } else if ext == MIME_PNG.0 {
-        MIME_PNG.1
-    } else if ext == MIME_JPG.0 {
-        MIME_JPG.1
-    } else if ext == MIME_GIF.0 {
-        MIME_GIF.1
-    } else {
-        DEFALUT_MIME
+    for mime in MIME_TYPES {
+        if ext == mime.0 {
+            return mime.1;
+        }
     }
+    DEFALUT_MIME
 }
 fn do_cgi(r: &Request) -> WebResult {
     let path = make_path!(r.get_resource());
     let mut cgi = match Command::new(path)
-        .arg(r.get_parameter())
+        .env("QUERY_STRING", r.get_parameter())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -541,10 +534,10 @@ fn do_cgi(r: &Request) -> WebResult {
         if line.trim() == "" {
             break;
         }
-        if line.starts_with("Content-Type: ") {
-            content_type = Some(line["Content-Type: ".len()..].trim().to_owned())
-        } else if line.starts_with("Status: ") {
-            status = Some(line["Status: ".len()..].trim().to_owned())
+        if let Some(end) = line.strip_prefix("Content-Type:") {
+            content_type = Some(end.trim().to_string())
+        } else if let Some(end) = line.strip_prefix("Status:") {
+            status = Some(end.trim().to_string())
         } else {
             return http_error!(RESPONSE_500);
         }
