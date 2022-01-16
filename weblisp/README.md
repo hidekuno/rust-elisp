@@ -23,3 +23,15 @@ cd ${HOME}
 cd rust-elisp/weblisp/samples/examples
 cargo run --bin weblisp
 ```
+
+## Run wasm
+```
+cd ${HOME}
+cd rust-elisp/weblisp
+cargo build --release --bin weblisp
+cd ../wasmlisp
+wasm-pack build --target web --out-dir web
+sh cpweb.sh
+cd web
+RUST_LOG=info ~/rust-elisp/weblisp/target/release/weblisp
+```
