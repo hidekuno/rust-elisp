@@ -33,5 +33,5 @@ cd ../wasmlisp
 wasm-pack build --target web --out-dir web
 sh cpweb.sh
 cd web
-RUST_LOG=info ~/rust-elisp/weblisp/target/release/weblisp
+RUST_LOG=info ~/rust-elisp/weblisp/target/release/weblisp --tp
 ```

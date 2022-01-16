@@ -53,6 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         })
         .init();
 
+    info!("{:?} is starting...", config.mode());
     match config.mode() {
         OperationMode::ThreadPool => {
             if let Err(e) = run_web_service(config) {

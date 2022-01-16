@@ -45,17 +45,22 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
     let mut id: usize = 1;
     loop {
         poll.poll(&mut events, None)?;
+        debug!("poll.poll");
 
         for event in events.iter() {
+            debug!("{:?}", event);
             match event.token() {
                 SERVER => match server.accept() {
                     Ok((mut stream, addr)) => {
-                        info!("{}", addr);
+                        info!("{} {}", addr, id);
                         poll.registry()
                             .register(&mut stream, Token(id), Interest::READABLE)?;
 
                         connections.insert(id, stream);
                         id += 1;
+                        if MAX_ID < id {
+                            id = 1;
+                        }
                     }
                     Err(e) => {
                         error!("accept fault: {:?}", e);
@@ -67,6 +72,7 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                         poll.registry().deregister(&mut stream)?;
 
                         let buffer = handle_connection(&stream);
+                        info!("recv done {}", conn_id);
 
                         poll.registry().register(
                             &mut stream,
@@ -81,12 +87,10 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                         if let Err(e) = web::entry_proc(stream, env.clone(), &buffer, conn_id) {
                             error!("entry_proc {}", e);
                         }
+                        info!("send done {}", conn_id);
                     }
                 }
             }
-        }
-        if MAX_ID < id {
-            id = 1;
         }
     }
 }
