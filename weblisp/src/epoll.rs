@@ -20,7 +20,7 @@ use mio::net::{TcpListener, TcpStream};
 use mio::{Events, Interest, Poll, Token};
 use std::collections::HashMap;
 use std::error::Error;
-use std::io::Read;
+use std::io::{self, Read};
 
 const SERVER: Token = Token(0);
 const MAX_ID: usize = 1000;
@@ -50,20 +50,30 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
         for event in events.iter() {
             debug!("{:?}", event);
             match event.token() {
-                SERVER => match server.accept() {
-                    Ok((mut stream, addr)) => {
-                        info!("{} {}", addr, id);
-                        poll.registry()
-                            .register(&mut stream, Token(id), Interest::READABLE)?;
+                SERVER => loop {
+                    match server.accept() {
+                        Ok((mut stream, addr)) => {
+                            info!("{} {}", addr, id);
+                            poll.registry()
+                                .register(&mut stream, Token(id), Interest::READABLE)?;
 
-                        connections.insert(id, stream);
-                        id += 1;
-                        if MAX_ID < id {
-                            id = 1;
+                            connections.insert(id, stream);
+                            id += 1;
+                            if MAX_ID < id {
+                                id = 1;
+                            }
                         }
-                    }
-                    Err(e) => {
-                        error!("accept fault: {:?}", e);
+                        Err(e) => {
+                            // If we get a `WouldBlock` error we know our
+                            // listener has no more incoming connections queued,
+                            // so we can return to polling and wait for some
+                            // more.
+                            if e.kind() == io::ErrorKind::WouldBlock {
+                                break;
+                            }
+                            error!("accept fault: {:?}", e);
+                            break;
+                        }
                     }
                 },
                 Token(conn_id) => {
@@ -96,13 +106,15 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
 }
 fn handle_connection(mut stream: &TcpStream) -> [u8; 2048] {
     let mut buffer = [0; 2048];
+
     loop {
         match stream.read(&mut buffer) {
+            Ok(0) => {
+                break;
+            }
             Ok(n) => {
                 debug!("recv datasize = {}", n);
-                if n > 0 {
-                    break;
-                }
+                break;
             }
             Err(e) => {
                 error!("read {}", e);
