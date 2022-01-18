@@ -34,8 +34,8 @@ pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc};
 pub type Environment = crate::env_single::Environment;
 
 use crate::get_ptr;
-use crate::mut_list;
-use crate::referlence_list;
+use crate::mut_obj;
+use crate::reference_obj;
 //========================================================================
 #[derive(Clone, Debug)]
 pub enum ErrCode {
@@ -319,7 +319,7 @@ impl Expression {
                     if let Expression::Vector(_) = e {
                         s.push('#');
                     }
-                    let l = &*(referlence_list!(l));
+                    let l = &*(reference_obj!(l));
                     s.push_str(Expression::list_string(&l[..]).as_str());
                 }
                 _ => {
@@ -366,11 +366,11 @@ impl ToString for Expression {
             Expression::Symbol(v) => v.to_string(),
             Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => {
-                let l = &*(referlence_list!(v));
+                let l = &*(reference_obj!(v));
                 return Expression::list_string(&l[..]);
             }
             Expression::Vector(v) => {
-                let l = &*(referlence_list!(v));
+                let l = &*(reference_obj!(v));
                 return Expression::vector_string(&l[..]);
             }
             Expression::HashTable(_) => "HashTable".into(),
@@ -476,7 +476,7 @@ impl Function {
         let mut param: Vec<String> = Vec::new();
 
         if let Expression::List(l) = &sexp[1] {
-            let l = &*(referlence_list!(l));
+            let l = &*(reference_obj!(l));
             for n in l {
                 if let Expression::Symbol(s) = n {
                     param.push(s.to_string());
@@ -565,7 +565,7 @@ impl Function {
         if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice()) {
             self.tail_recurcieve = true;
 
-            let mut l = mut_list!(l);
+            let mut l = mut_obj!(l);
             l[0] = Environment::create_tail_recursion(self.clone());
         }
     }
@@ -575,7 +575,7 @@ impl Function {
 
         for (i, e) in exp.iter().enumerate() {
             if let Expression::List(l) = e {
-                let l = &*(referlence_list!(l));
+                let l = &*(reference_obj!(l));
                 if 1 >= l.len() {
                     continue;
                 }
@@ -970,7 +970,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     } else if let Expression::List(val) = sexp {
         debug!("eval = {:?}", get_ptr!(val));
 
-        let v = &*(referlence_list!(val));
+        let v = &*(reference_obj!(val));
         if v.is_empty() {
             return Ok(sexp.clone());
         }

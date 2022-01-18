@@ -12,7 +12,7 @@ use chrono::Utc;
 use elisp::create_error;
 use elisp::create_error_value;
 use elisp::lisp;
-use elisp::referlence_list;
+use elisp::reference_obj;
 use lisp::eval;
 use lisp::Environment;
 use lisp::ErrCode;
@@ -87,7 +87,7 @@ fn get_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpress
         Expression::Vector(l) => l,
         e => return Err(create_error_value!(ErrCode::E1022, e)),
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     if l.len() != REQUEST_COLUMNS {
         return Err(create_error!(ErrCode::E1021));
     }
@@ -108,7 +108,7 @@ fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExp
         Expression::Vector(l) => l,
         e => return Err(create_error_value!(ErrCode::E1022, e)),
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     if l.len() != REQUEST_COLUMNS {
         return Err(create_error!(ErrCode::E1021));
     }
@@ -116,7 +116,7 @@ fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExp
         Expression::List(l) => l,
         e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     for v in l {
         match eval(v, env)? {
             Expression::Pair(car, cdr) => match *car {

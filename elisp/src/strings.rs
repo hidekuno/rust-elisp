@@ -9,7 +9,7 @@ use log::{debug, error, info, warn};
 
 use crate::create_error;
 use crate::create_error_value;
-use crate::referlence_list;
+use crate::reference_obj;
 
 use std::vec::Vec;
 
@@ -267,7 +267,7 @@ fn seq_string(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpr
         e => return Err(create_error_value!(err, e)),
     };
 
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     let mut v = String::new();
 
     for e in l.iter() {
@@ -403,7 +403,7 @@ fn string_join(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::List(l) => l,
         e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
 
     let s = match eval(&exp[2], env)? {
         Expression::String(s) => s,

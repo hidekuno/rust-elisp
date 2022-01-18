@@ -17,7 +17,7 @@ use crate::lisp::eval;
 use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error, Function};
 use crate::list::make_evaled_list;
-use crate::referlence_list;
+use crate::reference_obj;
 use crate::util::eqv;
 
 pub fn create_function<T>(b: &mut T)
@@ -103,7 +103,7 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Ok(Expression::Symbol(v.to_string()));
     }
     if let Expression::List(l) = &exp[1] {
-        let l = &*(referlence_list!(l));
+        let l = &*(reference_obj!(l));
         if l.is_empty() {
             return Err(create_error_value!(ErrCode::E1007, l.len()));
         }
@@ -139,7 +139,7 @@ fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = &exp[1] {
-        let l = &*(referlence_list!(l));
+        let l = &*(reference_obj!(l));
         for e in l {
             match e {
                 Expression::Symbol(_) => {}
@@ -173,10 +173,10 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut param_value_list: Vec<Expression> = vec![Expression::String(String::from("dummy"))];
 
     if let Expression::List(l) = &exp[idx] {
-        let l = &*(referlence_list!(l));
+        let l = &*(reference_obj!(l));
         for plist in l {
             if let Expression::List(p) = plist {
-                let p = &*(referlence_list!(p));
+                let p = &*(reference_obj!(p));
                 if p.len() != 2 {
                     return Err(create_error_value!(ErrCode::E1007, p.len()));
                 }
@@ -284,7 +284,7 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     for e in &exp[1..] {
         if let Expression::List(l) = e {
-            let l = &*(referlence_list!(l));
+            let l = &*(reference_obj!(l));
             let mut iter = l.iter();
 
             if let Some(e) = iter.next() {
@@ -323,7 +323,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 3 <= exp.len() {
         for e in &exp[2..] {
             if let Expression::List(l) = e {
-                let l = &*(referlence_list!(l));
+                let l = &*(reference_obj!(l));
                 if l.is_empty() {
                     continue;
                 }
@@ -339,7 +339,7 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                         }
                     }
                     Expression::List(r) => {
-                        let c = &*(referlence_list!(r));
+                        let c = &*(reference_obj!(r));
                         for e in c {
                             param[2] = eval(e, env)?;
                             if let Expression::Boolean(b) = eqv(&param, env)? {
@@ -377,7 +377,7 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if let Expression::List(l) = eval(&exp[2], env)? {
-        let l = &*(referlence_list!(l));
+        let l = &*(reference_obj!(l));
         let sexp = make_evaled_list(&exp[1], l, &None);
 
         eval(&Environment::create_list(sexp), env)
@@ -411,7 +411,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         return Err(create_error!(ErrCode::E1005));
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     if l.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, l.len()));
     }
@@ -426,7 +426,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         } else {
             return Err(create_error!(ErrCode::E1005));
         };
-        let f = &*(referlence_list!(f));
+        let f = &*(reference_obj!(f));
         if f.len() != 3 {
             return Err(create_error_value!(ErrCode::E1007, f.len()));
         }
@@ -444,7 +444,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     } else {
         return Err(create_error!(ErrCode::E1005));
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     if l.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, l.len()));
     }

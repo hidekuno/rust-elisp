@@ -23,7 +23,7 @@ pub type ListRc = Arc<RwLock<Vec<Expression>>>;
 pub type HashTableRc = Arc<RwLock<HashMap<String, Expression>>>;
 //========================================================================
 #[macro_export]
-macro_rules! referlence_list {
+macro_rules! reference_obj {
     // Arc<Mutex<Vec<Expression>>> is slowly(30%)
     //
     // ($e: expr) => {{
@@ -36,7 +36,7 @@ macro_rules! referlence_list {
     };
 }
 #[macro_export]
-macro_rules! mut_list {
+macro_rules! mut_obj {
     // Case of Arc<Mutex<Vec<Expression>>>
     //
     // ($e: expr) => {{
@@ -48,7 +48,7 @@ macro_rules! mut_list {
 }
 
 #[macro_export]
-macro_rules! referlence_env {
+macro_rules! reference_env {
     ($e: expr) => {
         $e.lock().unwrap()
     };

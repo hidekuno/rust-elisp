@@ -9,8 +9,8 @@ use log::{debug, error, info, warn};
 
 use crate::create_error;
 use crate::create_error_value;
-use crate::mut_list;
-use crate::referlence_list;
+use crate::mut_obj;
+use crate::reference_obj;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
@@ -53,7 +53,7 @@ fn hash_table_put(exp: &[Expression], env: &Environment) -> ResultExpression {
     };
     let value = eval(&exp[3], env)?;
 
-    let mut hash = mut_list!(hash);
+    let mut hash = mut_obj!(hash);
     hash.insert(key, value);
 
     Ok(Expression::Nil())
@@ -70,7 +70,7 @@ fn hash_table_get(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::Symbol(v) => v,
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
-    let hash = referlence_list!(hash);
+    let hash = reference_obj!(hash);
     if let Some(exp) = hash.get(&key) {
         Ok(exp.clone())
     } else {
@@ -89,7 +89,7 @@ fn hash_table_exists(exp: &[Expression], env: &Environment) -> ResultExpression 
         Expression::Symbol(v) => v,
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
-    let hash = referlence_list!(hash);
+    let hash = reference_obj!(hash);
 
     Ok(Expression::Boolean(hash.get(&key).is_some()))
 }
@@ -101,7 +101,7 @@ fn hash_table_size(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::HashTable(v) => v,
         e => return Err(create_error_value!(ErrCode::E1023, e)),
     };
-    let hash = referlence_list!(hash);
+    let hash = reference_obj!(hash);
 
     Ok(Expression::Integer(hash.len().try_into().unwrap()))
 }
@@ -117,7 +117,7 @@ fn hash_table_delete(exp: &[Expression], env: &Environment) -> ResultExpression 
         Expression::Symbol(v) => v,
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
-    let mut hash = mut_list!(hash);
+    let mut hash = mut_obj!(hash);
     Ok(Expression::Boolean(hash.remove(&key).is_some()))
 }
 fn hash_table_clear(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -128,7 +128,7 @@ fn hash_table_clear(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::HashTable(v) => v,
         e => return Err(create_error_value!(ErrCode::E1023, e)),
     };
-    let mut hash = mut_list!(hash);
+    let mut hash = mut_obj!(hash);
 
     hash.clear();
     Ok(Expression::Nil())
