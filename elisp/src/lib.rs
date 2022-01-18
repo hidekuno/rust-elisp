@@ -11,6 +11,7 @@ pub mod boolean;
 pub mod buildin;
 pub mod chars;
 pub mod env;
+pub mod hashtable;
 pub mod io;
 pub mod lisp;
 pub mod list;

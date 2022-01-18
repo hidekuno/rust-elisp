@@ -5,6 +5,7 @@
    hidekuno@gmail.com
 */
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -17,6 +18,7 @@ pub(crate) type EnvTable = Rc<RefCell<SimpleEnv>>;
 pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
 pub type ListRc = Rc<RefCell<Vec<Expression>>>;
+pub type HashTableRc = Rc<RefCell<HashMap<String, Expression>>>;
 
 #[macro_export]
 macro_rules! referlence_list {
@@ -77,6 +79,9 @@ impl Environment {
     }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Rc::new(RefCell::new(l)))
+    }
+    pub fn create_hash_table(h: HashMap<String, Expression>) -> Expression {
+        Expression::HashTable(Rc::new(RefCell::new(h)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Rc::new(func))
