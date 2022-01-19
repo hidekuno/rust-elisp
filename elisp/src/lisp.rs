@@ -336,7 +336,7 @@ impl Expression {
     fn vector_string(exp: &[Expression]) -> String {
         format!("#{}", Expression::list_string(exp))
     }
-    fn copy_eq(&self, other: &Self) -> bool {
+    fn eq_value(&self, other: &Self) -> bool {
         if let (Expression::Integer(x), Expression::Rational(y)) = (self, other) {
             return Number::Integer(*x) == Number::Rational(*y);
         }
@@ -377,12 +377,10 @@ impl Expression {
         false
     }
     pub fn eqv(&self, other: &Self) -> bool {
-        if Expression::copy_eq(self, other) {
+        if Expression::eq_value(self, other) {
             return true;
         }
         if let (Expression::String(a), Expression::String(b)) = (self, other) {
-            //            let a = &*a;
-            //            let b = &*b;
             if a == b {
                 return true;
             }
@@ -458,7 +456,7 @@ impl Ord for Expression {
             },
             _ => match &self {
                 Expression::String(m) => match &other {
-                    Expression::String(n) => m.cmp(&n),
+                    Expression::String(n) => m.cmp(n),
                     _ => Ordering::Less,
                 },
                 Expression::Char(m) => match &other {
@@ -477,7 +475,7 @@ impl PartialOrd for Expression {
 }
 impl PartialEq for Expression {
     fn eq(&self, other: &Self) -> bool {
-        if Expression::copy_eq(self, other) {
+        if Expression::eq_value(self, other) {
             return true;
         }
         if let (Expression::String(a), Expression::String(b)) = (self, other) {
@@ -553,7 +551,7 @@ impl Function {
         for e in &exp[1..] {
             vec.push(eval(e, env)?);
         }
-        // @@@ env.create();
+        // env.create();
         let env = Environment::with_parent(&self.closure_env);
         for (i, s) in self.param.iter().enumerate() {
             env.regist(s.to_string(), vec[i].clone());

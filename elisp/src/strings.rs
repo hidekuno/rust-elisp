@@ -206,9 +206,7 @@ fn str_length(
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => {
-            return Ok(Expression::Integer(func(s.to_string()) as Int));
-        }
+        Expression::String(s) => Ok(Expression::Integer(func(s.to_string()) as Int)),
         e => Err(create_error_value!(ErrCode::E1015, e)),
     }
 }
@@ -356,7 +354,7 @@ fn string_symbol(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     match eval(&exp[1], env)? {
         Expression::String(s) => Ok(Expression::Symbol(s.to_string())),
-        e => return Err(create_error_value!(ErrCode::E1015, e)),
+        e => Err(create_error_value!(ErrCode::E1015, e)),
     }
 }
 fn make_string(exp: &[Expression], env: &Environment) -> ResultExpression {
