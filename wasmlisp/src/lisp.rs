@@ -292,7 +292,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
                 }
             }
         }) as Box<dyn FnMut(_)>);
-        let promise = future_to_promise(get_program_file(scm));
+        let promise = future_to_promise(get_program_file(scm.to_string()));
 
         if exp.len() == 2 {
             let _promise = promise.then(&closure);
@@ -373,7 +373,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
-        ctx.set_stroke_style(&JsValue::from(color));
+        ctx.set_stroke_style(&JsValue::from(color.as_ref()));
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -389,7 +389,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
-        let js = JsValue::from(color);
+        let js = JsValue::from(color.as_ref());
         ctx.set_fill_style(&js);
         graphics.borrow_mut().bg = Some(js);
 
@@ -443,14 +443,14 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         }
         let font = if exp.len() == 5 {
             match lisp::eval(&exp[4], env)? {
-                Expression::String(s) => s,
+                Expression::String(s) => s.to_string(),
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             }
         } else {
             "bold 20px sans-serif".to_string()
         };
         //ex) "italic bold 20px sans-serif"
-        draw_string(text, prm[0], prm[1], font);
+        draw_string(text.to_string(), prm[0], prm[1], font);
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------

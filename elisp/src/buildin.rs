@@ -11,6 +11,7 @@ use crate::lisp::BasicBuiltIn;
 
 use crate::boolean;
 use crate::chars;
+use crate::hashtable;
 use crate::io;
 use crate::list;
 use crate::math;
@@ -44,6 +45,8 @@ where
     io::create_function(b);
 
     util::create_function(b);
+
+    hashtable::create_function(b);
 }
 #[cfg(test)]
 mod tests {

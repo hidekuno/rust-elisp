@@ -42,10 +42,10 @@ fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let v = eval(&exp[1], env)?;
     if let Expression::String(s) = v {
-        if !Path::new(&s).exists() {
+        if !Path::new(s.as_ref()).exists() {
             return Err(create_error!(ErrCode::E1014));
         }
-        let file = match File::open(s) {
+        let file = match File::open(s.as_ref()) {
             Err(e) => return Err(create_error_value!(ErrCode::E1014, e)),
             Ok(file) => file,
         };

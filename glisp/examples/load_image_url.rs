@@ -110,7 +110,7 @@ fn build_example_function(app: &Application) {
                 Ok(pix) => pix,
                 Err(_) => return Err(create_error!(ErrCode::E9999)),
             };
-            draw_table.regist(symbol, Rc::new(PixbufWrapper::new(pix)));
+            draw_table.regist(symbol.to_string(), Rc::new(PixbufWrapper::new(pix)));
             Ok(Expression::Nil())
         });
 }

@@ -24,18 +24,18 @@ use crate::number::Rat;
 use crate::syntax::Continuation;
 
 #[cfg(feature = "thread")]
-pub use crate::env_thread::{ExtFunctionRc, FunctionRc, ListRc};
+pub use crate::env_thread::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc, TreeMapRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
-pub use crate::env_single::{ExtFunctionRc, FunctionRc, ListRc};
+pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc, TreeMapRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
 use crate::get_ptr;
-use crate::mut_list;
-use crate::referlence_list;
+use crate::mut_obj;
+use crate::reference_obj;
 //========================================================================
 #[derive(Clone, Debug)]
 pub enum ErrCode {
@@ -65,6 +65,8 @@ pub enum ErrCode {
     E1020,
     E1021,
     E1022,
+    E1023,
+    E1024,
     E9000,
     E9002,
     E9999,
@@ -99,6 +101,8 @@ impl ErrCode {
             ErrCode::E1020 => "E1020",
             ErrCode::E1021 => "E1021",
             ErrCode::E1022 => "E1022",
+            ErrCode::E1023 => "E1023",
+            ErrCode::E1024 => "E1024",
             ErrCode::E9000 => "E9000",
             ErrCode::E9002 => "E9002",
             ErrCode::E9999 => "E9999",
@@ -140,6 +144,8 @@ lazy_static! {
         e.insert(ErrCode::E1020.as_str(), "Not Rat");
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E1022.as_str(), "Not Vector");
+        e.insert(ErrCode::E1023.as_str(), "Not HashTable");
+        e.insert(ErrCode::E1024.as_str(), "Not TreeMap");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
         e.insert(
             ErrCode::E9002.as_str(),
@@ -239,10 +245,9 @@ pub enum Expression {
     Char(char),
     Boolean(bool),
     List(ListRc),
-    Vector(ListRc),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
-    String(String),
+    String(StringRc),
     Function(FunctionRc),
     BuildInFunction(String, BasicBuiltIn),
     BuildInFunctionExt(ExtFunctionRc),
@@ -252,8 +257,17 @@ pub enum Expression {
     Promise(Box<Expression>, Environment),
     Rational(Rat),
     Continuation(Box<Continuation>),
+    Vector(ListRc),
+    HashTable(HashTableRc),
+    TreeMap(TreeMapRc),
 }
 impl Expression {
+    pub fn is_hashtable(exp: &Expression) -> bool {
+        matches!(exp, Expression::HashTable(_))
+    }
+    pub fn is_tree_map(exp: &Expression) -> bool {
+        matches!(exp, Expression::TreeMap(_))
+    }
     pub fn is_vector(exp: &Expression) -> bool {
         matches!(exp, Expression::Vector(_))
     }
@@ -312,7 +326,7 @@ impl Expression {
                     if let Expression::Vector(_) = e {
                         s.push('#');
                     }
-                    let l = &*(referlence_list!(l));
+                    let l = &*(reference_obj!(l));
                     s.push_str(Expression::list_string(&l[..]).as_str());
                 }
                 _ => {
@@ -328,6 +342,57 @@ impl Expression {
     }
     fn vector_string(exp: &[Expression]) -> String {
         format!("#{}", Expression::list_string(exp))
+    }
+    fn eq_value(&self, other: &Self) -> bool {
+        if let (Expression::Integer(x), Expression::Rational(y)) = (self, other) {
+            return Number::Integer(*x) == Number::Rational(*y);
+        }
+        if let (Expression::Rational(x), Expression::Integer(y)) = (self, other) {
+            return Number::Rational(*x) == Number::Integer(*y);
+        }
+
+        if let (Expression::Integer(a), Expression::Integer(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Float(a), Expression::Float(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Rational(a), Expression::Rational(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Char(a), Expression::Char(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Boolean(a), Expression::Boolean(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Symbol(a), Expression::Symbol(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eqv(&self, other: &Self) -> bool {
+        if Expression::eq_value(self, other) {
+            return true;
+        }
+        if let (Expression::String(a), Expression::String(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        false
     }
 }
 impl ToString for Expression {
@@ -359,14 +424,15 @@ impl ToString for Expression {
             Expression::Symbol(v) => v.to_string(),
             Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => {
-                let l = &*(referlence_list!(v));
+                let l = &*(reference_obj!(v));
                 return Expression::list_string(&l[..]);
             }
             Expression::Vector(v) => {
-                let l = &*(referlence_list!(v));
+                let l = &*(reference_obj!(v));
                 return Expression::vector_string(&l[..]);
             }
-
+            Expression::HashTable(_) => "HashTable".into(),
+            Expression::TreeMap(_) => "TreeMap".into(),
             Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
             Expression::Function(_) => "Function".into(),
             Expression::BuildInFunction(s, _) => format!("<{}> BuildIn Function", s),
@@ -405,6 +471,10 @@ impl Ord for Expression {
                     Expression::Char(n) => m.cmp(n),
                     _ => Ordering::Less,
                 },
+                Expression::Symbol(m) => match &other {
+                    Expression::Symbol(n) => m.cmp(n),
+                    _ => Ordering::Less,
+                },
                 _ => Ordering::Less,
             },
         }
@@ -417,38 +487,21 @@ impl PartialOrd for Expression {
 }
 impl PartialEq for Expression {
     fn eq(&self, other: &Self) -> bool {
-        if let (Expression::Integer(a), Expression::Integer(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Float(a), Expression::Float(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Rational(a), Expression::Rational(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
+        if Expression::eq_value(self, other) {
+            return true;
         }
         if let (Expression::String(a), Expression::String(b)) = (self, other) {
-            if a == b {
+            if get_ptr!(a) == get_ptr!(b) {
                 return true;
             }
         }
-        if let (Expression::Char(a), Expression::Char(b)) = (self, other) {
-            if a == b {
+        if let (Expression::List(a), Expression::List(b)) = (self, other) {
+            if get_ptr!(a) == get_ptr!(b) {
                 return true;
             }
         }
-        if let (Expression::Boolean(a), Expression::Boolean(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Symbol(a), Expression::Symbol(b)) = (self, other) {
-            if a == b {
+        if let (Expression::Vector(a), Expression::Vector(b)) = (self, other) {
+            if get_ptr!(a) == get_ptr!(b) {
                 return true;
             }
         }
@@ -469,7 +522,7 @@ impl Function {
         let mut param: Vec<String> = Vec::new();
 
         if let Expression::List(l) = &sexp[1] {
-            let l = &*(referlence_list!(l));
+            let l = &*(reference_obj!(l));
             for n in l {
                 if let Expression::Symbol(s) = n {
                     param.push(s.to_string());
@@ -510,7 +563,7 @@ impl Function {
         for e in &exp[1..] {
             vec.push(eval(e, env)?);
         }
-        // @@@ env.create();
+        // env.create();
         let env = Environment::with_parent(&self.closure_env);
         for (i, s) in self.param.iter().enumerate() {
             env.regist(s.to_string(), vec[i].clone());
@@ -558,7 +611,7 @@ impl Function {
         if let Some(l) = self.parse_tail_recurcieve(self.body.as_slice()) {
             self.tail_recurcieve = true;
 
-            let mut l = mut_list!(l);
+            let mut l = mut_obj!(l);
             l[0] = Environment::create_tail_recursion(self.clone());
         }
     }
@@ -568,7 +621,7 @@ impl Function {
 
         for (i, e) in exp.iter().enumerate() {
             if let Expression::List(l) = e {
-                let l = &*(referlence_list!(l));
+                let l = &*(reference_obj!(l));
                 if 1 >= l.len() {
                     continue;
                 }
@@ -930,7 +983,7 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
         Expression::Char(c[2])
     } else if (token.len() >= 2) && (token.starts_with('\"')) && (token.ends_with('\"')) {
         let s = token[1..token.len() - 1].to_string();
-        Expression::String(s)
+        Environment::create_string(s)
     } else if let Some(f) = env.get_builtin_func(token) {
         Expression::BuildInFunction(token.to_string(), f)
     } else if let Some(f) = env.get_builtin_ext_func(token) {
@@ -963,7 +1016,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     } else if let Expression::List(val) = sexp {
         debug!("eval = {:?}", get_ptr!(val));
 
-        let v = &*(referlence_list!(val));
+        let v = &*(reference_obj!(val));
         if v.is_empty() {
             return Ok(sexp.clone());
         }

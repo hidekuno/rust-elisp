@@ -95,7 +95,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 Expression::String(s) => s,
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             };
-            let mut file = match File::open(filename) {
+            let mut file = match File::open(filename.as_ref()) {
                 Ok(f) => f,
                 Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
@@ -103,7 +103,10 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 Ok(s) => s,
                 Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
-            draw_table.regist(symbol, Rc::new(ImageSurfaceWrapper::new(surface)));
+            draw_table.regist(
+                symbol.to_string(),
+                Rc::new(ImageSurfaceWrapper::new(surface)),
+            );
             Ok(Expression::Nil())
         });
     }
@@ -125,11 +128,11 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
                 Expression::String(s) => s,
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             };
-            let pix = match Pixbuf::from_file(&filename) {
+            let pix = match Pixbuf::from_file(filename.as_ref()) {
                 Ok(p) => p,
                 Err(e) => return Err(create_error_value!(ErrCode::E9999, e)),
             };
-            draw_table.regist(symbol, Rc::new(PixbufWrapper::new(pix)));
+            draw_table.regist(symbol.to_string(), Rc::new(PixbufWrapper::new(pix)));
             Ok(Expression::Nil())
         });
     }
@@ -176,7 +179,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
-        draw_string(prm[0], prm[1], prm[2], s);
+        draw_string(prm[0], prm[1], prm[2], s.to_string());
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------

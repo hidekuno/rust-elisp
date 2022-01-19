@@ -9,7 +9,7 @@ use log::{debug, error, info, warn};
 
 use crate::create_error;
 use crate::create_error_value;
-use crate::referlence_list;
+use crate::reference_obj;
 
 use std::vec::Vec;
 
@@ -151,7 +151,7 @@ fn format_f(exp: &[Expression], env: &Environment) -> ResultExpression {
             _ => return Err(create_error!(ErrCode::E1018)),
         },
     };
-    Ok(Expression::String(s))
+    Ok(Environment::create_string(s))
 }
 fn string(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -161,7 +161,7 @@ fn string(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::Char(c) => c,
         e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
-    Ok(Expression::String(c.to_string()))
+    Ok(Environment::create_string(c.to_string()))
 }
 fn strcmp(
     exp: &[Expression],
@@ -177,7 +177,7 @@ fn strcmp(
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
-        v.push(s);
+        v.push(s.to_string());
     }
     Ok(Expression::Boolean(func(&v[0], &v[1])))
 }
@@ -188,11 +188,14 @@ fn str_append(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut v = String::new();
     for e in &exp[1..] {
         match eval(e, env)? {
-            Expression::String(s) => v.push_str(&s.into_boxed_str()),
+            Expression::String(s) => {
+                let s = s.to_string();
+                v.push_str(&s.into_boxed_str());
+            }
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
     }
-    Ok(Expression::String(v))
+    Ok(Environment::create_string(v))
 }
 fn str_length(
     exp: &[Expression],
@@ -203,7 +206,7 @@ fn str_length(
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => Ok(Expression::Integer(func(s) as Int)),
+        Expression::String(s) => Ok(Expression::Integer(func(s.to_string()) as Int)),
         e => Err(create_error_value!(ErrCode::E1015, e)),
     }
 }
@@ -212,14 +215,14 @@ fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
     match v {
         Number::Integer(n) => {
             if r == 10 {
-                Ok(Expression::String(v.to_string()))
+                Ok(Environment::create_string(v.to_string()))
             } else if let Some(s) = to_str_radix(n, r) {
-                Ok(Expression::String(s))
+                Ok(Environment::create_string(s))
             } else {
-                Ok(Expression::String(v.to_string()))
+                Ok(Environment::create_string(v.to_string()))
             }
         }
-        _ => Ok(Expression::String(v.to_string())),
+        _ => Ok(Environment::create_string(v.to_string())),
     }
 }
 fn string_number(exp: &Expression, env: &Environment, r: u32) -> ResultExpression {
@@ -267,7 +270,7 @@ fn seq_string(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpr
         e => return Err(create_error_value!(err, e)),
     };
 
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
     let mut v = String::new();
 
     for e in l.iter() {
@@ -276,7 +279,7 @@ fn seq_string(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpr
             e => return Err(create_error_value!(ErrCode::E1019, e)),
         });
     }
-    Ok(Expression::String(v))
+    Ok(Environment::create_string(v))
 }
 fn string_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = string_seq(exp, env)?;
@@ -333,23 +336,24 @@ fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
     for c in &s.chars().collect::<Vec<char>>()[start..end] {
         v.push(*c);
     }
-    Ok(Expression::String(v))
+    Ok(Environment::create_string(v))
 }
 fn symbol_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    match eval(&exp[1], env)? {
-        Expression::Symbol(s) => Ok(Expression::String(s)),
-        e => Err(create_error_value!(ErrCode::E1004, e)),
-    }
+    let s = match eval(&exp[1], env)? {
+        Expression::Symbol(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1004, e)),
+    };
+    Ok(Environment::create_string(s))
 }
 fn string_symbol(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => Ok(Expression::Symbol(s)),
+        Expression::String(s) => Ok(Expression::Symbol(s.to_string())),
         e => Err(create_error_value!(ErrCode::E1015, e)),
     }
 }
@@ -373,7 +377,7 @@ fn make_string(exp: &[Expression], env: &Environment) -> ResultExpression {
     for _ in 0..n {
         s.push(c);
     }
-    Ok(Expression::String(s))
+    Ok(Environment::create_string(s))
 }
 fn string_split(exp: &[Expression], env: &Environment) -> ResultExpression {
     if 3 != exp.len() {
@@ -387,10 +391,9 @@ fn string_split(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::Char(c) => c,
         e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
-
     let v = s
         .split(c)
-        .map(|s| Expression::String(String::from(s)))
+        .map(|s| Environment::create_string(String::from(s)))
         .collect::<Vec<_>>();
 
     Ok(Environment::create_list(v))
@@ -403,7 +406,7 @@ fn string_join(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::List(l) => l,
         e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
-    let l = &*(referlence_list!(l));
+    let l = &*(reference_obj!(l));
 
     let s = match eval(&exp[2], env)? {
         Expression::String(s) => s,
@@ -418,7 +421,7 @@ fn string_join(exp: &[Expression], env: &Environment) -> ResultExpression {
         };
         v.push(s.to_string());
     }
-    Ok(Expression::String(v.join(&s)))
+    Ok(Environment::create_string(v.join(&s)))
 }
 enum StringScan {
     Left,
@@ -443,10 +446,12 @@ fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> Res
             StringScan::Left => resolv_scan(p.find(c)),
             StringScan::Right => resolv_scan(p.rfind(c)),
         }),
-        Expression::String(s) => Ok(match direct {
-            StringScan::Left => resolv_scan(p.find(&s)),
-            StringScan::Right => resolv_scan(p.rfind(&s)),
-        }),
+        Expression::String(s) => {
+            return Ok(match direct {
+                StringScan::Left => resolv_scan(p.find(s.as_ref())),
+                StringScan::Right => resolv_scan(p.rfind(s.as_ref())),
+            });
+        }
         e => Err(create_error_value!(ErrCode::E1009, e)),
     }
 }

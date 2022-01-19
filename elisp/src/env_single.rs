@@ -5,6 +5,8 @@
    hidekuno@gmail.com
 */
 use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::vec::Vec;
 
@@ -17,22 +19,25 @@ pub(crate) type EnvTable = Rc<RefCell<SimpleEnv>>;
 pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
 pub type ListRc = Rc<RefCell<Vec<Expression>>>;
+pub type HashTableRc = Rc<RefCell<HashMap<String, Expression>>>;
+pub type TreeMapRc = Rc<RefCell<BTreeMap<String, Expression>>>;
+pub type StringRc = Rc<String>;
 
 #[macro_export]
-macro_rules! referlence_list {
+macro_rules! reference_obj {
     ($e: expr) => {
         $e.borrow()
     };
 }
 #[macro_export]
-macro_rules! mut_list {
+macro_rules! mut_obj {
     ($e: expr) => {
         $e.borrow_mut()
     };
 }
 
 #[macro_export]
-macro_rules! referlence_env {
+macro_rules! reference_env {
     ($e: expr) => {
         $e.borrow()
     };
@@ -75,8 +80,17 @@ impl Environment {
     pub fn create_list(l: Vec<Expression>) -> Expression {
         Expression::List(Rc::new(RefCell::new(l)))
     }
+    pub fn create_string(s: String) -> Expression {
+        Expression::String(Rc::new(s))
+    }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Rc::new(RefCell::new(l)))
+    }
+    pub fn create_hash_table(h: HashMap<String, Expression>) -> Expression {
+        Expression::HashTable(Rc::new(RefCell::new(h)))
+    }
+    pub fn create_tree_map(m: BTreeMap<String, Expression>) -> Expression {
+        Expression::TreeMap(Rc::new(RefCell::new(m)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Rc::new(func))

@@ -21,7 +21,7 @@ use crate::env_single::EnvTable;
 use crate::env_thread::EnvTable;
 
 use crate::mut_env;
-use crate::referlence_env;
+use crate::reference_env;
 
 type Map<T, U> = std::collections::BTreeMap<T, U>;
 
@@ -75,7 +75,7 @@ impl SimpleEnv {
         match self.env_tbl.get(key) {
             Some(v) => Some(v.clone()),
             None => match self.parent {
-                Some(ref p) => referlence_env!(p).find(key),
+                Some(ref p) => reference_env!(p).find(key),
                 None => None,
             },
         }
@@ -90,7 +90,7 @@ impl SimpleEnv {
     #[cfg(feature = "thread")]
     pub fn regist_root(&mut self, key: String, exp: Expression) {
         match &self.parent {
-            Some(p) => referlence_env!(p).regist_root(key, exp),
+            Some(p) => reference_env!(p).regist_root(key, exp),
             None => {
                 self.env_tbl.insert(key, exp);
             }

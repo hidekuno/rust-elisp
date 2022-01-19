@@ -4,6 +4,8 @@
 
    hidekuno@gmail.com
 */
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
@@ -19,9 +21,12 @@ pub(crate) type EnvTable = Arc<Mutex<SimpleEnv>>;
 pub type FunctionRc = Arc<Function>;
 pub type ExtFunctionRc = Arc<ExtFunction>;
 pub type ListRc = Arc<RwLock<Vec<Expression>>>;
+pub type HashTableRc = Arc<RwLock<HashMap<String, Expression>>>;
+pub type TreeMapRc = Arc<RwLock<BTreeMap<String, Expression>>>;
+pub type StringRc = Arc<String>;
 //========================================================================
 #[macro_export]
-macro_rules! referlence_list {
+macro_rules! reference_obj {
     // Arc<Mutex<Vec<Expression>>> is slowly(30%)
     //
     // ($e: expr) => {{
@@ -34,7 +39,7 @@ macro_rules! referlence_list {
     };
 }
 #[macro_export]
-macro_rules! mut_list {
+macro_rules! mut_obj {
     // Case of Arc<Mutex<Vec<Expression>>>
     //
     // ($e: expr) => {{
@@ -46,7 +51,7 @@ macro_rules! mut_list {
 }
 
 #[macro_export]
-macro_rules! referlence_env {
+macro_rules! reference_env {
     ($e: expr) => {
         $e.lock().unwrap()
     };
@@ -89,8 +94,17 @@ impl Environment {
     pub fn create_list(l: Vec<Expression>) -> Expression {
         Expression::List(Arc::new(RwLock::new(l)))
     }
+    pub fn create_string(s: String) -> Expression {
+        Expression::String(Arc::new(s))
+    }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Arc::new(RwLock::new(l)))
+    }
+    pub fn create_hash_table(h: HashMap<String, Expression>) -> Expression {
+        Expression::HashTable(Arc::new(RwLock::new(h)))
+    }
+    pub fn create_tree_map(m: BTreeMap<String, Expression>) -> Expression {
+        Expression::TreeMap(Arc::new(RwLock::new(m)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Arc::new(func))

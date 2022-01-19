@@ -148,7 +148,7 @@ fn parse_lisp_result(
         },
         Err(e) => return http_value_error!(RESPONSE_500, e.get_msg()),
     };
-    let l = &*(elisp::referlence_list!(l));
+    let l = &*(elisp::reference_obj!(l));
     if l.len() != buildin::RESPONSE_COLUMNS {
         return http_error!(RESPONSE_500);
     }
