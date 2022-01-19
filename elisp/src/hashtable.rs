@@ -14,84 +14,153 @@ use crate::reference_obj;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, ResultExpression};
+use crate::lisp::{Environment, Expression, HashTableRc, ResultExpression};
 use crate::lisp::{ErrCode, Error};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
+trait Map<T> {
+    fn create_map() -> Expression;
+    fn get(&self, key: &str) -> ResultExpression;
+    fn insert(&mut self, key: String, exp: Expression);
+    fn remove(&mut self, key: String) -> bool;
+    fn has_key(&self, key: String) -> bool;
+    fn clear(&mut self);
+    fn get_map(exp: &Expression, env: &Environment) -> Result<T, Error>;
+}
+impl Map<HashTableRc> for HashTableRc {
+    fn create_map() -> Expression {
+        Environment::create_hash_table(HashMap::new())
+    }
+    fn insert(&mut self, key: String, exp: Expression) {
+        let mut v = mut_obj!(self);
+        v.insert(key, exp);
+    }
+    fn get(&self, key: &str) -> ResultExpression {
+        let v = &*reference_obj!(self);
+
+        if let Some(exp) = v.get(key) {
+            Ok(exp.clone())
+        } else {
+            Err(create_error!(ErrCode::E1021))
+        }
+    }
+    fn has_key(&self, key: String) -> bool {
+        let v = &*reference_obj!(self);
+        v.get(&key).is_some()
+    }
+    fn remove(&mut self, key: String) -> bool {
+        let mut v = mut_obj!(self);
+        v.remove(&key).is_some()
+    }
+    fn clear(&mut self) {
+        let mut v = mut_obj!(self);
+        v.clear();
+    }
+    fn get_map(exp: &Expression, env: &Environment) -> Result<HashTableRc, Error> {
+        match eval(exp, env)? {
+            Expression::HashTable(v) => Ok(v),
+            e => Err(create_error_value!(ErrCode::E1023, e)),
+        }
+    }
+}
 pub fn create_function<T>(b: &mut T)
 where
     T: BuildInTable + ?Sized,
 {
-    b.regist("make-hash-table", make_hash_table);
-    b.regist("hash-table-put!", hash_table_put);
-    b.regist("hash-table-get", hash_table_get);
-    b.regist("hash-table-exists?", hash_table_exists);
-    b.regist("hash-table-contains?", hash_table_exists);
+    b.regist("make-hash-table", make_map::<HashTableRc>);
+    b.regist("hash-table-put!", map_put::<HashTableRc>);
+    b.regist("hash-table-get", map_get::<HashTableRc>);
+    b.regist("hash-table-exists?", map_exists::<HashTableRc>);
+    b.regist("hash-table-contains?", map_exists::<HashTableRc>);
     b.regist("hash-table-size", hash_table_size);
-    b.regist("hash-table-delete!", hash_table_delete);
-    b.regist("hash-table-clear!", hash_table_clear);
+    b.regist("hash-table-delete!", map_delete::<HashTableRc>);
+    b.regist("hash-table-clear!", map_clear::<HashTableRc>);
 }
 
-fn make_hash_table(exp: &[Expression], _env: &Environment) -> ResultExpression {
+fn make_map<T>(exp: &[Expression], _env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
     if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    Ok(Environment::create_hash_table(HashMap::new()))
+    Ok(T::create_map())
 }
-fn hash_table_put(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn map_put<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
     if exp.len() != 4 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let hash = match eval(&exp[1], env)? {
-        Expression::HashTable(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1023, e)),
-    };
+    let mut map = T::get_map(&exp[1], env)?;
+
     let key = match eval(&exp[2], env)? {
         Expression::Symbol(v) => v,
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
     let value = eval(&exp[3], env)?;
-
-    let mut hash = mut_obj!(hash);
-    hash.insert(key, value);
+    map.insert(key, value);
 
     Ok(Expression::Nil())
 }
-fn hash_table_get(exp: &[Expression], env: &Environment) -> ResultExpression {
+fn map_get<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let hash = match eval(&exp[1], env)? {
-        Expression::HashTable(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1023, e)),
-    };
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1004, e)),
-    };
-    let hash = reference_obj!(hash);
-    if let Some(exp) = hash.get(&key) {
-        Ok(exp.clone())
-    } else {
-        Err(create_error!(ErrCode::E1021))
-    }
-}
-fn hash_table_exists(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    let hash = match eval(&exp[1], env)? {
-        Expression::HashTable(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1023, e)),
-    };
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1004, e)),
-    };
-    let hash = reference_obj!(hash);
+    let map = T::get_map(&exp[1], env)?;
 
-    Ok(Expression::Boolean(hash.get(&key).is_some()))
+    let key = match eval(&exp[2], env)? {
+        Expression::Symbol(v) => v,
+        e => return Err(create_error_value!(ErrCode::E1004, e)),
+    };
+    map.get(&key)
+}
+fn map_delete<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let mut map = T::get_map(&exp[1], env)?;
+
+    let key = match eval(&exp[2], env)? {
+        Expression::Symbol(v) => v,
+        e => return Err(create_error_value!(ErrCode::E1004, e)),
+    };
+    Ok(Expression::Boolean(map.remove(key)))
+}
+fn map_clear<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let mut map = T::get_map(&exp[1], env)?;
+    map.clear();
+
+    Ok(Expression::Nil())
+}
+fn map_exists<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let map = T::get_map(&exp[1], env)?;
+
+    let key = match eval(&exp[2], env)? {
+        Expression::Symbol(v) => v,
+        e => return Err(create_error_value!(ErrCode::E1004, e)),
+    };
+    Ok(Expression::Boolean(map.has_key(key)))
 }
 fn hash_table_size(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -104,34 +173,6 @@ fn hash_table_size(exp: &[Expression], env: &Environment) -> ResultExpression {
     let hash = reference_obj!(hash);
 
     Ok(Expression::Integer(hash.len().try_into().unwrap()))
-}
-fn hash_table_delete(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    let hash = match eval(&exp[1], env)? {
-        Expression::HashTable(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1023, e)),
-    };
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1004, e)),
-    };
-    let mut hash = mut_obj!(hash);
-    Ok(Expression::Boolean(hash.remove(&key).is_some()))
-}
-fn hash_table_clear(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
-        return Err(create_error_value!(ErrCode::E1007, exp.len()));
-    }
-    let hash = match eval(&exp[1], env)? {
-        Expression::HashTable(v) => v,
-        e => return Err(create_error_value!(ErrCode::E1023, e)),
-    };
-    let mut hash = mut_obj!(hash);
-
-    hash.clear();
-    Ok(Expression::Nil())
 }
 #[cfg(test)]
 mod tests {
