@@ -42,6 +42,9 @@ where
     b.regist("hash-table?", |exp, env| {
         is_type(exp, env, Expression::is_hashtable)
     });
+    b.regist("tree-map?", |exp, env| {
+        is_type(exp, env, Expression::is_tree_map)
+    });
     b.regist("char?", |exp, env| is_type(exp, env, Expression::is_char));
     b.regist("string?", |exp, env| {
         is_type(exp, env, Expression::is_string)
@@ -235,6 +238,11 @@ mod tests {
         assert_eq!(do_lisp("(hash-table? (vector 1))"), "#f");
     }
     #[test]
+    fn tree_map_f() {
+        assert_eq!(do_lisp("(tree-map? (make-tree-map))"), "#t");
+        assert_eq!(do_lisp("(tree-map? (vector 1))"), "#f");
+    }
+    #[test]
     fn pair_f() {
         assert_eq!(do_lisp("(pair? (cons 1 2))"), "#t");
         assert_eq!(do_lisp("(pair? 110)"), "#f");
@@ -413,6 +421,12 @@ mod error_tests {
         assert_eq!(do_lisp("(hash-table?)"), "E1007");
         assert_eq!(do_lisp("(hash-table? (vector 1)(vector 2))"), "E1007");
         assert_eq!(do_lisp("(hash-table? a)"), "E1008");
+    }
+    #[test]
+    fn tree_map_f() {
+        assert_eq!(do_lisp("(tree-map?)"), "E1007");
+        assert_eq!(do_lisp("(tree-map? (vector 1)(vector 2))"), "E1007");
+        assert_eq!(do_lisp("(tree-map? a)"), "E1008");
     }
     #[test]
     fn pair_f() {

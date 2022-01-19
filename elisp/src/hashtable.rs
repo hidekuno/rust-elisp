@@ -14,8 +14,10 @@ use crate::reference_obj;
 
 use crate::buildin::BuildInTable;
 use crate::lisp::eval;
-use crate::lisp::{Environment, Expression, HashTableRc, ResultExpression};
+use crate::lisp::{Environment, Expression, ResultExpression};
 use crate::lisp::{ErrCode, Error};
+use crate::lisp::{HashTableRc, TreeMapRc};
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -64,6 +66,42 @@ impl Map<HashTableRc> for HashTableRc {
         }
     }
 }
+impl Map<TreeMapRc> for TreeMapRc {
+    fn create_map() -> Expression {
+        Environment::create_tree_map(BTreeMap::new())
+    }
+    fn insert(&mut self, key: String, exp: Expression) {
+        let mut v = mut_obj!(self);
+        v.insert(key, exp);
+    }
+    fn get(&self, key: &str) -> ResultExpression {
+        let v = &*reference_obj!(self);
+
+        if let Some(exp) = v.get(key) {
+            Ok(exp.clone())
+        } else {
+            Err(create_error!(ErrCode::E1021))
+        }
+    }
+    fn has_key(&self, key: String) -> bool {
+        let v = &*reference_obj!(self);
+        v.get(&key).is_some()
+    }
+    fn remove(&mut self, key: String) -> bool {
+        let mut v = mut_obj!(self);
+        v.remove(&key).is_some()
+    }
+    fn clear(&mut self) {
+        let mut v = mut_obj!(self);
+        v.clear();
+    }
+    fn get_map(exp: &Expression, env: &Environment) -> Result<TreeMapRc, Error> {
+        match eval(exp, env)? {
+            Expression::TreeMap(v) => Ok(v),
+            e => Err(create_error_value!(ErrCode::E1024, e)),
+        }
+    }
+}
 pub fn create_function<T>(b: &mut T)
 where
     T: BuildInTable + ?Sized,
@@ -76,6 +114,13 @@ where
     b.regist("hash-table-size", hash_table_size);
     b.regist("hash-table-delete!", map_delete::<HashTableRc>);
     b.regist("hash-table-clear!", map_clear::<HashTableRc>);
+
+    b.regist("make-tree-map", make_map::<TreeMapRc>);
+    b.regist("tree-map-put!", map_put::<TreeMapRc>);
+    b.regist("tree-map-get", map_get::<TreeMapRc>);
+    b.regist("tree-map-exists?", map_exists::<TreeMapRc>);
+    b.regist("tree-map-delete!", map_delete::<TreeMapRc>);
+    b.regist("tree-map-clear!", map_clear::<TreeMapRc>);
 }
 
 fn make_map<T>(exp: &[Expression], _env: &Environment) -> ResultExpression
@@ -247,6 +292,61 @@ mod tests {
         assert_eq!(do_lisp_env("(hash-table-clear! a)", &env), "nil");
         assert_eq!(do_lisp_env("(hash-table-size a)", &env), "0");
     }
+    #[test]
+    fn make_tree_map() {
+        assert_eq!(do_lisp("(make-tree-map)"), "TreeMap");
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        assert_eq!(do_lisp_env("a", &env), "TreeMap");
+    }
+    #[test]
+    fn tree_map_put() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        assert_eq!(do_lisp_env("(tree-map-put! a 'abc 10)", &env), "nil");
+        assert_eq!(
+            do_lisp_env("(tree-map-put! a 'abc (list 1 2 3))", &env),
+            "nil"
+        );
+    }
+    #[test]
+    fn tree_map_get() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        do_lisp_env("(tree-map-put! a 'abc 10)", &env);
+        do_lisp_env("(tree-map-put! a 'def (list 1 2 3))", &env);
+
+        assert_eq!(do_lisp_env("(tree-map-get a 'abc)", &env), "10");
+        assert_eq!(do_lisp_env("(tree-map-get a 'def)", &env), "(1 2 3)");
+    }
+    #[test]
+    fn tree_map_exists() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        do_lisp_env("(tree-map-put! a 'abc 10)", &env);
+
+        assert_eq!(do_lisp_env("(tree-map-exists? a 'abc)", &env), "#t");
+        assert_eq!(do_lisp_env("(tree-map-exists? a 'def)", &env), "#f");
+    }
+    #[test]
+    fn tree_map_delete() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        do_lisp_env("(tree-map-put! a 'abc 10)", &env);
+        do_lisp_env("(tree-map-put! a 'def 20)", &env);
+
+        assert_eq!(do_lisp_env("(tree-map-delete! a 'abc)", &env), "#t");
+        assert_eq!(do_lisp_env("(tree-map-delete! a 'abc)", &env), "#f");
+    }
+    #[test]
+    fn tree_map_clear() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        do_lisp_env("(tree-map-put! a 'abc 10)", &env);
+        do_lisp_env("(tree-map-put! a 'def 20)", &env);
+
+        assert_eq!(do_lisp_env("(tree-map-clear! a)", &env), "nil");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -289,13 +389,6 @@ mod error_tests {
             do_lisp("(hash-table-exists? (make-hash-table) \"ABC\")"),
             "E1004"
         );
-        assert_eq!(do_lisp("(hash-table-contains?)"), "E1007");
-        assert_eq!(do_lisp("(hash-table-contains? 10 20 30)"), "E1007");
-        assert_eq!(do_lisp("(hash-table-contains? 10 20)"), "E1023");
-        assert_eq!(
-            do_lisp("(hash-table-contains? (make-hash-table) \"ABC\")"),
-            "E1004"
-        );
     }
     #[test]
     fn hash_table_size() {
@@ -318,5 +411,54 @@ mod error_tests {
         assert_eq!(do_lisp("(hash-table-clear!)"), "E1007");
         assert_eq!(do_lisp("(hash-table-clear! 10 20)"), "E1007");
         assert_eq!(do_lisp("(hash-table-clear! 10)"), "E1023");
+    }
+    #[test]
+    fn make_tree_map() {
+        assert_eq!(do_lisp("(make-tree-map 10)"), "E1007");
+    }
+    #[test]
+    fn tree_map_put() {
+        assert_eq!(do_lisp("(tree-map-put!)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-put! 10 20 30 40)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-put! 10 20 30)"), "E1024");
+        assert_eq!(
+            do_lisp("(tree-map-put! (make-tree-map) \"ABC\" 30)"),
+            "E1004"
+        );
+        assert_eq!(do_lisp("(tree-map-put! (make-tree-map) 'ABC a)"), "E1008");
+    }
+    #[test]
+    fn tree_map_get() {
+        assert_eq!(do_lisp("(tree-map-get)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-get 10 20 30)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-get 10 20)"), "E1024");
+        assert_eq!(do_lisp("(tree-map-get (make-tree-map) \"ABC\")"), "E1004");
+        assert_eq!(do_lisp("(tree-map-get (make-tree-map) 'abc)"), "E1021");
+    }
+    #[test]
+    fn tree_map_exists() {
+        assert_eq!(do_lisp("(tree-map-exists?)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-exists? 10 20 30)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-exists? 10 20)"), "E1024");
+        assert_eq!(
+            do_lisp("(tree-map-exists? (make-tree-map) \"ABC\")"),
+            "E1004"
+        );
+    }
+    #[test]
+    fn tree_map_delete() {
+        assert_eq!(do_lisp("(tree-map-delete!)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-delete! 10 20 30)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-delete! 10 20)"), "E1024");
+        assert_eq!(
+            do_lisp("(tree-map-delete! (make-tree-map) \"ABC\")"),
+            "E1004"
+        );
+    }
+    #[test]
+    fn tree_map_clear() {
+        assert_eq!(do_lisp("(tree-map-clear!)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-clear! 10 20)"), "E1007");
+        assert_eq!(do_lisp("(tree-map-clear! 10)"), "E1024");
     }
 }

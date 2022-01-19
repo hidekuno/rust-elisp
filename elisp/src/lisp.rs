@@ -24,12 +24,12 @@ use crate::number::Rat;
 use crate::syntax::Continuation;
 
 #[cfg(feature = "thread")]
-pub use crate::env_thread::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc};
+pub use crate::env_thread::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc, TreeMapRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
-pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc};
+pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc, TreeMapRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
@@ -66,6 +66,7 @@ pub enum ErrCode {
     E1021,
     E1022,
     E1023,
+    E1024,
     E9000,
     E9002,
     E9999,
@@ -101,6 +102,7 @@ impl ErrCode {
             ErrCode::E1021 => "E1021",
             ErrCode::E1022 => "E1022",
             ErrCode::E1023 => "E1023",
+            ErrCode::E1024 => "E1024",
             ErrCode::E9000 => "E9000",
             ErrCode::E9002 => "E9002",
             ErrCode::E9999 => "E9999",
@@ -143,6 +145,7 @@ lazy_static! {
         e.insert(ErrCode::E1021.as_str(), "Out Of Range");
         e.insert(ErrCode::E1022.as_str(), "Not Vector");
         e.insert(ErrCode::E1023.as_str(), "Not HashTable");
+        e.insert(ErrCode::E1024.as_str(), "Not TreeMap");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
         e.insert(
             ErrCode::E9002.as_str(),
@@ -244,6 +247,7 @@ pub enum Expression {
     List(ListRc),
     Vector(ListRc),
     HashTable(HashTableRc),
+    TreeMap(TreeMapRc),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
     String(StringRc),
@@ -260,6 +264,9 @@ pub enum Expression {
 impl Expression {
     pub fn is_hashtable(exp: &Expression) -> bool {
         matches!(exp, Expression::HashTable(_))
+    }
+    pub fn is_tree_map(exp: &Expression) -> bool {
+        matches!(exp, Expression::TreeMap(_))
     }
     pub fn is_vector(exp: &Expression) -> bool {
         matches!(exp, Expression::Vector(_))
@@ -425,6 +432,7 @@ impl ToString for Expression {
                 return Expression::vector_string(&l[..]);
             }
             Expression::HashTable(_) => "HashTable".into(),
+            Expression::TreeMap(_) => "TreeMap".into(),
             Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
             Expression::Function(_) => "Function".into(),
             Expression::BuildInFunction(s, _) => format!("<{}> BuildIn Function", s),

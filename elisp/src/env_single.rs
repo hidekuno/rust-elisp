@@ -5,6 +5,7 @@
    hidekuno@gmail.com
 */
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::vec::Vec;
@@ -19,6 +20,7 @@ pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
 pub type ListRc = Rc<RefCell<Vec<Expression>>>;
 pub type HashTableRc = Rc<RefCell<HashMap<String, Expression>>>;
+pub type TreeMapRc = Rc<RefCell<BTreeMap<String, Expression>>>;
 pub type StringRc = Rc<String>;
 
 #[macro_export]
@@ -86,6 +88,9 @@ impl Environment {
     }
     pub fn create_hash_table(h: HashMap<String, Expression>) -> Expression {
         Expression::HashTable(Rc::new(RefCell::new(h)))
+    }
+    pub fn create_tree_map(m: BTreeMap<String, Expression>) -> Expression {
+        Expression::TreeMap(Rc::new(RefCell::new(m)))
     }
     pub fn create_tail_recursion(func: Function) -> Expression {
         Expression::TailRecursion(Rc::new(func))
