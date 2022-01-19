@@ -170,7 +170,8 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     // Parameter Setup
     let mut param_list: Vec<Expression> = Vec::new();
-    let mut param_value_list: Vec<Expression> = vec![Expression::String(String::from("dummy"))];
+    let mut param_value_list: Vec<Expression> =
+        vec![Environment::create_string(String::from("dummy"))];
 
     if let Expression::List(l) = &exp[idx] {
         let l = &*(reference_obj!(l));
@@ -197,7 +198,7 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     // Setup Function
     let mut vec = vec![
-        Expression::String(name.to_string()),
+        Environment::create_string(name.to_string()),
         Environment::create_list(param_list),
     ];
     vec.extend_from_slice(&exp[idx as usize..]);

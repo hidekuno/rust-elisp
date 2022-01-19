@@ -277,7 +277,7 @@ fn delete(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = &*(reference_obj!(l));
     let mut vec = Vec::new();
     for e in l {
-        if Expression::eq(e, &other) {
+        if Expression::eqv(e, &other) {
             continue;
         }
         vec.push(e.clone());
@@ -297,7 +297,7 @@ fn delete_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     let mut l = mut_obj!(&rc);
     let mut vec = Vec::new();
     for e in l.iter() {
-        if Expression::eq(e, &other) {
+        if Expression::eqv(e, &other) {
             continue;
         }
         vec.push(e.clone());

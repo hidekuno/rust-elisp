@@ -21,6 +21,7 @@ pub type FunctionRc = Arc<Function>;
 pub type ExtFunctionRc = Arc<ExtFunction>;
 pub type ListRc = Arc<RwLock<Vec<Expression>>>;
 pub type HashTableRc = Arc<RwLock<HashMap<String, Expression>>>;
+pub type StringRc = Arc<String>;
 //========================================================================
 #[macro_export]
 macro_rules! reference_obj {
@@ -90,6 +91,9 @@ impl Environment {
     }
     pub fn create_list(l: Vec<Expression>) -> Expression {
         Expression::List(Arc::new(RwLock::new(l)))
+    }
+    pub fn create_string(s: String) -> Expression {
+        Expression::String(Arc::new(s))
     }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Arc::new(RwLock::new(l)))

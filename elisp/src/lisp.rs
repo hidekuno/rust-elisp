@@ -24,12 +24,12 @@ use crate::number::Rat;
 use crate::syntax::Continuation;
 
 #[cfg(feature = "thread")]
-pub use crate::env_thread::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc};
+pub use crate::env_thread::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc};
 #[cfg(feature = "thread")]
 pub type Environment = crate::env_thread::Environment;
 
 #[cfg(not(feature = "thread"))]
-pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc};
+pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, StringRc};
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
@@ -246,7 +246,7 @@ pub enum Expression {
     HashTable(HashTableRc),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
-    String(String),
+    String(StringRc),
     Function(FunctionRc),
     BuildInFunction(String, BasicBuiltIn),
     BuildInFunctionExt(ExtFunctionRc),
@@ -336,6 +336,59 @@ impl Expression {
     fn vector_string(exp: &[Expression]) -> String {
         format!("#{}", Expression::list_string(exp))
     }
+    fn copy_eq(&self, other: &Self) -> bool {
+        if let (Expression::Integer(x), Expression::Rational(y)) = (self, other) {
+            return Number::Integer(*x) == Number::Rational(*y);
+        }
+        if let (Expression::Rational(x), Expression::Integer(y)) = (self, other) {
+            return Number::Rational(*x) == Number::Integer(*y);
+        }
+
+        if let (Expression::Integer(a), Expression::Integer(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Float(a), Expression::Float(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Rational(a), Expression::Rational(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Char(a), Expression::Char(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Boolean(a), Expression::Boolean(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::Symbol(a), Expression::Symbol(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
+    pub fn eqv(&self, other: &Self) -> bool {
+        if Expression::copy_eq(self, other) {
+            return true;
+        }
+        if let (Expression::String(a), Expression::String(b)) = (self, other) {
+            //            let a = &*a;
+            //            let b = &*b;
+            if a == b {
+                return true;
+            }
+        }
+        false
+    }
 }
 impl ToString for Expression {
     fn to_string(&self) -> String {
@@ -405,7 +458,7 @@ impl Ord for Expression {
             },
             _ => match &self {
                 Expression::String(m) => match &other {
-                    Expression::String(n) => m.cmp(n),
+                    Expression::String(n) => m.cmp(&n),
                     _ => Ordering::Less,
                 },
                 Expression::Char(m) => match &other {
@@ -424,38 +477,21 @@ impl PartialOrd for Expression {
 }
 impl PartialEq for Expression {
     fn eq(&self, other: &Self) -> bool {
-        if let (Expression::Integer(a), Expression::Integer(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Float(a), Expression::Float(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Rational(a), Expression::Rational(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
+        if Expression::copy_eq(self, other) {
+            return true;
         }
         if let (Expression::String(a), Expression::String(b)) = (self, other) {
-            if a == b {
+            if get_ptr!(a) == get_ptr!(b) {
                 return true;
             }
         }
-        if let (Expression::Char(a), Expression::Char(b)) = (self, other) {
-            if a == b {
+        if let (Expression::List(a), Expression::List(b)) = (self, other) {
+            if get_ptr!(a) == get_ptr!(b) {
                 return true;
             }
         }
-        if let (Expression::Boolean(a), Expression::Boolean(b)) = (self, other) {
-            if a == b {
-                return true;
-            }
-        }
-        if let (Expression::Symbol(a), Expression::Symbol(b)) = (self, other) {
-            if a == b {
+        if let (Expression::Vector(a), Expression::Vector(b)) = (self, other) {
+            if get_ptr!(a) == get_ptr!(b) {
                 return true;
             }
         }
@@ -937,7 +973,7 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
         Expression::Char(c[2])
     } else if (token.len() >= 2) && (token.starts_with('\"')) && (token.ends_with('\"')) {
         let s = token[1..token.len() - 1].to_string();
-        Expression::String(s)
+        Environment::create_string(s)
     } else if let Some(f) = env.get_builtin_func(token) {
         Expression::BuildInFunction(token.to_string(), f)
     } else if let Some(f) = env.get_builtin_ext_func(token) {

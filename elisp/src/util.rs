@@ -62,7 +62,7 @@ where
         is_type(exp, env, Expression::is_symbol)
     });
     b.regist("time", time_f);
-    b.regist("eq?", eqv);
+    b.regist("eq?", eq);
     b.regist("eqv?", eqv);
     b.regist("identity", identity);
     b.regist("get-environment-variable", get_env);
@@ -112,8 +112,8 @@ fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     match eval(&exp[1], env)? {
-        Expression::String(s) => match env::var(s) {
-            Ok(v) => Ok(Expression::String(v)),
+        Expression::String(s) => match env::var(s.as_ref()) {
+            Ok(v) => Ok(Environment::create_string(v)),
             Err(_) => Ok(Expression::Boolean(false)),
         },
         e => Err(create_error_value!(ErrCode::E1015, e)),
@@ -131,23 +131,19 @@ fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     println!("{}.{:03}(s)", end.as_secs(), end.subsec_millis());
     result
 }
+pub fn eq(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
+    Ok(Expression::Boolean(Expression::eq(&a, &b)))
+}
 pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
-
-    if let (Expression::Integer(x), Expression::Rational(y)) = (&a, &b) {
-        Ok(Expression::Boolean(
-            Number::Integer(*x) == Number::Rational(*y),
-        ))
-    } else if let (Expression::Rational(x), Expression::Integer(y)) = (&a, &b) {
-        Ok(Expression::Boolean(
-            Number::Rational(*x) == Number::Integer(*y),
-        ))
-    } else {
-        Ok(Expression::Boolean(Expression::eq(&a, &b)))
-    }
+    Ok(Expression::Boolean(Expression::eqv(&a, &b)))
 }
 fn native_endian(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 1 {
@@ -297,6 +293,8 @@ mod tests {
         assert_eq!(do_lisp("(eqv? 1 1.0)"), "#f");
         assert_eq!(do_lisp("(eqv? 1/1 1.0)"), "#f");
         assert_eq!(do_lisp("(eqv? 1.0 1)"), "#f");
+        assert_eq!(do_lisp("(eqv? \"abc\" \"abc\")"), "#t");
+        assert_eq!(do_lisp("(eqv? \"abc\" \"abc1\")"), "#f");
 
         assert_eq!(do_lisp("(eq? 'a 'a)"), "#t");
         assert_eq!(do_lisp("(eq? 'a 'b)"), "#f");
@@ -307,8 +305,13 @@ mod tests {
         assert_eq!(do_lisp("(eq? #\\a #\\a)"), "#t");
         assert_eq!(do_lisp("(eq? #\\a #\\b)"), "#f");
         assert_eq!(do_lisp("(eq? #\\space #\\space)"), "#t");
-        assert_eq!(do_lisp("(eq? \"abc\" \"abc\")"), "#t");
+        assert_eq!(do_lisp("(eq? \"abc\" \"abc\")"), "#f");
         assert_eq!(do_lisp("(eq? \"abc\" \"abc1\")"), "#f");
+
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a \"abc\")", &env);
+        do_lisp_env("(define b a)", &env);
+        assert_eq!(do_lisp_env("(eq? a b)", &env), "#t");
     }
     #[test]
     fn identity() {

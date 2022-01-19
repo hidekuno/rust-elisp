@@ -19,6 +19,7 @@ pub type FunctionRc = Rc<Function>;
 pub type ExtFunctionRc = Rc<ExtFunction>;
 pub type ListRc = Rc<RefCell<Vec<Expression>>>;
 pub type HashTableRc = Rc<RefCell<HashMap<String, Expression>>>;
+pub type StringRc = Rc<String>;
 
 #[macro_export]
 macro_rules! reference_obj {
@@ -76,6 +77,9 @@ impl Environment {
     }
     pub fn create_list(l: Vec<Expression>) -> Expression {
         Expression::List(Rc::new(RefCell::new(l)))
+    }
+    pub fn create_string(s: String) -> Expression {
+        Expression::String(Rc::new(s))
     }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Rc::new(RefCell::new(l)))
