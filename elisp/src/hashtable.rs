@@ -29,41 +29,59 @@ trait Map<T> {
     fn has_key(&self, key: String) -> bool;
     fn clear(&mut self);
     fn get_map(exp: &Expression, env: &Environment) -> Result<T, Error>;
+    fn keys(&self) -> Expression;
+    fn values(&self) -> Expression;
 }
 impl Map<HashTableRc> for HashTableRc {
     fn create_map() -> Expression {
         Environment::create_hash_table(HashMap::new())
     }
     fn insert(&mut self, key: String, exp: Expression) {
-        let mut v = mut_obj!(self);
-        v.insert(key, exp);
+        let mut m = mut_obj!(self);
+        m.insert(key, exp);
     }
     fn get(&self, key: &str) -> ResultExpression {
-        let v = &*reference_obj!(self);
+        let m = &*reference_obj!(self);
 
-        if let Some(exp) = v.get(key) {
+        if let Some(exp) = m.get(key) {
             Ok(exp.clone())
         } else {
             Err(create_error!(ErrCode::E1021))
         }
     }
     fn has_key(&self, key: String) -> bool {
-        let v = &*reference_obj!(self);
-        v.get(&key).is_some()
+        let m = &*reference_obj!(self);
+        m.get(&key).is_some()
     }
     fn remove(&mut self, key: String) -> bool {
-        let mut v = mut_obj!(self);
-        v.remove(&key).is_some()
+        let mut m = mut_obj!(self);
+        m.remove(&key).is_some()
     }
     fn clear(&mut self) {
-        let mut v = mut_obj!(self);
-        v.clear();
+        let mut m = mut_obj!(self);
+        m.clear();
     }
     fn get_map(exp: &Expression, env: &Environment) -> Result<HashTableRc, Error> {
         match eval(exp, env)? {
             Expression::HashTable(v) => Ok(v),
             e => Err(create_error_value!(ErrCode::E1023, e)),
         }
+    }
+    fn keys(&self) -> Expression {
+        let m = &*reference_obj!(self);
+        let mut v = Vec::new();
+        for key in m.keys() {
+            v.push(Expression::Symbol(key.to_string()));
+        }
+        Environment::create_list(v)
+    }
+    fn values(&self) -> Expression {
+        let m = &*reference_obj!(self);
+        let mut v = Vec::new();
+        for value in m.values() {
+            v.push(value.clone());
+        }
+        Environment::create_list(v)
     }
 }
 impl Map<TreeMapRc> for TreeMapRc {
@@ -101,6 +119,22 @@ impl Map<TreeMapRc> for TreeMapRc {
             e => Err(create_error_value!(ErrCode::E1024, e)),
         }
     }
+    fn keys(&self) -> Expression {
+        let m = &*reference_obj!(self);
+        let mut v = Vec::new();
+        for key in m.keys() {
+            v.push(Expression::Symbol(key.to_string()));
+        }
+        Environment::create_list(v)
+    }
+    fn values(&self) -> Expression {
+        let m = &*reference_obj!(self);
+        let mut v = Vec::new();
+        for value in m.values() {
+            v.push(value.clone());
+        }
+        Environment::create_list(v)
+    }
 }
 pub fn create_function<T>(b: &mut T)
 where
@@ -114,6 +148,9 @@ where
     b.regist("hash-table-size", hash_table_size);
     b.regist("hash-table-delete!", map_delete::<HashTableRc>);
     b.regist("hash-table-clear!", map_clear::<HashTableRc>);
+    b.regist("hash-table-keys", map_keys::<HashTableRc>);
+    b.regist("hash-table-values", map_values::<HashTableRc>);
+    b.regist("alist->hash-table", map_alist::<HashTableRc>);
 
     b.regist("make-tree-map", make_map::<TreeMapRc>);
     b.regist("tree-map-put!", map_put::<TreeMapRc>);
@@ -121,6 +158,9 @@ where
     b.regist("tree-map-exists?", map_exists::<TreeMapRc>);
     b.regist("tree-map-delete!", map_delete::<TreeMapRc>);
     b.regist("tree-map-clear!", map_clear::<TreeMapRc>);
+    b.regist("tree-map-keys", map_keys::<TreeMapRc>);
+    b.regist("tree-map-values", map_values::<TreeMapRc>);
+    b.regist("alist->tree-map", map_alist::<TreeMapRc>);
 }
 
 fn make_map<T>(exp: &[Expression], _env: &Environment) -> ResultExpression
@@ -206,6 +246,66 @@ where
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
     Ok(Expression::Boolean(map.has_key(key)))
+}
+
+fn map_keys<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let map = T::get_map(&exp[1], env)?;
+    Ok(map.keys())
+}
+fn map_values<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let map = T::get_map(&exp[1], env)?;
+    Ok(map.values())
+}
+fn map_alist<T>(exp: &[Expression], env: &Environment) -> ResultExpression
+where
+    T: Map<T>,
+{
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let l = match eval(&exp[1], env)? {
+        Expression::List(l) => l,
+        e => return Err(create_error_value!(ErrCode::E1005, e)),
+    };
+    let l = &*reference_obj!(l);
+    if l.len() < 1 {
+        return Err(create_error_value!(ErrCode::E1021, l.len()));
+    }
+
+    let m = T::create_map();
+    let mut map = T::get_map(&m, env)?;
+
+    for e in l {
+        match e {
+            // Proprietary implementation
+            Expression::List(l) => {
+                let l = &*reference_obj!(l);
+                if l.len() != 2 {
+                    return Err(create_error_value!(ErrCode::E1021, l.len()));
+                }
+                match &l[0] {
+                    Expression::Symbol(s) => {
+                        map.insert(s.to_string(), l[1].clone());
+                    }
+                    e => return Err(create_error_value!(ErrCode::E1004, e)),
+                }
+            }
+            e => return Err(create_error_value!(ErrCode::E1005, e)),
+        }
+    }
+    Ok(m)
 }
 fn hash_table_size(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -293,6 +393,33 @@ mod tests {
         assert_eq!(do_lisp_env("(hash-table-size a)", &env), "0");
     }
     #[test]
+    fn hash_table_keys() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-hash-table))", &env);
+        do_lisp_env("(hash-table-put! a 'abc 10)", &env);
+        do_lisp_env("(hash-table-put! a 'def 20)", &env);
+        assert_eq!(do_lisp_env("(sort (hash-table-keys a))", &env), "(abc def)");
+    }
+    #[test]
+    fn hash_table_values() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-hash-table))", &env);
+        do_lisp_env("(hash-table-put! a 'abc 10)", &env);
+        do_lisp_env("(hash-table-put! a 'def 20)", &env);
+        assert_eq!(do_lisp_env("(sort (hash-table-values a))", &env), "(10 20)");
+    }
+    #[test]
+    fn alist_hash_table() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (alist->hash-table '((a 10)(b 20)(c 30))))", &env);
+        assert_eq!(do_lisp_env("(sort (hash-table-keys a))", &env), "(a b c)");
+        assert_eq!(
+            do_lisp_env("(sort (hash-table-values a))", &env),
+            "(10 20 30)"
+        );
+    }
+
+    #[test]
     fn make_tree_map() {
         assert_eq!(do_lisp("(make-tree-map)"), "TreeMap");
         let env = lisp::Environment::new();
@@ -346,6 +473,29 @@ mod tests {
         do_lisp_env("(tree-map-put! a 'def 20)", &env);
 
         assert_eq!(do_lisp_env("(tree-map-clear! a)", &env), "nil");
+    }
+    #[test]
+    fn tree_map_keys() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        do_lisp_env("(tree-map-put! a 'abc 10)", &env);
+        do_lisp_env("(tree-map-put! a 'def 20)", &env);
+        assert_eq!(do_lisp_env("(sort (tree-map-keys a))", &env), "(abc def)");
+    }
+    #[test]
+    fn tree_map_values() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (make-tree-map))", &env);
+        do_lisp_env("(tree-map-put! a 'abc 10)", &env);
+        do_lisp_env("(tree-map-put! a 'def 20)", &env);
+        assert_eq!(do_lisp_env("(tree-map-values a)", &env), "(10 20)");
+    }
+    #[test]
+    fn alist_tree_map() {
+        let env = lisp::Environment::new();
+        do_lisp_env("(define a (alist->tree-map '((a 10)(b 20)(c 30))))", &env);
+        assert_eq!(do_lisp_env("(sort (tree-map-keys a))", &env), "(a b c)");
+        assert_eq!(do_lisp_env("(tree-map-values a)", &env), "(10 20 30)");
     }
 }
 #[cfg(test)]
@@ -413,6 +563,29 @@ mod error_tests {
         assert_eq!(do_lisp("(hash-table-clear! 10)"), "E1023");
     }
     #[test]
+    fn hash_table_keys() {
+        assert_eq!(do_lisp("(hash-table-keys)"), "E1007");
+        assert_eq!(do_lisp("(hash-table-keys 10 20)"), "E1007");
+        assert_eq!(do_lisp("(hash-table-keys 10)"), "E1023");
+    }
+    #[test]
+    fn hash_table_values() {
+        assert_eq!(do_lisp("(hash-table-values)"), "E1007");
+        assert_eq!(do_lisp("(hash-table-values 10 20)"), "E1007");
+        assert_eq!(do_lisp("(hash-table-values 10)"), "E1023");
+    }
+    #[test]
+    fn alist_hash_table() {
+        assert_eq!(do_lisp("(alist->hash-table)"), "E1007");
+        assert_eq!(do_lisp("(alist->hash-table 10 20)"), "E1007");
+        assert_eq!(do_lisp("(alist->hash-table 10)"), "E1005");
+        assert_eq!(do_lisp("(alist->hash-table (list))"), "E1021");
+        assert_eq!(do_lisp("(alist->hash-table (list 10))"), "E1005");
+        assert_eq!(do_lisp("(alist->hash-table (list (list 10)))"), "E1021");
+        assert_eq!(do_lisp("(alist->hash-table (list (list 10 10)))"), "E1004");
+    }
+
+    #[test]
     fn make_tree_map() {
         assert_eq!(do_lisp("(make-tree-map 10)"), "E1007");
     }
@@ -460,5 +633,15 @@ mod error_tests {
         assert_eq!(do_lisp("(tree-map-clear!)"), "E1007");
         assert_eq!(do_lisp("(tree-map-clear! 10 20)"), "E1007");
         assert_eq!(do_lisp("(tree-map-clear! 10)"), "E1024");
+    }
+    #[test]
+    fn alist_tree_map() {
+        assert_eq!(do_lisp("(alist->tree-map)"), "E1007");
+        assert_eq!(do_lisp("(alist->tree-map 10 20)"), "E1007");
+        assert_eq!(do_lisp("(alist->tree-map 10)"), "E1005");
+        assert_eq!(do_lisp("(alist->tree-map (list))"), "E1021");
+        assert_eq!(do_lisp("(alist->tree-map (list 10))"), "E1005");
+        assert_eq!(do_lisp("(alist->tree-map (list (list 10)))"), "E1021");
+        assert_eq!(do_lisp("(alist->tree-map (list (list 10 10)))"), "E1004");
     }
 }

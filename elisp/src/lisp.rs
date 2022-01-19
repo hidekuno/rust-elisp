@@ -245,9 +245,6 @@ pub enum Expression {
     Char(char),
     Boolean(bool),
     List(ListRc),
-    Vector(ListRc),
-    HashTable(HashTableRc),
-    TreeMap(TreeMapRc),
     Pair(Box<Expression>, Box<Expression>),
     Symbol(String),
     String(StringRc),
@@ -260,6 +257,9 @@ pub enum Expression {
     Promise(Box<Expression>, Environment),
     Rational(Rat),
     Continuation(Box<Continuation>),
+    Vector(ListRc),
+    HashTable(HashTableRc),
+    TreeMap(TreeMapRc),
 }
 impl Expression {
     pub fn is_hashtable(exp: &Expression) -> bool {
@@ -469,6 +469,10 @@ impl Ord for Expression {
                 },
                 Expression::Char(m) => match &other {
                     Expression::Char(n) => m.cmp(n),
+                    _ => Ordering::Less,
+                },
+                Expression::Symbol(m) => match &other {
+                    Expression::Symbol(n) => m.cmp(n),
                     _ => Ordering::Less,
                 },
                 _ => Ordering::Less,
