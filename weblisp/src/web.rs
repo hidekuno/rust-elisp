@@ -15,7 +15,6 @@ use elisp::lisp;
 
 use chrono::Duration;
 use chrono::Utc;
-use mio::net::TcpStream;
 use std::env;
 use std::error::Error;
 use std::fmt;
@@ -76,11 +75,6 @@ impl Error for UriParseError {
     fn cause(&self) -> Option<&dyn Error> {
         None
     }
-}
-macro_rules! print_error {
-    ($f: expr, $e: expr) => {
-        error!("{} fault: {:?}", $f, $e)
-    };
 }
 macro_rules! http_write {
     ($s: expr, $v: expr) => {
@@ -228,21 +222,21 @@ pub enum Contents {
     Cgi(BufReader<ChildStdout>),
 }
 impl Contents {
-    fn http_write(&mut self, stream: &mut TcpStream) {
+    fn http_write(&mut self, stream: &mut dyn std::io::Write) {
         match self {
             Contents::String(v) => {
                 if let Err(e) = stream.write(v.as_bytes()) {
-                    print_error!("write", e);
+                    error!("write fault: {:?}", e);
                 }
             }
             Contents::File(v) => {
                 if let Err(e) = io::copy(&mut v.file, stream) {
-                    print_error!("copy", e);
+                    error!("copy fault: {:?}", e);
                 }
             }
             Contents::Cgi(v) => {
                 if let Err(e) = io::copy(v, stream) {
-                    print_error!("copy", e);
+                    error!("copy fault: {:?}", e);
                 }
             }
         }
@@ -270,12 +264,15 @@ macro_rules! is_head_method {
         }
     };
 }
-pub fn entry_proc(
-    mut stream: TcpStream,
+pub fn entry_proc<T>(
+    mut stream: T,
     env: lisp::Environment,
     buffer: &[u8],
     id: usize,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), Box<dyn Error>>
+where
+    T: std::io::Write,
+{
     let r = parse_request(buffer);
     let (status, mut contents, mime, cookie) = match &r {
         Ok(r) => dispatch(r, env, id),
@@ -313,7 +310,7 @@ pub fn entry_proc(
     }
 
     http_write!(stream, format!("Content-type: {}", mime));
-    if contents.len() != 0 {
+    if contents.len() > 0 {
         http_write!(stream, format!("Content-length: {}", contents.len()));
     }
 

@@ -94,7 +94,9 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                         let (mut stream, buffer) = requests.remove(&conn_id).unwrap();
                         poll.registry().deregister(&mut stream)?;
 
-                        if let Err(e) = web::entry_proc(stream, env.clone(), &buffer, conn_id) {
+                        if let Err(e) =
+                            web::entry_proc::<TcpStream>(stream, env.clone(), &buffer, conn_id)
+                        {
                             error!("entry_proc {}", e);
                         }
                         info!("send done {}", conn_id);
