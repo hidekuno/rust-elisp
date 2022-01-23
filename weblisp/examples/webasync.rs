@@ -44,6 +44,7 @@ use web::make_cookie_header;
 use web::parse_request;
 use web::Contents;
 use web::Method;
+use web::Request;
 use web::CRLF;
 use web::MIME_PLAIN;
 use web::PROTOCOL;
@@ -90,36 +91,46 @@ pub async fn entry_async_proc(
     if !contents.is_empty() {
         http_write!(stream, format!("Content-length: {}", contents.len()));
     }
-    let r = r.unwrap();
+    write_contents(r.unwrap(), contents, &mut stream).await;
+
+    stream.flush().await.unwrap();
+}
+async fn write_contents(r: Request, contents: Contents, stream: &mut TcpStream) {
+    macro_rules! copy {
+        ($r: expr, $s: expr) => {
+            let mut buffer = [0; 2048];
+            loop {
+                let n = $r.read(&mut buffer).unwrap();
+                if n == 0 {
+                    break;
+                }
+                $s.write(&buffer[..n]).await.unwrap();
+            }
+        };
+    }
     match r.get_method() {
-        Some(Method::Head) => {}
-        None => {}
-        _ => {
+        Some(Method::Get) | Some(Method::Post) => {
             stream.write_all(CRLF.as_bytes()).await.unwrap();
             match contents {
                 Contents::String(v) => {
                     stream.write(v.as_bytes()).await.unwrap();
                 }
                 Contents::File(mut v) => {
-                    let mut buffer = [0; 2048];
-                    loop {
-                        let n = v.file.read(&mut buffer).unwrap();
-                        if n == 0 {
-                            break;
-                        }
-                        stream.write(&buffer[..n]).await.unwrap();
-                    }
+                    copy!(v.file, stream);
                 }
-                _ => {}
+                Contents::Cgi(mut v) => {
+                    copy!(v, stream);
+                }
             }
         }
+        Some(Method::Head) => {}
+        _ => {}
     }
-    stream.flush().await.unwrap();
 }
 async fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
     let mut buffer = [0; 2048];
-    stream.read(&mut buffer).await.unwrap();
-    entry_async_proc(stream, env, &buffer, id).await;
+    let n = stream.read(&mut buffer).await.unwrap();
+    entry_async_proc(stream, env, &buffer[..n], id).await;
 }
 
 #[async_std::main]

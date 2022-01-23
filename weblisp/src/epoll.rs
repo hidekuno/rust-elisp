@@ -82,8 +82,6 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                         poll.registry().deregister(&mut stream)?;
 
                         let (buffer, n) = handle_connection(&stream);
-                        info!("recv done {}", conn_id);
-
                         poll.registry().register(
                             &mut stream,
                             Token(conn_id),
@@ -99,7 +97,6 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                         {
                             error!("entry_proc {}", e);
                         }
-                        info!("send done {}", conn_id);
                     }
                 }
             }
