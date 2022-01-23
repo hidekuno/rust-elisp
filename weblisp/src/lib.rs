@@ -16,75 +16,84 @@ pub mod lisp;
 pub mod server;
 pub mod web;
 
+use crate::web::CRLF;
+use config::BIND_ADDRESS;
+use std::error::Error;
+use std::io::Read;
+use std::io::Write;
+use std::net::TcpStream;
+use std::thread;
+use std::time::Duration;
+
+pub fn web_test_client(msg: &[&str], vec: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
+    let requst = msg.join(CRLF);
+
+    let mut stream = TcpStream::connect(BIND_ADDRESS)?;
+    stream.write_all(requst.as_bytes())?;
+    stream.flush()?;
+
+    let mut buffer = Vec::new();
+    stream.read_to_end(&mut buffer)?;
+
+    let mut v = Vec::new();
+    for e in buffer.into_boxed_slice().iter() {
+        match e {
+            0x00..=0x7F => v.push(*e),
+            0xE5 => v.push(*e), //山(0xE5B1B1)
+            0xB1 => v.push(*e), //山(0xE5B1B1)
+            _ => {}
+        }
+    }
+    for l in std::str::from_utf8(&v)?.lines() {
+        vec.push(String::from(l));
+    }
+    Ok(())
+}
+pub fn test_skelton(msg: &[&str]) -> Vec<String> {
+    let mut vec = Vec::new();
+    thread::sleep(Duration::from_millis(10));
+    if let Err(e) = web_test_client(msg, &mut vec) {
+        eprintln!("test fault: {:?}", e);
+    }
+    vec
+}
+#[macro_export]
+macro_rules! make_request {
+    ($method: expr, $resource: expr) => {
+        format!("{} {} {}", $method, $resource, PROTOCOL)
+    };
+}
+#[macro_export]
+macro_rules! make_response {
+    ($status: expr, $message: expr) => {
+        format!("{} {} {}", PROTOCOL, $status, $message)
+    };
+}
+#[macro_export]
+macro_rules! assert_str {
+    ($a: expr,
+         $b: expr) => {
+        assert!(Some(&String::from($a)) == $b)
+    };
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::config;
+    use crate::server::run_web_limit_service;
+    use crate::web::PROTOCOL;
+
+    use config::parse_arg;
+    use config::Config;
     use std::env;
-    use std::error::Error;
-    use std::io::prelude::*;
-    use std::net::TcpStream;
     use std::thread;
     use std::time::Duration;
 
-    use crate::config;
-    use crate::server::run_web_limit_service;
-    use crate::web::CRLF;
-    use crate::web::PROTOCOL;
-    use config::parse_arg;
-    use config::Config;
-    use config::BIND_ADDRESS;
-
+    use crate::test_skelton;
     const TEST_COUNT: usize = 23;
 
-    macro_rules! make_request {
-        ($method: expr, $resource: expr) => {
-            format!("{} {} {}", $method, $resource, PROTOCOL)
-        };
-    }
-    macro_rules! make_response {
-        ($status: expr, $message: expr) => {
-            format!("{} {} {}", PROTOCOL, $status, $message)
-        };
-    }
-    macro_rules! assert_str {
-        ($a: expr,
-         $b: expr) => {
-            assert!(Some(&String::from($a)) == $b)
-        };
-    }
     fn make_config(count: usize) -> Config {
         parse_arg(&["--limit".to_string(), "-c".to_string(), count.to_string()]).unwrap()
-    }
-    fn web_test_client(msg: &[&str], vec: &mut Vec<String>) -> Result<(), Box<dyn Error>> {
-        let requst = msg.join(CRLF);
-
-        let mut stream = TcpStream::connect(BIND_ADDRESS)?;
-        stream.write_all(requst.as_bytes())?;
-        stream.flush()?;
-
-        let mut buffer = Vec::new();
-        stream.read_to_end(&mut buffer)?;
-
-        let mut v = Vec::new();
-        for e in buffer.into_boxed_slice().iter() {
-            match e {
-                0x00..=0x7F => v.push(*e),
-                0xE5 => v.push(*e), //山(0xE5B1B1)
-                0xB1 => v.push(*e), //山(0xE5B1B1)
-                _ => {}
-            }
-        }
-        for l in std::str::from_utf8(&v)?.lines() {
-            vec.push(String::from(l));
-        }
-        Ok(())
-    }
-    fn test_skelton(msg: &[&str]) -> Vec<String> {
-        let mut vec = Vec::new();
-        thread::sleep(Duration::from_millis(10));
-        if let Err(e) = web_test_client(msg, &mut vec) {
-            eprintln!("test fault: {:?}", e);
-        }
-        vec
     }
     #[test]
     fn test_case_00() {

@@ -5,6 +5,7 @@
   ref) https://rust-lang.github.io/async-book/09_example/02_handling_connections_concurrently.html
 
        RUST_LOG=info cargo run --example webasync
+       cargo test --example webasync -- --test-threads=1 --nocapture
 
   ex) curl 'http://127.0.0.1:9000/lisp' --get --data-urlencode 'expr=(define a 100)'
 
@@ -173,5 +174,122 @@ async fn main() {
         if MAX_ID < id {
             id = 1;
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use crate::main;
+    use crate::web::PROTOCOL;
+    use crate::weblisp::assert_str;
+    use crate::weblisp::make_request;
+    use crate::weblisp::make_response;
+    use crate::weblisp::test_skelton;
+
+    use std::env;
+    use std::thread;
+    use std::time::Duration;
+
+    #[test]
+    fn test_case_00() {
+        use std::path::Path;
+        let path = match env::current_dir() {
+            Ok(p) => p,
+            Err(_) => panic!("current_dir() panic!!"),
+        };
+        if !path.ends_with("samples") {
+            let root = Path::new("samples");
+            if let Err(e) = env::set_current_dir(&root) {
+                eprintln!("test_case_00 fault: {:?} {:?}", e, path);
+            }
+        }
+        thread::sleep(Duration::from_millis(10));
+        thread::spawn(|| main());
+    }
+    #[test]
+    fn test_case_01_index() {
+        let r = make_request!("GET", "/");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
+        iter.next();
+        assert_str!(
+            "<html><head><title>test</title></head><body>TEST</body></html>",
+            iter.next()
+        );
+    }
+    #[test]
+    fn test_case_02_cgi() {
+        let r = make_request!("GET", "/examples/index.cgi?hogehoge=hoge");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+    }
+    #[test]
+    fn test_case_03_lisp() {
+        let r = make_request!("GET", "/lisp?expr=%28define%20%E5%B1%B1%20100%29");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        iter.next();
+        assert_str!("山", iter.next());
+    }
+    #[test]
+    fn test_case_04_get_lispfile() {
+        let r = make_request!("GET", "/test.scm");
+        let s = vec![
+            r.as_str(),
+            "HTTP/1.1",
+            "User-Agent: rust",
+            "Host: 127.0.0.1:9000",
+            "",
+        ];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        if let Some(e) = iter.next() {
+            assert_str!("Set-Cookie: RUST-ELISP-SID=", Some(&e[0..27].into()))
+        }
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 18", iter.next());
+        iter.next();
+        assert_str!("\"Hello,World rust\"", iter.next());
     }
 }
