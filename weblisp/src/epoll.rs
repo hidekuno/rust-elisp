@@ -81,7 +81,7 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                         let mut stream = connections.remove(&conn_id).unwrap();
                         poll.registry().deregister(&mut stream)?;
 
-                        let buffer = handle_connection(&stream);
+                        let (buffer, n) = handle_connection(&stream);
                         info!("recv done {}", conn_id);
 
                         poll.registry().register(
@@ -89,13 +89,13 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                             Token(conn_id),
                             Interest::WRITABLE,
                         )?;
-                        requests.insert(conn_id, (stream, buffer));
+                        requests.insert(conn_id, (stream, buffer, n));
                     } else if event.is_writable() {
-                        let (mut stream, buffer) = requests.remove(&conn_id).unwrap();
+                        let (mut stream, buffer, n) = requests.remove(&conn_id).unwrap();
                         poll.registry().deregister(&mut stream)?;
 
                         if let Err(e) =
-                            web::entry_proc::<TcpStream>(stream, env.clone(), &buffer, conn_id)
+                            web::entry_proc::<TcpStream>(stream, env.clone(), &buffer[..n], conn_id)
                         {
                             error!("entry_proc {}", e);
                         }
@@ -106,22 +106,23 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
         }
     }
 }
-fn handle_connection(mut stream: &TcpStream) -> [u8; 2048] {
+fn handle_connection(mut stream: &TcpStream) -> ([u8; 2048], usize) {
     let mut buffer = [0; 2048];
+    let mut n = 0;
 
-    loop {
+    n += loop {
         match stream.read(&mut buffer) {
             Ok(0) => {
-                break;
+                break 0;
             }
             Ok(n) => {
                 debug!("recv datasize = {}", n);
-                break;
+                break n;
             }
             Err(e) => {
                 error!("read {}", e);
             }
         }
-    }
-    buffer
+    };
+    (buffer, n)
 }

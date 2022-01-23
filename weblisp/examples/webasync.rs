@@ -20,11 +20,12 @@ extern crate weblisp;
 use elisp::lisp;
 use weblisp::web;
 
+use std::io::Read;
+use std::io::Write;
+
 use chrono::Local;
 use chrono::Utc;
 use env_logger::Builder;
-use std::io::Write;
-
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
@@ -95,9 +96,22 @@ pub async fn entry_async_proc(
         None => {}
         _ => {
             stream.write_all(CRLF.as_bytes()).await.unwrap();
-            if let Contents::String(v) = contents {
-                stream.write(v.as_bytes()).await.unwrap();
-            };
+            match contents {
+                Contents::String(v) => {
+                    stream.write(v.as_bytes()).await.unwrap();
+                }
+                Contents::File(mut v) => {
+                    let mut buffer = [0; 2048];
+                    loop {
+                        let n = v.file.read(&mut buffer).unwrap();
+                        if n == 0 {
+                            break;
+                        }
+                        stream.write(&buffer[..n]).await.unwrap();
+                    }
+                }
+                _ => {}
+            }
         }
     }
     stream.flush().await.unwrap();
