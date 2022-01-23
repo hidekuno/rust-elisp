@@ -1,46 +1,54 @@
 /*
-   Rust study program.
-   This is prototype program mini scheme subset what porting from go-scheme.
+  Rust study program.
+  This is prototype program mini scheme subset what porting from go-scheme.
 
-   ref) https://rust-lang.github.io/async-book/09_example/02_handling_connections_concurrently.html
+  ref) https://rust-lang.github.io/async-book/09_example/02_handling_connections_concurrently.html
 
-   ex) curl 'http://127.0.0.1:9000/lisp' --get --data-urlencode 'expr=(define a 100)'
+       RUST_LOG=info cargo run --example webasync
 
-   ex) curl -v -c /tmp/cookie.txt http://localhost:9000/samples/test.scm
-       curl -v -b /tmp/cookie.txt http://localhost:9000/samples/test.scm
+  ex) curl 'http://127.0.0.1:9000/lisp' --get --data-urlencode 'expr=(define a 100)'
 
-   hidekuno@gmail.com
- */
+  ex) curl -v -c /tmp/cookie.txt http://localhost:9000/samples/test.scm
+      curl -v -b /tmp/cookie.txt http://localhost:9000/samples/test.scm
+
+  hidekuno@gmail.com
+*/
 extern crate elisp;
+extern crate env_logger;
 extern crate weblisp;
 
 use elisp::lisp;
 use weblisp::web;
 
-use chrono::Duration;
+use chrono::Local;
 use chrono::Utc;
+use env_logger::Builder;
+use std::io::Write;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use async_std::net::TcpListener;
-use async_std::net::TcpStream;
 use async_std::io::ReadExt;
 use async_std::io::WriteExt;
-use futures::StreamExt;
+use async_std::net::TcpListener;
+use async_std::net::TcpStream;
 use async_std::task;
-use weblisp::config::BIND_ADDRESS;
+use futures::StreamExt;
 use weblisp::buildin;
+use weblisp::config::BIND_ADDRESS;
 use weblisp::http_value_error;
 
-use web::PROTOCOL;
-use web::SESSION_ID;
-use web::Contents;
-use web::CRLF;
 use web::dispatch;
+use web::make_cookie_header;
 use web::parse_request;
+use web::Contents;
 use web::Method;
-use web::RESPONSE_400;
+use web::CRLF;
 use web::MIME_PLAIN;
+use web::PROTOCOL;
+use web::RESPONSE_400;
+
+const MAX_ID: usize = 1000;
 
 macro_rules! http_write {
     ($s: expr, $v: expr) => {
@@ -53,8 +61,7 @@ pub async fn entry_async_proc(
     env: lisp::Environment,
     buffer: &[u8],
     id: usize,
-)
-{
+) {
     let r = parse_request(buffer);
     let (status, contents, mime, cookie) = match &r {
         Ok(r) => dispatch(r, env, id),
@@ -75,21 +82,8 @@ pub async fn entry_async_proc(
     for h in &res_header {
         http_write!(stream, h);
     }
-
     if let Some(cookie) = cookie {
-        let expire = Utc::now() + Duration::days(365);
-        http_write!(
-            stream,
-            format!(
-                "Set-Cookie: {}={};expires={};",
-                SESSION_ID,
-                cookie,
-                expire
-                    .format("%a, %d %h %Y %H:%M:%S GMT")
-                    .to_string()
-                    .into_boxed_str()
-            )
-        );
+        http_write!(stream, make_cookie_header(cookie));
     }
     http_write!(stream, format!("Content-type: {}", mime));
     if !contents.is_empty() {
@@ -102,11 +96,11 @@ pub async fn entry_async_proc(
         _ => {
             stream.write_all(CRLF.as_bytes()).await.unwrap();
             if let Contents::String(v) = contents {
-                 stream.write(v.as_bytes()).await.unwrap();
+                stream.write(v.as_bytes()).await.unwrap();
             };
         }
     }
-    stream.flush().await.unwrap();    
+    stream.flush().await.unwrap();
 }
 async fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
     let mut buffer = [0; 2048];
@@ -116,6 +110,26 @@ async fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: us
 
 #[async_std::main]
 async fn main() {
+    let mut builder = Builder::from_default_env();
+
+    builder
+        .format(|buf, record| {
+            let m = if let Some(m) = record.module_path() {
+                m
+            } else {
+                ""
+            };
+            writeln!(
+                buf,
+                "{} {:<6} {:<20} - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                m,
+                record.args()
+            )
+        })
+        .init();
+    info!("async server is starting...");
 
     let mut id = 1;
     let env = lisp::Environment::new();
@@ -131,5 +145,8 @@ async fn main() {
             handle_connection(stream, env, id).await;
         });
         id += 1;
+        if MAX_ID < id {
+            id = 1;
+        }
     }
 }

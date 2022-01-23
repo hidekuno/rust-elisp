@@ -62,21 +62,21 @@ const LISP: &str = "/lisp";
 #[derive(Debug)]
 pub enum WebError {
     UriParse(u32),
-    UTF8(u32),
+    UTF8(u32, String),
 }
 impl fmt::Display for WebError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             WebError::UriParse(n) => write!(f, "Uri Parse Error {}", n),
-            WebError::UTF8(n) => write!(f, "UTF8 Parse Error {}", n),
+            WebError::UTF8(n, s) => write!(f, "UTF8 Parse Error {} {}", n, s),
         }
     }
 }
 impl Error for WebError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match *self {
+        match self {
             WebError::UriParse(_) => None,
-            WebError::UTF8(_) => None,
+            WebError::UTF8(_, _) => None,
         }
     }
 }
@@ -302,19 +302,7 @@ where
         http_write!(stream, h);
     }
     if let Some(cookie) = cookie {
-        let expire = Utc::now() + Duration::days(365);
-        http_write!(
-            stream,
-            format!(
-                "Set-Cookie: {}={};expires={};",
-                SESSION_ID,
-                cookie,
-                expire
-                    .format("%a, %d %h %Y %H:%M:%S GMT")
-                    .to_string()
-                    .into_boxed_str()
-            )
-        );
+        http_write!(stream, make_cookie_header(cookie));
     }
 
     http_write!(stream, format!("Content-type: {}", mime));
@@ -333,7 +321,7 @@ where
 pub fn parse_request(buffer: &[u8]) -> Result<Request, Box<WebError>> {
     let mut lines = match std::str::from_utf8(buffer) {
         Ok(b) => b.lines(),
-        Err(_) => return Err(Box::new(WebError::UTF8(line!()))),
+        Err(e) => return Err(Box::new(WebError::UTF8(line!(), e.to_string()))),
     };
     let mut requst: [&str; 8] = [""; 8];
 
@@ -426,12 +414,14 @@ fn urldecode(s: &str) -> Result<String, Box<WebError>> {
                         let v = match u8::from_str_radix(
                             match std::str::from_utf8(&en) {
                                 Ok(s) => s,
-                                Err(_) => return Err(Box::new(WebError::UTF8(line!()))),
+                                Err(e) => {
+                                    return Err(Box::new(WebError::UTF8(line!(), e.to_string())))
+                                }
                             },
                             16,
                         ) {
                             Ok(v) => v,
-                            Err(_) => return Err(Box::new(WebError::UTF8(line!()))),
+                            Err(e) => return Err(Box::new(WebError::UTF8(line!(), e.to_string()))),
                         };
                         r.push(v as char);
                     }
@@ -439,12 +429,14 @@ fn urldecode(s: &str) -> Result<String, Box<WebError>> {
                         ja[ja_cnt] = match u8::from_str_radix(
                             match std::str::from_utf8(&en) {
                                 Ok(s) => s,
-                                Err(_) => return Err(Box::new(WebError::UTF8(line!()))),
+                                Err(e) => {
+                                    return Err(Box::new(WebError::UTF8(line!(), e.to_string())))
+                                }
                             },
                             16,
                         ) {
                             Ok(v) => v,
-                            Err(_) => return Err(Box::new(WebError::UTF8(line!()))),
+                            Err(e) => return Err(Box::new(WebError::UTF8(line!(), e.to_string()))),
                         };
                         ja_cnt += 1;
 
@@ -454,7 +446,9 @@ fn urldecode(s: &str) -> Result<String, Box<WebError>> {
                             ja_cnt = 0;
                             r.push_str(match std::str::from_utf8(&ja) {
                                 Ok(s) => s,
-                                Err(_) => return Err(Box::new(WebError::UTF8(line!()))),
+                                Err(e) => {
+                                    return Err(Box::new(WebError::UTF8(line!(), e.to_string())))
+                                }
                             });
                         }
                     }
@@ -598,4 +592,17 @@ pub fn get_status(status: i64) -> Response {
         500 => RESPONSE_500,
         _ => RESPONSE_500,
     }
+}
+pub fn make_cookie_header(cookie: String) -> String {
+    let expire = Utc::now() + Duration::days(365);
+
+    format!(
+        "Set-Cookie: {}={};expires={};",
+        SESSION_ID,
+        cookie,
+        expire
+            .format("%a, %d %h %Y %H:%M:%S GMT")
+            .to_string()
+            .into_boxed_str()
+    )
 }
