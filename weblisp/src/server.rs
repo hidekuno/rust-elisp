@@ -115,7 +115,7 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
             }
         }
     };
-    if let Err(e) = web::entry_proc::<TcpStream>(stream, env, &buffer[..n], id) {
+    if let Err(e) = web::entry_proc(stream, env, &buffer[..n], id) {
         error!("core proc {}", e);
     }
 }

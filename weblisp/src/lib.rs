@@ -81,6 +81,7 @@ macro_rules! assert_str {
 mod tests {
     use crate::config;
     use crate::server::run_web_limit_service;
+    use crate::server::run_web_service;
     use crate::web::PROTOCOL;
 
     use config::parse_arg;
@@ -93,7 +94,13 @@ mod tests {
     const TEST_COUNT: usize = 23;
 
     fn make_config(count: usize) -> Config {
-        parse_arg(&["--limit".to_string(), "-c".to_string(), count.to_string()]).unwrap()
+        let param = if count == 0 {
+            vec![]
+        } else {
+            vec!["--limit".to_string(), "-c".to_string(), count.to_string()]
+        };
+
+        parse_arg(&param).unwrap()
     }
     #[test]
     fn test_case_00() {
@@ -608,13 +615,35 @@ mod tests {
     fn test_case_90() {
         thread::sleep(Duration::from_millis(30));
         thread::spawn(|| {
-            if let Err(e) = run_web_limit_service(make_config(1024)) {
+            if let Err(e) = run_web_service(make_config(0)) {
                 eprintln!("test_case_90 fault: {:?}", e);
             }
         });
     }
     #[test]
-    fn test_case_91_stop() {
+    fn test_case_91_index() {
+        let r = make_request!("GET", "/");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
+        iter.next();
+        assert_str!(
+            "<html><head><title>test</title></head><body>TEST</body></html>",
+            iter.next()
+        );
+    }
+    #[test]
+    fn test_case_92_stop() {
         let t = thread::spawn(|| {
             let r = make_request!("GET", "/lisp?expr=%28let%20loop%20%28%28i%200%29%29%20%28if%20%28%3C%3D%20100000000%20i%29%20i%20%28loop%20%28%2B%20i%201%29%29%29%29");
             let s = vec![r.as_str()];
@@ -625,7 +654,7 @@ mod tests {
         test_skelton(&s);
 
         if let Err(e) = t.join() {
-            eprintln!("test_case_91 fault: {:?}", e);
+            eprintln!("test_case_92 fault: {:?}", e);
         }
         let iter = test_skelton(&s);
         let mut iter = iter.iter();
