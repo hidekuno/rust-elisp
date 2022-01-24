@@ -292,4 +292,33 @@ mod tests {
         iter.next();
         assert_str!("\"Hello,World rust\"", iter.next());
     }
+    #[test]
+    fn test_case_91_stop() {
+        let t = thread::spawn(|| {
+            let r = make_request!("GET", "/lisp?expr=%28let%20loop%20%28%28i%200%29%29%20%28if%20%28%3C%3D%20100000000%20i%29%20i%20%28loop%20%28%2B%20i%201%29%29%29%29");
+            let s = vec![r.as_str()];
+            test_skelton(&s);
+        });
+        let r = make_request!("GET", "/lisp?expr=%28force-stop%29");
+        let s = vec![r.as_str()];
+        test_skelton(&s);
+
+        if let Err(e) = t.join() {
+            eprintln!("test_case_91 fault: {:?}", e);
+        }
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        assert_str!("Content-length: 5", iter.next());
+        iter.next();
+        assert_str!("nil", iter.next());
+    }
 }
