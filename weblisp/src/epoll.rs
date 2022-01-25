@@ -10,6 +10,7 @@ use crate::buildin;
 use crate::config;
 use crate::web;
 
+use config::Config;
 use config::BIND_ADDRESS;
 use elisp::lisp;
 
@@ -25,7 +26,7 @@ use std::io::{self, Read};
 const SERVER: Token = Token(0);
 const MAX_ID: usize = 1000;
 
-pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
+pub fn run_web_epoll_service(config: Config) -> Result<(), Box<dyn Error>> {
     let mut poll = Poll::new()?;
 
     // Create storage for events.
@@ -43,7 +44,7 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
     let mut connections = HashMap::new();
     let mut requests = HashMap::new();
     let mut id: usize = 1;
-    loop {
+    for c in 0..config.transaction_max() {
         poll.poll(&mut events, None)?;
         debug!("poll.poll");
 
@@ -100,7 +101,9 @@ pub fn run_web_epoll_service() -> Result<(), Box<dyn Error>> {
                 }
             }
         }
+        debug!("times = {}", c);
     }
+    Ok(())
 }
 fn handle_connection(mut stream: &TcpStream) -> ([u8; 2048], usize) {
     let mut buffer = [0; 2048];

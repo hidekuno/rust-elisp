@@ -80,6 +80,7 @@ macro_rules! assert_str {
 #[cfg(test)]
 mod tests {
     use crate::config;
+    use crate::epoll::run_web_epoll_service;
     use crate::server::run_web_limit_service;
     use crate::server::run_web_service;
     use crate::web::PROTOCOL;
@@ -96,6 +97,8 @@ mod tests {
     fn make_config(count: usize) -> Config {
         let param = if count == 0 {
             vec![]
+        } else if count == 3 {
+            vec!["--epoll".to_string(), "-c".to_string(), count.to_string()]
         } else {
             vec!["--limit".to_string(), "-c".to_string(), count.to_string()]
         };
@@ -610,6 +613,37 @@ mod tests {
         assert_str!("Content-length: 18", iter.next());
         iter.next();
         assert_str!("\"Hello,World rust\"", iter.next());
+    }
+    #[test]
+    fn test_case_80() {
+        thread::sleep(Duration::from_millis(30));
+        thread::spawn(|| {
+            if let Err(e) = run_web_epoll_service(make_config(3)) {
+                eprintln!("test_case_80 fault: {:?}", e);
+            }
+        });
+    }
+    #[test]
+    fn test_case_81_index() {
+        let r = make_request!("GET", "/");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/html", iter.next());
+        assert_str!("Content-length: 63", iter.next());
+        iter.next();
+        assert_str!(
+            "<html><head><title>test</title></head><body>TEST</body></html>",
+            iter.next()
+        );
     }
     #[test]
     fn test_case_90() {
