@@ -60,20 +60,24 @@ const CGI_EXT: &str = ".cgi";
 const LISP: &str = "/lisp";
 
 #[derive(Debug)]
-struct UriParseError {
-    pub code: &'static str,
+pub enum WebError {
+    UriParse(u32),
+    UTF8(u32, String),
 }
-impl fmt::Display for UriParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code)
+impl fmt::Display for WebError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            WebError::UriParse(n) => write!(f, "Uri Parse Error {}", n),
+            WebError::UTF8(n, s) => write!(f, "UTF8 Parse Error {} {}", n, s),
+        }
     }
 }
-impl Error for UriParseError {
-    fn description(&self) -> &str {
-        self.code
-    }
-    fn cause(&self) -> Option<&dyn Error> {
-        None
+impl Error for WebError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            WebError::UriParse(_) => None,
+            WebError::UTF8(_, _) => None,
+        }
     }
 }
 macro_rules! http_write {
@@ -213,8 +217,8 @@ impl Request {
     }
 }
 pub struct WebFile {
-    file: File,
-    length: u64,
+    pub file: File,
+    pub length: u64,
 }
 pub enum Contents {
     String(String),
@@ -241,7 +245,7 @@ impl Contents {
             }
         }
     }
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         match self {
             Contents::String(v) => v.len(),
             Contents::File(v) => v.length as usize,
@@ -250,7 +254,11 @@ impl Contents {
             Contents::Cgi(_) => 0,
         }
     }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
+#[macro_export]
 macro_rules! is_head_method {
     ($result: expr) => {
         if let Ok(ref req) = $result {
@@ -294,23 +302,11 @@ where
         http_write!(stream, h);
     }
     if let Some(cookie) = cookie {
-        let expire = Utc::now() + Duration::days(365);
-        http_write!(
-            stream,
-            format!(
-                "Set-Cookie: {}={};expires={};",
-                SESSION_ID,
-                cookie,
-                expire
-                    .format("%a, %d %h %Y %H:%M:%S GMT")
-                    .to_string()
-                    .into_boxed_str()
-            )
-        );
+        http_write!(stream, make_cookie_header(cookie));
     }
 
     http_write!(stream, format!("Content-type: {}", mime));
-    if contents.len() > 0 {
+    if !contents.is_empty() {
         http_write!(stream, format!("Content-length: {}", contents.len()));
     }
 
@@ -322,20 +318,23 @@ where
     stream.flush()?;
     Ok(())
 }
-fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
-    let mut lines = std::str::from_utf8(buffer)?.lines();
+pub fn parse_request(buffer: &[u8]) -> Result<Request, Box<WebError>> {
+    let mut lines = match std::str::from_utf8(buffer) {
+        Ok(b) => b.lines(),
+        Err(e) => return Err(Box::new(WebError::UTF8(line!(), e.to_string()))),
+    };
     let mut requst: [&str; 8] = [""; 8];
 
     if let Some(r) = lines.next() {
         info!("{}", r);
         for (i, s) in r.split_whitespace().into_iter().enumerate() {
             if i >= 3 {
-                return Err(Box::new(UriParseError { code: "E2001" }));
+                return Err(Box::new(WebError::UriParse(line!())));
             }
             requst[i] = s;
         }
     } else {
-        return Err(Box::new(UriParseError { code: "E2001" }));
+        return Err(Box::new(WebError::UriParse(line!())));
     }
     let method = Method::create(requst[0]);
     let iter = urldecode(requst[1])?;
@@ -344,7 +343,7 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
     let url = if let Some(s) = iter.next() {
         s
     } else {
-        return Err(Box::new(UriParseError { code: "E2001" }));
+        return Err(Box::new(WebError::UriParse(line!())));
     };
     let mut parameter = if let Some(s) = iter.next() { s } else { "" };
     let mut headers = Vec::new();
@@ -372,7 +371,7 @@ fn parse_request(buffer: &[u8]) -> Result<Request, Box<dyn Error>> {
         body,
     })
 }
-fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
+fn urldecode(s: &str) -> Result<String, Box<WebError>> {
     enum PercentState {
         Init,
         First,
@@ -412,18 +411,45 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
                 state = PercentState::Init;
                 match mode {
                     ByteMode::Ascii => {
-                        let v = u8::from_str_radix(std::str::from_utf8(&en)?, 16)?;
+                        let v = match u8::from_str_radix(
+                            match std::str::from_utf8(&en) {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    return Err(Box::new(WebError::UTF8(line!(), e.to_string())))
+                                }
+                            },
+                            16,
+                        ) {
+                            Ok(v) => v,
+                            Err(e) => return Err(Box::new(WebError::UTF8(line!(), e.to_string()))),
+                        };
                         r.push(v as char);
                     }
                     ByteMode::Jpn => {
-                        ja[ja_cnt] = u8::from_str_radix(std::str::from_utf8(&en)?, 16)?;
+                        ja[ja_cnt] = match u8::from_str_radix(
+                            match std::str::from_utf8(&en) {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    return Err(Box::new(WebError::UTF8(line!(), e.to_string())))
+                                }
+                            },
+                            16,
+                        ) {
+                            Ok(v) => v,
+                            Err(e) => return Err(Box::new(WebError::UTF8(line!(), e.to_string()))),
+                        };
                         ja_cnt += 1;
 
                         // not full support utf8
                         if ja_cnt == 3 {
                             mode = ByteMode::Ascii;
                             ja_cnt = 0;
-                            r.push_str(std::str::from_utf8(&ja)?);
+                            r.push_str(match std::str::from_utf8(&ja) {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    return Err(Box::new(WebError::UTF8(line!(), e.to_string())))
+                                }
+                            });
                         }
                     }
                 }
@@ -432,7 +458,7 @@ fn urldecode(s: &str) -> Result<String, Box<dyn Error>> {
     }
     Ok(r)
 }
-fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
+pub fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     if None == r.get_method() {
         return http_error!(RESPONSE_405);
     }
@@ -566,4 +592,17 @@ pub fn get_status(status: i64) -> Response {
         500 => RESPONSE_500,
         _ => RESPONSE_500,
     }
+}
+pub fn make_cookie_header(cookie: String) -> String {
+    let expire = Utc::now() + Duration::days(365);
+
+    format!(
+        "Set-Cookie: {}={};expires={};",
+        SESSION_ID,
+        cookie,
+        expire
+            .format("%a, %d %h %Y %H:%M:%S GMT")
+            .to_string()
+            .into_boxed_str()
+    )
 }

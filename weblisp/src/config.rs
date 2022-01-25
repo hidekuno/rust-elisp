@@ -156,7 +156,7 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
     }
     if (1 < mode_count)
         || (config.mode == OperationMode::Epoll && option_status.0)
-        || (config.mode != OperationMode::Limit && option_status.1)
+        || (config.mode == OperationMode::ThreadPool && option_status.1)
         || (config.mode != OperationMode::ThreadPool && config.nonblock)
     {
         return Err(create_error!());
@@ -280,7 +280,7 @@ fn test_parse_arg_err_05() {
 }
 #[test]
 fn test_parse_arg_err_06() {
-    let args = vec!["--epoll", "-c", "2"];
+    let args = vec!["--tp", "-c", "2"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),

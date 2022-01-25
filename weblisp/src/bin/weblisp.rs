@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         OperationMode::Epoll => {
-            if let Err(e) = run_web_epoll_service() {
+            if let Err(e) = run_web_epoll_service(config) {
                 error!("run_web_limit_service fault: {:?}", e);
                 return Err(e);
             }

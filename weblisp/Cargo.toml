@@ -11,5 +11,9 @@ log = "*"
 env_logger = "*"
 mio = { version = "0.8", features = ["os-poll", "net"] }
 
+[dev-dependencies]
+futures = "0.3"
+async-std = { version = "1.10.0", features = ["attributes"] }
+
 [features]
 all-interface = []

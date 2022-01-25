@@ -101,12 +101,12 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
     // read() is Not Good.(because it's not detected EOF)
     // I try read_to_end() and read_exact(), But it was NG
     let mut buffer = [0; 2048];
-    loop {
+    let n = loop {
         match stream.read(&mut buffer) {
             Ok(n) => {
                 debug!("recv datasize = {}", n);
                 if n > 0 {
-                    break;
+                    break n;
                 }
             }
             Err(e) => {
@@ -114,8 +114,8 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
                 return;
             }
         }
-    }
-    if let Err(e) = web::entry_proc::<TcpStream>(stream, env, &buffer, id) {
+    };
+    if let Err(e) = web::entry_proc(stream, env, &buffer[..n], id) {
         error!("core proc {}", e);
     }
 }
