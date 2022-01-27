@@ -38,6 +38,14 @@ extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     pub fn log_many(a: &str, b: &str);
 }
+#[wasm_bindgen(module = "/ui.js")]
+extern "C" {
+    fn add_loading();
+
+    fn set_textarea_from_ace();
+
+    fn set_ace_text(s: &str);
+}
 
 #[macro_export]
 macro_rules! console_log {

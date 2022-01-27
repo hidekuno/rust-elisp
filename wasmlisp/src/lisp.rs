@@ -48,6 +48,10 @@ use web_sys::{
     HtmlTextAreaElement, Request, RequestInit, RequestMode, Response,
 };
 
+use crate::add_loading;
+use crate::set_ace_text;
+use crate::set_textarea_from_ace;
+
 #[cfg(not(feature = "develop"))]
 const SCHEME_URL: &str = "https://raw.githubusercontent.com/hidekuno/picture-language/master";
 
@@ -56,6 +60,21 @@ const SCHEME_URL: &str = "https://raw.githubusercontent.com/hidekuno/picture-lan
 const SCHEME_URL: &str = "https://raw.githubusercontent.com/hidekuno/picture-language/develop";
 
 const LINE_WIDTH: f64 = 0.8;
+
+const SOURCE_BUTTONS: [(&str, &str); 4] = [
+    ("sicp", "(load-url \"wasm-sicp.scm\")"),
+    (
+        "demo",
+        "(draw-clear)(define (draw-line-vect s e)(draw-line s e))(demo)",
+    ),
+    (
+        "anime",
+        "(draw-clear)(define (draw-line-vect s e)(add-timeout (draw-line s e) 10))(demo)",
+    ),
+    ("album",
+     "(draw-clear)((square-limit (below(beside rv ps)(beside sd am)) 0)(make-image-frame-rectangle \"am\" 1.74 1.74))",
+    ),
+];
 //--------------------------------------------------------
 // entry point
 //--------------------------------------------------------
@@ -79,6 +98,16 @@ pub fn start() -> Result<(), JsValue> {
     build_lisp_function(&env, &document);
     build_demo_function(&env, &document);
 
+    // evalButton.onmousedown = () => {...}
+    let closure = Closure::wrap(Box::new(move |_event: Event| {
+        add_loading();
+
+        set_textarea_from_ace();
+    }) as Box<dyn FnMut(_)>);
+    button.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
+    closure.forget();
+
+    // evalButton.onclick = () => {...}
     let closure = Closure::wrap(Box::new(move |_event: Event| {
         let c = Closure::wrap(Box::new(move |v: JsValue| {
             alert(&v.as_string().unwrap());
@@ -107,6 +136,8 @@ pub fn start() -> Result<(), JsValue> {
     // this is leaking memory in Rust, so this should be done judiciously!
     closure.forget();
 
+    make_source_button_callback();
+
     console_log!("Hello World from Rust");
     Ok(())
 }
@@ -123,6 +154,26 @@ async fn execute_lisp(code: String, env: Environment) -> Result<JsValue, JsValue
     }
     let text = JsFuture::from(Promise::resolve(&call_elisp(code, env))).await?;
     Ok(text)
+}
+fn make_source_button_callback() {
+    let document = web_sys::window().unwrap().document().unwrap();
+
+    for btn in &SOURCE_BUTTONS {
+        let button = document
+            .get_element_by_id(btn.0)
+            .unwrap()
+            .dyn_into::<Element>()
+            .unwrap();
+
+        // evalButton.onmousedown = () => {...}
+        let closure = Closure::wrap(Box::new(move |_event: Event| {
+            set_ace_text(btn.1);
+        }) as Box<dyn FnMut(_)>);
+        button
+            .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
+            .unwrap();
+        closure.forget();
+    }
 }
 //--------------------------------------------------------
 // lisp functions
