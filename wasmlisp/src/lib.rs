@@ -14,6 +14,7 @@
 
    hidekuno@gmail.com
 */
+pub mod buildin;
 pub mod draw;
 pub mod fractal;
 pub mod lisp;
@@ -95,7 +96,7 @@ fn init() -> Environment {
     document.body().unwrap().append_child(&canvas).unwrap();
 
     let env = Environment::new();
-    lisp::build_lisp_function(&env, &document);
+    buildin::build_lisp_function(&env, &document);
     fractal::build_demo_function(&env, &document);
     env
 }
