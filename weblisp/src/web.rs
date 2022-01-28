@@ -48,12 +48,13 @@ pub const MIME_PNG: MimeType = MimeType("png", "image/png");
 pub const MIME_JPG: MimeType = MimeType("jpg", "image/jpeg");
 pub const MIME_GIF: MimeType = MimeType("gif", "image/gif");
 pub const MIME_PDF: MimeType = MimeType("pdf", "application/pdf");
+pub const MIME_JSON: MimeType = MimeType("json", "application/json");
 pub const MIME_WASM: MimeType = MimeType("wasm", "application/wasm");
 pub const DEFALUT_MIME: &str = "application/octet-stream";
 
 static MIME_TYPES: &[MimeType] = &[
     MIME_PLAIN, MIME_HTML, MIME_XML, MIME_CSS, MIME_JS, MIME_PNG, MIME_JPG, MIME_GIF, MIME_PDF,
-    MIME_WASM,
+    MIME_JSON, MIME_WASM,
 ];
 
 pub const SESSION_ID: &str = "RUST-ELISP-SID";
