@@ -32,6 +32,7 @@ use js_sys::Promise;
 use web_sys::{Element, Event, HtmlTextAreaElement};
 
 use crate::add_loading;
+use crate::init_ace;
 use crate::set_ace_text;
 use crate::set_textarea_from_ace;
 
@@ -71,6 +72,8 @@ pub fn start() -> Result<(), JsValue> {
     let env = Environment::new();
     build_lisp_function(&env, &document);
     build_demo_function(&env, &document);
+
+    init_ace();
 
     // evalButton.onmousedown = () => {...}
     let closure = Closure::wrap(Box::new(move |_event: Event| {

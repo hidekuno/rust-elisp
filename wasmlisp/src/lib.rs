@@ -46,6 +46,8 @@ extern "C" {
     fn set_textarea_from_ace();
 
     fn set_ace_text(s: &str);
+
+    fn init_ace();
 }
 
 #[macro_export]

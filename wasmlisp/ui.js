@@ -31,7 +31,7 @@ export function set_ace_text(s) {
     let editor = ace.edit("editor");
     editor.setValue(s, -1);
 }
-function init_ace() {
+export function init_ace() {
     (() => {
         let editor = ace.edit("editor");
         editor.$blockScrolling = Infinity;
