@@ -41,15 +41,20 @@ pub const RESPONSE_500: Response = Response(500, "Internal Server Error");
 pub struct MimeType(pub &'static str, pub &'static str);
 pub const MIME_PLAIN: MimeType = MimeType("txt", "text/plain");
 pub const MIME_HTML: MimeType = MimeType("html", "text/html");
+pub const MIME_XML: MimeType = MimeType("xml", "text/xml");
 pub const MIME_CSS: MimeType = MimeType("css", "text/css");
 pub const MIME_JS: MimeType = MimeType("js", "text/javascript");
 pub const MIME_PNG: MimeType = MimeType("png", "image/png");
 pub const MIME_JPG: MimeType = MimeType("jpg", "image/jpeg");
 pub const MIME_GIF: MimeType = MimeType("gif", "image/gif");
+pub const MIME_PDF: MimeType = MimeType("pdf", "application/pdf");
+pub const MIME_JSON: MimeType = MimeType("json", "application/json");
+pub const MIME_WASM: MimeType = MimeType("wasm", "application/wasm");
 pub const DEFALUT_MIME: &str = "application/octet-stream";
 
 static MIME_TYPES: &[MimeType] = &[
-    MIME_PLAIN, MIME_HTML, MIME_CSS, MIME_JS, MIME_PNG, MIME_JPG, MIME_GIF,
+    MIME_PLAIN, MIME_HTML, MIME_XML, MIME_CSS, MIME_JS, MIME_PNG, MIME_JPG, MIME_GIF, MIME_PDF,
+    MIME_JSON, MIME_WASM,
 ];
 
 pub const SESSION_ID: &str = "RUST-ELISP-SID";

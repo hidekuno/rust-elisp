@@ -14,6 +14,7 @@
 
    hidekuno@gmail.com
 */
+pub mod buildin;
 pub mod draw;
 pub mod fractal;
 pub mod lisp;
@@ -37,6 +38,16 @@ extern "C" {
 
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     pub fn log_many(a: &str, b: &str);
+}
+#[wasm_bindgen(module = "/ui.js")]
+extern "C" {
+    fn add_loading();
+
+    fn set_textarea_from_ace();
+
+    fn set_ace_text(s: &str);
+
+    fn init_ace();
 }
 
 #[macro_export]
@@ -87,7 +98,7 @@ fn init() -> Environment {
     document.body().unwrap().append_child(&canvas).unwrap();
 
     let env = Environment::new();
-    lisp::build_lisp_function(&env, &document);
+    buildin::build_lisp_function(&env, &document);
     fractal::build_demo_function(&env, &document);
     env
 }

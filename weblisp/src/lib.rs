@@ -677,7 +677,83 @@ mod tests {
         );
     }
     #[test]
-    fn test_case_92_stop() {
+    fn test_case_92_xml() {
+        let r = make_request!("GET", "/index.xml");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/xml", iter.next());
+        assert_str!("Content-length: 43", iter.next());
+        iter.next();
+        assert_str!("<?xml version='1.0' encoding='UTF-8'?><a/>", iter.next());
+    }
+    #[test]
+    fn test_case_93_json() {
+        let r = make_request!("GET", "/index.json");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: application/json", iter.next());
+        assert_str!("Content-length: 19", iter.next());
+        iter.next();
+        assert_str!("{\"id\": \"00000001\"}", iter.next());
+    }
+    #[test]
+    fn test_case_94_css() {
+        let r = make_request!("GET", "/index.css");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/css", iter.next());
+        assert_str!("Content-length: 22", iter.next());
+        iter.next();
+        assert_str!("#eval {color: white;}", iter.next());
+    }
+    #[test]
+    fn test_case_95_js() {
+        let r = make_request!("GET", "/index.js");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(make_response!("200", "OK").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/javascript", iter.next());
+        assert_str!("Content-length: 38", iter.next());
+        iter.next();
+        assert_str!("import('./pkg').catch(console.error);", iter.next());
+    }
+    #[test]
+    fn test_case_96_stop() {
         let t = thread::spawn(|| {
             let r = make_request!("GET", "/lisp?expr=%28let%20loop%20%28%28i%200%29%29%20%28if%20%28%3C%3D%20100000000%20i%29%20i%20%28loop%20%28%2B%20i%201%29%29%29%29");
             let s = vec![r.as_str()];
