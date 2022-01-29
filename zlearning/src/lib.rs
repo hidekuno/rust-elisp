@@ -49,12 +49,12 @@ mod tests {
             let mut test = TestVisitor::new(Box::new(cursor));
             top.borrow().accept(&mut test);
 
-            let mut iterator = test.get_items().iter();
-            assert_eq!(iterator.next(), Some(&String::from("fj")));
-            assert_eq!(iterator.next(), Some(&String::from("news")));
-            assert_eq!(iterator.next(), Some(&String::from("reader")));
-            assert_eq!(iterator.next(), Some(&String::from("server")));
-            assert_eq!(iterator.next(), None);
+            let mut iter = test.get_items().iter();
+            assert_eq!(iter.next(), Some(&String::from("fj")));
+            assert_eq!(iter.next(), Some(&String::from("news")));
+            assert_eq!(iter.next(), Some(&String::from("reader")));
+            assert_eq!(iter.next(), Some(&String::from("server")));
+            assert_eq!(iter.next(), None);
         } else {
             panic!("test failure");
         }
@@ -107,7 +107,14 @@ mod tests {
 
         if let Some(top) = cache.top {
             let mut c = create_test_walker(Box::new(cursor));
-            c(top);
+            let vec = c(top);
+
+            let mut iter = vec.iter();
+            assert_eq!(iter.next(), Some(&String::from("fj")));
+            assert_eq!(iter.next(), Some(&String::from("news")));
+            assert_eq!(iter.next(), Some(&String::from("reader")));
+            assert_eq!(iter.next(), Some(&String::from("server")));
+            assert_eq!(iter.next(), None);
         } else {
             panic!("test failure");
         }

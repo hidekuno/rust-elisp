@@ -90,18 +90,23 @@ pub fn create_line_walker<'a>(
     };
     Box::new(print_tree)
 }
-pub fn create_test_walker(mut out: Box<dyn Write>) -> Box<dyn FnMut(ItemRef) + 'static> {
+pub fn create_test_walker(
+    mut out: Box<dyn Write>,
+) -> Box<dyn FnMut(ItemRef) -> Vec<String> + 'static> {
     let print_tree = move |rc| {
-        fn walk(item: &Item, out: &mut dyn Write) {
+        fn walk(item: &Item, out: &mut dyn Write, vec: &mut Vec<String>) {
             writeln_unwrap!(out, item.last_name);
+            vec.push(item.last_name.to_string());
 
             for it in item.children.iter() {
                 let e = it.upgrade().unwrap();
-                walk(&e.borrow(), out);
+                walk(&e.borrow(), out, vec);
             }
         }
         // For more information about this error, try `rustc --explain E0282`.
-        walk(&(rc as ItemRef).borrow(), &mut out);
+        let mut vec = Vec::new();
+        walk(&(rc as ItemRef).borrow(), &mut out, &mut vec);
+        vec
     };
     Box::new(print_tree)
 }
