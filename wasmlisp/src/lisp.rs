@@ -36,18 +36,31 @@ use crate::init_ace;
 use crate::set_ace_text;
 use crate::set_textarea_from_ace;
 
+macro_rules! make_code {
+    ($s1: expr, $s2: expr ) => {
+        concat!("(draw-clear)", "\n", $s1, "\n", $s2)
+    };
+}
+
 const SOURCE_BUTTONS: [(&str, &str); 4] = [
     ("sicp", "(load-url \"wasm-sicp.scm\")"),
     (
         "demo",
-        "(draw-clear)(define (draw-line-vect s e)(draw-line s e))(demo)",
+        make_code!("(define (draw-line-vect s e)(draw-line s e))", "(demo)"),
     ),
     (
         "anime",
-        "(draw-clear)(define (draw-line-vect s e)(add-timeout (draw-line s e) 10))(demo)",
+        make_code!(
+            "(define (draw-line-vect s e)(add-timeout (draw-line s e) 10))",
+            "(demo)"
+        ),
     ),
-    ("album",
-     "(draw-clear)((square-limit (below(beside rv ps)(beside sd am)) 0)(make-image-frame-rectangle \"am\" 1.74 1.74))",
+    (
+        "album",
+        make_code!(
+            "((square-limit (below(beside rv ps)(beside sd am)) 0)",
+            " (make-image-frame-rectangle \"am\" 1.74 1.74))"
+        ),
     ),
 ];
 //--------------------------------------------------------
@@ -145,7 +158,7 @@ fn make_source_button_callback() {
             .dyn_into::<Element>()
             .unwrap();
 
-        // evalButton.onmousedown = () => {...}
+        // evalButton.onclick = () => {...}
         let closure = Closure::wrap(Box::new(move |_event: Event| {
             set_ace_text(btn.1);
         }) as Box<dyn FnMut(_)>);
