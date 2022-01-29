@@ -61,7 +61,7 @@ impl Item {
     }
     pub fn accept<T>(&self, v: &mut T)
     where
-        T: Visitor + 'static,
+        T: Visitor,
     {
         v.visit(self);
     }

@@ -12,15 +12,21 @@ pub mod walker;
 #[cfg(test)]
 mod tests {
     use crate::tree::Cache;
-    use crate::tree::Item;
+    use crate::visitor::ItemVisitor;
     use crate::visitor::LineItemVisitor;
-    use crate::visitor::Visitor;
+    use crate::visitor::TestVisitor;
     use crate::walker::create_line_walker;
+    use crate::walker::create_test_walker;
     use crate::walker::create_walker;
+
+    use std::io::Cursor;
+    use std::io::Seek;
+    use std::io::SeekFrom;
+    use std::io::{self};
+    use std::str::from_utf8;
 
     #[test]
     fn test_tree() {
-        use std::io::{self};
         let mut cursor =
             io::Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
         let cache = Cache::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.', 10);
@@ -33,30 +39,17 @@ mod tests {
     }
     #[test]
     fn test_visitor() {
-        struct TestVisitor {
-            v: Vec<String>,
-        }
-        impl Visitor for TestVisitor {
-            fn visit(&mut self, item: &Item) {
-                self.v.push(item.last_name.to_string());
-
-                for it in item.children.iter() {
-                    let e = it.upgrade().unwrap();
-                    e.borrow().accept::<TestVisitor>(self);
-                }
-            }
-        }
-        use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
         let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
             assert_eq!(top.borrow().name, "fj");
-            let mut test = TestVisitor { v: Vec::new() };
+            let mut test = TestVisitor::new(Box::new(cursor));
             top.borrow().accept(&mut test);
 
-            let mut iterator = test.v.iter();
+            let mut iterator = test.get_items().iter();
             assert_eq!(iterator.next(), Some(&String::from("fj")));
             assert_eq!(iterator.next(), Some(&String::from("news")));
             assert_eq!(iterator.next(), Some(&String::from("reader")));
@@ -67,51 +60,96 @@ mod tests {
         }
     }
     #[test]
-    fn test_visitor_line() {
-        use std::io::Cursor;
+    fn test_item_visitor() {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
-        let cursor = Cursor::new(String::from("").into_bytes());
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let mut cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
-            let mut v = LineItemVisitor::new(Box::new(cursor), "   ", "|  ", "`--", "|--");
+            let mut v = ItemVisitor::new(&mut cursor);
             top.borrow().accept(&mut v);
+        } else {
+            panic!("test failure");
+        }
+        assert_eq!(
+            Ok("fj\n    news\n        reader\n        server\n"),
+            from_utf8(cursor.get_ref())
+        );
+    }
+    #[test]
+    fn test_item_visitor_line() {
+        let mut cursor =
+            Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
+
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let mut cursor = Cursor::new(Vec::new());
+
+        if let Some(top) = cache.top {
+            let mut v = LineItemVisitor::new(&mut cursor, "   ", "|  ", "`--", "|--");
+            top.borrow().accept(&mut v);
+        } else {
+            panic!("test failure");
+        }
+        assert_eq!(
+            Ok("fj\n`--news\n   |--reader\n   `--server\n"),
+            from_utf8(cursor.get_ref())
+        );
+    }
+    #[test]
+    fn test_test_walker() {
+        let mut cursor =
+            Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
+
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cursor = Cursor::new(Vec::new());
+
+        if let Some(top) = cache.top {
+            let mut c = create_test_walker(Box::new(cursor));
+            c(top);
         } else {
             panic!("test failure");
         }
     }
     #[test]
     fn test_walker() {
-        use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
-        let cursor = Cursor::new(String::from("").into_bytes());
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let mut cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
-            let mut c = create_walker(Box::new(cursor));
-            c(top);
+            let mut c = create_walker();
+            c(top, &mut cursor);
         } else {
             panic!("test failure");
         }
+        cursor.seek(SeekFrom::Start(0)).unwrap();
+        assert_eq!(
+            Ok("fj\n    news\n        reader\n        server\n"),
+            from_utf8(cursor.get_ref())
+        );
     }
     #[test]
     fn test_walker_line() {
-        use std::io::Cursor;
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
+        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '\n', 10);
-        let cursor = Cursor::new(String::from("").into_bytes());
+        let mut cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
-            let mut c = create_line_walker(Box::new(cursor), "   ", "|  ", "`--", "|--");
-            c(top);
+            let mut c = create_line_walker("   ", "|  ", "`--", "|--");
+            c(top, &mut cursor);
         } else {
             panic!("test failure");
         }
+        cursor.seek(SeekFrom::Start(0)).unwrap();
+        assert_eq!(
+            Ok("fj\n`--news\n   |--reader\n   `--server\n"),
+            from_utf8(cursor.get_ref())
+        );
     }
 }

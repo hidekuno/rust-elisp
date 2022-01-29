@@ -27,21 +27,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cache = create_tree(&config)?;
 
     if let Some(top) = cache.top {
-        let o = Box::new(stdout());
+        let mut o = stdout();
         match config.mode() {
-            DisplayMode::Space => top.borrow().accept(&mut ItemVisitor::new(o)),
-            DisplayMode::SingleCharLine => top
-                .borrow()
-                .accept(&mut LineItemVisitor::new(o, "   ", "|  ", "`--", "|--")),
+            DisplayMode::Space => top.borrow().accept(&mut ItemVisitor::new(&mut o)),
+            DisplayMode::SingleCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+                &mut o, "   ", "|  ", "`--", "|--",
+            )),
             DisplayMode::MultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
-                o,
+                &mut o,
                 "　　 ",
                 "│　 ",
                 "└── ",
                 "├── ",
             )),
             DisplayMode::BoldMultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
-                o,
+                &mut o,
                 "　　 ",
                 "┃　 ",
                 "┗━━ ",

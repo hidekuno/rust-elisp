@@ -13,16 +13,39 @@ use crate::writeln_unwrap;
 pub trait Visitor {
     fn visit(&mut self, item: &Item);
 }
-pub struct ItemVisitor {
+pub struct TestVisitor {
     out: Box<dyn Write>,
+    v: Vec<String>,
+}
+impl TestVisitor {
+    pub fn new(out: Box<dyn Write>) -> Self {
+        TestVisitor { out, v: Vec::new() }
+    }
+    pub fn get_items(&self) -> &Vec<String> {
+        &self.v
+    }
+}
+impl Visitor for TestVisitor {
+    fn visit(&mut self, item: &Item) {
+        self.v.push(item.last_name.to_string());
+        writeln_unwrap!(self.out, item.last_name);
+
+        for it in item.children.iter() {
+            let e = it.upgrade().unwrap();
+            e.borrow().accept(self);
+        }
+    }
+}
+pub struct ItemVisitor<'a> {
+    out: &'a mut dyn Write,
     level: i32,
 }
-impl ItemVisitor {
-    pub fn new(out: Box<dyn Write>) -> Self {
+impl<'a> ItemVisitor<'a> {
+    pub fn new(out: &'a mut dyn Write) -> Self {
         ItemVisitor { out, level: 0 }
     }
 }
-impl Visitor for ItemVisitor {
+impl<'a> Visitor for ItemVisitor<'a> {
     fn visit(&mut self, item: &Item) {
         for _ in 0..self.level {
             write_unwrap!(self.out, "    ");
@@ -31,22 +54,24 @@ impl Visitor for ItemVisitor {
 
         for it in item.children.iter() {
             self.level += 1;
+
             let e = it.upgrade().unwrap();
-            e.borrow().accept::<ItemVisitor>(self);
+            e.borrow().accept(self);
+
             self.level -= 1;
         }
     }
 }
-pub struct LineItemVisitor {
-    out: Box<dyn Write>,
+pub struct LineItemVisitor<'a> {
+    out: &'a mut dyn Write,
     vline_last: &'static str,
     vline_not_last: &'static str,
     hline_last: &'static str,
     hline_not_last: &'static str,
 }
-impl LineItemVisitor {
+impl<'a> LineItemVisitor<'a> {
     pub fn new(
-        out: Box<dyn Write>,
+        out: &'a mut dyn Write,
         vline_last: &'static str,
         vline_not_last: &'static str,
         hline_last: &'static str,
@@ -73,7 +98,7 @@ impl LineItemVisitor {
         }
     }
 }
-impl Visitor for LineItemVisitor {
+impl<'a> Visitor for LineItemVisitor<'a> {
     fn visit(&mut self, item: &Item) {
         if item.parent.is_some() {
             let mut keisen = vec![if item.is_last() {
