@@ -63,6 +63,7 @@ const SOURCE_BUTTONS: [(&str, &str); 4] = [
     ),
 ];
 
+const WAIT_DIALOG_ID: &str = "loading";
 const WEB_FONT: &str = "<i class='fa fa-spinner fa-spin fa-5x fa-fw'></i><br><br>";
 const WAIT_MESSAGE: &str = "Please wait until the alert dialog is displayed.";
 //--------------------------------------------------------
@@ -95,7 +96,7 @@ pub fn start() -> Result<(), JsValue> {
         let mut document = document.clone();
         let text = text.clone();
         let closure = Closure::wrap(Box::new(move |_event: Event| {
-            if document.get_element_by_id("loading").is_none() {
+            if document.get_element_by_id(WAIT_DIALOG_ID).is_none() {
                 add_loading(&mut document);
             }
 
@@ -107,7 +108,13 @@ pub fn start() -> Result<(), JsValue> {
     }
     // evalButton.onclick = () => {...}
     let closure = Closure::wrap(Box::new(move |_event: Event| {
+        let document = document.clone();
+
         let c = Closure::wrap(Box::new(move |v: JsValue| {
+            if let Some(element) = document.get_element_by_id(WAIT_DIALOG_ID) {
+                let loading = element.dyn_into::<Element>().unwrap();
+                loading.remove();
+            }
             alert(&v.as_string().unwrap());
         }) as Box<dyn FnMut(_)>);
 
@@ -115,10 +122,6 @@ pub fn start() -> Result<(), JsValue> {
         let _ = future_to_promise(execute_lisp(text.value(), env.clone())).then(&c);
         c.forget();
 
-        if let Some(element) = document.get_element_by_id("loading") {
-            let loading = element.dyn_into::<Element>().unwrap();
-            loading.remove();
-        }
         console_log!("eval done.");
     }) as Box<dyn FnMut(_)>);
     button.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
@@ -163,7 +166,7 @@ fn add_loading(document: &mut Document) {
         .dyn_into::<HtmlDivElement>()
         .unwrap();
 
-    div.set_id("loading");
+    div.set_id(WAIT_DIALOG_ID);
 
     let ua = web_sys::window().unwrap().navigator().user_agent().unwrap();
     let ua = ua.to_lowercase();
