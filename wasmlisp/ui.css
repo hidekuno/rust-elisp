@@ -92,16 +92,12 @@
     background-color: #fff;
     opacity: 0.9;
 }
-#loading .loadingMsg {
+#loading .layout {
     display: table-cell;
     text-align: center;
     vertical-align: middle;
     padding-top: 140px;
-    background: url('/loading.gif') center center no-repeat;
 }
-#loading .loadingMsg2 {
-    display: table-cell;
-    text-align: center;
-    vertical-align: middle;
-    padding-top: 140px;
+#loading .icon {
+    background: url('/loading.gif') center center no-repeat;
 }

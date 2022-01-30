@@ -169,12 +169,9 @@ fn add_loading(document: &mut Document) {
     let ua = ua.to_lowercase();
 
     let msg = if !ua.contains("firefox") {
-        format!("<div class='loadingMsg'>{}</div>", WAIT_MESSAGE)
+        format!("<div class='layout icon'>{}</div>", WAIT_MESSAGE)
     } else {
-        format!(
-            "<div class='loadingMsg2'>{}{}</div>",
-            WEB_FONT, WAIT_MESSAGE
-        )
+        format!("<div class='layout'>{}{}</div>", WEB_FONT, WAIT_MESSAGE)
     };
     div.set_inner_html(&msg);
     document.body().unwrap().append_child(&div).unwrap();
