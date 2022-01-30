@@ -27,17 +27,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cache = create_tree(&config)?;
 
     if let Some(top) = cache.top {
-        let o = Box::new(stdout());
+        let mut o = stdout();
 
         let mut c = match config.mode() {
-            DisplayMode::Space => create_walker(o),
-            DisplayMode::SingleCharLine => create_line_walker(o, "   ", "|  ", "`--", "|--"),
-            DisplayMode::MultiCharLine => create_line_walker(o, "　　 ", "│　 ", "└── ", "├── "),
-            DisplayMode::BoldMultiCharLine => {
-                create_line_walker(o, "　　 ", "┃　 ", "┗━━ ", "┣━━ ")
-            }
+            DisplayMode::Space => create_walker(),
+            DisplayMode::SingleCharLine => create_line_walker("   ", "|  ", "`--", "|--"),
+            DisplayMode::MultiCharLine => create_line_walker("　　 ", "│　 ", "└── ", "├── "),
+            DisplayMode::BoldMultiCharLine => create_line_walker("　　 ", "┃　 ", "┗━━ ", "┣━━ "),
         };
-        c(top);
+        c(top, &mut o);
     }
     Ok(())
 }

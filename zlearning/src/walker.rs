@@ -13,8 +13,9 @@ use crate::tree::ItemRef;
 use crate::write_unwrap;
 use crate::writeln_unwrap;
 
-type PrintTree = Box<dyn FnMut(ItemRef) + 'static>;
-pub fn create_walker(mut out: Box<dyn Write>) -> PrintTree {
+type PrintTree<'a> = Box<dyn FnMut(ItemRef, &'a mut dyn Write) + 'static>;
+
+pub fn create_walker<'a>() -> PrintTree<'a> {
     fn walk(item: &Item, level: i32, out: &mut dyn Write) {
         for _ in 0..level {
             write_unwrap!(out, "    ");
@@ -26,9 +27,9 @@ pub fn create_walker(mut out: Box<dyn Write>) -> PrintTree {
             walk(&e.borrow(), level + 1, out);
         }
     }
-    let print_tree = move |rc| {
+    let print_tree = move |rc, out| {
         // For more information about this error, try `rustc --explain E0282`.
-        walk(&(rc as ItemRef).borrow(), 0, &mut out);
+        walk(&(rc as ItemRef).borrow(), 0, out);
     };
     Box::new(print_tree)
 }
@@ -38,20 +39,19 @@ struct KeisenParam {
     hline_last: &'static str,
     hline_not_last: &'static str,
 }
-pub fn create_line_walker(
-    mut out: Box<dyn Write>,
+pub fn create_line_walker<'a>(
     vline_last: &'static str,
     vline_not_last: &'static str,
     hline_last: &'static str,
     hline_not_last: &'static str,
-) -> PrintTree {
+) -> PrintTree<'a> {
     let param = KeisenParam {
         vline_last,
         vline_not_last,
         hline_last,
         hline_not_last,
     };
-    let print_tree = move |rc| {
+    let print_tree = move |rc, out| {
         fn make_vline(param: &KeisenParam, keisen: &mut Vec<&str>, item: &Item) {
             if let Some(ref p) = item.parent {
                 if p.borrow().parent.is_some() {
@@ -79,13 +79,34 @@ pub fn create_line_walker(
                 }
             }
             writeln_unwrap!(out, item.last_name);
+
             for it in item.children.iter() {
                 let e = it.upgrade().unwrap();
                 walk(&e.borrow(), param, out);
             }
         }
         // For more information about this error, try `rustc --explain E0282`.
-        walk(&(rc as Rc<RefCell<Item>>).borrow(), &param, &mut out);
+        walk(&(rc as Rc<RefCell<Item>>).borrow(), &param, out);
+    };
+    Box::new(print_tree)
+}
+pub fn create_test_walker(
+    mut out: Box<dyn Write>,
+) -> Box<dyn FnMut(ItemRef) -> Vec<String> + 'static> {
+    let print_tree = move |rc| {
+        fn walk(item: &Item, out: &mut dyn Write, vec: &mut Vec<String>) {
+            writeln_unwrap!(out, item.last_name);
+            vec.push(item.last_name.to_string());
+
+            for it in item.children.iter() {
+                let e = it.upgrade().unwrap();
+                walk(&e.borrow(), out, vec);
+            }
+        }
+        // For more information about this error, try `rustc --explain E0282`.
+        let mut vec = Vec::new();
+        walk(&(rc as ItemRef).borrow(), &mut out, &mut vec);
+        vec
     };
     Box::new(print_tree)
 }
