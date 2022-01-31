@@ -22,4 +22,4 @@ cat <<EOF>> $FILE
 </html>
 EOF
 
-cp ui.css ui.js loading.gif web/.
+cp ui.css loading.gif web/.

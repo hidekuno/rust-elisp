@@ -29,12 +29,11 @@ use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::JsFuture;
 
 use js_sys::Promise;
-use web_sys::{Element, Event, HtmlTextAreaElement};
+use web_sys::{Document, Element, Event, HtmlDivElement, HtmlTextAreaElement};
 
-use crate::add_loading;
+use crate::get_ace_text;
 use crate::init_ace;
 use crate::set_ace_text;
-use crate::set_textarea_from_ace;
 
 macro_rules! make_code {
     ($s1: expr, $s2: expr ) => {
@@ -63,6 +62,10 @@ const SOURCE_BUTTONS: [(&str, &str); 4] = [
         ),
     ),
 ];
+
+const WAIT_DIALOG_ID: &str = "loading";
+const WEB_FONT: &str = "<i class='fa fa-spinner fa-spin fa-5x fa-fw'></i><br><br>";
+const WAIT_MESSAGE: &str = "Please wait until the alert dialog is displayed.";
 //--------------------------------------------------------
 // entry point
 //--------------------------------------------------------
@@ -89,17 +92,29 @@ pub fn start() -> Result<(), JsValue> {
     init_ace();
 
     // evalButton.onmousedown = () => {...}
-    let closure = Closure::wrap(Box::new(move |_event: Event| {
-        add_loading();
+    {
+        let mut document = document.clone();
+        let text = text.clone();
+        let closure = Closure::wrap(Box::new(move |_event: Event| {
+            if document.get_element_by_id(WAIT_DIALOG_ID).is_none() {
+                add_loading(&mut document);
+            }
 
-        set_textarea_from_ace();
-    }) as Box<dyn FnMut(_)>);
-    button.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
-    closure.forget();
-
+            let s = get_ace_text();
+            text.set_value(&s);
+        }) as Box<dyn FnMut(_)>);
+        button.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
+        closure.forget();
+    }
     // evalButton.onclick = () => {...}
     let closure = Closure::wrap(Box::new(move |_event: Event| {
+        let document = document.clone();
+
         let c = Closure::wrap(Box::new(move |v: JsValue| {
+            if let Some(element) = document.get_element_by_id(WAIT_DIALOG_ID) {
+                let loading = element.dyn_into::<Element>().unwrap();
+                loading.remove();
+            }
             alert(&v.as_string().unwrap());
         }) as Box<dyn FnMut(_)>);
 
@@ -107,10 +122,6 @@ pub fn start() -> Result<(), JsValue> {
         let _ = future_to_promise(execute_lisp(text.value(), env.clone())).then(&c);
         c.forget();
 
-        if let Some(element) = document.get_element_by_id("loading") {
-            let loading = element.dyn_into::<Element>().unwrap();
-            loading.remove();
-        }
         console_log!("eval done.");
     }) as Box<dyn FnMut(_)>);
     button.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
@@ -144,6 +155,29 @@ async fn execute_lisp(code: String, env: Environment) -> Result<JsValue, JsValue
     }
     let text = JsFuture::from(Promise::resolve(&call_elisp(code, env))).await?;
     Ok(text)
+}
+//--------------------------------------------------------
+// add loading message
+//--------------------------------------------------------
+fn add_loading(document: &mut Document) {
+    let div = document
+        .create_element("div")
+        .unwrap()
+        .dyn_into::<HtmlDivElement>()
+        .unwrap();
+
+    div.set_id(WAIT_DIALOG_ID);
+
+    let ua = web_sys::window().unwrap().navigator().user_agent().unwrap();
+    let ua = ua.to_lowercase();
+
+    let msg = if !ua.contains("firefox") {
+        format!("<div class='layout icon'>{}</div>", WAIT_MESSAGE)
+    } else {
+        format!("<div class='layout'>{}{}</div>", WEB_FONT, WAIT_MESSAGE)
+    };
+    div.set_inner_html(&msg);
+    document.body().unwrap().append_child(&div).unwrap();
 }
 //--------------------------------------------------------
 // make callback
