@@ -280,7 +280,7 @@ where
         e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
     let l = &*reference_obj!(l);
-    if l.len() < 1 {
+    if l.is_empty() {
         return Err(create_error_value!(ErrCode::E1021, l.len()));
     }
 

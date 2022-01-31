@@ -166,6 +166,12 @@ impl Environment {
     pub fn get_cont(&self) -> Option<Expression> {
         return self.globals.lock().unwrap().cont.clone();
     }
+    pub fn as_ptr(&self) -> *const Environment {
+        Arc::as_ptr(&self.core) as *const Environment
+    }
+    pub fn as_mut_ptr(&self) -> *mut Environment {
+        Arc::as_ptr(&self.core) as *mut Environment
+    }
 }
 impl Default for Environment {
     fn default() -> Self {
