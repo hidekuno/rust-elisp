@@ -179,6 +179,12 @@ impl Environment {
     pub fn get_cont(&self) -> Option<Expression> {
         return self.globals.borrow().cont.clone();
     }
+    pub fn as_ptr(&self) -> *const Environment {
+        self.core.as_ptr() as *const Environment
+    }
+    pub fn as_mut_ptr(&self) -> *mut Environment {
+        self.core.as_ptr() as *mut Environment
+    }
 }
 impl Default for Environment {
     fn default() -> Self {
