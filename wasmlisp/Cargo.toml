@@ -22,23 +22,13 @@ wasm-bindgen-futures = "0.4.4"
 [dependencies.web-sys]
 version = "0.3"
 features = [
-  'console',
   'CssStyleDeclaration',
   'Document',
-  'DomStringMap',
-  'DomTokenList',
   'Element',
   'Event',
-  'EventTarget',
-  'HtmlBodyElement',
   'HtmlElement',
   'HtmlInputElement',
-  'KeyboardEvent',
-  'Location',
   'Navigator',
-  'Node',
-  'NodeList',
-  'Storage',
   'Window',
   'HtmlTextAreaElement',
   'HtmlCanvasElement',

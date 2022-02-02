@@ -192,7 +192,7 @@ fn log_debug(exp: &[Expression], env: &Environment) -> ResultExpression {
     let value = lisp::eval(&exp[1], env)?;
     println!(
         "SCM-DEBUG [{}]: {}",
-        Utc::now().to_string(),
+        Utc::now(),
         value.to_string()
     );
     Ok(Expression::Nil())
