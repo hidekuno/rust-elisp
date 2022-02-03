@@ -240,7 +240,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
-    // (wasm-time (image-width "sample") 3)
+    // (wasm-time (let loop ((i 0)) (if (>= i 10) i (loop (+ i 1)))))
     //--------------------------------------------------------
     env.add_builtin_ext_func("wasm-time", move |exp, env| {
         if exp.len() != 2 {
