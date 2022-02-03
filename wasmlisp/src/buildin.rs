@@ -253,8 +253,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         let result = eval(&exp[1], env);
         let end = js_sys::Date::now();
 
-        let t = ((end - start).trunc()) as i64;
-        console_log!("{}.{}(s)", t / 1000, t % 1000);
+        log(&format!("{}(ms)", (end - start)));
         result
     });
     //--------------------------------------------------------

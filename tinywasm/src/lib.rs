@@ -44,19 +44,19 @@ pub fn start() -> Result<(), JsValue> {
     let env = &ENV;
 
     env.add_builtin_ext_func("wasm-time", move |exp, env| {
-        if exp.len() != 2 {
-            return Err(create_error_value!(ErrCode::E1007, exp.len()));
+        match exp.len() {
+            2 => {
+                // std::time::SystemTime::now() causes panic on wasm32
+                // https://github.com/rust-lang/rust/issues/48564
+                let start = js_sys::Date::now();
+                let result = eval(&exp[1], env);
+                let end = js_sys::Date::now();
+
+                log(&format!("{}(ms)", (end - start)));
+                result
+            }
+            _ => Err(create_error_value!(ErrCode::E1007, exp.len())),
         }
-
-        // std::time::SystemTime::now() causes panic on wasm32
-        // https://github.com/rust-lang/rust/issues/48564
-        let start = js_sys::Date::now();
-        let result = eval(&exp[1], env);
-        let end = js_sys::Date::now();
-
-        let t = ((end - start).trunc()) as i64;
-        log(&format!("{}.{}(s)", t / 1000, t % 1000));
-        result
     });
 
     Ok(())
