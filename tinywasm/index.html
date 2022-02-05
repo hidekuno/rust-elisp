@@ -54,37 +54,6 @@
       </div>
     </center>
   </body>
-  <script type="module">
-    import { default as wasm } from "./pkg/tinywasm.js";
-    wasm().then((module) => {console.log("Loading Success");});
-    import { do_scheme } from "./pkg/tinywasm.js";
-
-    let history = [];
-    let codeArea = document.getElementById("codearea");
-    let evalButton = document.getElementById("eval");
-    const selectElement = document.querySelector('.history-code');
-
-    evalButton.onclick = () => {
-        history.push(codeArea.value);
-
-        let option = document.createElement("option");
-        option.text = codeArea.value.slice(0,80);
-        option.value = selectElement.length;
-        selectElement.appendChild(option);
-
-        let v = do_scheme(codeArea.value);
-        alert(v);
-    };
-
-    let editor = ace.edit("editor");
-    selectElement.addEventListener(
-        'change',
-        (event) => {
-            console.log(event.target.value);
-            if (event.target.value != -1) {
-                editor.setValue(history[event.target.value-1], -1);
-            }
-        });
-  </script>
   <script src="./ui.js"></script>
+  <script type="module" src="./load.js"></script>
 </html>

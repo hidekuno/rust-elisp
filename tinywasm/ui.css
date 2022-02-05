@@ -119,7 +119,7 @@ select{
   transform:rotate(45deg)translateY(-30%);
 }
 .color.selectbox select{
-  background:#6E6BA6;
+  background:#4169e1;
   color:#fff;
   border-radius:2em;
 }

@@ -72,8 +72,42 @@ function addLoading() {
         }
     }
 }
+class CodeHistory {
+    constructor(select) {
+        this.fifo = [];
+        this.select = select;
+    }
+    push(code) {
+        this.fifo.push(code);
+        if (this.fifo.length > 10) {
+            this.fifo.shift();
+        }
+        this.makeSelectOption();
+    }
+    makeSelectOption() {
+        this.select.innerHTML = "";
+
+        let option = document.createElement("option");
+        option.text = "Please select code";
+        option.value = -1;
+        this.select.appendChild(option);
+
+        let selectElment = this.select;
+        this.fifo.forEach(function(value, idx) {
+            let option = document.createElement("option");
+            option.text = value.slice(0,80);
+            option.value = idx;
+            selectElment.appendChild(option);
+        });
+    }
+    getValue(idx) {
+        return this.fifo[idx];
+    }
+}
+var codeHistory = new CodeHistory(document.querySelector('.history-code'));
+
 (() => {
-    let editor = ace.edit("editor");
+    const editor = ace.edit("editor");
     editor.$blockScrolling = Infinity;
     editor.setOptions({
         enableBasicAutocompletion: true,
@@ -84,13 +118,22 @@ function addLoading() {
     editor.getSession().setMode("ace/mode/scheme");
     editor.setFontSize(12);
 
-    let codeArea = document.getElementById("codearea");
-    let evalButton = document.getElementById("eval");
+    const codeArea = document.getElementById("codearea");
+    const evalButton = document.getElementById("eval");
+    const selectElement = document.querySelector('.history-code');
 
     evalButton.onmousedown = () => {
         // addLoading();
         codeArea.value = editor.getSession().getValue();
     };
+    selectElement.addEventListener(
+        'change',
+        (event) => {
+            if (event.target.value != -1) {
+                editor.setValue(codeHistory.getValue(event.target.value), -1);
+            }
+        });
+
     document.getElementById("prime").onclick = () => {
         editor.setValue(PRIME_CODE, -1);
     };
