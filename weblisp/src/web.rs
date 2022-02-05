@@ -278,7 +278,7 @@ macro_rules! is_head_method {
     };
 }
 pub fn entry_proc<T>(
-    mut stream: T,
+    stream: &mut T,
     env: lisp::Environment,
     buffer: &[u8],
     id: usize,
@@ -318,7 +318,7 @@ where
     let head = is_head_method!(r);
     if !head {
         stream.write_all(CRLF.as_bytes())?;
-        contents.http_write(&mut stream);
+        contents.http_write(stream);
     }
     stream.flush()?;
     Ok(())

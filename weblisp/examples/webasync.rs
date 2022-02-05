@@ -32,6 +32,7 @@ use log::{debug, error, info, warn};
 
 use async_std::io::ReadExt;
 use async_std::io::WriteExt;
+use async_std::net::Shutdown;
 use async_std::net::TcpListener;
 use async_std::net::TcpStream;
 use async_std::task;
@@ -95,6 +96,8 @@ pub async fn entry_async_proc(
     write_contents(r.unwrap(), contents, &mut stream).await;
 
     stream.flush().await.unwrap();
+
+    stream.shutdown(Shutdown::Both).unwrap();
 }
 async fn write_contents(r: Request, contents: Contents, stream: &mut TcpStream) {
     macro_rules! copy {
