@@ -17,11 +17,13 @@ use elisp::lisp;
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 
-use mio::net::{TcpListener, TcpStream};
+use mio::net::TcpListener;
+use mio::net::TcpStream;
 use mio::{Events, Interest, Poll, Token};
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Read};
+use std::net::Shutdown;
 
 const SERVER: Token = Token(0);
 const MAX_ID: usize = 1000;
@@ -93,10 +95,12 @@ pub fn run_web_epoll_service(config: Config) -> Result<(), Box<dyn Error>> {
                         let (mut stream, buffer, n) = requests.remove(&conn_id).unwrap();
                         poll.registry().deregister(&mut stream)?;
 
-                        if let Err(e) = web::entry_proc(stream, env.clone(), &buffer[..n], conn_id)
+                        if let Err(e) =
+                            web::entry_proc(&mut stream, env.clone(), &buffer[..n], conn_id)
                         {
                             error!("entry_proc {}", e);
                         }
+                        stream.shutdown(Shutdown::Both).unwrap();
                     }
                 }
             }
