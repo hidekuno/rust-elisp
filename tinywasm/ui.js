@@ -21,7 +21,8 @@ const PERM_CODE = `(define (perm l n)
 const COMB_CODE = `(define (comb l n)
   (if (null? l) l
       (if (= n 1) (map (lambda (n) (list n)) l)
-          (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1))) (comb (cdr l) n)))))
+          (append (map (lambda (p) (cons (car l) p)) (comb (cdr l)(- n 1)))
+                  (comb (cdr l) n)))))
 
 (comb '(a b c) 2)`;
 
@@ -33,9 +34,29 @@ const QSORT_CODE = `(define (qsort l pred)
 (define test-list (list 36 14 19 2 8 7 6 27 0 9 3))
 (qsort test-list (lambda (a b)(< a b)))`;
 
-const WEB_FONT = "<i class='fa fa-spinner fa-spin fa-5x fa-fw'></i><br><br>";
+const MSORT_CODE =`(define (l-merge a b)(if (or (null? a)(null? b)) (append a b)
+  (if (< (car a)(car b))(cons (car a)(l-merge (cdr a) b))
+         (cons (car b) (l-merge a (cdr b))))))
+  (define (msort l)(let ((n (length l)))(if (>= 1 n ) l
+    (if (= n 2) (if (< (car l)(cadr l)) l
+     (reverse l))(let ((mid (quotient n 2)))(l-merge (msort (take l mid))(msort (drop l mid))))))))
 
-const WAIT_MESSAGE = "Please wait until the alert dialog is displayed.";
+(define test-list (list 36 14 19 2 8 7 6 27 0 9 3))
+(msort test-list)
+`
+const BSORT_CODE =`(define (bubble-iter x l)
+  (if (or (null? l)(< x (car l)))
+      (cons x l)(cons (car l)(bubble-iter x (cdr l)))))
+
+(define (bsort l)(if (null? l) l (bubble-iter (car l)(bsort (cdr l)))))
+
+(define test-list (list 36 27 14 19 2 8 7 6 0 9 3))
+(bsort test-list)
+`
+
+const WEB_FONT = `<i class='fa fa-spinner fa-spin fa-5x fa-fw'></i><br><br>`;
+
+const WAIT_MESSAGE = `Please wait until the alert dialog is displayed.`;
 
 function addLoading() {
     let ua = window.navigator.userAgent.toLowerCase();
@@ -85,5 +106,11 @@ function addLoading() {
     };
     document.getElementById("quicksort").onclick = () => {
         editor.setValue(QSORT_CODE, -1);
+    };
+    document.getElementById("mergesort").onclick = () => {
+        editor.setValue(MSORT_CODE, -1);
+    };
+    document.getElementById("bubblesort").onclick = () => {
+        editor.setValue(BSORT_CODE, -1);
     };
 })();
