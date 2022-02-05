@@ -36,12 +36,8 @@
 }
 .inline-block1 {
   display: inline-block;
-  padding: 60px 5px;
+  padding: 10px 5px;
   position: relative;
-}
-.inline-block2 {
-  display: inline-block;
-  width: 100px;
 }
 .balloon {
   display: none;
@@ -55,6 +51,7 @@
   font-size: 50%;
   width: 150px;
   text-align: left;
+  z-index: 10;
 }
 .balloon:before {
   content: " ";
@@ -71,22 +68,62 @@
 }
 .lisp-source:hover + p.balloon {
   display: inline-block;
-  top: -5px;
+  top: -45px;
   left: -60px;
 }
 #loading {
-    display: table;
-    width: 100%;
-    height: 50%;
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: #fff;
-    opacity: 0.9;
+  display: table;
+  width: 100%;
+  height: 50%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: #fff;
+  opacity: 0.9;
 }
 #loading .loadingMsg {
-    display: table-cell;
-    text-align: center;
-    vertical-align: middle;
-    padding-top: 140px;
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+  padding-top: 140px;
+}
+/*------------------------------------*/
+/* select box                         */
+/*------------------------------------*/
+.selectbox {
+  width:90%;
+  margin:1em auto;
+  position:relative;
+}
+select{
+  -webkit-appearance:none;
+  appearance:none;
+  width:50%;
+  padding:0.25em 0.25em;
+  box-sizing:border-box;
+  font-size:1em;
+  border:#ccc 1px solid;
+  border-radius:0;
+  background:#fff;
+}
+.selectbox::after{
+  content:"";
+  display:block;
+  width:10px;
+  height:10px;
+  position:absolute;
+  right:5%;
+  top:35%;
+  border-bottom:#333 2px solid;
+  border-right:#333 2px solid;
+  transform:rotate(45deg)translateY(-30%);
+}
+.color.selectbox select{
+  background:#6E6BA6;
+  color:#fff;
+  border-radius:2em;
+}
+.color.selectbox::after{
+  border-bottom:#fff 5px solid;
+  border-right:#fff 5px solid;
 }

@@ -91,10 +91,6 @@ function addLoading() {
         // addLoading();
         codeArea.value = editor.getSession().getValue();
     };
-    evalButton.onclick = () => {
-        let v = do_scheme(codeArea.value);
-        alert(v);
-    };
     document.getElementById("prime").onclick = () => {
         editor.setValue(PRIME_CODE, -1);
     };
