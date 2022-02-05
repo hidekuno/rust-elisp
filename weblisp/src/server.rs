@@ -19,6 +19,7 @@ use elisp::lisp;
 use std::error::Error;
 use std::io::ErrorKind;
 use std::io::Read;
+use std::net::Shutdown;
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::thread;
@@ -115,7 +116,8 @@ fn handle_connection(mut stream: TcpStream, env: lisp::Environment, id: usize) {
             }
         }
     };
-    if let Err(e) = web::entry_proc(stream, env, &buffer[..n], id) {
+    if let Err(e) = web::entry_proc(&mut stream, env, &buffer[..n], id) {
         error!("core proc {}", e);
     }
+    stream.shutdown(Shutdown::Both).unwrap();
 }
