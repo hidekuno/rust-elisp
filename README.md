@@ -7,7 +7,7 @@ Implementation of Lisp (subset version) by Rust
 
 ## Quality
 - Level at which a simple program works
-    - https://github.com/hidekuno/rust-elisp/tree/master/elisp/samples  
+    - https://github.com/hidekuno/rust-elisp/tree/master/elisp/samples
     - https://github.com/hidekuno/rust-elisp/blob/master/elisp/tests/integration_test.rs
 
 - I confirmed that the SICP graphic language program works.
@@ -19,6 +19,7 @@ Implementation of Lisp (subset version) by Rust
 | [elisp]  | lisp interpreter |
 | [glisp]  | GUI for drawing on GTK3 |
 | [wasmlisp] | GUI for drawing on Web Assembly |
+| [tinywasm] | Sample Program by Web Assembly|
 | [weblisp] | Easy Web Serve(Test program for Multithreaded elisp) |
 | zlearning |Program for my learning(Not related to elisp)|
 
@@ -48,7 +49,7 @@ docker run --name glisp -e DISPLAY=docker.for.mac.localhost:0 hidekuno/rust-elis
 ### Linux
 ```
 docker pull hidekuno/rust-elisp
-xhost + 
+xhost +
 docker run --name glisp -e DISPLAY=${host_ipaddr}:0.0 hidekuno/rust-elisp /root/glisp
 ```
 ### Windows11+WSL2+WSLg

@@ -240,7 +240,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
-    // (wasm-time (image-width "sample") 3)
+    // (wasm-time (let loop ((i 0)) (if (>= i 10) i (loop (+ i 1)))))
     //--------------------------------------------------------
     env.add_builtin_ext_func("wasm-time", move |exp, env| {
         if exp.len() != 2 {
@@ -253,8 +253,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
         let result = eval(&exp[1], env);
         let end = js_sys::Date::now();
 
-        let t = ((end - start).trunc()) as i64;
-        console_log!("{}.{}(s)", t / 1000, t % 1000);
+        log(&format!("{}(ms)", (end - start)));
         result
     });
     //--------------------------------------------------------

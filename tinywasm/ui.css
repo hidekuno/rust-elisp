@@ -1,0 +1,129 @@
+/*
+   Rust study program.
+   This is prototype program mini scheme subset what porting from go-scheme.
+
+   hidekuno@gmail.com
+*/
+#eval {
+  padding: 5px 10px;
+  border: none;
+  background: slategrey;
+  margin: 10px auto;
+  color: white;
+}
+.lisp-source {
+  padding: 5px 10px;
+  border: none;
+  background: #e0efff;
+  margin: 10px auto;
+  color: black;
+}
+#codearea {
+  display: none;
+}
+#drawingarea {
+  border-radius: 10px;
+  background-color: white;
+  border: 1px solid #000;
+  overflow: hidden;
+}
+#editor {
+  border-radius: 10px;
+  border: 1px solid #000;
+  height: 310px;
+  width:  720px;
+  text-align: left;
+}
+.inline-block1 {
+  display: inline-block;
+  padding: 10px 5px;
+  position: relative;
+}
+.balloon {
+  display: none;
+  position: absolute;
+  padding: 8px;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  border-radius: 8px;
+  background: #333;
+  color: #fff;
+  font-size: 50%;
+  width: 150px;
+  text-align: left;
+  z-index: 10;
+}
+.balloon:before {
+  content: " ";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -10px;
+  border: solid transparent;
+  border-color: rgba(51, 51, 51, 0);
+  border-bottom-color: #333;
+  border-width: 10px;
+  pointer-events: none;
+  transform: rotateZ(180deg);
+}
+.lisp-source:hover + p.balloon {
+  display: inline-block;
+  top: -45px;
+  left: -60px;
+}
+#loading {
+  display: table;
+  width: 100%;
+  height: 50%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: #fff;
+  opacity: 0.9;
+}
+#loading .loadingMsg {
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+  padding-top: 140px;
+}
+/*------------------------------------*/
+/* select box                         */
+/*------------------------------------*/
+.selectbox {
+  width:90%;
+  margin:1em auto;
+  position:relative;
+}
+select{
+  -webkit-appearance:none;
+  appearance:none;
+  width:50%;
+  padding:0.25em 0.25em;
+  box-sizing:border-box;
+  font-size:1em;
+  border:#ccc 1px solid;
+  border-radius:0;
+  background:#fff;
+}
+.selectbox::after{
+  content:"";
+  display:block;
+  width:10px;
+  height:10px;
+  position:absolute;
+  right:5%;
+  top:35%;
+  border-bottom:#333 2px solid;
+  border-right:#333 2px solid;
+  transform:rotate(45deg)translateY(-30%);
+}
+.color.selectbox select{
+  background:#4169e1;
+  color:#fff;
+  border-radius:2em;
+}
+.color.selectbox::after{
+  border-bottom:#fff 5px solid;
+  border-right:#fff 5px solid;
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Rust elisp web assembly</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="ui.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.0/ext-language_tools.js"></script>
+  </head>
+
+  <body>
+    <center><h2>Tiny Rust&nbsp;
+      <span style="color:#FFE900">elisp&nbsp;</span>
+      <span>Web&nbsp;</span>
+      <span style="color:#28AFB0">assembly&nbsp;</span>
+      <span>Demo&nbsp;</span>
+      <span style="color:#E53D00">program</span></h2>
+    </center>
+
+    <center><div id="editor"></div></center>
+    <center><textarea id="codearea"></textarea></center>
+    <center>
+      <div class="inline-block1">
+        <button id="prime"  class="lisp-source" type="button">Prime</button>
+        <p class="balloon">After click this button,<br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="permutations"  class="lisp-source" type="button">Permutations</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="combinations" class="lisp-source" type="button">Combinations</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="quicksort" class="lisp-source" type="button">Quick Sort</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="mergesort" class="lisp-source" type="button">Merge Sort</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1">
+        <button id="bubblesort" class="lisp-source" type="button">Bubble Sort</button>
+        <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
+      </div>
+      <div class="inline-block1"><button id="eval" type="button">Eval Lisp Code</button></div>
+      <div class="selectbox color">
+        <select class="history-code" name="history-code">
+          <option value="-1">Please select code</option>
+        </select>
+      </div>
+    </center>
+  </body>
+  <script src="./ui.js"></script>
+  <script type="module" src="./load.js"></script>
+</html>
