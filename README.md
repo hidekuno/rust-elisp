@@ -19,7 +19,7 @@ Implementation of Lisp (subset version) by Rust
 | [elisp]  | lisp interpreter |
 | [glisp]  | GUI for drawing on GTK3 |
 | [wasmlisp] | GUI for drawing on Web Assembly |
-| [tinywasm] | Sample Program by Web Assembly|
+| [tinywasm](https://github.com/hidekuno/rust-elisp/tree/master/tinywasm) | Sample Program by Web Assembly|
 | [weblisp] | Easy Web Serve(Test program for Multithreaded elisp) |
 | zlearning |Program for my learning(Not related to elisp)|
 
