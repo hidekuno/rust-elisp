@@ -16,10 +16,13 @@ use crate::log;
 
 use crate::buildin;
 use crate::fractal;
+use crate::helper;
 use buildin::build_lisp_function;
 use fractal::build_demo_function;
 
 use elisp::lisp;
+use helper::History;
+use helper::HISTORY_SIZE;
 use lisp::do_core_logic;
 use lisp::Environment;
 
@@ -29,7 +32,10 @@ use wasm_bindgen_futures::future_to_promise;
 use wasm_bindgen_futures::JsFuture;
 
 use js_sys::Promise;
-use web_sys::{Document, Element, Event, HtmlDivElement, HtmlTextAreaElement};
+use web_sys::{
+    Document, Element, Event, HtmlDivElement, HtmlOptionElement, HtmlSelectElement,
+    HtmlTextAreaElement,
+};
 
 use crate::get_ace_text;
 use crate::init_ace;
@@ -91,6 +97,33 @@ pub fn start() -> Result<(), JsValue> {
 
     init_ace();
 
+    let history = History::new(HISTORY_SIZE);
+    make_select_options(&document, &history);
+
+    let commands = history.clone();
+    // selectElement.addEventListener('change',
+    {
+        let select = document
+            .get_element_by_id("history-code")
+            .unwrap()
+            .dyn_into::<HtmlSelectElement>()
+            .unwrap();
+
+        let closure = Closure::wrap(Box::new(move |event: Event| {
+            if let Some(target) = event.target() {
+                let select = target.dyn_into::<HtmlSelectElement>().unwrap();
+                if let Ok(n) = select.value().parse::<usize>() {
+                    if let Some(s) = commands.get_value(n) {
+                        console_log!("{:?}", &s);
+                        set_ace_text(&s);
+                    }
+                }
+            }
+        }) as Box<dyn FnMut(_)>);
+
+        select.set_onchange(Some(closure.as_ref().unchecked_ref()));
+        closure.forget();
+    }
     // evalButton.onmousedown = () => {...}
     {
         let mut document = document.clone();
@@ -107,16 +140,20 @@ pub fn start() -> Result<(), JsValue> {
         closure.forget();
     }
     // evalButton.onclick = () => {...}
+    let commands = history.clone();
     let closure = Closure::wrap(Box::new(move |_event: Event| {
-        let document = document.clone();
+        let doc = document.clone();
 
         let c = Closure::wrap(Box::new(move |v: JsValue| {
-            if let Some(element) = document.get_element_by_id(WAIT_DIALOG_ID) {
+            if let Some(element) = doc.get_element_by_id(WAIT_DIALOG_ID) {
                 let loading = element.dyn_into::<Element>().unwrap();
                 loading.remove();
             }
             alert(&v.as_string().unwrap());
         }) as Box<dyn FnMut(_)>);
+
+        commands.push(&text.value());
+        make_select_options(&document, &commands);
 
         // It's experimental code for study.
         let _ = future_to_promise(execute_lisp(text.value(), env.clone())).then(&c);
@@ -125,7 +162,6 @@ pub fn start() -> Result<(), JsValue> {
         console_log!("eval done.");
     }) as Box<dyn FnMut(_)>);
     button.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
-
     // The instance of `Closure` that we created will invalidate its
     // corresponding JS callback whenever it is dropped, so if we were to
     // normally return from `setup_clock` then our registered closure will
@@ -201,4 +237,36 @@ fn make_source_button_callback() {
             .unwrap();
         closure.forget();
     }
+}
+//--------------------------------------------------------
+// make select options
+//--------------------------------------------------------
+fn make_select_options(document: &Document, history: &History) {
+    let select = document
+        .get_element_by_id("history-code")
+        .unwrap()
+        .dyn_into::<HtmlSelectElement>()
+        .unwrap();
+
+    select.set_inner_html("");
+    let option = document
+        .create_element("option")
+        .unwrap()
+        .dyn_into::<HtmlOptionElement>()
+        .unwrap();
+    option.set_text("Code History");
+    option.set_value("-1");
+    select.append_child(&option).unwrap();
+
+    history.walk_inner(|i, e| {
+        let option = document
+            .create_element("option")
+            .unwrap()
+            .dyn_into::<HtmlOptionElement>()
+            .unwrap();
+
+        option.set_text(&e);
+        option.set_value(&i.to_string());
+        select.append_child(&option).unwrap();
+    });
 }
