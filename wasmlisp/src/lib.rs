@@ -12,11 +12,18 @@
       npm install
       npm run lisp
 
-   hidekuno@gmail.com
+   2. build & run)
+      wasm-pack build --target web --out-dir web
+      sh cpweb.sh
+      cd web
+      python -m http.server
+
+     hidekuno@gmail.com
 */
 pub mod buildin;
 pub mod draw;
 pub mod fractal;
+pub mod helper;
 pub mod lisp;
 
 extern crate wasm_bindgen;

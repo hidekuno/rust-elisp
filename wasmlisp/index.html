@@ -27,7 +27,8 @@
         <button id="sicp"  class="lisp-source" type="button">Download SICP</button>
         <p class="balloon">After click this button,<br>please click "Eval Lisp Code"</p>
       </div>
-      <div class="inline-block1"><button id="demo"  class="lisp-source" type="button">Demo</button>
+      <div class="inline-block1">
+        <button id="demo"  class="lisp-source" type="button">Demo</button>
         <p class="balloon">After click this button, <br>please click "Eval Lisp Code"</p>
       </div>
       <div class="inline-block1">
@@ -40,6 +41,11 @@
       </div>
       <div class="inline-block2"></div>
       <div class="inline-block1"><button id="eval" type="button">Eval Lisp Code</button></div>
+      <div class="inline-block1 selectbox color">
+        <select id="history-code" class="history-code" name="history-code">
+          <option value="-1">Code History</option>
+        </select>
+      </div>
     </center>
   </body>
   <script src="./index.js"></script>

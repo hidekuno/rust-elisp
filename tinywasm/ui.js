@@ -88,7 +88,7 @@ class CodeHistory {
         this.select.innerHTML = "";
 
         let option = document.createElement("option");
-        option.text = "Please select code";
+        option.text = "Code History";
         option.value = -1;
         this.select.appendChild(option);
 
@@ -117,6 +117,8 @@ var codeHistory = new CodeHistory(document.querySelector('.history-code'));
     editor.setTheme("ace/theme/textmate");
     editor.getSession().setMode("ace/mode/scheme");
     editor.setFontSize(12);
+
+    codeHistory.makeSelectOption();
 
     const codeArea = document.getElementById("codearea");
     const evalButton = document.getElementById("eval");
