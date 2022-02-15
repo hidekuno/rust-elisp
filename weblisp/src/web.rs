@@ -33,6 +33,8 @@ pub const CRLF: &str = "\r\n";
 
 pub struct Response(pub u32, pub &'static str);
 pub const RESPONSE_200: Response = Response(200, "OK");
+pub const RESPONSE_301: Response = Response(301, "Moved Permanently");
+pub const RESPONSE_302: Response = Response(302, "Found");
 pub const RESPONSE_400: Response = Response(400, "Bad Request");
 pub const RESPONSE_404: Response = Response(404, "Not Found");
 pub const RESPONSE_405: Response = Response(405, "Method Not Allowed");
@@ -287,7 +289,7 @@ where
     T: std::io::Write,
 {
     let r = parse_request(buffer);
-    let (status, mut contents, mime, cookie) = match &r {
+    let (status, mut contents, mime, extended) = match &r {
         Ok(r) => dispatch(r, env, id),
         Err(e) => http_value_error!(RESPONSE_400, e),
     };
@@ -306,7 +308,13 @@ where
     for h in &res_header {
         http_write!(stream, h);
     }
-    if let Some(cookie) = cookie {
+    if status.0 == 301 || status.0 == 302 {
+        if let Some(location) = extended {
+            http_write!(stream, format!("Location: {}", location));
+        }
+        return Ok(());
+    }
+    if let Some(cookie) = extended {
         http_write!(stream, make_cookie_header(cookie));
     }
 
@@ -554,7 +562,8 @@ fn do_cgi(r: &Request) -> WebResult {
     // It's Not support Location, etc..
     let mut content_type: Option<String> = None;
     let mut status: Option<String> = None;
-    for i in 1..=3 {
+    let mut location: Option<String> = None;
+    for i in 1..=4 {
         let mut line = String::new();
         if br.read_line(&mut line).is_err() {
             return http_error!(RESPONSE_500);
@@ -566,15 +575,16 @@ fn do_cgi(r: &Request) -> WebResult {
             content_type = Some(end.trim().to_string())
         } else if let Some(end) = line.strip_prefix("Status:") {
             status = Some(end.trim().to_string())
+        } else if let Some(end) = line.strip_prefix("Location:") {
+            location = Some(end.trim().to_string())
         } else {
             return http_error!(RESPONSE_500);
         }
-        if i == 3 {
+        if i == 4 {
             // Content-Type: a,Content-Type: b ...
             return http_error!(RESPONSE_500);
         }
     }
-
     let mime = match content_type {
         Some(n) => n,
         None => DEFALUT_MIME.to_string(),
@@ -586,11 +596,19 @@ fn do_cgi(r: &Request) -> WebResult {
         },
         None => RESPONSE_200,
     };
-    (response, Contents::Cgi(br), mime, None)
+    if location.is_none() {
+        match response.0 {
+            301 | 302 => return http_error!(RESPONSE_500),
+            _ => {}
+        }
+    }
+    (response, Contents::Cgi(br), mime, location)
 }
 pub fn get_status(status: i64) -> Response {
     match status as u32 {
         200 => RESPONSE_200,
+        301 => RESPONSE_301,
+        302 => RESPONSE_302,
         400 => RESPONSE_400,
         404 => RESPONSE_404,
         405 => RESPONSE_405,

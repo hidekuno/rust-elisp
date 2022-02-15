@@ -140,7 +140,6 @@ pub fn start() -> Result<(), JsValue> {
         closure.forget();
     }
     // evalButton.onclick = () => {...}
-    let commands = history.clone();
     let closure = Closure::wrap(Box::new(move |_event: Event| {
         let doc = document.clone();
 
@@ -152,8 +151,8 @@ pub fn start() -> Result<(), JsValue> {
             alert(&v.as_string().unwrap());
         }) as Box<dyn FnMut(_)>);
 
-        commands.push(&text.value());
-        make_select_options(&document, &commands);
+        history.push(&text.value());
+        make_select_options(&document, &history);
 
         // It's experimental code for study.
         let _ = future_to_promise(execute_lisp(text.value(), env.clone())).then(&c);
@@ -265,7 +264,7 @@ fn make_select_options(document: &Document, history: &History) {
             .dyn_into::<HtmlOptionElement>()
             .unwrap();
 
-        option.set_text(&e);
+        option.set_text(e);
         option.set_value(&i.to_string());
         select.append_child(&option).unwrap();
     });

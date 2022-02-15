@@ -38,7 +38,7 @@ impl History {
     pub fn menu(&self) -> &gtk::MenuItem {
         &self.menu
     }
-    pub fn push(&self, exp: &str, tb: &gtk::TextBuffer) {
+    pub fn push(&self, exp: &str, tb: &gtk::TextBuffer, sb: &SourceView) {
         let s = String::from(exp).replace("\n", " ");
         let c = if let Some(ref v) = s.get(0..HISTORY_COL_SIZE) {
             gtk::MenuItem::with_mnemonic(format!("{} ..", v).as_str())
@@ -48,8 +48,10 @@ impl History {
         let exp_ = exp.to_string();
         let exp_ = exp_.into_boxed_str();
         let text_buffer = tb.clone();
+        let source_view = sb.clone();
         c.connect_activate(move |_| {
             text_buffer.set_text(&exp_);
+            source_view.do_highlight(&text_buffer);
         });
 
         if None == self.menu.submenu() {

@@ -61,11 +61,12 @@ pub fn start() -> Result<(), JsValue> {
 
     Ok(())
 }
+
 #[wasm_bindgen]
 pub fn do_scheme(code: String) -> String {
     let env = &ENV;
 
-    match do_core_logic(&code, &env) {
+    match do_core_logic(&code, env) {
         Ok(r) => r.to_string(),
         Err(e) => e.get_msg(),
     }
