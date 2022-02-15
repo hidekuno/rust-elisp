@@ -505,6 +505,7 @@ pub fn scheme_gtk(env: &Environment, draw_table: &DrawTable) {
 //--------------------------------------------------------
 fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     let canvas = ui.canvas();
+    let source_view = ui.source_view();
     let text_view = ui.text_view();
     let status_bar = ui.status_bar();
     let text_buffer = text_view.buffer().expect("Couldn't get window");
@@ -527,7 +528,7 @@ fn execute_lisp(env: &Environment, ui: &ControlWidget, history: &History) {
     let result = match lisp::do_core_logic(&exp, env) {
         Ok(r) => {
             if !history.is_once(&exp) {
-                history.push(&exp, &text_buffer);
+                history.push(&exp, &text_buffer, source_view);
             }
             r.to_string()
         }

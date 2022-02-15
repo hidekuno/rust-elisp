@@ -92,7 +92,7 @@ mod tests {
     use std::time::Duration;
 
     use crate::test_skelton;
-    const TEST_COUNT: usize = 23;
+    const TEST_COUNT: usize = 25;
 
     fn make_config(count: usize) -> Config {
         let param = if count == 0 {
@@ -613,6 +613,43 @@ mod tests {
         assert_str!("Content-length: 18", iter.next());
         iter.next();
         assert_str!("\"Hello,World rust\"", iter.next());
+    }
+    #[test]
+    fn test_case_23_301() {
+        let r = make_request!("GET", "/examples/redirect.cgi");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!(
+            make_response!("301", "Moved Permanently").as_str(),
+            iter.next()
+        );
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Location: https://www.yahoo.co.jp/", iter.next());
+    }
+    #[test]
+    fn test_case_23_302() {
+        let r = make_request!("GET", "/examples/redirect302.cgi");
+        let s = vec![r.as_str()];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+
+        assert_str!(make_response!("302", "Found").as_str(), iter.next());
+
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Location: https://www.yahoo.co.jp/", iter.next());
     }
     #[test]
     fn test_case_80() {

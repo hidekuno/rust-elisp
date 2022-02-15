@@ -57,7 +57,7 @@ impl History {
     {
         let h = self.items.borrow();
         for (i, e) in h.iter().enumerate() {
-            func(i, &e);
+            func(i, e);
         }
     }
 }
