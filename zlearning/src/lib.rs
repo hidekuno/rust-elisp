@@ -5,15 +5,16 @@
    hidekuno@gmail.com
 */
 pub mod param;
+pub mod path;
 pub mod tree;
 pub mod visitor;
 pub mod walker;
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::Cache;
-    use crate::visitor::ItemVisitor;
-    use crate::visitor::LineItemVisitor;
+    use crate::path::Path;
+    use crate::visitor::LineVisitor;
+    use crate::visitor::SimpleVisitor;
     use crate::visitor::TestVisitor;
     use crate::walker::create_line_walker;
     use crate::walker::create_test_walker;
@@ -29,10 +30,10 @@ mod tests {
     fn test_tree() {
         let mut cursor =
             io::Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = Cache::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<io::Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
         if let Some(top) = cache.top {
-            assert_eq!(top.borrow().name, "fj");
+            assert_eq!(top.borrow().get_name(), "fj");
         } else {
             panic!("test failure");
         }
@@ -41,11 +42,11 @@ mod tests {
     fn test_visitor() {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
         let cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
-            assert_eq!(top.borrow().name, "fj");
+            assert_eq!(top.borrow().get_name(), "fj");
             let mut test = TestVisitor::new(Box::new(cursor));
             top.borrow().accept(&mut test);
 
@@ -64,11 +65,11 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
         let mut cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
-            let mut v = ItemVisitor::new(&mut cursor);
+            let mut v = SimpleVisitor::new(&mut cursor);
             top.borrow().accept(&mut v);
         } else {
             panic!("test failure");
@@ -83,11 +84,11 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
         let mut cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
-            let mut v = LineItemVisitor::new(&mut cursor, "   ", "|  ", "`--", "|--");
+            let mut v = LineVisitor::new(&mut cursor, "   ", "|  ", "`--", "|--");
             top.borrow().accept(&mut v);
         } else {
             panic!("test failure");
@@ -102,7 +103,7 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
         let cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
@@ -124,7 +125,7 @@ mod tests {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
 
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
         let mut cursor = Cursor::new(Vec::new());
 
         if let Some(top) = cache.top {
@@ -143,7 +144,7 @@ mod tests {
     fn test_walker_line() {
         let mut cursor =
             Cursor::new(String::from("fj.news\nfj.news.reader\nfj.news.server\n").into_bytes());
-        let cache = Cache::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
+        let cache = Path::create_tree::<Cursor<Vec<u8>>>(&mut cursor, '.', 10);
 
         let mut cursor = Cursor::new(Vec::new());
 
