@@ -7,15 +7,9 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::LinkedList;
-use std::fs::File;
-use std::io::stdin;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::StdinLock;
 use std::rc::Rc;
 use std::rc::Weak;
 
-use crate::param::Config;
 use crate::visitor::Visitor;
 
 // Prevent Broken pipe
@@ -38,37 +32,42 @@ macro_rules! writeln_unwrap {
         }
     };
 }
-pub type ItemRef = Rc<RefCell<Item>>;
-pub type ItemWeakRef = Weak<RefCell<Item>>;
-
-pub struct Item {
-    pub name: String,
-    pub last_name: String,
-    pub parent: Option<ItemRef>,
-    pub children: LinkedList<ItemWeakRef>,
+pub trait Element {
+    fn get_name(&self) -> &str;
+    fn get_display_string(&self) -> &str;
 }
-impl Item {
-    fn new(name: String, last_name: &str, parent: Option<ItemRef>) -> Self {
-        Item {
-            name,
-            last_name: last_name.into(),
+pub type TreeRef<T> = Rc<RefCell<Tree<T>>>;
+pub type TreeWeakRef<T> = Weak<RefCell<Tree<T>>>;
+
+pub struct Tree<T> {
+    item: T,
+    pub parent: Option<TreeRef<T>>,
+    pub children: LinkedList<TreeWeakRef<T>>,
+}
+impl<T> Tree<T>
+where
+    T: Element,
+{
+    pub fn new(item: T, parent: Option<TreeRef<T>>) -> Self {
+        Tree {
+            item,
             parent,
             children: LinkedList::new(),
         }
     }
-    pub fn add(&mut self, c: ItemWeakRef) {
+    pub fn add(&mut self, c: TreeWeakRef<T>) {
         self.children.push_back(c);
     }
-    pub fn accept<T>(&self, v: &mut T)
+    pub fn accept<S>(&self, v: &mut S)
     where
-        T: Visitor,
+        S: Visitor<T>,
     {
         v.visit(self);
     }
     pub fn is_last(&self) -> bool {
         match self.parent {
             Some(ref p) => {
-                self.name
+                self.item.get_name()
                     == p.borrow()
                         .children
                         .back() //linked list
@@ -76,132 +75,42 @@ impl Item {
                         .upgrade() //weak
                         .unwrap()
                         .borrow() // refcell
-                        .name
+                        .item
+                        .get_name()
             }
             None => true,
         }
     }
+    pub fn get_name(&self) -> &str {
+        self.item.get_display_string()
+    }
 }
-pub struct Cache {
-    cache: HashMap<String, ItemRef>,
-    pub top: Option<ItemRef>,
+pub struct Cache<T> {
+    cache: HashMap<String, TreeRef<T>>,
+    pub top: Option<TreeRef<T>>,
 }
-impl Cache {
-    fn new() -> Self {
+impl<T> Cache<T>
+where
+    T: Element,
+{
+    pub fn new() -> Self {
         Cache {
             cache: HashMap::new(),
             top: None,
         }
     }
-    fn insert(&mut self, key: String, value: ItemRef) {
+    pub fn insert(&mut self, key: String, value: TreeRef<T>) {
         self.cache.insert(key, value);
     }
-    fn get(&self, key: &str) -> Option<ItemRef> {
+    pub fn get(&self, key: &str) -> Option<TreeRef<T>> {
         self.cache.get(key).cloned()
     }
-    pub fn create_tree<T>(reader: &mut T, sep: char, level: i32) -> Cache
-    where
-        T: BufRead,
-    {
-        let mut cache = Cache::new();
-
-        for line in reader.lines().filter_map(|result| result.ok()) {
-            let mut fullname = String::new();
-            let vec: Vec<&str> = line.split(sep).collect();
-            for (i, s) in vec.iter().enumerate() {
-                if i > level as usize {
-                    break;
-                }
-
-                if i != 0 {
-                    fullname.push(sep);
-                }
-                fullname.push_str(s);
-                if cache.get(&fullname).is_some() {
-                    continue;
-                }
-                let idx = match fullname.rfind(sep) {
-                    Some(v) => v,
-                    None => {
-                        let item = Item::new(fullname.clone(), s, None);
-                        let rec = Rc::new(RefCell::new(item));
-                        cache.top = Some(rec.clone());
-                        cache.insert(fullname.clone(), rec);
-                        continue;
-                    }
-                };
-                let parent_name = &fullname.as_str()[0..idx];
-                let parent = cache.get(parent_name).unwrap();
-
-                let item = Item::new(fullname.clone(), s, Some(parent.clone()));
-                let rec = Rc::new(RefCell::new(item));
-                let weak = Rc::downgrade(&rec);
-                cache.insert(fullname.clone(), rec);
-                parent.borrow_mut().add(weak);
-            }
-        }
-        cache
-    }
 }
-pub fn create_tree(config: &Config) -> Result<Cache, String> {
-    let cache = match config.filename() {
-        Some(s) => {
-            let file = match File::open(s) {
-                Ok(f) => f,
-                Err(e) => return Err(e.to_string()),
-            };
-            let meta = match file.metadata() {
-                Ok(m) => m,
-                Err(e) => return Err(e.to_string()),
-            };
-            if meta.is_dir() {
-                return Err(String::from("It's directory."));
-            }
-            let mut stream = BufReader::new(file);
-            Cache::create_tree::<BufReader<File>>(&mut stream, config.delimiter(), config.level())
-        }
-        None => {
-            let s = stdin();
-            let mut cin = s.lock();
-            Cache::create_tree::<StdinLock>(&mut cin, config.delimiter(), config.level())
-        }
-    };
-    Ok(cache)
-}
-#[test]
-fn test_create_tree_01() {
-    use crate::param::parse_arg;
-    let args = vec!["-f", "/proc/version", "-d", " "];
-
-    if let Ok(cache) = create_tree(
-        &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
-    ) {
-        let top = cache.top.unwrap();
-        assert_eq!(top.borrow().name, "Linux");
-        assert_eq!(top.borrow().last_name, "Linux");
-        assert!(top.borrow().parent.is_none());
-    }
-}
-#[test]
-fn test_create_tree_02() {
-    use crate::param::parse_arg;
-    let args = vec!["-f", "/proc/hogehoge"];
-
-    if let Err(e) = create_tree(
-        &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
-    ) {
-        assert!(e.starts_with("No such file or directory"));
-        assert_eq!(&e.as_str()[..7], "No such");
-    }
-}
-#[test]
-fn test_create_tree_03() {
-    use crate::param::parse_arg;
-    let args = vec!["-f", "/proc"];
-
-    if let Err(e) = create_tree(
-        &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
-    ) {
-        assert_eq!(e, "It's directory.");
+impl<T> Default for Cache<T>
+where
+    T: Element,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }

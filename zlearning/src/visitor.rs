@@ -6,12 +6,13 @@
 */
 use std::io::Write;
 
-use crate::tree::Item;
+use crate::tree::Element;
+use crate::tree::Tree;
 use crate::write_unwrap;
 use crate::writeln_unwrap;
 
-pub trait Visitor {
-    fn visit(&mut self, item: &Item);
+pub trait Visitor<T> {
+    fn visit(&mut self, item: &Tree<T>);
 }
 pub struct TestVisitor {
     out: Box<dyn Write>,
@@ -25,10 +26,13 @@ impl TestVisitor {
         &self.v
     }
 }
-impl Visitor for TestVisitor {
-    fn visit(&mut self, item: &Item) {
-        self.v.push(item.last_name.to_string());
-        writeln_unwrap!(self.out, item.last_name);
+impl<T> Visitor<T> for TestVisitor
+where
+    T: Element,
+{
+    fn visit(&mut self, item: &Tree<T>) {
+        self.v.push(item.get_name().to_string());
+        writeln_unwrap!(self.out, item.get_name());
 
         for it in item.children.iter() {
             let e = it.upgrade().unwrap();
@@ -36,21 +40,24 @@ impl Visitor for TestVisitor {
         }
     }
 }
-pub struct ItemVisitor<'a> {
+pub struct SimpleVisitor<'a> {
     out: &'a mut dyn Write,
     level: i32,
 }
-impl<'a> ItemVisitor<'a> {
+impl<'a> SimpleVisitor<'a> {
     pub fn new(out: &'a mut dyn Write) -> Self {
-        ItemVisitor { out, level: 0 }
+        SimpleVisitor { out, level: 0 }
     }
 }
-impl<'a> Visitor for ItemVisitor<'a> {
-    fn visit(&mut self, item: &Item) {
+impl<'a, T> Visitor<T> for SimpleVisitor<'a>
+where
+    T: Element,
+{
+    fn visit(&mut self, item: &Tree<T>) {
         for _ in 0..self.level {
             write_unwrap!(self.out, "    ");
         }
-        writeln_unwrap!(self.out, item.last_name);
+        writeln_unwrap!(self.out, item.get_name());
 
         for it in item.children.iter() {
             self.level += 1;
@@ -62,14 +69,14 @@ impl<'a> Visitor for ItemVisitor<'a> {
         }
     }
 }
-pub struct LineItemVisitor<'a> {
+pub struct LineVisitor<'a> {
     out: &'a mut dyn Write,
     vline_last: &'static str,
     vline_not_last: &'static str,
     hline_last: &'static str,
     hline_not_last: &'static str,
 }
-impl<'a> LineItemVisitor<'a> {
+impl<'a> LineVisitor<'a> {
     pub fn new(
         out: &'a mut dyn Write,
         vline_last: &'static str,
@@ -77,7 +84,7 @@ impl<'a> LineItemVisitor<'a> {
         hline_last: &'static str,
         hline_not_last: &'static str,
     ) -> Self {
-        LineItemVisitor {
+        LineVisitor {
             out,
             vline_last,
             vline_not_last,
@@ -85,7 +92,10 @@ impl<'a> LineItemVisitor<'a> {
             hline_not_last,
         }
     }
-    fn make_vline(&self, keisen: &mut Vec<&str>, item: &Item) {
+    fn make_vline<T>(&self, keisen: &mut Vec<&str>, item: &Tree<T>)
+    where
+        T: Element,
+    {
         if let Some(ref p) = item.parent {
             if p.borrow().parent.is_some() {
                 keisen.push(if p.borrow().is_last() {
@@ -98,8 +108,11 @@ impl<'a> LineItemVisitor<'a> {
         }
     }
 }
-impl<'a> Visitor for LineItemVisitor<'a> {
-    fn visit(&mut self, item: &Item) {
+impl<'a, T> Visitor<T> for LineVisitor<'a>
+where
+    T: Element,
+{
+    fn visit(&mut self, item: &Tree<T>) {
         if item.parent.is_some() {
             let mut keisen = vec![if item.is_last() {
                 self.hline_last
@@ -113,10 +126,10 @@ impl<'a> Visitor for LineItemVisitor<'a> {
                 write_unwrap!(self.out, line);
             }
         }
-        writeln_unwrap!(self.out, item.last_name);
+        writeln_unwrap!(self.out, item.get_name());
         for it in item.children.iter() {
             let e = it.upgrade().unwrap();
-            e.borrow().accept::<LineItemVisitor>(self);
+            e.borrow().accept::<LineVisitor>(self);
         }
     }
 }

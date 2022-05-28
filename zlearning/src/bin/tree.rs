@@ -11,14 +11,14 @@ use std::error::Error;
 use std::io::stdout;
 
 use zlearning::param;
-use zlearning::tree;
+use zlearning::path;
 use zlearning::visitor;
 
 use param::parse_arg;
 use param::DisplayMode;
-use tree::create_tree;
-use visitor::ItemVisitor;
-use visitor::LineItemVisitor;
+use path::create_tree;
+use visitor::LineVisitor;
+use visitor::SimpleVisitor;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
@@ -29,18 +29,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Some(top) = cache.top {
         let mut o = stdout();
         match config.mode() {
-            DisplayMode::Space => top.borrow().accept(&mut ItemVisitor::new(&mut o)),
-            DisplayMode::SingleCharLine => top.borrow().accept(&mut LineItemVisitor::new(
-                &mut o, "   ", "|  ", "`--", "|--",
-            )),
-            DisplayMode::MultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+            DisplayMode::Space => top.borrow().accept(&mut SimpleVisitor::new(&mut o)),
+            DisplayMode::SingleCharLine => top
+                .borrow()
+                .accept(&mut LineVisitor::new(&mut o, "   ", "|  ", "`--", "|--")),
+            DisplayMode::MultiCharLine => top.borrow().accept(&mut LineVisitor::new(
                 &mut o,
                 "　　 ",
                 "│　 ",
                 "└── ",
                 "├── ",
             )),
-            DisplayMode::BoldMultiCharLine => top.borrow().accept(&mut LineItemVisitor::new(
+            DisplayMode::BoldMultiCharLine => top.borrow().accept(&mut LineVisitor::new(
                 &mut o,
                 "　　 ",
                 "┃　 ",

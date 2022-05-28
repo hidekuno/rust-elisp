@@ -11,12 +11,12 @@ use std::error::Error;
 use std::io::stdout;
 
 use zlearning::param;
-use zlearning::tree;
+use zlearning::path;
 use zlearning::walker;
 
 use param::parse_arg;
 use param::DisplayMode;
-use tree::create_tree;
+use path::create_tree;
 use walker::create_line_walker;
 use walker::create_walker;
 
