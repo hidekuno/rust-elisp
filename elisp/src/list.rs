@@ -617,7 +617,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
         exp: &[Expression],
         env: &Environment,
         kind: SortKind,
-        v: &mut Vec<Expression>,
+        v: &mut [Expression],
     ) -> Result<(), Error> {
         if exp.len() == 2 {
             match &kind {

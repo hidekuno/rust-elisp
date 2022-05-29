@@ -39,7 +39,7 @@ impl History {
         &self.menu
     }
     pub fn push(&self, exp: &str, tb: &gtk::TextBuffer, sb: &SourceView) {
-        let s = String::from(exp).replace("\n", " ");
+        let s = String::from(exp).replace('\n', " ");
         let c = if let Some(ref v) = s.get(0..HISTORY_COL_SIZE) {
             gtk::MenuItem::with_mnemonic(format!("{} ..", v).as_str())
         } else {

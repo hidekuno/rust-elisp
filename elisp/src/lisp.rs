@@ -989,7 +989,7 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
     } else if let Some(f) = env.get_builtin_ext_func(token) {
         Expression::BuildInFunctionExt(f)
     } else {
-        match Rat::from(&token.to_string()) {
+        match Rat::from(token) {
             Ok(n) => Expression::Rational(n),
             Err(n) => {
                 if n.code != ErrCode::E1020 {

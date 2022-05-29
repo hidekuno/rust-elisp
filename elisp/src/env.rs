@@ -112,16 +112,16 @@ fn simple_env() {
 
     s.regist("x".to_string(), Expression::Integer(10));
     assert_eq!(
-        if let Some(Expression::Integer(x)) = s.find(&"x".to_string()) {
+        if let Some(Expression::Integer(x)) = s.find("x") {
             x
         } else {
             -1
         },
         10
     );
-    s.update(&"x".to_string(), Expression::Integer(20));
+    s.update("x", Expression::Integer(20));
     assert_eq!(
-        if let Some(Expression::Integer(x)) = s.find(&"x".to_string()) {
+        if let Some(Expression::Integer(x)) = s.find("x") {
             x
         } else {
             -1
