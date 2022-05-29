@@ -50,7 +50,7 @@ pub fn do_repl(r: &Request, env: lisp::Environment) -> WebResult {
         return http_error!(RESPONSE_400);
     }
     let (_, expr) = r.get_parameter().split_at(LISP_PARAMNAME.len());
-    let mut result = match lisp::do_core_logic(&expr.to_string(), &env) {
+    let mut result = match lisp::do_core_logic(expr, &env) {
         Ok(r) => r.to_string(),
         Err(e) => {
             if lisp::ErrCode::E9000.as_str() == e.get_code() {
