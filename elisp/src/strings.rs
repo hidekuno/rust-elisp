@@ -80,6 +80,41 @@ where
     b.regist("string-scan-right", |exp, env| {
         string_scan(exp, env, StringScan::Right)
     });
+
+    b.regist("string-reverse", string_reverse);
+    b.regist("string-upcase", string_upcase);
+    b.regist("string-downcase", string_downcase);
+    b.regist("string-index", |exp, env| {
+        string_index(exp, env, StringScan::Left)
+    });
+    b.regist("string-index-right", |exp, env| {
+        string_index(exp, env, StringScan::Right)
+    });
+    b.regist("string-delete", string_delete);
+    b.regist("string-trim", |exp, env| {
+        string_trim(
+            exp,
+            env,
+            |s| s.trim_start(),
+            |s, pred| s.trim_start_matches(pred),
+        )
+    });
+    b.regist("string-trim-right", |exp, env| {
+        string_trim(
+            exp,
+            env,
+            |s| s.trim_end(),
+            |s, pred| s.trim_end_matches(pred),
+        )
+    });
+    b.regist("string-trim-both", |exp, env| {
+        string_trim(
+            exp,
+            env,
+            |s| s.trim_start().trim_end(),
+            |s, pred| s.trim_start_matches(pred).trim_end_matches(pred),
+        )
+    });
 }
 // i64::from_str_radix() is exists, but there is NO to_str_radix.
 pub fn to_str_radix(n: Int, r: u32) -> Option<String> {
@@ -311,31 +346,8 @@ fn substring(exp: &[Expression], env: &Environment) -> ResultExpression {
         Expression::String(s) => s,
         e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
-    let mut param: [usize; 2] = [0; 2];
-    for (i, e) in exp[2..].iter().enumerate() {
-        let v = match eval(e, env)? {
-            Expression::Integer(v) => v,
-            e => return Err(create_error_value!(ErrCode::E1002, e)),
-        };
-        if 0 > v {
-            return Err(create_error!(ErrCode::E1021));
-        }
-        param[i] = v as usize;
-    }
-    let (start, end) = (param[0], param[1]);
-    if s.chars().count() < end {
-        return Err(create_error!(ErrCode::E1021));
-    }
-    if start > end {
-        return Err(create_error!(ErrCode::E1021));
-    }
-    // the trait `std::convert::From<str>` is not implemented for `std::string::String`
-    // s.as_str()[start..end].to_string()),
-    //     => panicked at 'byte index 1 is not a char boundary; it is inside '山' (bytes 0..3)
-    let mut v = String::new();
-    for c in &s.chars().collect::<Vec<char>>()[start..end] {
-        v.push(*c);
-    }
+    let v = inner_substring(&exp[2..], env, s.chars().collect::<String>())?;
+
     Ok(Environment::create_string(v))
 }
 fn symbol_string(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -454,6 +466,147 @@ fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> Res
         }
         e => Err(create_error_value!(ErrCode::E1009, e)),
     }
+}
+fn string_reverse(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 2 || 4 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let s = inner_substring(&exp[2..], env, s.chars().collect::<String>())?;
+    Ok(Environment::create_string(
+        s.chars().rev().collect::<String>(),
+    ))
+}
+fn string_upcase(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 2 || 4 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let s = inner_substring(&exp[2..], env, s.chars().collect::<String>())?;
+    Ok(Environment::create_string(s.to_uppercase()))
+}
+fn string_downcase(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 2 || 4 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let s = inner_substring(&exp[2..], env, s.chars().collect::<String>())?;
+    Ok(Environment::create_string(s.to_lowercase()))
+}
+fn string_index(exp: &[Expression], env: &Environment, direct: StringScan) -> ResultExpression {
+    if exp.len() < 2 || 5 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let pred = match eval(&exp[2], env)? {
+        Expression::Char(c) => c,
+        e => return Err(create_error_value!(ErrCode::E1019, e)),
+    };
+
+    let (start, end) = get_start_end(&exp[3..], env, &s)?;
+
+    let ret = match direct {
+        StringScan::Left => s.find(pred),
+        StringScan::Right => s.rfind(pred),
+    };
+    Ok(match ret {
+        Some(i) => {
+            if (start <= i) && (i < end) {
+                Expression::Integer(i as Int)
+            } else {
+                Expression::Boolean(false)
+            }
+        }
+        None => Expression::Boolean(false),
+    })
+}
+fn string_delete(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 2 || 5 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let pred = match eval(&exp[2], env)? {
+        Expression::Char(c) => c,
+        e => return Err(create_error_value!(ErrCode::E1019, e)),
+    };
+    let s = inner_substring(&exp[3..], env, s.chars().collect::<String>())?;
+    Ok(Environment::create_string(
+        s.chars().filter(|c| *c != pred).collect::<String>(),
+    ))
+}
+fn string_trim(
+    exp: &[Expression],
+    env: &Environment,
+    trim: for<'a> fn(&'a String) -> &'a str,
+    trim_match: for<'a> fn(&'a String, char) -> &'a str,
+) -> ResultExpression {
+    if exp.len() < 2 || 3 < exp.len() {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    if exp.len() == 2 {
+        Ok(Environment::create_string(trim(&*s).to_string()))
+    } else {
+        let pred = match eval(&exp[2], env)? {
+            Expression::Char(c) => c,
+            e => return Err(create_error_value!(ErrCode::E1019, e)),
+        };
+        Ok(Environment::create_string(
+            trim_match(&*s, pred).to_string(),
+        ))
+    }
+}
+fn inner_substring(exp: &[Expression], env: &Environment, s: String) -> Result<String, Error> {
+    let (start, end) = get_start_end(exp, env, &s)?;
+
+    // the trait `std::convert::From<str>` is not implemented for `std::string::String`
+    // s.as_str()[start..end].to_string()),
+    //     => panicked at 'byte index 1 is not a char boundary; it is inside '山' (bytes 0..3)
+    let mut v = String::new();
+    for c in &s.chars().collect::<Vec<char>>()[start..end] {
+        v.push(*c);
+    }
+    Ok(v)
+}
+fn get_start_end(exp: &[Expression], env: &Environment, s: &str) -> Result<(usize, usize), Error> {
+    let mut param: [usize; 2] = [0, s.chars().count()];
+
+    for (i, e) in exp.iter().enumerate() {
+        let v = match eval(e, env)? {
+            Expression::Integer(v) => v,
+            e => return Err(create_error_value!(ErrCode::E1002, e)),
+        };
+        if 0 > v {
+            return Err(create_error!(ErrCode::E1021));
+        }
+        param[i] = v as usize;
+    }
+    let (start, end) = (param[0], param[1]);
+    if s.chars().count() < end {
+        return Err(create_error!(ErrCode::E1021));
+    }
+    if start > end {
+        return Err(create_error!(ErrCode::E1021));
+    }
+    Ok((start, end))
 }
 #[cfg(test)]
 mod tests {
@@ -716,6 +869,134 @@ mod tests {
         assert_eq!(do_lisp("(string-scan-right \"abracadabra\" #\\z)"), "#f");
         assert_eq!(do_lisp("(string-scan-right \"1122\" #\\2)"), "3");
     }
+    #[test]
+    fn string_reverse() {
+        assert_eq!(do_lisp("(string-reverse \"1234567890\")"), "\"0987654321\"");
+        assert_eq!(do_lisp("(string-reverse \"1234567890\" 3)"), "\"0987654\"");
+        assert_eq!(do_lisp("(string-reverse \"1234567890\" 3 8)"), "\"87654\"");
+        assert_eq!(do_lisp("(string-reverse  \"山川\")"), "\"川山\"");
+    }
+    #[test]
+    fn string_upcase() {
+        assert_eq!(do_lisp("(string-upcase \"ab1012cd\")"), "\"AB1012CD\"");
+        assert_eq!(do_lisp("(string-upcase \"abcd\" 1)"), "\"BCD\"");
+        assert_eq!(do_lisp("(string-upcase \"abcd\" 1 2)"), "\"B\"");
+    }
+    #[test]
+    fn string_downcase() {
+        assert_eq!(do_lisp("(string-downcase \"AB1012CD\")"), "\"ab1012cd\"");
+        assert_eq!(do_lisp("(string-downcase \"ABCD\" 1)"), "\"bcd\"");
+        assert_eq!(do_lisp("(string-downcase \"ABCD\" 1 2)"), "\"b\"");
+    }
+    #[test]
+    fn string_index() {
+        assert_eq!(do_lisp("(string-index \"abcdefghijlklmn\" #\\a)"), "0");
+        assert_eq!(do_lisp("(string-index \"abcdefghijlklmn\" #\\e)"), "4");
+        assert_eq!(do_lisp("(string-index \"abcdefghijlklmn\" #\\z)"), "#f");
+        assert_eq!(do_lisp("(string-index \"abcdefghijlklmn\" #\\c 2)"), "2");
+        assert_eq!(do_lisp("(string-index \"abcdefghijlklmn\" #\\d 2 8)"), "3");
+        assert_eq!(do_lisp("(string-index \"abcdefghijlklmn\" #\\k 2 8)"), "#f");
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijlklcn\" #\\n 0 14)"),
+            "#f"
+        );
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijlklcn\" #\\n 0 15)"),
+            "14"
+        );
+    }
+    #[test]
+    fn string_index_right() {
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijlklmn\" #\\a)"),
+            "0"
+        );
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijlklmn\" #\\z)"),
+            "#f"
+        );
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijlklcn\" #\\c 2)"),
+            "13"
+        );
+
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijlklcn\" #\\n 2 14)"),
+            "#f"
+        );
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijlklcn\" #\\n 2 15)"),
+            "14"
+        );
+    }
+    #[test]
+    fn string_delete() {
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\a)"),
+            "\"bcdefghijlklcn\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\a 3)"),
+            "\"defghijlklcn\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\n 13)"),
+            "\"c\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\n 14)"),
+            "\"\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\a 3 4)"),
+            "\"d\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"aaaaaaaaaaaaaaaaaaaa\" #\\a 3 4)"),
+            "\"\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\a 3 9)"),
+            "\"defghi\""
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijlklcn\" #\\h 3 9)"),
+            "\"defgi\""
+        );
+    }
+    #[test]
+    fn string_trim() {
+        assert_eq!(do_lisp("(string-trim  \"  ad  \")"), "\"ad  \"");
+        assert_eq!(do_lisp("(string-trim \"ada\" #\\a)"), "\"da\"");
+    }
+    #[test]
+    fn string_trim_right() {
+        assert_eq!(do_lisp("(string-trim-right  \"  ad  \")"), "\"  ad\"");
+        assert_eq!(do_lisp("(string-trim-right \"ada\" #\\a)"), "\"ad\"");
+    }
+    #[test]
+    fn string_trim_both() {
+        assert_eq!(do_lisp("(string-trim-both  \"  ad  \")"), "\"ad\"");
+        assert_eq!(do_lisp("(string-trim-both \"ada\" #\\a)"), "\"d\"");
+    }
+    /***
+    #[test]
+    fn string_take() {
+        assert_eq!(do_lisp("(string-take )"), "");
+    }
+    #[test]
+    fn string_take_right() {
+        assert_eq!(do_lisp("(string-take-right )"), "");
+    }
+    #[test]
+    fn string_drop() {
+        assert_eq!(do_lisp("(string-drop )"), "");
+    }
+    #[test]
+    fn string_drop_right() {
+        assert_eq!(do_lisp("(string-drop-right )"), "");
+    }
+    ******/
 }
 #[cfg(test)]
 mod error_tests {
@@ -737,7 +1018,6 @@ mod error_tests {
         assert_eq!(do_lisp("(string 10)"), "E1019");
         assert_eq!(do_lisp("(string a)"), "E1008");
     }
-
     #[test]
     fn string_eq() {
         assert_eq!(do_lisp("(string=?)"), "E1007");
@@ -1005,4 +1285,181 @@ mod error_tests {
         assert_eq!(do_lisp("(string-scan-right a #\\2)"), "E1008");
         assert_eq!(do_lisp("(string-scan-right \"1122\" a)"), "E1008");
     }
+    #[test]
+    fn string_reverse() {
+        assert_eq!(do_lisp("(string-reverse)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-reverse \"abcdefghijklmn\" 2 3 4)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-reverse 10)"), "E1015");
+        assert_eq!(
+            do_lisp("(string-reverse \"abcdefghijklmn\" #\\a 1)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-reverse \"abcdefghijklmn\" 1 #\\a)"),
+            "E1002"
+        );
+        assert_eq!(do_lisp("(string-reverse \"abcdefghijklmn\" 1 20)"), "E1021");
+        assert_eq!(do_lisp("(string-reverse \"abcdefghijklmn\" 6 5)"), "E1021");
+    }
+    #[test]
+    fn string_upcase() {
+        assert_eq!(do_lisp("(string-upcase)"), "E1007");
+        assert_eq!(do_lisp("(string-upcase \"abcdefghijklmn\" 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-upcase 10)"), "E1015");
+        assert_eq!(
+            do_lisp("(string-upcase \"abcdefghijklmn\" #\\a 1)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-upcase \"abcdefghijklmn\" 1 #\\a)"),
+            "E1002"
+        );
+        assert_eq!(do_lisp("(string-upcase \"abcdefghijklmn\" 1 20)"), "E1021");
+        assert_eq!(do_lisp("(string-upcase \"abcdefghijklmn\" 6 5)"), "E1021");
+    }
+    #[test]
+    fn string_downcase() {
+        assert_eq!(do_lisp("(string-downcase)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-downcase \"ABCDEFGHIJKLMN\" 2 3 4)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-downcase 10)"), "E1015");
+        assert_eq!(
+            do_lisp("(string-downcase \"ABCDEFGHIJKLMN\" #\\a 1)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-downcase \"ABCDEFGHIJKLMN\" 1 #\\a)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-downcase \"ABCDEFGHIJKLMN\" 1 20)"),
+            "E1021"
+        );
+        assert_eq!(do_lisp("(string-downcase \"ABCDEFGHIJKLMN\" 6 5)"), "E1021");
+    }
+    #[test]
+    fn string_index() {
+        assert_eq!(do_lisp("(string-index)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijklmn\" 2 3 4 5)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-index 10 #\\a)"), "E1015");
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijklmn\" #\\a #\\a 1)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijklmn\" #\\a  1 #\\a)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijklmn\" #\\a 1 20)"),
+            "E1021"
+        );
+        assert_eq!(
+            do_lisp("(string-index \"abcdefghijklmn\" #\\a 6 5)"),
+            "E1021"
+        );
+    }
+    #[test]
+    fn string_index_right() {
+        assert_eq!(do_lisp("(string-index-right)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijklmn\" 2 3 4 5)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-index-right 10 #\\a)"), "E1015");
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijklmn\" #\\a #\\a 1)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijklmn\" #\\a  1 #\\a)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijklmn\" #\\a 1 20)"),
+            "E1021"
+        );
+        assert_eq!(
+            do_lisp("(string-index-right \"abcdefghijklmn\" #\\a 6 5)"),
+            "E1021"
+        );
+    }
+    #[test]
+    fn string_delete() {
+        assert_eq!(do_lisp("(string-delete)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijklmn\" 2 3 4 5)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-delete 10 #\\a)"), "E1015");
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijklmn\" #\\a #\\a 1)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijklmn\" #\\a  1 #\\a)"),
+            "E1002"
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijklmn\" #\\a 1 20)"),
+            "E1021"
+        );
+        assert_eq!(
+            do_lisp("(string-delete \"abcdefghijklmn\" #\\a 6 5)"),
+            "E1021"
+        );
+    }
+    #[test]
+    fn string_trim() {
+        assert_eq!(do_lisp("(string-trim)"), "E1007");
+        assert_eq!(do_lisp("(string-trim \"abcdefghijklmn\" 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-trim 10 #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-trim \"abcdefghijklmn\" 2)"), "E1019");
+    }
+    #[test]
+    fn string_trim_right() {
+        assert_eq!(do_lisp("(string-trim-right)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-trim-right \"abcdefghijklmn\" 2 3 4)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-trim-right 10 #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-trim-right \"abcdefghijklmn\" 2)"), "E1019");
+    }
+    #[test]
+    fn string_trim_both() {
+        assert_eq!(do_lisp("(string-trim-both)"), "E1007");
+        assert_eq!(
+            do_lisp("(string-trim-both \"abcdefghijklmn\" 2 3 4)"),
+            "E1007"
+        );
+        assert_eq!(do_lisp("(string-trim-both 10 #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-trim-both \"abcdefghijklmn\" 2)"), "E1019");
+    }
+    /*************
+        #[test]
+        fn string_take() {
+            assert_eq!(do_lisp("(string-take )"), "");
+        }
+        #[test]
+        fn string_take_right() {
+            assert_eq!(do_lisp("(string-take-right )"), "");
+        }
+        #[test]
+        fn string_drop() {
+            assert_eq!(do_lisp("(string-drop )"), "");
+        }
+        #[test]
+        fn string_drop_right() {
+            assert_eq!(do_lisp("(string-drop-right )"), "");
+        }
+    ************/
 }
