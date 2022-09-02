@@ -115,6 +115,24 @@ where
             |s, pred| s.trim_start_matches(pred).trim_end_matches(pred),
         )
     });
+    b.regist("string-take", |exp, env| {
+        string_range(exp, env, |s, v| s.get(..v).unwrap())
+    });
+    b.regist("string-take-right", |exp, env| {
+        string_range(exp, env, |s, v| {
+            let v = s.len() - v;
+            s.get(v..).unwrap()
+        })
+    });
+    b.regist("string-drop", |exp, env| {
+        string_range(exp, env, |s, v| s.get(v..).unwrap())
+    });
+    b.regist("string-drop-right", |exp, env| {
+        string_range(exp, env, |s, v| {
+            let v = s.len() - v;
+            s.get(..v).unwrap()
+        })
+    });
 }
 // i64::from_str_radix() is exists, but there is NO to_str_radix.
 pub fn to_str_radix(n: Int, r: u32) -> Option<String> {
@@ -574,6 +592,29 @@ fn string_trim(
         ))
     }
 }
+fn string_range(
+    exp: &[Expression],
+    env: &Environment,
+    range: for<'a> fn(&'a String, usize) -> &'a str,
+) -> ResultExpression {
+    if exp.len() != 3 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let s = match eval(&exp[1], env)? {
+        Expression::String(s) => s,
+        e => return Err(create_error_value!(ErrCode::E1015, e)),
+    };
+    let v = match eval(&exp[2], env)? {
+        Expression::Integer(v) => v,
+        e => return Err(create_error_value!(ErrCode::E1002, e)),
+    };
+    if 0 > v || s.len() < v as usize {
+        return Err(create_error!(ErrCode::E1021));
+    }
+    Ok(Environment::create_string(
+        range(&*s, v as usize).to_string(),
+    ))
+}
 fn inner_substring(exp: &[Expression], env: &Environment, s: String) -> Result<String, Error> {
     let (start, end) = get_start_end(exp, env, &s)?;
 
@@ -979,24 +1020,39 @@ mod tests {
         assert_eq!(do_lisp("(string-trim-both  \"  ad  \")"), "\"ad\"");
         assert_eq!(do_lisp("(string-trim-both \"ada\" #\\a)"), "\"d\"");
     }
-    /***
     #[test]
     fn string_take() {
-        assert_eq!(do_lisp("(string-take )"), "");
+        assert_eq!(do_lisp("(string-take \"1234567890\" 0)"), "\"\"");
+        assert_eq!(do_lisp("(string-take \"1234567890\" 3)"), "\"123\"");
+        assert_eq!(do_lisp("(string-take \"1234567890\" 10)"), "\"1234567890\"");
     }
     #[test]
     fn string_take_right() {
-        assert_eq!(do_lisp("(string-take-right )"), "");
+        assert_eq!(do_lisp("(string-take-right \"1234567890\" 0)"), "\"\"");
+        assert_eq!(do_lisp("(string-take-right \"1234567890\" 3)"), "\"890\"");
+        assert_eq!(
+            do_lisp("(string-take-right \"1234567890\" 10)"),
+            "\"1234567890\""
+        );
     }
     #[test]
     fn string_drop() {
-        assert_eq!(do_lisp("(string-drop )"), "");
+        assert_eq!(do_lisp("(string-drop \"1234567890\" 0)"), "\"1234567890\"");
+        assert_eq!(do_lisp("(string-drop \"1234567890\" 3)"), "\"4567890\"");
+        assert_eq!(do_lisp("(string-drop \"1234567890\" 10)"), "\"\"");
     }
     #[test]
     fn string_drop_right() {
-        assert_eq!(do_lisp("(string-drop-right )"), "");
+        assert_eq!(
+            do_lisp("(string-drop-right \"1234567890\" 0)"),
+            "\"1234567890\""
+        );
+        assert_eq!(
+            do_lisp("(string-drop-right \"1234567890\" 3)"),
+            "\"1234567\""
+        );
+        assert_eq!(do_lisp("(string-drop-right \"1234567890\" 10)"), "\"\"");
     }
-    ******/
 }
 #[cfg(test)]
 mod error_tests {
@@ -1444,22 +1500,48 @@ mod error_tests {
         assert_eq!(do_lisp("(string-trim-both 10 #\\a)"), "E1015");
         assert_eq!(do_lisp("(string-trim-both \"abcdefghijklmn\" 2)"), "E1019");
     }
-    /*************
-        #[test]
-        fn string_take() {
-            assert_eq!(do_lisp("(string-take )"), "");
-        }
-        #[test]
-        fn string_take_right() {
-            assert_eq!(do_lisp("(string-take-right )"), "");
-        }
-        #[test]
-        fn string_drop() {
-            assert_eq!(do_lisp("(string-drop )"), "");
-        }
-        #[test]
-        fn string_drop_right() {
-            assert_eq!(do_lisp("(string-drop-right )"), "");
-        }
-    ************/
+    #[test]
+    fn string_take() {
+        assert_eq!(do_lisp("(string-take)"), "E1007");
+        assert_eq!(do_lisp("(string-take 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-take \"123456\" #\\a)"), "E1002");
+        assert_eq!(do_lisp("(string-take \"abcdefghijklmn\" -1)"), "E1021");
+        assert_eq!(do_lisp("(string-take \"abcdefghijklmn\" 15)"), "E1021");
+    }
+    #[test]
+    fn string_take_right() {
+        assert_eq!(do_lisp("(string-take-right)"), "E1007");
+        assert_eq!(do_lisp("(string-take-right 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-take-right \"123456\" #\\a)"), "E1002");
+        assert_eq!(
+            do_lisp("(string-take-right \"abcdefghijklmn\" -1)"),
+            "E1021"
+        );
+        assert_eq!(
+            do_lisp("(string-take-right \"abcdefghijklmn\" 15)"),
+            "E1021"
+        );
+    }
+    #[test]
+    fn string_drop() {
+        assert_eq!(do_lisp("(string-drop)"), "E1007");
+        assert_eq!(do_lisp("(string-drop 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-drop \"123456\" #\\a)"), "E1002");
+        assert_eq!(do_lisp("(string-drop \"abcdefghijklmn\" -1)"), "E1021");
+        assert_eq!(do_lisp("(string-drop \"abcdefghijklmn\" 15)"), "E1021");
+    }
+    #[test]
+    fn string_drop_right() {
+        assert_eq!(do_lisp("(string-drop-right)"), "E1007");
+        assert_eq!(do_lisp("(string-drop-right 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-drop-right \"123456\" #\\a)"), "E1002");
+        assert_eq!(
+            do_lisp("(string-drop-right \"abcdefghijklmn\" -1)"),
+            "E1021"
+        );
+        assert_eq!(
+            do_lisp("(string-drop-right \"abcdefghijklmn\" 15)"),
+            "E1021"
+        );
+    }
 }
