@@ -397,7 +397,7 @@ impl Expression {
 }
 impl ToString for Expression {
     fn to_string(&self) -> String {
-        return match self {
+        match self {
             Expression::Integer(v) => v.to_string(),
             Expression::Float(v) => v.to_string(),
             Expression::Char(v) => {
@@ -415,9 +415,9 @@ impl ToString for Expression {
                     if c == CARRIAGERETRUN.0 {
                         return CARRIAGERETRUN.1.to_string();
                     }
-                    return "#\\non-printable-char".to_string();
+                    "#\\non-printable-char".to_string()
                 } else {
-                    return format!("#\\{}", v);
+                    format!("#\\{}", v)
                 }
             }
             Expression::Boolean(v) => (if *v { TRUE } else { FALSE }).to_string(),
@@ -425,11 +425,11 @@ impl ToString for Expression {
             Expression::String(v) => format!("\"{}\"", v),
             Expression::List(v) => {
                 let l = &*(reference_obj!(v));
-                return Expression::list_string(&l[..]);
+                Expression::list_string(&l[..])
             }
             Expression::Vector(v) => {
                 let l = &*(reference_obj!(v));
-                return Expression::vector_string(&l[..]);
+                Expression::vector_string(&l[..])
             }
             Expression::HashTable(_) => "HashTable".into(),
             Expression::TreeMap(_) => "TreeMap".into(),
@@ -443,7 +443,7 @@ impl ToString for Expression {
             Expression::Promise(_, _) => "Promise".into(),
             Expression::Rational(v) => v.to_string(),
             Expression::Continuation(_) => "Continuation".into(),
-        };
+        }
     }
 }
 impl Ord for Expression {
@@ -942,7 +942,7 @@ pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> Re
                 break;
             }
             let mut c: i32 = 1;
-            let o = parse(&tokens[*count as usize..].to_vec(), &mut c, env)?;
+            let o = parse(&tokens[*count as usize..], &mut c, env)?;
             list.push(o);
 
             *count += c;
