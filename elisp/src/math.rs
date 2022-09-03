@@ -132,7 +132,10 @@ fn expt(exp: &[Expression], env: &Environment) -> ResultExpression {
                 if y >= 0 {
                     Ok(Expression::Integer(x.pow(y as u32)))
                 } else {
-                    Ok(Expression::Rational(Rat::new(1, x.pow(y.abs() as u32))))
+                    Ok(Expression::Rational(Rat::new(
+                        1,
+                        x.pow(y.unsigned_abs() as u32),
+                    )))
                 }
             }
             e => Err(create_error_value!(ErrCode::E1003, e)),
