@@ -31,7 +31,7 @@ impl Error for InvalidOptionError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DisplayMode {
     Space,
     SingleCharLine,

@@ -131,7 +131,7 @@ impl SourceView {
                             state = Status::String;
                         }
                         _ => {
-                            if c.is_digit(10) {
+                            if c.is_ascii_digit() {
                                 vec = Some(start);
                                 state = Status::Number;
                             } else if c.is_lowercase() {
@@ -200,7 +200,7 @@ impl SourceView {
     fn is_number(&self, s: &gtk::TextIter, r: &gtk::TextIter) -> bool {
         if let Some(w) = s.slice(r) {
             for c in w.as_str().chars() {
-                if !c.is_digit(10) && c != '.' {
+                if !c.is_ascii_digit() && c != '.' {
                     return false;
                 }
             }

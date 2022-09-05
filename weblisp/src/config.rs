@@ -46,7 +46,7 @@ macro_rules! create_error {
         Box::new(InvalidOptionError { _line: line!() })
     };
 }
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum OperationMode {
     Limit,
     ThreadPool,
