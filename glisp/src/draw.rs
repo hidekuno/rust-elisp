@@ -341,10 +341,10 @@ pub fn save_png_file(draw_table: &DrawTable, filename: &Path, overwrite: bool) -
         }
     };
     let surface = draw_table.get_default_surface();
-    return match surface.write_to_png(&mut file) {
+    match surface.write_to_png(&mut file) {
         Ok(_) => format!("Saved \"{}\"", filename.to_str().unwrap()),
         Err(e) => e.to_string(),
-    };
+    }
 }
 // ----------------------------------------------------------------
 // create draw table
