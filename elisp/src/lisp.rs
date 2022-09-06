@@ -867,7 +867,7 @@ pub(crate) fn tokenize(program: &str) -> Vec<String> {
             if c == '"' {
                 // ex. <rust-elisp> "abc \""
                 if program.chars().nth(i - 1).unwrap() != '\\' {
-                    let ls = program.get(from..(token.idx + 1)).unwrap();
+                    let ls = &program[from..(token.idx + 1)];
                     token.push_if_quote(ls.to_string());
                     token.string_mode = false;
                 }
@@ -918,7 +918,7 @@ pub(crate) fn tokenize(program: &str) -> Vec<String> {
 
     // For Occur charactor syntax error ex. <rust-elisp> "abc
     if token.string_mode {
-        token.push_if_quote(program.get(from..token.idx).unwrap().to_string());
+        token.push_if_quote(program[from..token.idx].to_string());
     }
     debug!("{:?}", token.tokens);
     token.tokens()
