@@ -89,10 +89,10 @@ where
         string_case(exp, env, |s| s.to_lowercase())
     });
     b.regist("string-index", |exp, env| {
-        string_index(exp, env, StringScan::Left)
+        string_index(exp, env, |s, c| s.find(c))
     });
     b.regist("string-index-right", |exp, env| {
-        string_index(exp, env, StringScan::Right)
+        string_index(exp, env, |s, c| s.rfind(c))
     });
     b.regist("string-delete", string_delete);
     b.regist("string-trim", |exp, env| {
@@ -533,7 +533,11 @@ fn string_case(
     let s = inner_substring(&exp[2..], env, s.chars().collect::<String>())?;
     Ok(Environment::create_string(case(&s)))
 }
-fn string_index(exp: &[Expression], env: &Environment, direct: StringScan) -> ResultExpression {
+fn string_index(
+    exp: &[Expression],
+    env: &Environment,
+    find: fn(&String, char) -> Option<usize>,
+) -> ResultExpression {
     if exp.len() < 2 || 5 < exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -548,11 +552,7 @@ fn string_index(exp: &[Expression], env: &Environment, direct: StringScan) -> Re
 
     let (start, end) = get_start_end(&exp[3..], env, &s)?;
 
-    let ret = match direct {
-        StringScan::Left => s.find(pred),
-        StringScan::Right => s.rfind(pred),
-    };
-    Ok(match ret {
+    Ok(match find(&*s, pred) {
         Some(i) => {
             if (start <= i) && (i < end) {
                 Expression::Integer(i as Int)
@@ -1479,6 +1479,7 @@ mod error_tests {
             "E1007"
         );
         assert_eq!(do_lisp("(string-index 10 #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-index \"abcdefghijklmn\" 10)"), "E1019");
         assert_eq!(
             do_lisp("(string-index \"abcdefghijklmn\" #\\a #\\a 1)"),
             "E1002"
@@ -1504,6 +1505,7 @@ mod error_tests {
             "E1007"
         );
         assert_eq!(do_lisp("(string-index-right 10 #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-index-right \"abc\" 10)"), "E1019");
         assert_eq!(
             do_lisp("(string-index-right \"abcdefghijklmn\" #\\a #\\a 1)"),
             "E1002"
@@ -1529,6 +1531,7 @@ mod error_tests {
             "E1007"
         );
         assert_eq!(do_lisp("(string-delete 10 #\\a)"), "E1015");
+        assert_eq!(do_lisp("(string-delete \"abc\" 10)"), "E1019");
         assert_eq!(
             do_lisp("(string-delete \"abcdefghijklmn\" #\\a #\\a 1)"),
             "E1002"
