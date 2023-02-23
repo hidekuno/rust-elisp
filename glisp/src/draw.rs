@@ -194,14 +194,7 @@ macro_rules! force_event_loop {
 pub fn draw_clear(draw_table: &DrawTable) {
     let surface = draw_table.get_default_surface();
     let cr = &Context::new(&*surface).unwrap();
-    cr.transform(Matrix {
-        xx: 1.0,
-        yx: 0.0,
-        xy: 0.0,
-        yy: 1.0,
-        x0: 0.0,
-        y0: 0.0,
-    });
+    cr.transform(Matrix::new(1.0, 0.0, 0.0, 1.0, 0.0, 0.0));
     let bg = &draw_table.core.borrow().bg;
     cr.set_source_rgb(bg.red, bg.green, bg.blue);
     cr.paint().expect(CAIRO_ERR_MSG);
@@ -262,14 +255,14 @@ pub fn create_draw_image(draw_table: &DrawTable) -> DrawImage {
         cr.scale(DRAW_WIDTH as f64, DRAW_HEIGHT as f64);
         cr.move_to(0.0, 0.0);
 
-        let matrix = Matrix {
-            xx: x0 / img.get_width() as f64,
-            yx: y0 / img.get_height() as f64,
-            xy: x1 / img.get_width() as f64,
-            yy: y1 / img.get_height() as f64,
-            x0: xorg,
-            y0: yorg,
-        };
+        let matrix = Matrix::new(
+            x0 / img.get_width(),
+            y0 / img.get_height(),
+            x1 / img.get_width(),
+            y1 / img.get_height(),
+            xorg,
+            yorg,
+        );
         cr.transform(matrix);
 
         img.set_context_image(&cr);
