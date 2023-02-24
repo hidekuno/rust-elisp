@@ -144,7 +144,7 @@ fn digit_integer(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         Expression::Char(c) => c,
         e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
-    match c.to_digit(r as u32) {
+    match c.to_digit(r) {
         Some(i) => Ok(Expression::Integer(i as Int)),
         None => Ok(Expression::Boolean(false)),
     }
@@ -154,7 +154,7 @@ fn integer_digit(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
         Expression::Integer(c) => c,
         e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
-    match char::from_digit(i as u32, r as u32) {
+    match char::from_digit(i as u32, r) {
         Some(c) => Ok(Expression::Char(c)),
         None => Ok(Expression::Boolean(false)),
     }

@@ -8,7 +8,7 @@ use rand::Rng;
 
 fn qsort(data: &mut [i32], low: usize, high: usize) {
     let (mut l, mut r) = (low, high);
-    let mid = data[((low + high) / 2) as usize];
+    let mid = data[(low + high) / 2];
 
     loop {
         while data[l] < mid {
@@ -22,9 +22,8 @@ fn qsort(data: &mut [i32], low: usize, high: usize) {
         }
         data.swap(l, r);
         l += 1;
-        if 0 < r {
-            r -= 1;
-        }
+        // if 0 < r { r -= 1; }
+        r = r.saturating_sub(1);
     }
     if low < r {
         qsort(data, low, r);

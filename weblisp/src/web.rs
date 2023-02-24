@@ -472,7 +472,7 @@ fn urldecode(s: &str) -> Result<String, Box<WebError>> {
     Ok(r)
 }
 pub fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
-    if None == r.get_method() {
+    if r.get_method().is_none() {
         return http_error!(RESPONSE_405);
     }
     return if r.get_resource() == "/" {

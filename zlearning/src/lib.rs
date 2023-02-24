@@ -22,7 +22,6 @@ mod tests {
 
     use std::io::Cursor;
     use std::io::Seek;
-    use std::io::SeekFrom;
     use std::io::{self};
     use std::str::from_utf8;
 
@@ -134,7 +133,8 @@ mod tests {
         } else {
             panic!("test failure");
         }
-        cursor.seek(SeekFrom::Start(0)).unwrap();
+        // cursor.seek(SeekFrom::Start(0)).unwrap();
+        cursor.rewind().unwrap();
         assert_eq!(
             Ok("fj\n    news\n        reader\n        server\n"),
             from_utf8(cursor.get_ref())
@@ -154,7 +154,7 @@ mod tests {
         } else {
             panic!("test failure");
         }
-        cursor.seek(SeekFrom::Start(0)).unwrap();
+        cursor.rewind().unwrap();
         assert_eq!(
             Ok("fj\n`--news\n   |--reader\n   `--server\n"),
             from_utf8(cursor.get_ref())

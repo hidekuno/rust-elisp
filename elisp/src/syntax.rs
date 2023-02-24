@@ -201,7 +201,7 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         Environment::create_string(name.to_string()),
         Environment::create_list(param_list),
     ];
-    vec.extend_from_slice(&exp[idx as usize..]);
+    vec.extend_from_slice(&exp[idx..]);
     let mut f = Function::new(&vec[..], name, param.clone());
 
     // Setup label name let
@@ -398,7 +398,7 @@ fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
     let v = eval(&exp[1], env)?;
     if let Expression::Promise(p, pe) = v {
-        eval(&(*p), &pe)
+        eval(&p, &pe)
     } else {
         Ok(v)
     }
