@@ -96,6 +96,9 @@ impl DrawTable {
         self.surface.clone()
     }
     pub fn set_cairo_surface(&self, cr: &Context) {
+        // pub fn new(target: impl AsRef<Surface>) -> Result<Context, Error> {
+        //                         ^^^^^^^^^^^^^^ required by this bound
+        // help: consider dereferencing here
         cr.set_source_surface(&*self.surface, 0.0, 0.0)
             .expect(CAIRO_ERR_MSG);
 

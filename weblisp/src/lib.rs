@@ -114,7 +114,7 @@ mod tests {
         };
         if !path.ends_with("samples") {
             let root = Path::new("samples");
-            if let Err(e) = env::set_current_dir(&root) {
+            if let Err(e) = env::set_current_dir(root) {
                 eprintln!("test_case_00 fault: {:?} {:?}", e, path);
             }
         }

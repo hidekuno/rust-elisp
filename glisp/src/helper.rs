@@ -54,7 +54,7 @@ impl History {
             source_view.do_highlight(&text_buffer);
         });
 
-        if None == self.menu.submenu() {
+        if self.menu.submenu().is_none() {
             self.menu.set_submenu(Some(&gtk::Menu::new()));
         }
         if let Some(w) = self.menu.submenu() {
@@ -121,62 +121,58 @@ impl SourceView {
         }
         let mut vec: Option<gtk::TextIter> = None;
         let mut state = Status::Ready;
-        loop {
-            if let Some(c) = start.char() {
-                match state {
-                    Status::Ready => match c {
-                        '(' | ')' | ' ' | '\n' => state = Status::Ready,
-                        '"' => {
+        while let Some(c) = start.char() {
+            match state {
+                Status::Ready => match c {
+                    '(' | ')' | ' ' | '\n' => state = Status::Ready,
+                    '"' => {
+                        vec = Some(start);
+                        state = Status::String;
+                    }
+                    _ => {
+                        if c.is_ascii_digit() {
                             vec = Some(start);
-                            state = Status::String;
-                        }
-                        _ => {
-                            if c.is_ascii_digit() {
-                                vec = Some(start);
-                                state = Status::Number;
-                            } else if c.is_lowercase() {
-                                vec = Some(start);
-                                state = Status::Keyword;
-                            } else {
-                                state = Status::Ready;
-                            }
-                        }
-                    },
-                    Status::Number => match c {
-                        '(' | ')' | ' ' | '\n' => {
-                            if let Some(s) = &vec {
-                                if self.is_number(s, &start) {
-                                    text_buffer.apply_tag(&*(self.digit), s, &start);
-                                }
-                            }
+                            state = Status::Number;
+                        } else if c.is_lowercase() {
+                            vec = Some(start);
+                            state = Status::Keyword;
+                        } else {
                             state = Status::Ready;
-                        }
-                        _ => {}
-                    },
-                    Status::Keyword => match c {
-                        '(' | ')' | ' ' | '\n' => {
-                            if let Some(s) = &vec {
-                                if self.is_keyword(s, &start) {
-                                    text_buffer.apply_tag(&*(self.keyword), s, &start);
-                                }
-                            }
-                            state = Status::Ready;
-                        }
-                        _ => {}
-                    },
-                    Status::String => {
-                        if c == '"' {
-                            start.forward_char();
-                            if let Some(s) = &vec {
-                                text_buffer.apply_tag(&*(self.string), s, &start);
-                            }
-                            state = Status::Ready;
-                            continue;
                         }
                     }
+                },
+                Status::Number => match c {
+                    '(' | ')' | ' ' | '\n' => {
+                        if let Some(s) = &vec {
+                            if self.is_number(s, &start) {
+                                text_buffer.apply_tag(&*(self.digit), s, &start);
+                            }
+                        }
+                        state = Status::Ready;
+                    }
+                    _ => {}
+                },
+                Status::Keyword => match c {
+                    '(' | ')' | ' ' | '\n' => {
+                        if let Some(s) = &vec {
+                            if self.is_keyword(s, &start) {
+                                text_buffer.apply_tag(&*(self.keyword), s, &start);
+                            }
+                        }
+                        state = Status::Ready;
+                    }
+                    _ => {}
+                },
+                Status::String => {
+                    if c == '"' {
+                        start.forward_char();
+                        if let Some(s) = &vec {
+                            text_buffer.apply_tag(&*(self.string), s, &start);
+                        }
+                        state = Status::Ready;
+                        continue;
+                    }
                 }
-            } else {
-                break;
             }
             if !start.forward_char() {
                 break;
@@ -246,7 +242,7 @@ pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word
     if word.is_empty() {
         return;
     }
-    search_word_iter(&search_tag, text_buffer, &start, &end, word);
+    search_word_iter(&search_tag, text_buffer, &start, word);
     //------------------------------------------------------------------------
     // iter child function
     //------------------------------------------------------------------------
@@ -254,13 +250,12 @@ pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word
         word_tag: &gtk::TextTag,
         text_buffer: &gtk::TextBuffer,
         start: &gtk::TextIter,
-        end: &gtk::TextIter,
         word: &str,
     ) {
         if let Some(t) = start.forward_search(word, gtk::TextSearchFlags::all(), None) {
             let (match_start, match_end) = t;
             text_buffer.apply_tag(word_tag, &match_start, &match_end);
-            search_word_iter(word_tag, text_buffer, &match_end, end, word);
+            search_word_iter(word_tag, text_buffer, &match_end, word);
         }
     }
 }

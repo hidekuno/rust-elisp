@@ -552,7 +552,7 @@ fn string_index(
 
     let (start, end) = get_start_end(&exp[3..], env, &s)?;
 
-    Ok(match find(&*s, pred) {
+    Ok(match find(&s, pred) {
         Some(i) => {
             if (start <= i) && (i < end) {
                 Expression::Integer(i as Int)
@@ -594,15 +594,13 @@ fn string_trim(
         e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
     if exp.len() == 2 {
-        Ok(Environment::create_string(trim(&*s).to_string()))
+        Ok(Environment::create_string(trim(&s).to_string()))
     } else {
         let pred = match eval(&exp[2], env)? {
             Expression::Char(c) => c,
             e => return Err(create_error_value!(ErrCode::E1019, e)),
         };
-        Ok(Environment::create_string(
-            trim_match(&*s, pred).to_string(),
-        ))
+        Ok(Environment::create_string(trim_match(&s, pred).to_string()))
     }
 }
 fn string_range(
@@ -624,7 +622,7 @@ fn string_range(
     if 0 > v || s.chars().count() < v as usize {
         return Err(create_error!(ErrCode::E1021));
     }
-    Ok(Environment::create_string(range(&*s, v as usize)))
+    Ok(Environment::create_string(range(&s, v as usize)))
 }
 fn string_range_u8(
     exp: &[Expression],
@@ -646,7 +644,7 @@ fn string_range_u8(
         return Err(create_error!(ErrCode::E1021));
     }
     Ok(Environment::create_string(
-        range(&*s, v as usize).to_string(),
+        range(&s, v as usize).to_string(),
     ))
 }
 fn inner_substring(exp: &[Expression], env: &Environment, s: String) -> Result<String, Error> {

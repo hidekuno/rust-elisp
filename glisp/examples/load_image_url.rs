@@ -15,6 +15,18 @@
     (define aframe (make-image-frame "ll" 2.0))
     ((square-limit ll 0) aframe)
 
+   ex.3)
+    (load-image-url "rv" "https://m.media-amazon.com/images/I/617oXibcXRL._AC_UL320_.jpg")
+    (load-image-url "ps" "https://m.media-amazon.com/images/I/51D4ZYSXJ6L._AC_UL320_.jpg")
+    (load-image-url "sd" "https://m.media-amazon.com/images/I/51M-Dh4hDTL._AC_UL320_.jpg")
+    (load-image-url "am" "https://m.media-amazon.com/images/I/81bl1CsAm7L._AC_UL320_.jpg")
+    (define rv (paint-image "rv"))
+    (define ps (paint-image "ps"))
+    (define sd (paint-image "sd"))
+    (define am (paint-image "am"))
+    ((square-limit (below(beside rv ps)(beside sd am)) 0)
+     (make-image-frame-rectangle "am" 1.74 1.74))
+
    hidekuno@gmail.com
 */
 extern crate elisp;

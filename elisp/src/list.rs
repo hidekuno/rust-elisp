@@ -711,7 +711,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
             Ok(Environment::create_list(v))
         }
         ListProcKind::Effect => {
-            _sort_impl(exp, env, kind, &mut *(mut_obj!(rc)))?;
+            _sort_impl(exp, env, kind, &mut mut_obj!(rc))?;
             Ok(Expression::List(rc))
         }
     }
