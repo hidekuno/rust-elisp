@@ -17,7 +17,7 @@ use std::vec::Vec;
 use log::{debug, error, info, warn};
 
 #[cfg(feature = "signal")]
-use super::unix::signal::{catch_sig_intr_status, init_sig_intr};
+use super::unix::signal::{catch_sig_intr_status, init_sig_intr, clear_sig_intr_status};
 
 use crate::number::Number;
 use crate::number::Rat;
@@ -719,6 +719,8 @@ pub fn repl(
             }
             break lisp;
         };
+        #[cfg(feature = "signal")]
+        clear_sig_intr_status();
         debug!("{}", program.iter().cloned().collect::<String>());
         match do_core_logic(&lisp, env) {
             Ok(n) => println!("{}", n.to_string()),
