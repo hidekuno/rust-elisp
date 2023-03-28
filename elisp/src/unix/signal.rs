@@ -32,6 +32,11 @@ pub fn catch_sig_intr_status(env: &Environment) {
         }
     }
 }
+pub fn clear_sig_intr_status() {
+    unsafe {
+        CTRLC = false;
+    }
+}
 
 //  You can execute this test case only it.
 //  cargo test --lib --features signal unix
