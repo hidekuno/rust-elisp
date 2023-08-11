@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn screen_width() {
         let env = init();
-        assert_eq!(do_lisp_env("(screen-width)", &env), "720");
+        assert_eq!(do_lisp_env("(screen-width)", &env), "560");
     }
     #[test]
     fn screen_height() {

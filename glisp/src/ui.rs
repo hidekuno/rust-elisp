@@ -30,7 +30,7 @@ use crate::helper::History;
 use crate::helper::SourceView;
 use crate::helper::HISTORY_SIZE;
 
-pub const DRAW_WIDTH: i32 = 720;
+pub const DRAW_WIDTH: i32 = 560;
 pub const DRAW_HEIGHT: i32 = 560;
 const EVAL_RESULT_ID: &str = "result";
 const PNG_SAVE_FILE: &str = "glisp.png";
