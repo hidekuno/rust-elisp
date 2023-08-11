@@ -70,7 +70,7 @@ use wasm_bindgen::JsCast;
 use web_sys::HtmlCanvasElement;
 
 #[cfg(test)]
-const CANVAS_WIDTH: u32 = 720;
+const CANVAS_WIDTH: u32 = 560;
 
 #[cfg(test)]
 const CANVAS_HEIGHT: u32 = 560;
