@@ -166,6 +166,19 @@ impl Environment {
     pub fn get_cont(&self) -> Option<Expression> {
         return self.globals.lock().unwrap().cont.clone();
     }
+    pub fn inc_eval_count(&self) -> u32 {
+        self.globals.lock().unwrap().eval_count += 1;
+        self.globals.lock().unwrap().eval_count
+    }
+    pub fn reset_eval_count(&self) {
+        self.globals.lock().unwrap().eval_count = 0;
+    }
+    pub fn set_limit_stop(&self, b: bool) {
+        self.globals.lock().unwrap().limit_stop = b;
+    }
+    pub fn is_limit_stop(&self) -> bool {
+        self.globals.lock().unwrap().limit_stop
+    }
     pub fn as_ptr(&self) -> *const Environment {
         Arc::as_ptr(&self.core) as *const Environment
     }

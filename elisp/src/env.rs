@@ -36,6 +36,8 @@ pub(crate) struct GlobalTbl {
     pub(crate) tail_recursion: bool,
     pub(crate) force_stop: bool,
     pub(crate) cont: Option<Expression>,
+    pub(crate) limit_stop: bool,
+    pub(crate) eval_count: u32,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
@@ -47,6 +49,8 @@ impl GlobalTbl {
             tail_recursion: true,
             force_stop: false,
             cont: None,
+            limit_stop: false,
+            eval_count: 0,
         }
     }
 }

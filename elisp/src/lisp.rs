@@ -17,7 +17,7 @@ use std::vec::Vec;
 use log::{debug, error, info, warn};
 
 #[cfg(feature = "signal")]
-use super::unix::signal::{catch_sig_intr_status, init_sig_intr, clear_sig_intr_status};
+use super::unix::signal::{catch_sig_intr_status, clear_sig_intr_status, init_sig_intr};
 
 use crate::number::Number;
 use crate::number::Rat;
@@ -661,6 +661,7 @@ const QUIT: &str = "(quit)";
 const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
 const FORCE_STOP: &str = "(force-stop)";
+const LIMIT_STOPL_ON: &str = "(limit-stop-on)";
 
 pub struct ControlChar(pub u8, pub &'static str);
 pub const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -760,6 +761,7 @@ pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
     let mut c: i32 = 1;
     let mut ret = Expression::Nil();
 
+    env.reset_eval_count();
     loop {
         let exp = parse(&token, &mut c, env)?;
 
@@ -772,6 +774,9 @@ pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
             }
             FORCE_STOP => {
                 env.set_force_stop(true);
+            }
+            LIMIT_STOPL_ON => {
+                env.set_limit_stop(true);
             }
             _ => {
                 env.set_cont(&exp);
@@ -1007,6 +1012,9 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     #[cfg(feature = "signal")]
     catch_sig_intr_status(env);
 
+    if env.is_limit_stop() && env.inc_eval_count() > 100_000_000 {
+        return Err(create_error!(ErrCode::E9000));
+    }
     if env.is_force_stop() {
         return Err(create_error!(ErrCode::E9000));
     }
