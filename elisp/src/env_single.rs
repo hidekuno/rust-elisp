@@ -135,6 +135,19 @@ impl Environment {
     pub fn is_force_stop(&self) -> bool {
         self.globals.borrow().force_stop
     }
+    pub fn inc_eval_count(&self) -> u32 {
+        self.globals.borrow_mut().eval_count += 1;
+        self.globals.borrow().eval_count
+    }
+    pub fn reset_eval_count(&self) {
+        self.globals.borrow_mut().eval_count = 0;
+    }
+    pub fn set_limit_stop(&self, b: bool) {
+        self.globals.borrow_mut().limit_stop = b;
+    }
+    pub fn is_limit_stop(&self) -> bool {
+        self.globals.borrow().limit_stop
+    }
     pub fn get_function_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| matches!(v, Expression::Function(_)))
     }

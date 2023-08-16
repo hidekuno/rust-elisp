@@ -1,4 +1,4 @@
-FROM rust:1.57-buster as builder
+FROM rust:1.71-buster as builder
 MAINTAINER hidekuno@gmail.com
 
 ENV HOME /root
