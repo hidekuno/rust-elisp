@@ -340,7 +340,9 @@ pub fn parse_request(buffer: &[u8]) -> Result<Request, Box<WebError>> {
 
     if let Some(r) = lines.next() {
         info!("{}", r);
-        for (i, s) in r.split_whitespace().into_iter().enumerate() {
+
+        // https://rust-lang.github.io/rust-clippy/master/index.html#useless_conversion
+        for (i, s) in r.split_whitespace().enumerate() {
             if i >= 3 {
                 return Err(Box::new(WebError::UriParse(line!())));
             }

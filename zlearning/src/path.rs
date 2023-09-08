@@ -39,7 +39,8 @@ impl Path {
     {
         let mut cache = Cache::new();
 
-        for line in reader.lines().filter_map(|result| result.ok()) {
+        // https://rust-lang.github.io/rust-clippy/master/index.html#/lines_filter_map_ok
+        for line in reader.lines().map_while(Result::ok) {
             let mut fullname = String::new();
             let vec: Vec<&str> = line.split(sep).collect();
             for (i, s) in vec.iter().enumerate() {
@@ -108,7 +109,7 @@ pub fn create_tree(config: &Config) -> Result<Cache<Path>, String> {
 #[test]
 fn test_create_tree_01() {
     use crate::param::parse_arg;
-    let args = vec!["-f", "/proc/version", "-d", " "];
+    let args = ["-f", "/proc/version", "-d", " "];
 
     if let Ok(cache) = create_tree(
         &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
@@ -121,7 +122,7 @@ fn test_create_tree_01() {
 #[test]
 fn test_create_tree_02() {
     use crate::param::parse_arg;
-    let args = vec!["-f", "/proc/hogehoge"];
+    let args = ["-f", "/proc/hogehoge"];
 
     if let Err(e) = create_tree(
         &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
@@ -133,7 +134,7 @@ fn test_create_tree_02() {
 #[test]
 fn test_create_tree_03() {
     use crate::param::parse_arg;
-    let args = vec!["-f", "/proc"];
+    let args = ["-f", "/proc"];
 
     if let Err(e) = create_tree(
         &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),

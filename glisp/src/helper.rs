@@ -263,7 +263,7 @@ pub fn search_word_highlight(text_buffer: &gtk::TextBuffer, tag_name: &str, word
 // Load LISP programe(https://github.com/hidekuno/picture-language)
 //--------------------------------------------------------
 pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
-    fn get_program_name(vec: Vec<&str>) -> std::io::Result<Option<String>> {
+    fn get_program_name(dir: &[&str; 2]) -> std::io::Result<Option<String>> {
         let mut program: Vec<String> = Vec::new();
         let mut path = PathBuf::new();
 
@@ -271,8 +271,8 @@ pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
             Ok(v) => v,
             Err(_) => "/root".into(),
         });
-        for dir in vec {
-            path.push(dir);
+        for d in dir {
+            path.push(d);
         }
         if !path.as_path().exists() {
             return Ok(None);
@@ -296,8 +296,11 @@ pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
             Ok(None)
         }
     }
-    for v in vec![vec!["picture-language", dir], vec![dir]] {
-        match get_program_name(v) {
+    // The 1st of this array ... when this program is running on your desktop
+    // The 2nd of this array ... when this program is running on docker container
+    //     https://github.com/hidekuno/rust-elisp/blob/master/docker/glisp/Dockerfile
+    for d in [["picture-language", dir], [".", dir]] {
+        match get_program_name(&d) {
             Ok(s) => match s {
                 Some(s) => return Ok(s),
                 None => continue,
