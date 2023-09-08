@@ -175,7 +175,7 @@ fn test_parse_arg_01() {
 }
 #[test]
 fn test_parse_arg_02() {
-    let args = vec!["--nb"];
+    let args = ["--nb"];
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
 
     assert_eq!(config.mode, OperationMode::ThreadPool);
@@ -185,7 +185,7 @@ fn test_parse_arg_02() {
 }
 #[test]
 fn test_parse_arg_03() {
-    let args = vec!["--limit"];
+    let args = ["--limit"];
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
 
     assert_eq!(config.mode, OperationMode::Limit);
@@ -195,7 +195,7 @@ fn test_parse_arg_03() {
 }
 #[test]
 fn test_parse_arg_04() {
-    let args = vec!["--tp"];
+    let args = ["--tp"];
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
 
     assert_eq!(config.mode, OperationMode::ThreadPool);
@@ -205,7 +205,7 @@ fn test_parse_arg_04() {
 }
 #[test]
 fn test_parse_arg_05() {
-    let args = vec!["--epoll"];
+    let args = ["--epoll"];
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
 
     assert_eq!(config.mode, OperationMode::Epoll);
@@ -215,7 +215,7 @@ fn test_parse_arg_05() {
 }
 #[test]
 fn test_parse_arg_06() {
-    let args = vec!["-m", "8"];
+    let args = ["-m", "8"];
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
 
     assert_eq!(config.mode, OperationMode::ThreadPool);
@@ -225,7 +225,7 @@ fn test_parse_arg_06() {
 }
 #[test]
 fn test_parse_arg_07() {
-    let args = vec!["--limit", "-c", "2000"];
+    let args = ["--limit", "-c", "2000"];
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
 
     assert_eq!(config.mode, OperationMode::Limit);
@@ -235,7 +235,7 @@ fn test_parse_arg_07() {
 }
 #[test]
 fn test_parse_arg_err_01() {
-    let args = vec!["--hoge"];
+    let args = ["--hoge"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -244,7 +244,7 @@ fn test_parse_arg_err_01() {
 }
 #[test]
 fn test_parse_arg_err_02() {
-    let args = vec!["--limit", "--tp"];
+    let args = ["--limit", "--tp"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -253,7 +253,7 @@ fn test_parse_arg_err_02() {
 }
 #[test]
 fn test_parse_arg_err_03() {
-    let args = vec!["--tp", "--epoll"];
+    let args = ["--tp", "--epoll"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -262,7 +262,7 @@ fn test_parse_arg_err_03() {
 }
 #[test]
 fn test_parse_arg_err_04() {
-    let args = vec!["--epoll", "--limit"];
+    let args = ["--epoll", "--limit"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -271,7 +271,7 @@ fn test_parse_arg_err_04() {
 }
 #[test]
 fn test_parse_arg_err_05() {
-    let args = vec!["--epoll", "-m", "2"];
+    let args = ["--epoll", "-m", "2"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -280,7 +280,7 @@ fn test_parse_arg_err_05() {
 }
 #[test]
 fn test_parse_arg_err_06() {
-    let args = vec!["--tp", "-c", "2"];
+    let args = ["--tp", "-c", "2"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -289,7 +289,7 @@ fn test_parse_arg_err_06() {
 }
 #[test]
 fn test_parse_arg_err_07() {
-    let args = vec!["--epoll", "--nb"];
+    let args = ["--epoll", "--nb"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -298,7 +298,7 @@ fn test_parse_arg_err_07() {
 }
 #[test]
 fn test_parse_arg_err_08() {
-    let args = vec!["--tp", "-m", "a"];
+    let args = ["--tp", "-m", "a"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -307,7 +307,7 @@ fn test_parse_arg_err_08() {
 }
 #[test]
 fn test_parse_arg_err_09() {
-    let args = vec!["--tp", "-m", "-1"];
+    let args = ["--tp", "-m", "-1"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -316,7 +316,7 @@ fn test_parse_arg_err_09() {
 }
 #[test]
 fn test_parse_arg_err_10() {
-    let args = vec!["--tp", "-m", "10"];
+    let args = ["--tp", "-m", "10"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -325,7 +325,7 @@ fn test_parse_arg_err_10() {
 }
 #[test]
 fn test_parse_arg_err_11() {
-    let args = vec!["--limit", "-c", "a"];
+    let args = ["--limit", "-c", "a"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -334,7 +334,7 @@ fn test_parse_arg_err_11() {
 }
 #[test]
 fn test_parse_arg_err_12() {
-    let args = vec!["--limit", "-c", "-1"];
+    let args = ["--limit", "-c", "-1"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -343,7 +343,7 @@ fn test_parse_arg_err_12() {
 }
 #[test]
 fn test_parse_arg_err_13() {
-    let args = vec!["--limit", "-c", "100000"];
+    let args = ["--limit", "-c", "100000"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),

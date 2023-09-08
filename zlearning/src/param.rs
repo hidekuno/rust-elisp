@@ -151,7 +151,7 @@ fn test_parse_arg_01() {
 }
 #[test]
 fn test_parse_arg_02() {
-    let args = vec!["-l"];
+    let args = ["-l"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '.');
@@ -161,7 +161,7 @@ fn test_parse_arg_02() {
 }
 #[test]
 fn test_parse_arg_03() {
-    let args = vec!["-m"];
+    let args = ["-m"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '.');
@@ -171,7 +171,7 @@ fn test_parse_arg_03() {
 }
 #[test]
 fn test_parse_arg_04() {
-    let args = vec!["-b"];
+    let args = ["-b"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '.');
@@ -181,7 +181,7 @@ fn test_parse_arg_04() {
 }
 #[test]
 fn test_parse_arg_05() {
-    let args = vec!["-d", "/"];
+    let args = ["-d", "/"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '/');
@@ -191,7 +191,7 @@ fn test_parse_arg_05() {
 }
 #[test]
 fn test_parse_arg_06() {
-    let args = vec!["-f", "/etc/passwd"];
+    let args = ["-f", "/etc/passwd"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '.');
@@ -201,7 +201,7 @@ fn test_parse_arg_06() {
 }
 #[test]
 fn test_parse_arg_07() {
-    let args = vec!["-n", "2"];
+    let args = ["-n", "2"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '.');
@@ -211,7 +211,7 @@ fn test_parse_arg_07() {
 }
 #[test]
 fn test_parse_arg_08() {
-    let args = vec!["-n", "0"];
+    let args = ["-n", "0"];
 
     let config = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap();
     assert_eq!(config.delimiter, '.');
@@ -221,7 +221,7 @@ fn test_parse_arg_08() {
 }
 #[test]
 fn test_parse_arg_09() {
-    let args = vec!["-n"];
+    let args = ["-n"];
     let mut params = args.iter().map(|s| s.to_string()).collect::<Vec<String>>();
     params.push(MAX_LEVEL.to_string());
 
@@ -233,7 +233,7 @@ fn test_parse_arg_09() {
 }
 #[test]
 fn test_parse_arg_err_01() {
-    let args = vec!["-f", "-d"];
+    let args = ["-f", "-d"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -242,7 +242,7 @@ fn test_parse_arg_err_01() {
 }
 #[test]
 fn test_parse_arg_err_02() {
-    let args = vec!["-d", ""];
+    let args = ["-d", ""];
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
         Err(e) => assert_eq!(e.to_string(), "invalid option"),
@@ -250,7 +250,7 @@ fn test_parse_arg_err_02() {
 }
 #[test]
 fn test_parse_arg_err_03() {
-    let args = vec!["-d", "123"];
+    let args = ["-d", "123"];
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
         Err(e) => assert_eq!(e.to_string(), "invalid option"),
@@ -258,7 +258,7 @@ fn test_parse_arg_err_03() {
 }
 #[test]
 fn test_parse_arg_err_04() {
-    let args = vec!["10", "123"];
+    let args = ["10", "123"];
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
         Err(e) => assert_eq!(e.to_string(), "invalid option"),
@@ -266,7 +266,7 @@ fn test_parse_arg_err_04() {
 }
 #[test]
 fn test_parse_arg_err_05() {
-    let args = vec!["-n", "abc"];
+    let args = ["-n", "abc"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
@@ -275,7 +275,7 @@ fn test_parse_arg_err_05() {
 }
 #[test]
 fn test_parse_arg_err_06() {
-    let args = vec!["-n", "-1"];
+    let args = ["-n", "-1"];
 
     match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
         Ok(_) => panic!("test fail"),
