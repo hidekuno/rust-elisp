@@ -24,7 +24,7 @@ pub extern "C" fn do_scheme(program: *const c_char) -> *mut c_char {
     let env = &ENV;
 
     let program = unsafe { CStr::from_ptr(program).to_str().unwrap() };
-    let value = match elisp::lisp::do_core_logic(program, &env) {
+    let value = match elisp::lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_msg(),
     };

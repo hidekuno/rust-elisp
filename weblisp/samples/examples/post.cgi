@@ -8,5 +8,4 @@ print("")
 
 line = sys.stdin.readline()
 print(line.rstrip("\n"))
-print(environ['QUERY_STRING'])
-
+print(environ["QUERY_STRING"])
