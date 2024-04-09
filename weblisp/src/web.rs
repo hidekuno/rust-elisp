@@ -136,7 +136,7 @@ macro_rules! make_path {
         path
     }};
 }
-#[derive(Clone)]
+#[derive(Clone,PartialEq)]
 pub enum Method {
     Get,
     Post,
@@ -157,11 +157,6 @@ impl Method {
             "HEAD" => Some(Method::Head),
             _ => None,
         }
-    }
-}
-impl PartialEq<Method> for Method {
-    fn eq(&self, other: &Method) -> bool {
-        self == other
     }
 }
 impl PartialEq<str> for Method {
