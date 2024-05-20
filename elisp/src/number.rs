@@ -13,7 +13,6 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
-use std::string::ToString;
 
 use crate::lisp::ErrCode;
 use crate::lisp::Expression;
@@ -93,12 +92,14 @@ fn gcm(n: Int, m: Int) -> Int {
         l => gcm(m, l),
     }
 }
-impl ToString for Rat {
-    fn to_string(&self) -> String {
+// ToString -> Display
+// https://rust-lang.github.io/rust-clippy/master/index.html#/to_string_trait_impl
+impl fmt::Display for Rat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.denom == 1 {
-            self.numer.to_string()
+            write!(f, "{}", self.numer)
         } else {
-            format!("{}/{}", self.numer, self.denom)
+            write!(f, "{}/{}", self.numer, self.denom)
         }
     }
 }
@@ -305,12 +306,14 @@ impl PartialOrd for Number {
         Some(Ordering::Equal)
     }
 }
-impl ToString for Number {
-    fn to_string(&self) -> String {
+// ToString -> Display
+// https://rust-lang.github.io/rust-clippy/master/index.html#/to_string_trait_impl
+impl fmt::Display for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Number::Integer(v) => v.to_string(),
-            Number::Float(v) => v.to_string(),
-            Number::Rational(v) => v.to_string(),
+            Number::Integer(v) => write!(f, "{}", v),
+            Number::Float(v) => write!(f, "{}", v),
+            Number::Rational(v) => write!(f, "{}", v),
         }
     }
 }

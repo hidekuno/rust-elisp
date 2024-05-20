@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             &String::from("(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))"),
             &env,
         ) {
-            Ok(r) => println!("{}", r.to_string()),
+            Ok(r) => println!("{}", r),
             Err(e) => print_error!(e),
         }
     } else {
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             program.push(l);
         }
         match lisp::do_core_logic(&program.join(" "), &env) {
-            Ok(r) => println!("{}", r.to_string()),
+            Ok(r) => println!("{}", r),
             Err(e) => print_error!(e),
         }
     }

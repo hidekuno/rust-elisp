@@ -75,7 +75,7 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
         } else if let Expression::String(s) = v {
             print!("{} ", s);
         } else {
-            print!("{} ", v.to_string());
+            print!("{} ", v);
         }
         std::io::stdout().flush().unwrap();
     }

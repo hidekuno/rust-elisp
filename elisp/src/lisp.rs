@@ -7,6 +7,7 @@
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::fmt;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
@@ -395,54 +396,60 @@ impl Expression {
         false
     }
 }
-impl ToString for Expression {
-    fn to_string(&self) -> String {
+// ToString -> Display
+// https://rust-lang.github.io/rust-clippy/master/index.html#/to_string_trait_impl
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::Integer(v) => v.to_string(),
-            Expression::Float(v) => v.to_string(),
+            Expression::Integer(v) => write!(f, "{}", v),
+            Expression::Float(v) => write!(f, "{}", v),
             Expression::Char(v) => {
                 if v.is_control() || v.is_whitespace() {
                     let c: u8 = *v as u8;
                     if c == SPACE.0 {
-                        return SPACE.1.to_string();
+                        write!(f, "{}", SPACE.1)
+                    } else if c == TAB.0 {
+                        write!(f, "{}", TAB.1)
+                    } else if c == NEWLINE.0 {
+                        write!(f, "{}", NEWLINE.1)
+                    } else if c == CARRIAGERETRUN.0 {
+                        write!(f, "{}", CARRIAGERETRUN.1)
+                    } else {
+                        write!(f, "#\\non-printable-char")
                     }
-                    if c == TAB.0 {
-                        return TAB.1.to_string();
-                    }
-                    if c == NEWLINE.0 {
-                        return NEWLINE.1.to_string();
-                    }
-                    if c == CARRIAGERETRUN.0 {
-                        return CARRIAGERETRUN.1.to_string();
-                    }
-                    "#\\non-printable-char".to_string()
                 } else {
-                    format!("#\\{}", v)
+                    write!(f, "#\\{}", v)
                 }
             }
-            Expression::Boolean(v) => (if *v { TRUE } else { FALSE }).to_string(),
-            Expression::Symbol(v) => v.to_string(),
-            Expression::String(v) => format!("\"{}\"", v),
+            Expression::Boolean(v) => {
+                if *v {
+                    write!(f, "{}", TRUE)
+                } else {
+                    write!(f, "{}", FALSE)
+                }
+            }
+            Expression::Symbol(v) => write!(f, "{}", v),
+            Expression::String(v) => write!(f, "\"{}\"", v),
             Expression::List(v) => {
                 let l = &*(reference_obj!(v));
-                Expression::list_string(&l[..])
+                write!(f, "{}", Expression::list_string(&l[..]))
             }
             Expression::Vector(v) => {
                 let l = &*(reference_obj!(v));
-                Expression::vector_string(&l[..])
+                write!(f, "{}", Expression::vector_string(&l[..]))
             }
-            Expression::HashTable(_) => "HashTable".into(),
-            Expression::TreeMap(_) => "TreeMap".into(),
-            Expression::Pair(car, cdr) => format!("({} . {})", car.to_string(), cdr.to_string()),
-            Expression::Function(_) => "Function".into(),
-            Expression::BuildInFunction(s, _) => format!("<{}> BuildIn Function", s),
-            Expression::BuildInFunctionExt(_) => "BuildIn Function Ext".into(),
-            Expression::Nil() => "nil".into(),
-            Expression::TailLoop() => "tail loop".into(),
-            Expression::TailRecursion(_) => "Tail Recursion".into(),
-            Expression::Promise(_, _) => "Promise".into(),
-            Expression::Rational(v) => v.to_string(),
-            Expression::Continuation(_) => "Continuation".into(),
+            Expression::HashTable(_) => write!(f, "HashTable"),
+            Expression::TreeMap(_) => write!(f, "TreeMap"),
+            Expression::Pair(car, cdr) => write!(f, "({} . {})", car, cdr),
+            Expression::Function(_) => write!(f, "Function"),
+            Expression::BuildInFunction(s, _) => write!(f, "<{}> BuildIn Function", s),
+            Expression::BuildInFunctionExt(_) => write!(f, "BuildIn Function Ext"),
+            Expression::Nil() => write!(f, "nil"),
+            Expression::TailLoop() => write!(f, "tail loop"),
+            Expression::TailRecursion(_) => write!(f, "Tail Recursion"),
+            Expression::Promise(_, _) => write!(f, "Promise"),
+            Expression::Rational(v) => write!(f, "{}", v),
+            Expression::Continuation(_) => write!(f, "Continuation"),
         }
     }
 }
@@ -725,7 +732,7 @@ pub fn repl(
         clear_sig_intr_status();
         debug!("{}", program.iter().cloned().collect::<String>());
         match do_core_logic(&lisp, env) {
-            Ok(n) => println!("{}", n.to_string()),
+            Ok(n) => println!("{}", n),
             Err(e) => {
                 if ErrCode::E9000.as_str() == e.get_code() {
                     env.set_force_stop(false);
