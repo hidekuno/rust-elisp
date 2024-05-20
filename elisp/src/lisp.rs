@@ -715,7 +715,8 @@ pub fn repl(
             }
             program.push(buffer.trim().to_string());
             let lisp = program.join(" ");
-            if !count_parenthesis(&lisp) {
+            let (left, right) = count_parenthesis(&lisp);
+            if left > right {
                 continue;
             }
             break lisp;
@@ -736,25 +737,43 @@ pub fn repl(
     }
     Ok(())
 }
-pub fn count_parenthesis(program: &str) -> bool {
+pub fn count_parenthesis(program: &str) -> (i32, i32) {
+    #[derive(PartialEq)]
+    enum CharMode {
+        Init,
+        Whitespace,
+        Sharp,
+        Backslash,
+    }
     let mut left = 0;
     let mut right = 0;
-    let mut search = true;
+    let mut str_mode = false;
+    let mut char_mode = CharMode::Whitespace;
+    let mut pre = ' ';
 
     for c in program.chars() {
-        if c == '"' && search {
-            search = false;
-        } else if c == '"' && !search {
-            search = true;
-        }
-        if c == '(' && search {
+        if str_mode {
+            if pre != '\\' && c == '"' {
+                str_mode = false;
+            }
+        } else if char_mode == CharMode::Backslash {
+            char_mode = CharMode::Init;
+        } else if pre != '\\' && c == '"' {
+            str_mode = true;
+        } else if c.is_whitespace() && char_mode == CharMode::Init {
+            char_mode = CharMode::Whitespace;
+        } else if c == '#' && char_mode == CharMode::Whitespace {
+            char_mode = CharMode::Sharp;
+        } else if c == '\\' && char_mode == CharMode::Sharp {
+            char_mode = CharMode::Backslash;
+        } else if c == '(' {
             left += 1;
-        }
-        if c == ')' && search {
+        } else if c == ')' {
             right += 1;
         }
+        pre = c;
     }
-    left <= right
+    (left, right)
 }
 pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
     let mut token = tokenize(program);
@@ -907,14 +926,13 @@ pub(crate) fn tokenize(program: &str) -> Vec<String> {
                         token.quote_mode = false;
                     }
                 }
-                ' ' | '\r' | '\n' | '\t' => {}
                 _ => {
                     if c == '#'
                         && i + 1 < program.chars().count()
                         && program.chars().nth(i + 1).unwrap() == '('
                     {
                         vector_mode = true;
-                    } else {
+                    } else if !c.is_whitespace() {
                         set_token_name!(i, c);
                     }
                 }
