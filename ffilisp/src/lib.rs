@@ -19,11 +19,19 @@ extern crate lazy_static;
 lazy_static! {
     static ref ENV: Arc<Environment> = Arc::new(Environment::new());
 }
+
+// Fix below clippy error.
+//
+// https://rust-lang.github.io/rust-clippy/master/index.html#/not_unsafe_ptr_arg_deref
+// https://rust-lang.github.io/rust-clippy/master/index.html#/missing_safety_doc
 #[no_mangle]
-pub extern "C" fn do_scheme(program: *const c_char) -> *mut c_char {
+/// # Safety
+///
+/// This function should not be called before the horsemen are ready.
+pub unsafe extern "C" fn do_scheme(program: *const c_char) -> *mut c_char {
     let env = &ENV;
 
-    let program = unsafe { CStr::from_ptr(program).to_str().unwrap() };
+    let program = CStr::from_ptr(program).to_str().unwrap();
     let value = match elisp::lisp::do_core_logic(program, env) {
         Ok(v) => v.to_string(),
         Err(e) => e.get_msg(),

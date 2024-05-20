@@ -16,6 +16,7 @@ extern "C" {
 
 extern "C" fn interrupt(_sig: u32) {
     unsafe {
+        println!("*** catch SIGINT ***");
         CTRLC = true;
     }
 }
