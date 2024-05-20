@@ -107,8 +107,8 @@ fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> Resu
         }
         expression.push(buffer.trim().to_string());
         let lisp = expression.join(" ");
-
-        if !count_parenthesis(&lisp) {
+        let (left, right) = count_parenthesis(&lisp);
+        if left > right {
             continue;
         }
         let token = tokenize(&lisp);
@@ -186,6 +186,14 @@ mod tests {
         writeln!(file, "(define fuga (+ foo hoge))").unwrap();
         writeln!(file, "(define a 100)(define b 200)(define c 300)").unwrap();
         writeln!(file, "(define d 100)").unwrap();
+        writeln!(file, "(define  s1 \"(\"))").unwrap();
+        writeln!(file, "(define  s2 \")\"))").unwrap();
+        writeln!(file, "(define  c1 #\\()").unwrap();
+        writeln!(file, "(define  c2 #\\))").unwrap();
+        writeln!(file, "(define  (testf a b)\n(+ a b))").unwrap();
+        writeln!(file, "(define  (teststr)\"(\")").unwrap();
+        writeln!(file, "(define  (testchr)\n#\\()").unwrap();
+
         file.flush().unwrap();
 
         let env = lisp::Environment::new();
@@ -195,6 +203,13 @@ mod tests {
         assert_eq!(do_lisp_env("hoge", &env), "200");
         assert_eq!(do_lisp_env("fuga", &env), "300");
         assert_eq!(do_lisp_env("(+ a b c)", &env), "600");
+        assert_eq!(do_lisp_env("s1", &env), "\"(\"");
+        assert_eq!(do_lisp_env("s2", &env), "\")\"");
+        assert_eq!(do_lisp_env("c1", &env), "#\\(");
+        assert_eq!(do_lisp_env("c2", &env), "#\\)");
+        assert_eq!(do_lisp_env("(testf 10 20)", &env), "30");
+        assert_eq!(do_lisp_env("(teststr)", &env), "\"(\"");
+        assert_eq!(do_lisp_env("(testchr)", &env), "#\\(");
     }
     #[test]
     fn display() {
