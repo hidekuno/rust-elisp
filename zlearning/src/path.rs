@@ -111,34 +111,35 @@ fn test_create_tree_01() {
     use crate::param::parse_arg;
     let args = ["-f", "/proc/version", "-d", " "];
 
-    if let Ok(cache) = create_tree(
+    let cache = create_tree(
         &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
-    ) {
-        let top = cache.top.unwrap();
-        assert_eq!(top.borrow().get_name(), "Linux");
-        assert!(top.borrow().parent.is_none());
-    }
+    )
+    .unwrap();
+
+    let top = cache.top.unwrap();
+    assert_eq!(top.borrow().get_name(), "Linux");
+    assert!(top.borrow().parent.is_none());
 }
 #[test]
 fn test_create_tree_02() {
     use crate::param::parse_arg;
     let args = ["-f", "/proc/hogehoge"];
 
-    if let Err(e) = create_tree(
+    let _ = create_tree(
         &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
-    ) {
+    )
+    .map_err(|e| {
         assert!(e.starts_with("No such file or directory"));
         assert_eq!(&e.as_str()[..7], "No such");
-    }
+    });
 }
 #[test]
 fn test_create_tree_03() {
     use crate::param::parse_arg;
     let args = ["-f", "/proc"];
 
-    if let Err(e) = create_tree(
+    let _ = create_tree(
         &parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).unwrap(),
-    ) {
-        assert_eq!(e, "It's directory.");
-    }
+    )
+    .map_err(|e| assert_eq!(e, "It's directory."));
 }

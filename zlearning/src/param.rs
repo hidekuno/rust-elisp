@@ -38,6 +38,7 @@ pub enum DisplayMode {
     MultiCharLine,
     BoldMultiCharLine,
 }
+#[derive(PartialEq)]
 enum ParamParse {
     DelimiterOn,
     FilenameOn,
@@ -70,7 +71,7 @@ pub struct Config {
     level: i32,
 }
 impl Config {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Config {
             mode: DisplayMode::Space,
             filename: None,
@@ -91,11 +92,16 @@ impl Config {
         self.level
     }
 }
+impl Default for Config {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
     let mut parse = ParamParse::Off;
     let mut config = Config::new();
 
-    for arg in args {
+    for arg in args.iter() {
         match parse {
             ParamParse::Off => {
                 if arg == SINGLE_CHAR_PARAM {
@@ -137,6 +143,9 @@ pub fn parse_arg(args: &[String]) -> Result<Config, Box<dyn Error>> {
             }
         }
     }
+    if parse != ParamParse::Off {
+        return Err(Box::new(InvalidOptionError {}));
+    }
     Ok(config)
 }
 #[test]
@@ -148,6 +157,7 @@ fn test_parse_arg_01() {
     assert_eq!(config.mode, DisplayMode::Space);
     assert_eq!(config.filename, None);
     assert_eq!(config.level, MAX_LEVEL);
+    assert_eq!(config.mode(), &DisplayMode::Space);
 }
 #[test]
 fn test_parse_arg_02() {
@@ -235,50 +245,64 @@ fn test_parse_arg_09() {
 fn test_parse_arg_err_01() {
     let args = ["-f", "-d"];
 
-    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
-        Ok(_) => panic!("test fail"),
-        Err(e) => assert_eq!(e.to_string(), "invalid option"),
-    }
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
 }
 #[test]
 fn test_parse_arg_err_02() {
     let args = ["-d", ""];
-    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
-        Ok(_) => panic!("test fail"),
-        Err(e) => assert_eq!(e.to_string(), "invalid option"),
-    }
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
 }
 #[test]
 fn test_parse_arg_err_03() {
     let args = ["-d", "123"];
-    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
-        Ok(_) => panic!("test fail"),
-        Err(e) => assert_eq!(e.to_string(), "invalid option"),
-    }
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
 }
 #[test]
 fn test_parse_arg_err_04() {
     let args = ["10", "123"];
-    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
-        Ok(_) => panic!("test fail"),
-        Err(e) => assert_eq!(e.to_string(), "invalid option"),
-    }
+
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
 }
 #[test]
 fn test_parse_arg_err_05() {
     let args = ["-n", "abc"];
 
-    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
-        Ok(_) => panic!("test fail"),
-        Err(e) => assert_eq!(e.to_string(), "invalid option"),
-    }
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
 }
 #[test]
 fn test_parse_arg_err_06() {
     let args = ["-n", "-1"];
 
-    match parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()) {
-        Ok(_) => panic!("test fail"),
-        Err(e) => assert_eq!(e.to_string(), "invalid option"),
-    }
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
+}
+#[test]
+fn test_parse_arg_err_07() {
+    let args = ["-n", "-f"];
+
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .map_err(|e| assert_eq!(e.to_string(), "invalid option"));
+}
+#[test]
+fn test_parse_arg_err_08() {
+    let args = ["-n"];
+
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).map_err(|e| {
+        let _ = e.source();
+        assert_eq!(e.to_string(), "invalid option");
+    });
+}
+#[test]
+fn test_parse_arg_err_09() {
+    let args = ["-f"];
+
+    let _ = parse_arg(&args.iter().map(|s| s.to_string()).collect::<Vec<String>>()).map_err(|e| {
+        let _ = e.source();
+        assert_eq!(e.to_string(), "invalid option");
+    });
 }
