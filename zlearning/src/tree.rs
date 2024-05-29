@@ -65,10 +65,7 @@ where
         v.visit(self);
     }
     pub fn is_last(&self) -> bool {
-        match self.parent {
-            Some(ref p) => {
-                self.item.get_name()
-                    == p.borrow()
+        self.item.get_name() == self.parent.as_ref().expect("").borrow()
                         .children
                         .back() //linked list
                         .unwrap()
@@ -77,9 +74,6 @@ where
                         .borrow() // refcell
                         .item
                         .get_name()
-            }
-            None => true,
-        }
     }
     pub fn get_name(&self) -> &str {
         self.item.get_display_string()
