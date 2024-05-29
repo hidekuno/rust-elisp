@@ -10,6 +10,28 @@ pub mod tree;
 pub mod visitor;
 pub mod walker;
 
+pub fn create_test_file() -> String {
+    use std::fs::File;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let testfile = format!(
+        "/tmp/zlearning_{}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
+    );
+    let mut file = File::create(&testfile).unwrap();
+    writeln!(file, "fj").unwrap();
+    writeln!(file, "fj.archives").unwrap();
+    writeln!(file, "fj.archives.programs").unwrap();
+    writeln!(file, "fj.archives.programs.mac").unwrap();
+    writeln!(file, "fj.archives.programs.ms-windows").unwrap();
+    writeln!(file, "fj.archives.programs.sources").unwrap();
+    file.flush().unwrap();
+    testfile
+}
 #[cfg(test)]
 mod tests {
     extern "C" {

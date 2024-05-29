@@ -88,10 +88,7 @@ pub fn create_tree(config: &Config) -> Result<Cache<Path>, String> {
                 Ok(f) => f,
                 Err(e) => return Err(e.to_string()),
             };
-            let meta = match file.metadata() {
-                Ok(m) => m,
-                Err(e) => return Err(e.to_string()),
-            };
+            let meta = file.metadata().unwrap();
             if meta.is_dir() {
                 return Err(String::from("It's directory."));
             }

@@ -86,3 +86,7 @@ fn test_qsort_heap() {
     qsort(&mut heap, 0, N - 1);
     assert_eq!(format!("{:?}", heap), RESULT);
 }
+#[test]
+fn test_exec_main() {
+    main();
+}
