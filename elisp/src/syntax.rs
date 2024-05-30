@@ -302,6 +302,8 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
                         if l.len() == 1 {
                             return Ok(v);
                         }
+                    } else {
+                        return Err(create_error!(ErrCode::E1001));
                     }
                 }
             } else {
@@ -600,6 +602,15 @@ mod tests {
             do_lisp("(let loop ((i 0)) (if (<= 10 i) i (+ 10 (loop (+ i 1)))))"),
             "110"
         );
+        let env = lisp::Environment::new();
+        env.set_tail_recursion(false);
+        assert_eq!(
+            do_lisp_env(
+                "(let loop ((i 0)(j 0)) (if (<= 10 i) (+ i j) (loop (+ i 1)(+ j 2))))",
+                &env
+            ),
+            "30"
+        );
     }
     #[test]
     fn set_f() {
@@ -730,6 +741,8 @@ mod tests {
             do_lisp_env("(case a ((100 200) \"A\" \"B\") (else \"C\"))", &env),
             "\"B\""
         );
+        do_lisp_env("(define a 100) ", &env);
+        assert_eq!(do_lisp_env("(case a ()(else \"B\"))", &env), "\"B\"");
     }
     #[test]
     fn begin() {
@@ -889,6 +902,7 @@ mod error_tests {
         assert_eq!(do_lisp("(cond (b 10))"), "E1008");
         assert_eq!(do_lisp("(cond ((= 10 10) b))"), "E1008");
         assert_eq!(do_lisp("(cond ())"), "E1012");
+        assert_eq!(do_lisp("(cond (10 12))"), "E1001");
     }
     #[test]
     fn case() {

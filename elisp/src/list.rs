@@ -833,7 +833,7 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
             let e = match &func {
                 Expression::BuildInFunction(_, f) => f(&v, env),
                 Expression::Function(f) => f.execute(&v, env),
-                _ => return false,
+                _ => Err(create_error!(ErrCode::E1006)),
             };
             match e {
                 Ok(v) => match v {
@@ -1572,6 +1572,10 @@ mod tests {
         assert_eq!(
             do_lisp("(merge (list #\\g #\\e #\\c #\\a)(list #\\h #\\f #\\d #\\b) char>?)"),
             "(#\\h #\\g #\\f #\\e #\\d #\\c #\\b #\\a)"
+        );
+        assert_eq!(
+            do_lisp("(merge (iota 5 0 2)(iota 5 1 2)(lambda (a b)(< a b)))"),
+            "(0 1 2 3 4 5 6 7 8 9)"
         );
     }
     #[test]
