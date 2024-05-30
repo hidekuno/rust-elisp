@@ -31,10 +31,7 @@ impl fmt::Display for RatParseError {
     }
 }
 impl Error for RatParseError {
-    fn description(&self) -> &str {
-        self.code.as_str()
-    }
-    fn cause(&self) -> Option<&dyn Error> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
         None
     }
 }
@@ -138,6 +135,19 @@ impl PartialEq for Rat {
         (self.numer == other.numer) && (self.denom == other.denom)
     }
 }
+impl Eq for Rat {}
+
+impl Ord for Rat {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.lt(&other) {
+            Ordering::Less
+        } else if self.gt(&other) {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
 impl PartialOrd for Rat {
     fn lt(&self, other: &Rat) -> bool {
         (self.numer * other.denom) < (other.numer * self.denom)
@@ -151,9 +161,8 @@ impl PartialOrd for Rat {
     fn ge(&self, other: &Rat) -> bool {
         (self.numer * other.denom) >= (other.numer * self.denom)
     }
-    fn partial_cmp(&self, _: &Rat) -> Option<Ordering> {
-        // This is same as nop
-        Some(Ordering::Equal)
+    fn partial_cmp(&self, other: &Rat) -> Option<Ordering> {
+        Some(self.cmp(&other))
     }
 }
 #[derive(Debug, Copy, Clone)]
@@ -268,6 +277,18 @@ impl PartialEq for Number {
         )
     }
 }
+impl Eq for Number {}
+impl Ord for Number {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.lt(&other) {
+            Ordering::Less
+        } else if self.gt(&other) {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    }
+}
 impl PartialOrd for Number {
     fn lt(&self, other: &Number) -> bool {
         self.calc::<fn(Int, Int) -> bool, fn(f64, f64) -> bool, fn(Rat, Rat) -> bool, bool>(
@@ -301,9 +322,8 @@ impl PartialOrd for Number {
             |x: Rat, y: Rat| x >= y,
         )
     }
-    fn partial_cmp(&self, _: &Number) -> Option<Ordering> {
-        // This is same as nop
-        Some(Ordering::Equal)
+    fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
+        Some(self.cmp(&other))
     }
 }
 // ToString -> Display
@@ -318,6 +338,51 @@ impl fmt::Display for Number {
     }
 }
 #[test]
+fn test_rat_order() {
+    let mut vec = vec![
+        Rat::new(1, 2),
+        Rat::new(1, 3),
+        Rat::new(1, 4),
+        Rat::new(1, 3),
+    ];
+    vec.sort();
+    assert_eq!(vec[0].to_string(), "1/4");
+
+    vec.sort_by(|a, b| b.cmp(a));
+    assert_eq!(vec[0].to_string(), "1/2");
+
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert_eq!(vec[0].to_string(), "1/4");
+
+    vec.sort_by(|a, b| a.cmp(b));
+    assert_eq!(vec[0].to_string(), "1/4");
+}
+#[test]
+fn test_number_order() {
+    let mut vec = vec![
+        Number::Integer(4),
+        Number::Integer(3),
+        Number::Integer(3),
+        Number::Integer(2),
+    ];
+    vec.sort();
+    assert_eq!(vec[0].to_string(), "2");
+
+    vec.sort_by(|a, b| b.cmp(a));
+    assert_eq!(vec[0].to_string(), "4");
+
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert_eq!(vec[0].to_string(), "2");
+
+    vec.sort_by(|a, b| a.cmp(b));
+    assert_eq!(vec[0].to_string(), "2");
+}
+#[test]
+fn test_rat_error() {
+    let _ = Rat::from("31.1").map_err(|e| assert_eq!(e.to_string(), "E1020"));
+    let _ = Rat::from("31.1").map_err(|e| assert!(e.source().is_none()));
+}
+#[test]
 fn test_gcm() {
     assert_eq!(gcm(17, 2), 1);
     assert_eq!(gcm(36, 27), 9);
@@ -327,219 +392,156 @@ fn test_gcm() {
 }
 #[test]
 fn test_add_integer() {
-    match Number::Integer(2) + Number::Integer(3) {
-        Number::Integer(v) => assert_eq!(v, 5),
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(1) + Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 3);
-            assert_eq!(v.denom, 2);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(2) + Number::Float(2.5) {
-        Number::Float(v) => assert!((v - 4.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert_eq!(Number::Integer(2) + Number::Integer(3), Number::Integer(5));
+    assert_eq!(
+        Number::Integer(1) + Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(3, 2))
+    );
+    assert!(
+        matches!(Number::Integer(2) + Number::Float(2.5), Number::Float(v) if (v - 4.5).abs() < f64::EPSILON),
+    );
 }
 #[test]
 fn test_add_float() {
-    match Number::Float(1.5) + Number::Integer(3) {
-        Number::Float(v) => assert!((v - 4.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(1.5) + Number::Float(1.25) {
-        Number::Float(v) => assert!((v - 2.75).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(2.5) + Number::Rational(Rat::new(1, 4)) {
-        Number::Float(v) => assert!((v - 2.75).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert!(
+        matches!(Number::Float(1.5) + Number::Integer(3), Number::Float(v) if (v - 4.5).abs() < f64::EPSILON)
+    );
+    assert!(
+        matches!(Number::Float(1.5) + Number::Float(1.25),Number::Float(v) if (v - 2.75).abs() < f64::EPSILON)
+    );
+    assert!(
+        matches!(Number::Float(2.5) + Number::Rational(Rat::new(1, 4)),
+                 Number::Float(v) if (v - 2.75).abs() < f64::EPSILON)
+    );
 }
 #[test]
 fn test_add_rational() {
-    match Number::Rational(Rat::new(3, 4)) + Number::Integer(1) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 7);
-            assert_eq!(v.denom, 4);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(1, 4)) + Number::Float(2.5) {
-        Number::Float(v) => assert!((v - 2.75).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) + Number::Rational(Rat::new(1, 3)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 13);
-            assert_eq!(v.denom, 12);
-        }
-        _ => panic!("test failure"),
-    }
+    assert_eq!(
+        Number::Rational(Rat::new(3, 4)) + Number::Integer(1),
+        Number::Rational(Rat::new(7, 4))
+    );
+    assert!(
+        matches!(Number::Rational(Rat::new(1, 4)) + Number::Float(2.5),
+                 Number::Float(v) if (v - 2.75).abs() < f64::EPSILON)
+    );
+    assert_eq!(
+        Number::Rational(Rat::new(3, 4)) + Number::Rational(Rat::new(1, 3)),
+        Number::Rational(Rat::new(13, 12))
+    );
 }
 #[test]
 fn test_sub_integer() {
-    match Number::Integer(10) - Number::Integer(3) {
-        Number::Integer(v) => assert_eq!(v, 7),
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(1) - Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 1);
-            assert_eq!(v.denom, 2);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(1) - Number::Float(2.5) {
-        Number::Float(v) => assert!((v - (-1.5)).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert_eq!(Number::Integer(10) - Number::Integer(3), Number::Integer(7));
+    assert_eq!(
+        Number::Integer(1) - Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(1, 2))
+    );
+    assert!(
+        matches!(Number::Integer(1) - Number::Float(2.5), Number::Float(v) if (v - (-1.5)).abs() < f64::EPSILON)
+    );
 }
 #[test]
 fn test_sub_float() {
-    match Number::Float(4.5) - Number::Integer(3) {
-        Number::Float(v) => assert!((v - 1.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(1.5) - Number::Float(1.25) {
-        Number::Float(v) => assert!((v - 0.25).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(2.5) - Number::Rational(Rat::new(1, 4)) {
-        Number::Float(v) => assert!((v - 2.25).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert!(matches!(Number::Float(4.5) - Number::Integer(3),
+                 Number::Float(v) if (v - 1.5).abs() < f64::EPSILON));
+    assert!(matches!(Number::Float(1.5) - Number::Float(1.25),
+              Number::Float(v) if (v - 0.25).abs() < f64::EPSILON));
+    assert!(
+        matches!(Number::Float(2.5) - Number::Rational(Rat::new(1, 4)),
+                 Number::Float(v) if (v - 2.25).abs() < f64::EPSILON)
+    );
 }
 #[test]
 fn test_sub_rational() {
-    match Number::Rational(Rat::new(1, 2)) - Number::Integer(1) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, -1);
-            assert_eq!(v.denom, 2);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) - Number::Float(0.5) {
-        Number::Float(v) => assert!((v - 0.25).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) - Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 1);
-            assert_eq!(v.denom, 4);
-        }
-        _ => panic!("test failure"),
-    }
+    assert_eq!(
+        Number::Rational(Rat::new(1, 2)) - Number::Integer(1),
+        Number::Rational(Rat::new(-1, 2))
+    );
+    assert!(
+        matches!(Number::Rational(Rat::new(3, 4)) - Number::Float(0.5),
+                 Number::Float(v) if (v - 0.25).abs() < f64::EPSILON)
+    );
+    assert_eq!(
+        Number::Rational(Rat::new(3, 4)) - Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(1, 4))
+    );
 }
 #[test]
 fn test_mul_integer() {
-    match Number::Integer(10) * Number::Integer(3) {
-        Number::Integer(v) => assert_eq!(v, 30),
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(3) * Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 3);
-            assert_eq!(v.denom, 2);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(1) * Number::Float(2.5) {
-        Number::Float(v) => assert!((v - 2.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert_eq!(
+        Number::Integer(10) * Number::Integer(3),
+        Number::Integer(30)
+    );
+    assert_eq!(
+        Number::Integer(3) * Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(3, 2))
+    );
+    assert!(matches!(
+        Number::Integer(1) * Number::Float(2.5),
+        Number::Float(v) if (v - 2.5).abs() < f64::EPSILON
+    ));
 }
 #[test]
 fn test_mul_float() {
-    match Number::Float(4.5) * Number::Integer(3) {
-        Number::Float(v) => assert!((v - 13.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(1.8) * Number::Float(1.8) {
-        Number::Float(v) => assert!((v - 3.24).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(2.5) * Number::Rational(Rat::new(1, 4)) {
-        Number::Float(v) => assert!((v - 0.625).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert!(matches!( Number::Float(4.5) * Number::Integer(3),
+        Number::Float(v) if (v - 13.5).abs() < f64::EPSILON));
+    assert!(matches!( Number::Float(1.8) * Number::Float(1.8),
+        Number::Float(v) if (v - 3.24).abs() < f64::EPSILON),);
+    assert!(
+        matches!( Number::Float(2.5) * Number::Rational(Rat::new(1, 4)),
+        Number::Float(v) if (v - 0.625).abs() < f64::EPSILON),
+    );
 }
 #[test]
 fn test_mul_rational() {
-    match Number::Rational(Rat::new(1, 2)) * Number::Integer(3) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 3);
-            assert_eq!(v.denom, 2);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) * Number::Float(0.5) {
-        Number::Float(v) => assert!((v - 0.375).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) * Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 3);
-            assert_eq!(v.denom, 8);
-        }
-        _ => panic!("test failure"),
-    }
+    assert_eq!(
+        Number::Rational(Rat::new(1, 2)) * Number::Integer(3),
+        Number::Rational(Rat::new(3, 2))
+    );
+    assert!(
+        matches!(Number::Rational(Rat::new(3, 4)) * Number::Float(0.5),
+             Number::Float(v) if (v - 0.375).abs() < f64::EPSILON)
+    );
+    assert_eq!(
+        Number::Rational(Rat::new(3, 4)) * Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(3, 8))
+    );
 }
 #[test]
 fn test_div_integer() {
-    match Number::Integer(8) / Number::Integer(2) {
-        Number::Integer(v) => assert_eq!(v, 4),
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(3) / Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 6);
-            assert_eq!(v.denom, 1);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Integer(1) / Number::Float(2.5) {
-        Number::Float(v) => assert!((v - 0.4).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert_eq!(Number::Integer(8) / Number::Integer(2), Number::Integer(4));
+    assert_eq!(
+        Number::Integer(3) / Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(6, 1))
+    );
+    assert!(matches!(Number::Integer(1) / Number::Float(2.5),
+                 Number::Float(v) if(v - 0.4).abs() < f64::EPSILON));
 }
 #[test]
 fn test_div_float() {
-    match Number::Float(4.5) / Number::Integer(3) {
-        Number::Float(v) => assert!((v - 1.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(3.6) / Number::Float(3.2) {
-        Number::Float(v) => assert!((v - 1.125).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Float(2.5) / Number::Rational(Rat::new(1, 3)) {
-        Number::Float(v) => assert!((v - 7.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
+    assert!(matches!( Number::Float(4.5) / Number::Integer(3),
+        Number::Float(v) if(v - 1.5).abs() < f64::EPSILON),);
+    assert!(matches!( Number::Float(3.6) / Number::Float(3.2),
+        Number::Float(v) if(v - 1.125).abs() < f64::EPSILON),);
+    assert!(
+        matches!( Number::Float(2.5) / Number::Rational(Rat::new(1, 3)),
+        Number::Float(v) if(v - 7.5).abs() < f64::EPSILON),
+    );
 }
 #[test]
 fn test_div_rational() {
-    match Number::Rational(Rat::new(1, 2)) / Number::Integer(3) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 1);
-            assert_eq!(v.denom, 6);
-        }
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) / Number::Float(0.5) {
-        Number::Float(v) => assert!((v - 1.5).abs() < f64::EPSILON),
-        _ => panic!("test failure"),
-    }
-    match Number::Rational(Rat::new(3, 4)) / Number::Rational(Rat::new(1, 2)) {
-        Number::Rational(v) => {
-            assert_eq!(v.numer, 3);
-            assert_eq!(v.denom, 2);
-        }
-        _ => panic!("test failure"),
-    }
+    assert_eq!(
+        Number::Rational(Rat::new(1, 2)) / Number::Integer(3),
+        Number::Rational(Rat::new(1, 6))
+    );
+    assert!(
+        matches!(Number::Rational(Rat::new(3, 4)) / Number::Float(0.5),
+        Number::Float(v) if(v - 1.5).abs() < f64::EPSILON)
+    );
+    assert_eq!(
+        Number::Rational(Rat::new(3, 4)) / Number::Rational(Rat::new(1, 2)),
+        Number::Rational(Rat::new(3, 2))
+    );
 }
 #[test]
 fn test_eq_rational() {

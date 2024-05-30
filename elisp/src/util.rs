@@ -341,6 +341,7 @@ mod tests {
             do_lisp("(get-environment-variable \"HOME\")"),
             format!("\"{}\"", env::var("HOME").unwrap())
         );
+        assert_eq!(do_lisp("(get-environment-variable \"$?NO\")"), "#f");
     }
     #[test]
     fn native_endian() {

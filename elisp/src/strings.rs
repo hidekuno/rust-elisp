@@ -292,7 +292,7 @@ fn number_string(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
             } else if let Some(s) = to_str_radix(n, r) {
                 Ok(Environment::create_string(s))
             } else {
-                Ok(Environment::create_string(v.to_string()))
+                Err(create_error!(ErrCode::E1021))
             }
         }
         _ => Ok(Environment::create_string(v.to_string())),
@@ -328,18 +328,8 @@ fn seq_string(exp: &[Expression], env: &Environment, err: ErrCode) -> ResultExpr
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let l = match eval(&exp[1], env)? {
-        Expression::List(l) => {
-            if err != ErrCode::E1005 {
-                return Err(create_error!(err));
-            }
-            l
-        }
-        Expression::Vector(l) => {
-            if err != ErrCode::E1022 {
-                return Err(create_error!(err));
-            }
-            l
-        }
+        Expression::List(l) => l,
+        Expression::Vector(l) => l,
         e => return Err(create_error_value!(err, e)),
     };
 
@@ -680,6 +670,18 @@ fn get_start_end(exp: &[Expression], env: &Environment, s: &str) -> Result<(usiz
         return Err(create_error!(ErrCode::E1021));
     }
     Ok((start, end))
+}
+#[test]
+fn test_to_str_radix() {
+    assert_eq!(to_str_radix(32, 37), None);
+}
+#[test]
+fn test_number_string() {
+    use crate::lisp::Environment;
+
+    let env = Environment::new();
+    let _ = number_string(&Expression::Integer(10), &env, 37)
+        .map_err(|e| assert_eq!(e.get_code(), "E1021"));
 }
 #[cfg(test)]
 mod tests {
@@ -1385,6 +1387,7 @@ mod error_tests {
             do_lisp("(string-join (list \"a\" \"b\"  \"c\") a)"),
             "E1008"
         );
+        assert_eq!(do_lisp("(string-join (list \"a\" \"b\") 10)"), "E1015");
     }
     #[test]
     fn string_scan() {
@@ -1578,6 +1581,7 @@ mod error_tests {
     fn string_take() {
         assert_eq!(do_lisp("(string-take)"), "E1007");
         assert_eq!(do_lisp("(string-take 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-take 0 1)"), "E1015");
         assert_eq!(do_lisp("(string-take \"123456\" #\\a)"), "E1002");
         assert_eq!(do_lisp("(string-take \"abcdefghijklmn\" -1)"), "E1021");
         assert_eq!(do_lisp("(string-take \"abcdefghijklmn\" 15)"), "E1021");
@@ -1622,6 +1626,7 @@ mod error_tests {
     fn string_take_u8() {
         assert_eq!(do_lisp("(string-take-u8)"), "E1007");
         assert_eq!(do_lisp("(string-take-u8 2 3 4)"), "E1007");
+        assert_eq!(do_lisp("(string-take-u8 0 1)"), "E1015");
         assert_eq!(do_lisp("(string-take-u8 \"123456\" #\\a)"), "E1002");
         assert_eq!(do_lisp("(string-take-u8 \"abcdefghijklmn\" -1)"), "E1021");
         assert_eq!(do_lisp("(string-take-u8 \"abcdefghijklmn\" 15)"), "E1021");
