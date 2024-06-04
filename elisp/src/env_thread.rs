@@ -191,3 +191,16 @@ impl Default for Environment {
         Self::new()
     }
 }
+#[test]
+fn test_env_api() {
+    use crate::do_lisp_env;
+
+    let env = Environment::new();
+    env.regist_root("a".to_string(), Expression::Integer(10));
+    assert_eq!(do_lisp_env("a", &env), "10");
+    assert_eq!(env.inc_eval_count(), 1);
+
+    let env: Environment = Default::default();
+    env.as_ptr();
+    env.as_mut_ptr();
+}

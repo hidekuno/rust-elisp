@@ -583,6 +583,7 @@ mod tests {
     }
     #[test]
     fn lambda() {
+        assert_eq!(do_lisp("(lambda (a b)(+ a b))"), "Function");
         assert_eq!(do_lisp("((lambda (a b)(+ a b)) 1 2)"), "3");
 
         let env = lisp::Environment::new();

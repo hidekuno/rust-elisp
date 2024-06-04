@@ -193,6 +193,9 @@ mod tests {
         writeln!(file, "(define  (testf a b)\n(+ a b))").unwrap();
         writeln!(file, "(define  (teststr)\"(\")").unwrap();
         writeln!(file, "(define  (testchr)\n#\\()").unwrap();
+        // Error for testing.
+        writeln!(file, "(load-file)").unwrap();
+        writeln!(file, "(quit)").unwrap();
 
         file.flush().unwrap();
 
@@ -215,6 +218,8 @@ mod tests {
     fn display() {
         let env = lisp::Environment::new();
         do_lisp_env("(define a 100)", &env);
+        assert_eq!(do_lisp_env("(display \"abc\")", &env), "nil");
+        assert_eq!(do_lisp_env("(display #\\a)", &env), "nil");
         assert_eq!(do_lisp_env("(display a)", &env), "nil");
     }
     #[test]
@@ -228,6 +233,15 @@ mod tests {
         if let Ok(s) = io::read(&[Expression::Nil()], &env, &mut cur) {
             assert_eq!(s.to_string(), "abcdef")
         }
+
+        let mut cur = Cursor::new("1".as_bytes());
+        if let Ok(s) = io::read(&[Expression::Nil()], &env, &mut cur) {
+            assert_eq!(s.to_string(), "1")
+        }
+        let mut cur = Cursor::new("(2\n )".as_bytes());
+        if let Ok(s) = io::read(&[Expression::Nil()], &env, &mut cur) {
+            assert_eq!(s.to_string(), "(2)")
+        }
     }
     #[test]
     fn read_char() {
@@ -235,6 +249,7 @@ mod tests {
         assert_eq!(read_char_test("\n"), "#\\newline");
         assert_eq!(read_char_test("\t"), "#\\tab");
         assert_eq!(read_char_test(" "), "#\\space");
+        assert_eq!(read_char_test(""), "#\\newline");
     }
 }
 #[cfg(test)]

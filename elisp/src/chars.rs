@@ -162,6 +162,7 @@ fn integer_digit(exp: &Expression, env: &Environment, r: u32) -> ResultExpressio
 #[cfg(test)]
 mod tests {
     use crate::do_lisp;
+    use crate::lisp::Expression;
 
     #[test]
     fn char_eq() {
@@ -307,6 +308,11 @@ mod tests {
         assert_eq!(do_lisp("(integer->digit 10 10)"), "#f");
         assert_eq!(do_lisp("(integer->digit 8 8)"), "#f");
         assert_eq!(do_lisp("(integer->digit 16 16)"), "#f");
+    }
+    #[test]
+    fn print_char() {
+        let c = Expression::Char(char::from(0x00));
+        assert_eq!(c.to_string(), "#\\non-printable-char");
     }
 }
 #[cfg(test)]

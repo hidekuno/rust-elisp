@@ -204,3 +204,26 @@ impl Default for Environment {
         Self::new()
     }
 }
+#[test]
+fn test_env_api() {
+    use crate::do_lisp_env;
+    let env = Environment::new();
+    assert_eq!(env.inc_eval_count(), 1);
+
+    do_lisp_env("(define a 10)", &env);
+    do_lisp_env("(define f (lambda (a b)(+ a b)))", &env);
+
+    assert_eq!(env.get_function_list(), Some("f".to_string()));
+    assert_eq!(env.get_variable_list(), Some("a".to_string()));
+    assert_eq!(env.get_builtin_func_list().len(), 2529);
+    assert_eq!(env.get_builtin_ext_list(), "");
+
+    let env = Environment::new();
+    assert_eq!(env.get_variable_list(), None);
+    env.add_builtin_ext_func("test-func", move |_, _| Ok(Expression::Nil()));
+    assert_eq!(env.get_builtin_ext_list(), "test-func\n");
+
+    let env: Environment = Default::default();
+    env.as_ptr();
+    env.as_mut_ptr();
+}
