@@ -139,9 +139,9 @@ impl Eq for Rat {}
 
 impl Ord for Rat {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.lt(&other) {
+        if self.lt(other) {
             Ordering::Less
-        } else if self.gt(&other) {
+        } else if self.gt(other) {
             Ordering::Greater
         } else {
             Ordering::Equal
@@ -162,7 +162,7 @@ impl PartialOrd for Rat {
         (self.numer * other.denom) >= (other.numer * self.denom)
     }
     fn partial_cmp(&self, other: &Rat) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 #[derive(Debug, Copy, Clone)]
@@ -280,9 +280,9 @@ impl PartialEq for Number {
 impl Eq for Number {}
 impl Ord for Number {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.lt(&other) {
+        if self.lt(other) {
             Ordering::Less
-        } else if self.gt(&other) {
+        } else if self.gt(other) {
             Ordering::Greater
         } else {
             Ordering::Equal
@@ -323,7 +323,7 @@ impl PartialOrd for Number {
         )
     }
     fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 // ToString -> Display
@@ -339,7 +339,7 @@ impl fmt::Display for Number {
 }
 #[test]
 fn test_rat_order() {
-    let mut vec = vec![
+    let mut vec = [
         Rat::new(1, 2),
         Rat::new(1, 3),
         Rat::new(1, 4),
@@ -354,12 +354,13 @@ fn test_rat_order() {
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     assert_eq!(vec[0].to_string(), "1/4");
 
-    vec.sort_by(|a, b| a.cmp(b));
+    // for branch check
+    vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     assert_eq!(vec[0].to_string(), "1/4");
 }
 #[test]
 fn test_number_order() {
-    let mut vec = vec![
+    let mut vec = [
         Number::Integer(4),
         Number::Integer(3),
         Number::Integer(3),
@@ -373,9 +374,10 @@ fn test_number_order() {
 
     vec.sort_by(|a, b| a.partial_cmp(b).unwrap());
     assert_eq!(vec[0].to_string(), "2");
-
-    vec.sort_by(|a, b| a.cmp(b));
-    assert_eq!(vec[0].to_string(), "2");
+}
+#[test]
+fn test_rat() {
+    assert_eq!(Rat::new(1, 2).cmp(&Rat::new(1, 4)), Ordering::Greater);
 }
 #[test]
 fn test_rat_error() {

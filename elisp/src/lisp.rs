@@ -458,15 +458,7 @@ impl Ord for Expression {
     fn cmp(&self, other: &Self) -> Ordering {
         match Expression::to_number(self) {
             Ok(m) => match Expression::to_number(other) {
-                Ok(n) => {
-                    if m > n {
-                        Ordering::Greater
-                    } else if m < n {
-                        Ordering::Less
-                    } else {
-                        Ordering::Equal
-                    }
-                }
+                Ok(n) => m.cmp(&n),
                 Err(_) => Ordering::Less,
             },
             _ => match &self {
@@ -1071,4 +1063,73 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     } else {
         Ok(sexp.clone())
     }
+}
+#[test]
+fn test_display() {
+    use crate::do_lisp_env;
+
+    let env = Environment::new();
+    env.add_builtin_ext_func("test_bif", move |_, _| Ok(Expression::Nil()));
+    assert_eq!(do_lisp_env("test_bif", &env), "BuildIn Function Ext");
+    assert_eq!(do_lisp_env("(test_bif)", &env), "nil");
+    assert_eq!(do_lisp_env("((if (= 0 0) test_bif 1))", &env), "nil");
+}
+#[test]
+fn test_expression_ord() {
+    assert_eq!(
+        Expression::Integer(10).cmp(&Environment::create_string("A".to_string())),
+        Ordering::Less
+    );
+    assert_eq!(
+        Environment::create_string("A".to_string()).cmp(&Expression::Integer(10)),
+        Ordering::Less
+    );
+    assert_eq!(
+        Expression::Char('A').cmp(&Expression::Integer(10)),
+        Ordering::Less
+    );
+    assert_eq!(
+        Expression::Symbol("A".to_string()).cmp(&Expression::Integer(10)),
+        Ordering::Less
+    );
+    assert_eq!(
+        Expression::Boolean(true).cmp(&Expression::Integer(10)),
+        Ordering::Less
+    );
+}
+#[test]
+fn test_expression_eq() {
+    let a = Environment::create_list(vec![]);
+    assert!(a.eq(&a));
+
+    let b = Environment::create_list(vec![]);
+    assert!(!a.eq(&b));
+
+    let x = Environment::create_vector(vec![]);
+    assert!(x.eq(&x));
+
+    let y = Environment::create_vector(vec![]);
+    assert!(!x.eq(&y));
+}
+#[test]
+fn test_do_interactive() {
+    extern "C" {
+        fn close(fd: u32) -> u32;
+    }
+    unsafe {
+        close(0);
+    }
+    do_interactive();
+}
+#[test]
+fn test_limit_stop_on() {
+    use crate::do_lisp_env;
+
+    let env = Environment::new();
+    do_lisp_env("(limit-stop-on)", &env);
+}
+#[test]
+fn test_parse() {
+    let env = Environment::new();
+    let _ = parse(&[], &mut 0, &env).map_err(|e| assert_eq!(e.get_code(), "E0001"));
 }

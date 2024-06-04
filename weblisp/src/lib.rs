@@ -818,4 +818,31 @@ mod tests {
         iter.next();
         assert_str!("nil", iter.next());
     }
+    #[test]
+    fn test_case_97_get_error_lispfile() {
+        let r = make_request!("GET", "/test-ng.scm");
+        let s = vec![
+            r.as_str(),
+            "HTTP/1.1",
+            "User-Agent: rust",
+            "Host: 127.0.0.1:9000",
+            "",
+        ];
+
+        let iter = test_skelton(&s);
+        let mut iter = iter.iter();
+        assert_str!(
+            make_response!("500", "Internal Server Error").as_str(),
+            iter.next()
+        );
+        if let Some(e) = iter.next() {
+            assert_str!("Date: ", Some(&e[0..6].into()))
+        }
+        assert_str!("Server: Rust eLisp", iter.next());
+        assert_str!("Connection: closed", iter.next());
+        assert_str!("Content-type: text/plain", iter.next());
+        iter.next();
+        iter.next();
+        assert_str!("Internal Server Error", iter.next());
+    }
 }

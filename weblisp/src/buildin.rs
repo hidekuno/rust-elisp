@@ -193,7 +193,7 @@ fn log_debug(exp: &[Expression], env: &Environment) -> ResultExpression {
     println!(
         "SCM-DEBUG [{}]: {}",
         Utc::now(),
-        value.to_string()
+        value
     );
     Ok(Expression::Nil())
 }
@@ -281,6 +281,10 @@ mod tests {
             do_lisp_env("(web-set-session \"RE-1641717077-3\" 10)", &env),
             "\"RE-1641717077-3\""
         );
+        assert_eq!(
+            do_lisp_env("(web-set-session \"RE-1641717077-3\" 20)", &env),
+            "\"RE-1641717077-3\""
+        );
     }
     #[test]
     fn web_get_session() {
@@ -327,6 +331,13 @@ mod error_tests {
         assert_eq!(
             do_lisp_env("(web-get-header \"User-Agent\" #(1 10))", &env),
             "E1021"
+        );
+        assert_eq!(
+            do_lisp_env(
+                "(web-get-header \"User-Agent\" #(1 10 10 10 10))",
+                &env
+            ),
+            "E1005"
         );
         assert_eq!(
             do_lisp_env(

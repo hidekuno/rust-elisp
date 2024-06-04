@@ -131,3 +131,76 @@ pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
         Ok(Expression::Nil())
     });
 }
+#[test]
+fn test_draw_util() {
+    use crate::do_lisp_env;
+
+    let env = Environment::new();
+    regist_draw_line("draw-line", &env, Box::new(move |_, _, _, _| Ok(())));
+    regist_draw_image(
+        "draw-image",
+        &env,
+        Box::new(move |_, _, _, _, _, _, _| Ok(())),
+    );
+    regist_draw_arc("draw-arc", &env, Box::new(move |_, _, _, _| ()));
+
+    assert_eq!(do_lisp_env("(draw-line 0.1 0.1 0.1 0.1)", &env), "nil");
+    assert_eq!(do_lisp_env("(draw-line 0.1 0.1 0.1)", &env), "E1007");
+    assert_eq!(do_lisp_env("(draw-line 0.1 0.1 0.1 1)", &env), "E1003");
+
+    assert_eq!(
+        do_lisp_env("(draw-image \"image\" 0.1 0.1 0.1 0.1 0.1 0.1)", &env),
+        "nil"
+    );
+    assert_eq!(do_lisp_env("(draw-image 0.1 0.1 0.1)", &env), "E1007");
+    assert_eq!(
+        do_lisp_env("(draw-image #\\a 0.1 0.1 0.1 0.1 0.1 0.1)", &env),
+        "E1015"
+    );
+
+    assert_eq!(do_lisp_env("(draw-arc 0.1 0.1 0.1 0.1)", &env), "nil");
+    assert_eq!(do_lisp_env("(draw-arc 0.1 0.1 0.1)", &env), "E1007");
+
+    assert_eq!(
+        do_lisp_env("(draw-line (cons 0.1 0.1) (cons 0.1 0.1))", &env),
+        "nil"
+    );
+    assert_eq!(
+        do_lisp_env("(draw-line (cons 1 0.1) (cons 0.1 0.1))", &env),
+        "E1003"
+    );
+    assert_eq!(
+        do_lisp_env("(draw-line (cons 0.1 1) (cons 0.1 0.1))", &env),
+        "E1003"
+    );
+    assert_eq!(do_lisp_env("(draw-line 10 (cons 0.1 0.1))", &env), "E1005");
+
+    struct TestFractal {
+        _draw_line: DrawLine,
+    }
+
+    impl TestFractal {
+        pub fn new(_draw_line: DrawLine) -> Self {
+            TestFractal { _draw_line }
+        }
+    }
+    impl Fractal for TestFractal {
+        fn get_func_name(&self) -> &'static str {
+            "test-fractal"
+        }
+        fn get_max(&self) -> i32 {
+            10
+        }
+        fn do_demo(&self, _: i32) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+    make_lisp_function(
+        Box::new(TestFractal::new(Box::new(move |_, _, _, _| Ok(())))),
+        &env,
+    );
+    assert_eq!(do_lisp_env("(test-fractal 4)", &env), "nil");
+    assert_eq!(do_lisp_env("(test-fractal)", &env), "E1007");
+    assert_eq!(do_lisp_env("(test-fractal #\\a)", &env), "E1002");
+    assert_eq!(do_lisp_env("(test-fractal 11)", &env), "E1021");
+}

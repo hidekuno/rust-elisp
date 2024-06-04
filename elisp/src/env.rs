@@ -102,6 +102,12 @@ impl SimpleEnv {
     }
 }
 #[test]
+#[cfg(feature = "thread")]
+fn test_regist_root() {
+    let mut env = SimpleEnv::new(None);
+    env.regist_root("a".to_string(), Expression::Integer(10));
+}
+#[test]
 fn global_tbl() {
     let g = GlobalTbl::new();
     assert!(g.tail_recursion);
