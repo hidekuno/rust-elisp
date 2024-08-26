@@ -262,6 +262,7 @@ mod error_tests {
         assert_eq!(do_lisp("(load-file hoge)"), "E1008");
         assert_eq!(do_lisp("(load-file #t)"), "E1015");
         assert_eq!(do_lisp("(load-file \"/etc/test.scm\")"), "E1014");
+        assert_eq!(do_lisp("(load-file \"/etc/shadow\")"), "E1014");
         assert_eq!(do_lisp("(load-file \"/tmp\")"), "E1016");
         assert_eq!(do_lisp("(load-file \"/bin/cp\")"), "E9999");
     }

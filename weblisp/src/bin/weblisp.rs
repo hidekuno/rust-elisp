@@ -37,11 +37,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut builder = Builder::from_default_env();
     builder
         .format(|buf, record| {
-            let m = if let Some(m) = record.module_path() {
-                m
-            } else {
-                ""
-            };
+            let m = record.module_path().unwrap_or_default();
             writeln!(
                 buf,
                 "{} {:<6} {:<20} - {}",

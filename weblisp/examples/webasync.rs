@@ -143,11 +143,7 @@ async fn main() {
 
     builder
         .format(|buf, record| {
-            let m = if let Some(m) = record.module_path() {
-                m
-            } else {
-                ""
-            };
+            let m = record.module_path().unwrap_or_default();
             writeln!(
                 buf,
                 "{} {:<6} {:<20} - {}",

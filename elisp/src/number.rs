@@ -244,10 +244,10 @@ impl Div for Number {
     fn div(self, other: Number) -> Number {
         if let (Number::Integer(x), Number::Integer(y)) = (self, other) {
             if x == 0 && y == 0 {
-                return Number::Float(std::f64::NAN);
+                return Number::Float(f64::NAN);
             }
             if y == 0 {
-                return Number::Float(std::f64::INFINITY);
+                return Number::Float(f64::INFINITY);
             }
             if 0 != (x % y) {
                 return self
