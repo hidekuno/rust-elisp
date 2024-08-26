@@ -355,7 +355,7 @@ pub fn parse_request(buffer: &[u8]) -> Result<Request, Box<WebError>> {
     } else {
         return Err(Box::new(WebError::UriParse(line!())));
     };
-    let mut parameter = if let Some(s) = iter.next() { s } else { "" };
+    let mut parameter = iter.next().unwrap_or_default();
     let mut headers = Vec::new();
     let mut body = String::from("");
     let mut header = true;
