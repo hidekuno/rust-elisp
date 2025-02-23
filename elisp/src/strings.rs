@@ -486,12 +486,10 @@ fn string_scan(exp: &[Expression], env: &Environment, direct: StringScan) -> Res
             StringScan::Left => resolv_scan(p.find(c)),
             StringScan::Right => resolv_scan(p.rfind(c)),
         }),
-        Expression::String(s) => {
-            return Ok(match direct {
-                StringScan::Left => resolv_scan(p.find(s.as_ref())),
-                StringScan::Right => resolv_scan(p.rfind(s.as_ref())),
-            });
-        }
+        Expression::String(s) => Ok(match direct {
+            StringScan::Left => resolv_scan(p.find(s.as_ref())),
+            StringScan::Right => resolv_scan(p.rfind(s.as_ref())),
+        }),
         e => Err(create_error_value!(ErrCode::E1009, e)),
     }
 }

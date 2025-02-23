@@ -53,17 +53,18 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    impl BuildInTable for HashMap<&'static str, BasicBuiltIn> {
+        fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
+            self.insert(symbol, func);
+        }
+    }
+
     #[test]
     fn test_dyn_dispatch() {
         fn create_function_dyn_dispatch(b: &mut dyn BuildInTable) {
             create_function(b);
         }
 
-        impl BuildInTable for HashMap<&'static str, BasicBuiltIn> {
-            fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
-                self.insert(symbol, func);
-            }
-        }
         let mut h = HashMap::new();
         create_function_dyn_dispatch(&mut h);
     }
