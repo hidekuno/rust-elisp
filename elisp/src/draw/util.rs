@@ -49,6 +49,14 @@ pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: Dra
         const N: usize = 6;
         let mut ctm: [f64; N] = [0.0; N];
         set_loc(exp, env, &mut ctm, (2, N))?;
+
+        // Fix panic in a function that cannot unwind.
+        //     Invalid cairo state: InvalidMatrix.
+        //
+        // validate the vector values that make up the image shape.
+        if (ctm[2] * ctm[5]) == (ctm[3] * ctm[4]) {
+            return Err(create_error!(ErrCode::E1021));
+        }
         draw_image(ctm[2], ctm[3], ctm[4], ctm[5], ctm[0], ctm[1], &symbol)?;
         Ok(Expression::Nil())
     });
@@ -77,7 +85,7 @@ fn set_loc(
     loc: &mut [f64],
     param: (usize, usize),
 ) -> Result<(), Error> {
-    let mut iter = exp[param.0 as usize..].iter();
+    let mut iter = exp[param.0..].iter();
 
     if exp.len() == (param.1 + param.0) {
         for l in loc.iter_mut().take(param.1) {
@@ -149,13 +157,25 @@ fn test_draw_util() {
     assert_eq!(do_lisp_env("(draw-line 0.1 0.1 0.1 1)", &env), "E1003");
 
     assert_eq!(
-        do_lisp_env("(draw-image \"image\" 0.1 0.1 0.1 0.1 0.1 0.1)", &env),
+        do_lisp_env("(draw-image \"image\" 0.0 0.0 0.1 0.0 0.0 0.1)", &env),
         "nil"
     );
     assert_eq!(do_lisp_env("(draw-image 0.1 0.1 0.1)", &env), "E1007");
     assert_eq!(
         do_lisp_env("(draw-image #\\a 0.1 0.1 0.1 0.1 0.1 0.1)", &env),
         "E1015"
+    );
+    assert_eq!(
+        do_lisp_env("(draw-image \"image\" 0.0 0.0 0.0 0.0 0.1 0.1)", &env),
+        "E1021"
+    );
+    assert_eq!(
+        do_lisp_env("(draw-image \"image\" 0.0 0.0 0.0 0.0 1.0 0.1)", &env),
+        "E1021"
+    );
+    assert_eq!(
+        do_lisp_env("(draw-image \"image\" 0.0 0.0 1.0 1.0 0.0 0.0)", &env),
+        "E1021"
     );
 
     assert_eq!(do_lisp_env("(draw-arc 0.1 0.1 0.1 0.1)", &env), "nil");

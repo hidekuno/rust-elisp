@@ -6,6 +6,8 @@
 
    hidekuno@gmail.com
 */
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
@@ -27,13 +29,12 @@ impl<T> Coord<T> {
         self.x + self.y
     }
 }
-
-impl<T> ToString for Coord<T>
+impl<T> Display for Coord<T>
 where
-    T: std::fmt::Display,
+    T: Display,
 {
-    fn to_string(&self) -> String {
-        format!("({},{})", self.x, self.y)
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{})", self.x, self.y)
     }
 }
 impl<T> Add for Coord<T>
