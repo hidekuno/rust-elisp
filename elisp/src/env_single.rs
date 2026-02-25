@@ -148,6 +148,12 @@ impl Environment {
     pub fn is_limit_stop(&self) -> bool {
         self.globals.borrow().limit_stop
     }
+    pub fn set_eval_before_exec(&self, b: bool) {
+        self.globals.borrow_mut().eval_before_exec = b;
+    }
+    pub fn is_eval_before_exec(&self) -> bool {
+        self.globals.borrow().eval_before_exec
+    }
     pub fn get_function_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| matches!(v, Expression::Function(_)))
     }
@@ -215,7 +221,7 @@ fn test_env_api() {
 
     assert_eq!(env.get_function_list(), Some("f".to_string()));
     assert_eq!(env.get_variable_list(), Some("a".to_string()));
-    assert_eq!(env.get_builtin_func_list().len(), 2529);
+    assert_eq!(env.get_builtin_func_list().len(), 2551);
     assert_eq!(env.get_builtin_ext_list(), "");
 
     let env = Environment::new();

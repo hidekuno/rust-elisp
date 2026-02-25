@@ -165,6 +165,11 @@ mod tests {
         assert_eq!(do_lisp_env("(let loop ((i 0))(define c 10))", &env), "c");
         assert_eq!(do_lisp_env("(let loop ((i 0))(begin 1000))", &env), "1000");
     }
+    #[test]
+    fn test_parse_pair() {
+        assert_eq!(do_lisp("(pair? '(1 . 2))"), "#t");
+        assert_eq!(do_lisp("(list? '(1 . 2))"), "#f");
+    }
 }
 #[cfg(test)]
 mod error_tests {
@@ -208,5 +213,11 @@ mod error_tests {
     fn set_tail_recursion() {
         assert_eq!(do_lisp("(tail-recursion-off 20)"), "E1008");
         assert_eq!(do_lisp("(tail-recursion-on 30)"), "E1008");
+    }
+    #[test]
+    fn test_parse_pair() {
+        assert_eq!(do_lisp("'(1 . 2 . 3)"), "E0005");
+        assert_eq!(do_lisp("'(1 .)"), "E0005");
+        assert_eq!(do_lisp("'(1 2 .)"), "E0005");
     }
 }

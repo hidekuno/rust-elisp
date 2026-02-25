@@ -7,6 +7,7 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, warn};
 use std::cmp::Ordering;
+use std::slice;
 use std::vec::Vec;
 
 use crate::create_error;
@@ -31,6 +32,8 @@ where
     b.regist("car", car);
     b.regist("cdr", cdr);
     b.regist("cadr", cadr);
+    b.regist("caar", caar);
+    b.regist("cdar", cdar);
     b.regist("cons", cons);
     b.regist("append", append);
     b.regist("append!", append_effect);
@@ -173,14 +176,99 @@ fn cadr(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::List(l) = eval(&exp[1], env)? {
-        let l = &*(reference_obj!(l));
-        if l.len() <= 1 {
-            return Err(create_error!(ErrCode::E1011));
+    match eval(&exp[1], env)? {
+        Expression::List(l) => {
+            let l = &*(reference_obj!(l));
+            if l.len() <= 1 {
+                return Err(create_error!(ErrCode::E1011));
+            }
+            Ok(l[1].clone())
         }
-        Ok(l[1].clone())
-    } else {
-        Err(create_error!(ErrCode::E1005))
+        Expression::Pair(_car, cdr) => match *cdr {
+            Expression::List(l) => {
+                let l = &*(reference_obj!(l));
+                if l.is_empty() {
+                    return Err(create_error!(ErrCode::E1011));
+                }
+                Ok(l[0].clone())
+            }
+            Expression::Pair(car, _cdr) => Ok((*car).clone()),
+            _ => Err(create_error!(ErrCode::E1005)),
+        },
+        e => Err(create_error_value!(ErrCode::E1005, e)),
+    }
+}
+fn caar(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::List(l) => {
+            let l = &*(reference_obj!(l));
+            if l.is_empty() {
+                return Err(create_error!(ErrCode::E1011));
+            }
+            match &l[0] {
+                Expression::List(l) => {
+                    let l = &*(reference_obj!(l));
+                    if l.is_empty() {
+                        return Err(create_error!(ErrCode::E1011));
+                    }
+                    Ok(l[0].clone())
+                }
+                Expression::Pair(car, _cdr) => Ok(*(*car).clone()),
+                _ => Err(create_error!(ErrCode::E1005)),
+            }
+        }
+        Expression::Pair(car, _cdr) => match *car {
+            Expression::List(l) => {
+                let l = &*(reference_obj!(l));
+                if l.is_empty() {
+                    return Err(create_error!(ErrCode::E1011));
+                }
+                Ok(l[0].clone())
+            }
+            Expression::Pair(car, _cdr) => Ok(*car.clone()),
+            _ => Err(create_error!(ErrCode::E1005)),
+        },
+        _ => Err(create_error!(ErrCode::E1005)),
+    }
+}
+// (cdar '((2 3 4) 1)) -> (3 4)
+fn cdar(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() != 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    match eval(&exp[1], env)? {
+        Expression::List(l) => {
+            let l = &*(reference_obj!(l));
+            if l.is_empty() {
+                return Err(create_error!(ErrCode::E1011));
+            }
+            match &l[0] {
+                Expression::List(l) => {
+                    let l = &*(reference_obj!(l));
+                    if l.is_empty() {
+                        return Err(create_error!(ErrCode::E1011));
+                    }
+                    Ok(Environment::create_list(l[1..].to_vec()))
+                }
+                Expression::Pair(_car, cdr) => Ok(*(*cdr).clone()),
+                _ => Err(create_error!(ErrCode::E1005)),
+            }
+        }
+        Expression::Pair(car, _cdr) => match *car {
+            Expression::List(l) => {
+                let l = &*(reference_obj!(l));
+                if l.is_empty() {
+                    return Err(create_error!(ErrCode::E1011));
+                }
+                Ok(Environment::create_list(l[1..].to_vec()))
+            }
+            Expression::Pair(_car, cdr) => Ok((*cdr).clone()),
+            _ => Err(create_error!(ErrCode::E1005)),
+        },
+        _ => Err(create_error!(ErrCode::E1005)),
     }
 }
 fn cons(exp: &[Expression], env: &Environment) -> ResultExpression {
@@ -407,7 +495,11 @@ fn for_each(exp: &[Expression], env: &Environment) -> ResultExpression {
 
             for e in l {
                 eval(
-                    &Environment::create_list(make_evaled_list(&callable, &[e.clone()], &None)),
+                    &Environment::create_list(make_evaled_list(
+                        &callable,
+                        slice::from_ref(e),
+                        &None,
+                    )),
                     env,
                 )?;
             }
@@ -431,7 +523,11 @@ fn reduce(exp: &[Expression], env: &Environment) -> ResultExpression {
         // not carfully length,  safety
         for e in &l[1..] {
             result = eval(
-                &Environment::create_list(make_evaled_list(&callable, &[e.clone()], &Some(result))),
+                &Environment::create_list(make_evaled_list(
+                    &callable,
+                    slice::from_ref(e),
+                    &Some(result),
+                )),
                 env,
             )?;
         }
@@ -536,7 +632,7 @@ fn do_list_proc(
 
             for e in l {
                 func(
-                    make_evaled_list(&callable, &[e.clone()], &None),
+                    make_evaled_list(&callable, slice::from_ref(e), &None),
                     env,
                     &mut result,
                     e,
@@ -973,6 +1069,29 @@ mod tests {
     fn cadr() {
         assert_eq!(do_lisp("(cadr (list 1 2))"), "2");
         assert_eq!(do_lisp("(cadr (list 1 2 3))"), "2");
+        assert_eq!(do_lisp("(cadr (list 1 (list 2 3)))"), "(2 3)");
+        assert_eq!(do_lisp("(cadr (list 1 (cons 2 3)))"), "(2 . 3)");
+        assert_eq!(do_lisp("(cadr (cons 2 '(3 4)))"), "3");
+        assert_eq!(do_lisp("(cadr (cons 2 (list 3 4)))"), "3");
+        assert_eq!(do_lisp("(cadr (cons 2 '(3 . 4)))"), "3");
+        assert_eq!(do_lisp("(cadr (cons 2 (cons 3 4)))"), "3");
+    }
+    #[test]
+    fn caar() {
+        assert_eq!(do_lisp("(caar '((1 2) 3))"), "1");
+        assert_eq!(do_lisp("(caar '((1 . 2) 3))"), "1");
+        assert_eq!(do_lisp("(caar '((1 2) . 3))"), "1");
+        assert_eq!(do_lisp("(caar '((1 . 2) . 3))"), "1");
+    }
+    #[test]
+    fn cdar() {
+        assert_eq!(do_lisp("(cdar '((1 2) (3 4)))"), "(2)");
+        assert_eq!(do_lisp("(cdar '((1 . 2) 3))"), "2");
+        assert_eq!(do_lisp("(cdar '((1 . 2) . 3))"), "2");
+        assert_eq!(do_lisp("(cdar '((1  2) . 3))"), "(2)");
+        assert_eq!(do_lisp("(cdar '(((a b) c) (d e)))"), "(c)");
+        assert_eq!(do_lisp("(cdar '((1) (3 4)))"), "()");
+        assert_eq!(do_lisp("(cdar '((1) . (3 4)))"), "()");
     }
     #[test]
     fn cons() {
@@ -1768,6 +1887,27 @@ mod error_tests {
         assert_eq!(do_lisp("(cadr c)"), "E1008");
         assert_eq!(do_lisp("(cadr (list 1))"), "E1011");
         assert_eq!(do_lisp("(cadr 991)"), "E1005");
+        assert_eq!(do_lisp("(cadr '(1 . 2))"), "E1005");
+    }
+    #[test]
+    fn caar() {
+        assert_eq!(do_lisp("(caar 1 2)"), "E1007");
+        assert_eq!(do_lisp("(caar 10)"), "E1005");
+        assert_eq!(do_lisp("(cdar '())"), "E1011");
+        assert_eq!(do_lisp("(caar '(() 3))"), "E1011");
+        assert_eq!(do_lisp("(caar '(10 3))"), "E1005");
+        assert_eq!(do_lisp("(caar '(() . 3))"), "E1011");
+        assert_eq!(do_lisp("(caar '(10 . 3))"), "E1005");
+    }
+    #[test]
+    fn cdar() {
+        assert_eq!(do_lisp("(cdar 1 2)"), "E1007");
+        assert_eq!(do_lisp("(cdar 1)"), "E1005");
+        assert_eq!(do_lisp("(cdar '())"), "E1011");
+        assert_eq!(do_lisp("(cdar '(() (3 4)))"), "E1011");
+        assert_eq!(do_lisp("(cdar '(1 (2 3)))"), "E1005");
+        assert_eq!(do_lisp("(cdar '(() . (3 4)))"), "E1011");
+        assert_eq!(do_lisp("(cdar '(1 . (2 3)))"), "E1005");
     }
     #[test]
     fn cons() {
