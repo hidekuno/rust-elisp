@@ -179,6 +179,12 @@ impl Environment {
     pub fn is_limit_stop(&self) -> bool {
         self.globals.lock().unwrap().limit_stop
     }
+    pub fn set_eval_before_exec(&self, b: bool) {
+        self.globals.lock().unwrap().eval_before_exec = b;
+    }
+    pub fn is_eval_before_exec(&self) -> bool {
+        self.globals.lock().unwrap().eval_before_exec
+    }
     pub fn as_ptr(&self) -> *const Environment {
         Arc::as_ptr(&self.core) as *const Environment
     }

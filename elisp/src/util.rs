@@ -74,6 +74,7 @@ where
         is_type(exp, env, Expression::is_undefined)
     });
     b.regist("undefined", undefined);
+    b.regist("error", error);
 }
 pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
@@ -159,6 +160,18 @@ fn native_endian(exp: &[Expression], _env: &Environment) -> ResultExpression {
         return Ok(Expression::Symbol("little-endian".to_string()));
     }
     Err(create_error!(ErrCode::E9999))
+}
+fn error(exp: &[Expression], env: &Environment) -> ResultExpression {
+    if exp.len() < 2 {
+        return Err(create_error_value!(ErrCode::E1007, exp.len()));
+    }
+    let mut s = String::new();
+    for e in &exp[1..] {
+        s.push(' ');
+        let e = eval(e, env)?;
+        s.push_str(&e.to_string());
+    }
+    Err(create_error_value!(ErrCode::E9001, s))
 }
 pub fn undefined(exp: &[Expression], _env: &Environment) -> ResultExpression {
     if exp.len() != 1 {
@@ -315,6 +328,8 @@ mod tests {
         assert_eq!(do_lisp("(eq? #\\space #\\space)"), "#t");
         assert_eq!(do_lisp("(eq? \"abc\" \"abc\")"), "#f");
         assert_eq!(do_lisp("(eq? \"abc\" \"abc1\")"), "#f");
+        assert_eq!(do_lisp("(eq? if if)"), "#t");
+        assert_eq!(do_lisp("(eq? if define)"), "#f");
 
         let env = lisp::Environment::new();
         do_lisp_env("(define a \"abc\")", &env);
@@ -361,6 +376,10 @@ mod tests {
     #[test]
     fn undefined() {
         assert_eq!(do_lisp("(undefined)"), "nil");
+    }
+    #[test]
+    fn error() {
+        assert_eq!(do_lisp("(error 123)"), "E9001");
     }
 }
 #[cfg(test)]
@@ -524,5 +543,9 @@ mod error_tests {
     #[test]
     fn undefined() {
         assert_eq!(do_lisp("(undefined 1)"), "E1007");
+    }
+    #[test]
+    fn error() {
+        assert_eq!(do_lisp("(error)"), "E1007");
     }
 }

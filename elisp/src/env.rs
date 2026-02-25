@@ -37,6 +37,7 @@ pub(crate) struct GlobalTbl {
     pub(crate) force_stop: bool,
     pub(crate) cont: Option<Expression>,
     pub(crate) limit_stop: bool,
+    pub(crate) eval_before_exec: bool,
     pub(crate) eval_count: u32,
 }
 impl GlobalTbl {
@@ -50,6 +51,7 @@ impl GlobalTbl {
             force_stop: false,
             cont: None,
             limit_stop: false,
+            eval_before_exec: false,
             eval_count: 0,
         }
     }

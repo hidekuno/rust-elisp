@@ -44,6 +44,7 @@ pub enum ErrCode {
     E0002,
     E0003,
     E0004,
+    E0005,
     E1001,
     E1002,
     E1003,
@@ -69,6 +70,7 @@ pub enum ErrCode {
     E1023,
     E1024,
     E9000,
+    E9001,
     E9002,
     E9999,
     Cont,
@@ -80,6 +82,7 @@ impl ErrCode {
             ErrCode::E0002 => "E0002",
             ErrCode::E0003 => "E0003",
             ErrCode::E0004 => "E0004",
+            ErrCode::E0005 => "E0005",
             ErrCode::E1001 => "E1001",
             ErrCode::E1002 => "E1002",
             ErrCode::E1003 => "E1003",
@@ -105,6 +108,7 @@ impl ErrCode {
             ErrCode::E1023 => "E1023",
             ErrCode::E1024 => "E1024",
             ErrCode::E9000 => "E9000",
+            ErrCode::E9001 => "E9001",
             ErrCode::E9002 => "E9002",
             ErrCode::E9999 => "E9999",
             ErrCode::Cont => "CONT",
@@ -123,6 +127,7 @@ lazy_static! {
         e.insert(ErrCode::E0002.as_str(), "Unexpected ')' while reading");
         e.insert(ErrCode::E0003.as_str(), "Extra close parenthesis `)'");
         e.insert(ErrCode::E0004.as_str(), "Charactor syntax error");
+        e.insert(ErrCode::E0005.as_str(), "Pair format error");
         e.insert(ErrCode::E1001.as_str(), "Not Boolean");
         e.insert(ErrCode::E1002.as_str(), "Not Integer");
         e.insert(ErrCode::E1003.as_str(), "Not Number");
@@ -148,6 +153,7 @@ lazy_static! {
         e.insert(ErrCode::E1023.as_str(), "Not HashTable");
         e.insert(ErrCode::E1024.as_str(), "Not TreeMap");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
+        e.insert(ErrCode::E9001.as_str(), "*** ERROR");
         e.insert(
             ErrCode::E9002.as_str(),
             "Not Support Double Execution Of draw-line apps",
@@ -378,6 +384,13 @@ impl Expression {
             }
         }
         if let (Expression::Symbol(a), Expression::Symbol(b)) = (self, other) {
+            if a == b {
+                return true;
+            }
+        }
+        if let (Expression::BuildInFunction(a, _), Expression::BuildInFunction(b, _)) =
+            (self, other)
+        {
             if a == b {
                 return true;
             }
@@ -635,6 +648,15 @@ impl Function {
                         _ => {}
                     }
                 } else if let Expression::Symbol(s) = &l[0] {
+                    match s.as_str() {
+                        "if" | "cond" => {
+                            return self.parse_tail_recurcieve(&l[1..]);
+                        }
+                        "begin" => {
+                            return self.parse_tail_recurcieve(&l[1..]);
+                        }
+                        _ => {}
+                    }
                     if *s == self.name {
                         // check tail
                         if (exp.len() - 1) == i {
@@ -661,6 +683,8 @@ const TAIL_OFF: &str = "(tail-recursion-off)";
 const TAIL_ON: &str = "(tail-recursion-on)";
 const FORCE_STOP: &str = "(force-stop)";
 const LIMIT_STOPL_ON: &str = "(limit-stop-on)";
+const EVAL_BEFORE_EXEC_ON: &str = "(eval-before-exec-on)";
+const EVAL_BEFORE_EXEC_OFF: &str = "(eval-before-exec-off)";
 
 pub struct ControlChar(pub u8, pub &'static str);
 pub const SPACE: ControlChar = ControlChar(0x20, "#\\space");
@@ -795,6 +819,12 @@ pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
             }
             LIMIT_STOPL_ON => {
                 env.set_limit_stop(true);
+            }
+            EVAL_BEFORE_EXEC_ON => {
+                env.set_eval_before_exec(true);
+            }
+            EVAL_BEFORE_EXEC_OFF => {
+                env.set_eval_before_exec(false);
             }
             _ => {
                 env.set_cont(&exp);
@@ -951,7 +981,7 @@ pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> Re
     if tokens.is_empty() {
         return Err(create_error!(ErrCode::E0001));
     }
-
+    let mut dots = 0;
     let token = &tokens[0];
     if "(" == token {
         if tokens.len() <= 1 {
@@ -965,6 +995,9 @@ pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> Re
                 *count += 1;
                 break;
             }
+            if tokens[*count as usize] == "." {
+                dots += 1;
+            }
             let mut c: i32 = 1;
             let o = parse(&tokens[*count as usize..], &mut c, env)?;
             list.push(o);
@@ -974,7 +1007,24 @@ pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> Re
                 return Err(create_error!(ErrCode::E0002));
             }
         }
-        Ok(Environment::create_list(list))
+        match dots {
+            0 => Ok(Environment::create_list(list)),
+            1 => {
+                if list.len() != 3 {
+                    return Err(create_error!(ErrCode::E0005));
+                }
+                if let Expression::Symbol(s) = &list[1] {
+                    if s.as_str() == "." {
+                        return Ok(Expression::Pair(
+                            Box::new(list[0].clone()),
+                            Box::new(list[2].clone()),
+                        ));
+                    }
+                }
+                Err(create_error!(ErrCode::E0005))
+            }
+            _ => Err(create_error!(ErrCode::E0005)),
+        }
     } else if ")" == token {
         Err(create_error!(ErrCode::E0003))
     } else {
@@ -1008,16 +1058,19 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
     } else if (token.len() >= 2) && (token.starts_with('\"')) && (token.ends_with('\"')) {
         let s = token[1..token.len() - 1].to_string();
         Environment::create_string(s)
-    } else if let Some(f) = env.get_builtin_func(token) {
-        Expression::BuildInFunction(token.to_string(), f)
-    } else if let Some(f) = env.get_builtin_ext_func(token) {
-        Expression::BuildInFunctionExt(f)
     } else {
         match Rat::from(token) {
             Ok(n) => Expression::Rational(n),
             Err(n) => {
                 if n.code != ErrCode::E1020 {
                     return Err(create_error!(n.code));
+                }
+                if env.is_eval_before_exec() {
+                    if let Some(f) = env.get_builtin_func(token) {
+                        return Ok(Expression::BuildInFunction(token.to_string(), f));
+                    } else if let Some(f) = env.get_builtin_ext_func(token) {
+                        return Ok(Expression::BuildInFunctionExt(f));
+                    }
                 }
                 Expression::Symbol(token.to_string())
             }
@@ -1036,9 +1089,20 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
         return Err(create_error!(ErrCode::E9000));
     }
     if let Expression::Symbol(val) = sexp {
-        match env.find(val) {
-            Some(v) => Ok(v),
-            None => Err(create_error_value!(ErrCode::E1008, val)),
+        if env.is_eval_before_exec() {
+            match env.find(val) {
+                Some(v) => Ok(v),
+                None => Err(create_error_value!(ErrCode::E1008, val)),
+            }
+        } else if let Some(f) = env.get_builtin_func(val) {
+            Ok(Expression::BuildInFunction(val.to_string(), f))
+        } else if let Some(f) = env.get_builtin_ext_func(val) {
+            Ok(Expression::BuildInFunctionExt(f))
+        } else {
+            match env.find(val) {
+                Some(v) => Ok(v),
+                None => Err(create_error_value!(ErrCode::E1008, val)),
+            }
         }
     } else if let Expression::List(val) = sexp {
         debug!("eval = {:?}", get_ptr!(val));
