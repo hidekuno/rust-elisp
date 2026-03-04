@@ -32,13 +32,13 @@ impl Hilbert {
             max: 9,
         }
     }
-    fn draw(&self, coord: &mut Coord) -> Result<(), Error> {
+    fn draw(&self, coord: &mut Coord) -> Result<(), Box<Error>> {
         (self.draw_line)(coord.oldx, coord.oldy, coord.x, coord.y)?;
         coord.oldx = coord.x;
         coord.oldy = coord.y;
         Ok(())
     }
-    fn ldr(&self, c: i32, coord: &mut Coord) -> Result<(), Error> {
+    fn ldr(&self, c: i32, coord: &mut Coord) -> Result<(), Box<Error>> {
         if c == 0 {
         } else {
             self.dlu(c - 1, coord)?;
@@ -57,7 +57,7 @@ impl Hilbert {
         }
         Ok(())
     }
-    fn urd(&self, c: i32, coord: &mut Coord) -> Result<(), Error> {
+    fn urd(&self, c: i32, coord: &mut Coord) -> Result<(), Box<Error>> {
         if c == 0 {
         } else {
             self.rul(c - 1, coord)?;
@@ -76,7 +76,7 @@ impl Hilbert {
         }
         Ok(())
     }
-    fn rul(&self, c: i32, coord: &mut Coord) -> Result<(), Error> {
+    fn rul(&self, c: i32, coord: &mut Coord) -> Result<(), Box<Error>> {
         if c == 0 {
         } else {
             self.urd(c - 1, coord)?;
@@ -95,7 +95,7 @@ impl Hilbert {
         }
         Ok(())
     }
-    fn dlu(&self, c: i32, coord: &mut Coord) -> Result<(), Error> {
+    fn dlu(&self, c: i32, coord: &mut Coord) -> Result<(), Box<Error>> {
         if c == 0 {
         } else {
             self.ldr(c - 1, coord)?;
@@ -122,7 +122,7 @@ impl FractalMut for Hilbert {
     fn get_max(&self) -> i32 {
         self.max
     }
-    fn do_demo(&mut self, c: i32) -> Result<(), Error> {
+    fn do_demo(&mut self, c: i32) -> Result<(), Box<Error>> {
         let width = 1.0;
         self.lgth = (width / 2.0_f64).powi(c);
         let y = (width - (self.lgth * (2.0_f64).powi(c - 1))) / 3.6;

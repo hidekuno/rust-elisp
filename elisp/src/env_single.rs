@@ -4,6 +4,7 @@
 
    hidekuno@gmail.com
 */
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -60,18 +61,27 @@ macro_rules! get_ptr {
 pub struct Environment {
     core: EnvTable,
     globals: Rc<RefCell<GlobalTbl>>,
+    force_stop: Rc<Cell<bool>>,
+    limit_stop: Rc<Cell<bool>>,
+    eval_before_exec: Rc<Cell<bool>>,
 }
 impl Environment {
     pub fn new() -> Self {
         Environment {
             core: Rc::new(RefCell::new(SimpleEnv::new(None))),
             globals: Rc::new(RefCell::new(GlobalTbl::new())),
+            force_stop: Rc::new(Cell::new(false)),
+            limit_stop: Rc::new(Cell::new(false)),
+            eval_before_exec: Rc::new(Cell::new(false)),
         }
     }
     pub fn with_parent(parent: &Environment) -> Self {
         Environment {
             core: Rc::new(RefCell::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
+            force_stop: parent.force_stop.clone(),
+            limit_stop: parent.limit_stop.clone(),
+            eval_before_exec: parent.eval_before_exec.clone(),
         }
     }
     pub fn create_func(func: Function) -> Expression {
@@ -107,8 +117,12 @@ impl Environment {
         self.core.borrow_mut().update(key, exp);
     }
     #[inline]
-    pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
-        self.globals.borrow().builtin_tbl.get(key).cloned()
+    pub fn get_builtin_func(&self, key: &str) -> Option<(&'static str, BasicBuiltIn)> {
+        self.globals
+            .borrow()
+            .builtin_tbl
+            .get_key_value(key)
+            .map(|(&k, &v)| (k, v))
     }
     #[inline]
     pub fn get_builtin_ext_func(&self, key: &str) -> Option<Rc<ExtFunction>> {
@@ -130,29 +144,33 @@ impl Environment {
         self.globals.borrow().tail_recursion
     }
     pub fn set_force_stop(&self, b: bool) {
-        self.globals.borrow_mut().force_stop = b;
+        self.force_stop.set(b);
     }
+    #[inline(always)]
     pub fn is_force_stop(&self) -> bool {
-        self.globals.borrow().force_stop
+        self.force_stop.get()
     }
     pub fn inc_eval_count(&self) -> u32 {
-        self.globals.borrow_mut().eval_count += 1;
-        self.globals.borrow().eval_count
+        let mut g = self.globals.borrow_mut();
+        g.eval_count += 1;
+        g.eval_count
     }
     pub fn reset_eval_count(&self) {
         self.globals.borrow_mut().eval_count = 0;
     }
     pub fn set_limit_stop(&self, b: bool) {
-        self.globals.borrow_mut().limit_stop = b;
+        self.limit_stop.set(b);
     }
+    #[inline(always)]
     pub fn is_limit_stop(&self) -> bool {
-        self.globals.borrow().limit_stop
+        self.limit_stop.get()
     }
     pub fn set_eval_before_exec(&self, b: bool) {
-        self.globals.borrow_mut().eval_before_exec = b;
+        self.eval_before_exec.set(b);
     }
+    #[inline(always)]
     pub fn is_eval_before_exec(&self) -> bool {
-        self.globals.borrow().eval_before_exec
+        self.eval_before_exec.get()
     }
     pub fn get_function_list(&self) -> Option<String> {
         self.get_environment_list(|_k, v| matches!(v, Expression::Function(_)))
@@ -209,6 +227,17 @@ impl Default for Environment {
     fn default() -> Self {
         Self::new()
     }
+}
+#[test]
+fn test_type_sizes() {
+    use crate::lisp::{Error, Expression};
+    eprintln!(
+        "sizeof Expression={} Error={} Result<Expression,Error>={} Result<Expression,Box<Error>>={}",
+        std::mem::size_of::<Expression>(),
+        std::mem::size_of::<Error>(),
+        std::mem::size_of::<Result<Expression, Error>>(),
+        std::mem::size_of::<Result<Expression, Box<Error>>>(),
+    );
 }
 #[test]
 fn test_env_api() {

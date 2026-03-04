@@ -23,6 +23,17 @@ cd rust-elisp/wasmlisp
 wasm-pack test --headless --firefox -- --lib
 ```
 
+## Install chromedriver and Test by chrome
+```
+cd /tmp
+wget https://storage.googleapis.com/chrome-for-testing-public/135.0.7049.84/linux64/chromedriver-linux64.zip
+unzip chromedriver-linux64.zip
+sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+sudo chmod +x /usr/local/bin/chromedriver
+cd ~/rust-elisp/wasmlisp
+wasm-pack test --headless --chrome -- --lib
+```
+
 ## Build & Run(on webpack-dev-server)
 ```
 cd ${HOME}

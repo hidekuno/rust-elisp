@@ -23,7 +23,38 @@ use crate::env_thread::EnvTable;
 use crate::mut_env;
 use crate::reference_env;
 
-type Map<T, U> = std::collections::BTreeMap<T, U>;
+use std::hash::{BuildHasher, Hasher};
+
+pub(crate) struct FnvHasher(u64);
+impl Default for FnvHasher {
+    fn default() -> Self {
+        FnvHasher(0xcbf29ce484222325)
+    }
+}
+impl Hasher for FnvHasher {
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.0 ^= b as u64;
+            self.0 = self.0.wrapping_mul(0x00000100000001b3);
+        }
+    }
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
+#[derive(Clone, Default)]
+pub(crate) struct FnvBuildHasher;
+impl BuildHasher for FnvBuildHasher {
+    type Hasher = FnvHasher;
+    #[inline]
+    fn build_hasher(&self) -> FnvHasher {
+        FnvHasher::default()
+    }
+}
+
+type Map<T, U> = std::collections::HashMap<T, U, FnvBuildHasher>;
 
 impl BuildInTable for Map<&'static str, BasicBuiltIn> {
     fn regist(&mut self, symbol: &'static str, func: BasicBuiltIn) {
@@ -34,24 +65,18 @@ pub(crate) struct GlobalTbl {
     pub(crate) builtin_tbl: Map<&'static str, BasicBuiltIn>,
     pub(crate) builtin_tbl_ext: Map<&'static str, ExtFunctionRc>,
     pub(crate) tail_recursion: bool,
-    pub(crate) force_stop: bool,
     pub(crate) cont: Option<Expression>,
-    pub(crate) limit_stop: bool,
-    pub(crate) eval_before_exec: bool,
     pub(crate) eval_count: u32,
 }
 impl GlobalTbl {
     pub fn new() -> Self {
-        let mut b: Map<&'static str, BasicBuiltIn> = Map::new();
+        let mut b: Map<&'static str, BasicBuiltIn> = Default::default();
         create_function(&mut b);
         GlobalTbl {
             builtin_tbl: b,
-            builtin_tbl_ext: Map::new(),
+            builtin_tbl_ext: Default::default(),
             tail_recursion: true,
-            force_stop: false,
             cont: None,
-            limit_stop: false,
-            eval_before_exec: false,
             eval_count: 0,
         }
     }
@@ -64,12 +89,12 @@ impl SimpleEnv {
     pub fn new(parent: Option<EnvTable>) -> Self {
         if let Some(p) = parent {
             SimpleEnv {
-                env_tbl: Map::new(),
+                env_tbl: Default::default(),
                 parent: Some(p),
             }
         } else {
             SimpleEnv {
-                env_tbl: Map::new(),
+                env_tbl: Default::default(),
                 parent,
             }
         }
@@ -87,8 +112,8 @@ impl SimpleEnv {
         }
     }
     pub fn update(&mut self, key: &str, exp: Expression) {
-        if self.env_tbl.contains_key(key) {
-            self.env_tbl.insert(key.to_string(), exp);
+        if let Some(v) = self.env_tbl.get_mut(key) {
+            *v = exp;
         } else if let Some(ref p) = self.parent {
             mut_env!(p).update(key, exp)
         }
@@ -113,7 +138,6 @@ fn test_regist_root() {
 fn global_tbl() {
     let g = GlobalTbl::new();
     assert!(g.tail_recursion);
-    assert!(!g.force_stop);
     assert!(!g.builtin_tbl.is_empty());
     assert_eq!(g.builtin_tbl_ext.len(), 0);
 }

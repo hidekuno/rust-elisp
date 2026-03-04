@@ -14,5 +14,5 @@ use elisp::lisp::Error;
 pub trait FractalMut {
     fn get_func_name(&self) -> &'static str;
     fn get_max(&self) -> i32;
-    fn do_demo(&mut self, c: i32) -> Result<(), Error>;
+    fn do_demo(&mut self, c: i32) -> Result<(), Box<Error>>;
 }

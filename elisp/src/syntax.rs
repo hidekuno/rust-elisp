@@ -392,7 +392,10 @@ fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    Ok(Expression::Promise(Box::new(exp[1].clone()), env.clone()))
+    Ok(Expression::Promise(
+        Box::new(exp[1].clone()),
+        Box::new(env.clone()),
+    ))
 }
 fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
     if exp.len() != 2 {

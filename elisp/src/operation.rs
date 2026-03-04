@@ -53,6 +53,22 @@ where
     b.regist("quotient", |exp, env| divide(exp, env, |x, y| x / y));
     b.regist("twos-exponent", twos_exponent);
 }
+// Fast path: resolve and convert to Number without going through eval's
+// is_limit_stop / is_force_stop checks for the common cases of numeric
+// literals and simple variable lookups.
+#[inline(always)]
+fn eval_to_number(e: &Expression, env: &Environment) -> Result<Number, Box<Error>> {
+    match e {
+        Expression::Integer(n) => Ok(Number::Integer(*n)),
+        Expression::Float(n) => Ok(Number::Float(*n)),
+        Expression::Rational(r) => Ok(Number::Rational(*r)),
+        Expression::Symbol(s) => match env.find(s) {
+            Some(v) => Expression::to_number(&v),
+            None => Err(create_error_value!(ErrCode::E1008, s)),
+        },
+        _ => Expression::to_number(&eval(e, env)?),
+    }
+}
 fn calc(
     exp: &[Expression],
     env: &Environment,
@@ -62,14 +78,13 @@ fn calc(
     if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
+    let mut result = eval_to_number(&exp[1], env)?;
 
     if 2 == exp.len() {
         result = func(Number::Integer(x), result);
     } else {
         for e in &exp[2..] {
-            let param = Expression::to_number(&eval(e, env)?)?;
-            result = func(result, param);
+            result = func(result, eval_to_number(e, env)?);
         }
     }
     Ok(Number::to_expression(result))
@@ -82,11 +97,10 @@ fn select_one(
     if 1 >= exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut result = Expression::to_number(&eval(&exp[1], env)?)?;
+    let mut result = eval_to_number(&exp[1], env)?;
 
     for e in &exp[2..] {
-        let param = Expression::to_number(&eval(e, env)?)?;
-        result = func(result, param);
+        result = func(result, eval_to_number(e, env)?);
     }
     Ok(Number::to_expression(result))
 }
@@ -98,12 +112,9 @@ fn cmp(
     if 3 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut v: [Number; 2] = [Number::Integer(0); 2];
-
-    for (i, e) in exp[1..].iter().enumerate() {
-        v[i] = Expression::to_number(&eval(e, env)?)?;
-    }
-    Ok(Expression::Boolean(func(&v[0], &v[1])))
+    let a = eval_to_number(&exp[1], env)?;
+    let b = eval_to_number(&exp[2], env)?;
+    Ok(Expression::Boolean(func(&a, &b)))
 }
 fn divide(
     exp: &[Expression],

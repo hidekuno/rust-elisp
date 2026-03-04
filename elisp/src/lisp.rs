@@ -168,7 +168,7 @@ pub struct Error {
     pub line: u32,
     pub file: &'static str,
     pub value: Option<String>,
-    pub exp: Option<Expression>,
+    pub exp: Option<Box<Expression>>,
 }
 impl Error {
     pub fn get_code(&self) -> String {
@@ -196,37 +196,37 @@ impl Error {
 #[macro_export]
 macro_rules! create_error {
     ($e: expr) => {
-        Error {
+        Box::new(Error {
             code: $e,
             line: line!(),
             file: file!(),
             value: None,
             exp: None,
-        }
+        })
     };
 }
 #[macro_export]
 macro_rules! create_error_value {
     ($e: expr, $v: expr) => {
-        Error {
+        Box::new(Error {
             code: $e,
             line: line!(),
             file: file!(),
             value: Some($v.to_string()),
             exp: None,
-        }
+        })
     };
 }
 #[macro_export]
 macro_rules! create_continuation {
     ($e: expr, $n:expr) => {
-        Error {
+        Box::new(Error {
             code: ErrCode::Cont,
             line: line!(),
             file: file!(),
             value: Some($n.to_string()),
-            exp: Some($e),
-        }
+            exp: Some(Box::new($e)),
+        })
     };
 }
 #[macro_export]
@@ -236,7 +236,7 @@ macro_rules! print_error {
     };
 }
 //========================================================================
-pub type ResultExpression = Result<Expression, Error>;
+pub type ResultExpression = Result<Expression, Box<Error>>;
 pub type BasicBuiltIn = fn(&[Expression], &Environment) -> ResultExpression;
 
 #[cfg(not(feature = "i128"))]
@@ -256,12 +256,12 @@ pub enum Expression {
     Symbol(String),
     String(StringRc),
     Function(FunctionRc),
-    BuildInFunction(String, BasicBuiltIn),
+    BuildInFunction(&'static str, BasicBuiltIn),
     BuildInFunctionExt(ExtFunctionRc),
     TailLoop(),
     Nil(),
     TailRecursion(FunctionRc),
-    Promise(Box<Expression>, Environment),
+    Promise(Box<Expression>, Box<Environment>),
     Rational(Rat),
     Continuation(Box<Continuation>),
     Vector(ListRc),
@@ -316,7 +316,7 @@ impl Expression {
     pub fn is_undefined(exp: &Expression) -> bool {
         matches!(exp, Expression::Nil())
     }
-    pub fn to_number(x: &Expression) -> Result<Number, Error> {
+    pub fn to_number(x: &Expression) -> Result<Number, Box<Error>> {
         match x {
             Expression::Float(v) => Ok(Number::Float(*v)),
             Expression::Integer(v) => Ok(Number::Integer(*v)),
@@ -552,11 +552,17 @@ impl Function {
         }
     }
     pub fn set_param(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
-        if self.param.len() != (exp.len() - 1) {
+        let n = self.param.len();
+        if n != (exp.len() - 1) {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
+        if n == 1 {
+            let v = eval(&exp[1], env)?;
+            env.update(&self.param[0], v);
+            return Ok(Expression::TailLoop());
+        }
         // param eval
-        let mut vec: Vec<Expression> = Vec::new();
+        let mut vec: Vec<Expression> = Vec::with_capacity(n);
         // env set
         for e in &exp[1..] {
             vec.push(eval(e, env)?);
@@ -602,7 +608,7 @@ impl Function {
                             };
                             if self.param.len() == 1 && self.param[0] == s {
                                 if let Expression::Continuation(_) = &exp[1] {
-                                    break e.exp.unwrap();
+                                    break *e.exp.unwrap();
                                 }
                             }
                             return Err(e);
@@ -638,7 +644,7 @@ impl Function {
                     continue;
                 }
                 if let Expression::BuildInFunction(s, _) = &l[0] {
-                    match s.as_str() {
+                    match *s {
                         "if" | "cond" => {
                             return self.parse_tail_recurcieve(&l[1..]);
                         }
@@ -1066,8 +1072,8 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
                     return Err(create_error!(n.code));
                 }
                 if env.is_eval_before_exec() {
-                    if let Some(f) = env.get_builtin_func(token) {
-                        return Ok(Expression::BuildInFunction(token.to_string(), f));
+                    if let Some((key, f)) = env.get_builtin_func(token) {
+                        return Ok(Expression::BuildInFunction(key, f));
                     } else if let Some(f) = env.get_builtin_ext_func(token) {
                         return Ok(Expression::BuildInFunctionExt(f));
                     }
@@ -1094,8 +1100,8 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
                 Some(v) => Ok(v),
                 None => Err(create_error_value!(ErrCode::E1008, val)),
             }
-        } else if let Some(f) = env.get_builtin_func(val) {
-            Ok(Expression::BuildInFunction(val.to_string(), f))
+        } else if let Some((key, f)) = env.get_builtin_func(val) {
+            Ok(Expression::BuildInFunction(key, f))
         } else if let Some(f) = env.get_builtin_ext_func(val) {
             Ok(Expression::BuildInFunctionExt(f))
         } else {

@@ -307,7 +307,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
             Ok(Expression::Integer(x as Int))
         });
     }
-    fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Error> {
+    fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Box<Error>> {
         if exp.len() != 4 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
@@ -326,7 +326,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         env: &Environment,
         draw_table: &DrawTable,
         f: fn(&dyn ImageData) -> f64,
-    ) -> Result<f64, Error> {
+    ) -> Result<f64, Box<Error>> {
         if exp.len() != 2 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }

@@ -84,7 +84,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         if let Some(color) = &g.borrow().bg {
-            ctx.set_fill_style(color);
+            ctx.set_fill_style_str(&color.as_string().unwrap_or_default());
             ctx.fill_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
         } else {
             ctx.clear_rect(0.0, 0.0, c.width() as f64, c.height() as f64);
@@ -301,7 +301,7 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
-        ctx.set_stroke_style(&JsValue::from(color.as_ref()));
+        ctx.set_fill_style_str(&color);
         Ok(Expression::Nil())
     });
     //--------------------------------------------------------
@@ -317,8 +317,8 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
+        ctx.set_fill_style_str(&color);
         let js = JsValue::from(color.as_ref());
-        ctx.set_fill_style(&js);
         graphics.borrow_mut().bg = Some(js);
 
         ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
@@ -401,7 +401,11 @@ pub fn build_lisp_function(env: &Environment, document: &Document) {
 // ----------------------------------------------------------------
 // image size
 // ----------------------------------------------------------------
-fn image_size(exp: &[Expression], env: &Environment, doc: &Document) -> Result<(f64, f64), Error> {
+fn image_size(
+    exp: &[Expression],
+    env: &Environment,
+    doc: &Document,
+) -> Result<(f64, f64), Box<Error>> {
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -419,9 +423,9 @@ fn image_size(exp: &[Expression], env: &Environment, doc: &Document) -> Result<(
 // load scheme program
 // ----------------------------------------------------------------
 async fn get_program_file(scm: String) -> Result<JsValue, JsValue> {
-    let mut opts = RequestInit::new();
-    opts.method("GET");
-    opts.mode(RequestMode::Cors);
+    let opts = RequestInit::new();
+    opts.set_method("GET");
+    opts.set_mode(RequestMode::Cors);
 
     let request = Request::new_with_str_and_init(&format!("{}/{}", SCHEME_URL, scm), &opts)?;
     let window = web_sys::window().unwrap();

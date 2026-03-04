@@ -23,6 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         lisp::do_interactive();
     } else if args[1] == "--profile" {
         let env = lisp::Environment::new();
+        env.set_eval_before_exec(true);
         match lisp::do_core_logic(
             &String::from("(let loop ((i 0)) (if (<= 1000000 i) i (loop (+ i 1))))"),
             &env,
