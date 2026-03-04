@@ -84,7 +84,7 @@ fn set_loc(
     env: &Environment,
     loc: &mut [f64],
     param: (usize, usize),
-) -> Result<(), Error> {
+) -> Result<(), Box<Error>>{
     let mut iter = exp[param.0..].iter();
 
     if exp.len() == (param.1 + param.0) {
@@ -211,7 +211,7 @@ fn test_draw_util() {
         fn get_max(&self) -> i32 {
             10
         }
-        fn do_demo(&self, _: i32) -> Result<(), Error> {
+        fn do_demo(&self, _: i32) -> Result<(), Box<Error>>{
             Ok(())
         }
     }

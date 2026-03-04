@@ -26,7 +26,7 @@ impl Sierpinski {
         x2: f64,
         y2: f64,
         c: i32,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Box<Error>> {
         if c > 1 {
             let xx0 = (x0 + x1) / 2.0;
             let yy0 = (y0 + y1) / 2.0;
@@ -53,7 +53,7 @@ impl Fractal for Sierpinski {
     fn get_max(&self) -> i32 {
         self.max
     }
-    fn do_demo(&self, c: i32) -> Result<(), Error> {
+    fn do_demo(&self, c: i32) -> Result<(), Box<Error>> {
         self.draw(
             0.44428969359331477,
             0.07168458781362007,

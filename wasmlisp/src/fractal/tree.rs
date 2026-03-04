@@ -29,7 +29,7 @@ impl Tree {
             max: 22,
         }
     }
-    pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) -> Result<(), Error> {
+    pub fn draw(&self, v0: Coord<f64>, v1: Coord<f64>, c: i32) -> Result<(), Box<Error>> {
         (self.draw_line)(v0.x, v0.y, v1.x, v1.y)?;
 
         let alpha = 0.6;
@@ -53,7 +53,7 @@ impl Fractal for Tree {
     fn get_max(&self) -> i32 {
         self.max
     }
-    fn do_demo(&self, c: i32) -> Result<(), Error> {
+    fn do_demo(&self, c: i32) -> Result<(), Box<Error>> {
         self.draw(
             Coord::<f64>::new(300.0, 400.0),
             Coord::<f64>::new(300.0, 300.0),

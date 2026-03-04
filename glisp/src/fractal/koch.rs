@@ -23,7 +23,7 @@ impl Koch {
             max: 12,
         }
     }
-    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Error> {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Box<Error>> {
         if c > 1 {
             let xa = (x0 * 2.0 + x1) / 3.0;
             let ya = (y0 * 2.0 + y1) / 3.0;
@@ -50,7 +50,7 @@ impl Fractal for Koch {
     fn get_max(&self) -> i32 {
         self.max
     }
-    fn do_demo(&self, c: i32) -> Result<(), Error> {
+    fn do_demo(&self, c: i32) -> Result<(), Box<Error>> {
         self.draw(
             0.3597222222222222,
             0.0,

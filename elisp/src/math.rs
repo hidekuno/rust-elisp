@@ -70,7 +70,7 @@ where
     b.regist("rand-list", rand_list);
     b.regist("expt", expt);
 }
-fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, Error> {
+fn to_f64(exp: &[Expression], env: &Environment) -> Result<f64, Box<Error>>{
     if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }

@@ -28,7 +28,7 @@ trait Map<T> {
     fn remove(&mut self, key: String) -> bool;
     fn has_key(&self, key: String) -> bool;
     fn clear(&mut self);
-    fn get_map(exp: &Expression, env: &Environment) -> Result<T, Error>;
+    fn get_map(exp: &Expression, env: &Environment) -> Result<T, Box<Error>>;
     fn keys(&self) -> Expression;
     fn values(&self) -> Expression;
 }
@@ -61,7 +61,7 @@ impl Map<HashTableRc> for HashTableRc {
         let mut m = mut_obj!(self);
         m.clear();
     }
-    fn get_map(exp: &Expression, env: &Environment) -> Result<HashTableRc, Error> {
+    fn get_map(exp: &Expression, env: &Environment) -> Result<HashTableRc, Box<Error>>{
         match eval(exp, env)? {
             Expression::HashTable(v) => Ok(v),
             e => Err(create_error_value!(ErrCode::E1023, e)),
@@ -113,7 +113,7 @@ impl Map<TreeMapRc> for TreeMapRc {
         let mut v = mut_obj!(self);
         v.clear();
     }
-    fn get_map(exp: &Expression, env: &Environment) -> Result<TreeMapRc, Error> {
+    fn get_map(exp: &Expression, env: &Environment) -> Result<TreeMapRc, Box<Error>>{
         match eval(exp, env)? {
             Expression::TreeMap(v) => Ok(v),
             e => Err(create_error_value!(ErrCode::E1024, e)),

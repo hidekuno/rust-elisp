@@ -6,6 +6,7 @@
 */
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
@@ -74,18 +75,27 @@ macro_rules! get_ptr {
 pub struct Environment {
     core: EnvTable,
     globals: Arc<Mutex<GlobalTbl>>,
+    force_stop: Arc<AtomicBool>,
+    limit_stop: Arc<AtomicBool>,
+    eval_before_exec: Arc<AtomicBool>,
 }
 impl Environment {
     pub fn new() -> Self {
         Environment {
             core: Arc::new(Mutex::new(SimpleEnv::new(None))),
             globals: Arc::new(Mutex::new(GlobalTbl::new())),
+            force_stop: Arc::new(AtomicBool::new(false)),
+            limit_stop: Arc::new(AtomicBool::new(false)),
+            eval_before_exec: Arc::new(AtomicBool::new(false)),
         }
     }
     pub fn with_parent(parent: &Environment) -> Self {
         Environment {
             core: Arc::new(Mutex::new(SimpleEnv::new(Some(parent.core.clone())))),
             globals: parent.globals.clone(),
+            force_stop: parent.force_stop.clone(),
+            limit_stop: parent.limit_stop.clone(),
+            eval_before_exec: parent.eval_before_exec.clone(),
         }
     }
     pub fn create_func(func: Function) -> Expression {
@@ -124,8 +134,13 @@ impl Environment {
         self.core.lock().unwrap().update(key, exp);
     }
     #[inline]
-    pub fn get_builtin_func(&self, key: &str) -> Option<BasicBuiltIn> {
-        self.globals.lock().unwrap().builtin_tbl.get(key).cloned()
+    pub fn get_builtin_func(&self, key: &str) -> Option<(&'static str, BasicBuiltIn)> {
+        self.globals
+            .lock()
+            .unwrap()
+            .builtin_tbl
+            .get_key_value(key)
+            .map(|(&k, &v)| (k, v))
     }
     #[inline]
     pub fn get_builtin_ext_func(&self, key: &str) -> Option<ExtFunctionRc> {
@@ -153,10 +168,11 @@ impl Environment {
         self.globals.lock().unwrap().tail_recursion
     }
     pub fn set_force_stop(&self, b: bool) {
-        self.globals.lock().unwrap().force_stop = b;
+        self.force_stop.store(b, Ordering::Relaxed);
     }
+    #[inline(always)]
     pub fn is_force_stop(&self) -> bool {
-        self.globals.lock().unwrap().force_stop
+        self.force_stop.load(Ordering::Relaxed)
     }
     #[inline]
     pub fn set_cont(&self, e: &Expression) {
@@ -167,23 +183,26 @@ impl Environment {
         return self.globals.lock().unwrap().cont.clone();
     }
     pub fn inc_eval_count(&self) -> u32 {
-        self.globals.lock().unwrap().eval_count += 1;
-        self.globals.lock().unwrap().eval_count
+        let mut g = self.globals.lock().unwrap();
+        g.eval_count += 1;
+        g.eval_count
     }
     pub fn reset_eval_count(&self) {
         self.globals.lock().unwrap().eval_count = 0;
     }
     pub fn set_limit_stop(&self, b: bool) {
-        self.globals.lock().unwrap().limit_stop = b;
+        self.limit_stop.store(b, Ordering::Relaxed);
     }
+    #[inline(always)]
     pub fn is_limit_stop(&self) -> bool {
-        self.globals.lock().unwrap().limit_stop
+        self.limit_stop.load(Ordering::Relaxed)
     }
     pub fn set_eval_before_exec(&self, b: bool) {
-        self.globals.lock().unwrap().eval_before_exec = b;
+        self.eval_before_exec.store(b, Ordering::Relaxed);
     }
+    #[inline(always)]
     pub fn is_eval_before_exec(&self) -> bool {
-        self.globals.lock().unwrap().eval_before_exec
+        self.eval_before_exec.load(Ordering::Relaxed)
     }
     pub fn as_ptr(&self) -> *const Environment {
         Arc::as_ptr(&self.core) as *const Environment

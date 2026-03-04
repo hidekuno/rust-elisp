@@ -231,9 +231,10 @@ pub fn create_draw_line(draw_table: &DrawTable, redraw_times: usize) -> DrawLine
                 return Err(create_error!(ErrCode::E9002));
             }
             let mut c = c.unwrap();
-            *c += 1;
-
-            if 0 == (*c % redraw_times) {
+            // rustc --explain E0689
+            // *c += 1;
+            *c += 1u64;
+            if (*c).is_multiple_of(redraw_times as u64) {
                 force_event_loop!();
             }
         }

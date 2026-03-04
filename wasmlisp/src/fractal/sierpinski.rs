@@ -23,7 +23,7 @@ impl Sierpinski {
         v1: Coord<f64>,
         v2: Coord<f64>,
         c: i32,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Box<Error>> {
         if c > 1 {
             let vv0 = (v0 + v1) / 2.0;
             let vv1 = (v1 + v2) / 2.0;
@@ -47,7 +47,7 @@ impl Fractal for Sierpinski {
     fn get_max(&self) -> i32 {
         self.max
     }
-    fn do_demo(&self, c: i32) -> Result<(), Error> {
+    fn do_demo(&self, c: i32) -> Result<(), Box<Error>> {
         self.draw(
             Coord::<f64>::new(310.0, 67.0),
             Coord::<f64>::new(60.0, 500.0),

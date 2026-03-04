@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::collections::LinkedList;
 use std::env;
 use std::fs;
-use std::io::{Error, ErrorKind};
+use std::io::Error;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -308,5 +308,5 @@ pub fn load_demo_program(dir: &str) -> std::io::Result<String> {
             Err(e) => return Err(e),
         }
     }
-    Err(Error::new(ErrorKind::Other, "Not Installed Scheme Program"))
+    Err(Error::other("Not Installed Scheme Program"))
 }

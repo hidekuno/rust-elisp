@@ -70,7 +70,7 @@ where
     b.regist("vector-ref", vector_ref);
     b.regist("vector-set!", vector_set);
 }
-fn get_sequence(exp: Expression, err: ErrCode) -> Result<ListRc, Error> {
+fn get_sequence(exp: Expression, err: ErrCode) -> Result<ListRc, Box<Error>>{
     if let Expression::List(l) = exp {
         if err != ErrCode::E1005 {
             Err(create_error!(err))
@@ -91,7 +91,7 @@ fn list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = seq(exp, env)?;
     Ok(Environment::create_list(l))
 }
-fn seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Error> {
+fn seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Box<Error>>{
     let mut list: Vec<Expression> = Vec::with_capacity(exp.len());
     for e in &exp[1..] {
         list.push(eval(e, env)?);
@@ -102,7 +102,7 @@ fn make_list(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = make_seq(exp, env)?;
     Ok(Environment::create_list(l))
 }
-fn make_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Error> {
+fn make_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Box<Error>>{
     if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -295,7 +295,7 @@ fn seq_append(
     exp: &[Expression],
     env: &Environment,
     err: ErrCode,
-) -> Result<Vec<Expression>, Error> {
+) -> Result<Vec<Expression>, Box<Error>>{
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -311,7 +311,7 @@ fn append_effect(exp: &[Expression], env: &Environment) -> ResultExpression {
     let v = seq_append_effect(exp, env, ErrCode::E1005)?;
     Ok(Expression::List(v))
 }
-fn seq_append_effect(exp: &[Expression], env: &Environment, err: ErrCode) -> Result<ListRc, Error> {
+fn seq_append_effect(exp: &[Expression], env: &Environment, err: ErrCode) -> Result<ListRc, Box<Error>>{
     if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -588,7 +588,7 @@ pub fn make_evaled_list(
 
     fn set_evaled_list_inner(sexp: &mut Vec<Expression>, exp: &Expression) {
         let ql: Vec<Expression> = vec![
-            Expression::BuildInFunction("quote".to_string(), quote),
+            Expression::BuildInFunction("quote", quote),
             exp.clone(),
         ];
         sexp.push(Environment::create_list(ql));
@@ -714,7 +714,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
         env: &Environment,
         kind: SortKind,
         v: &mut [Expression],
-    ) -> Result<(), Error> {
+    ) -> Result<(), Box<Error>>{
         if exp.len() == 2 {
             match &kind {
                 SortKind::Stable(_) => v.sort(),
@@ -724,7 +724,7 @@ fn sort_impl(exp: &[Expression], env: &Environment, kind: SortKind) -> ResultExp
         } else {
             let func = eval(&exp[2], env)?;
             match func {
-                Expression::BuildInFunction(ref s, _) => match &s[..] {
+                Expression::BuildInFunction(s, _) => match s {
                     "string>?" | "string>=?" => {
                         return {
                             v.sort_by(|a, b| b.cmp(a));
@@ -940,7 +940,7 @@ fn is_sorted(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
         };
         match func {
-            Expression::BuildInFunction(ref s, _) => match &s[..] {
+            Expression::BuildInFunction(s, _) => match s {
                 "string>?" | "string>=?" | "char>?" | "char>=?" | ">=" | ">" => {
                     let b = &l[..].windows(2).all(|w| w[0] >= w[1]);
                     Ok(Expression::Boolean(*b))

@@ -352,7 +352,7 @@ fn string_vector(exp: &[Expression], env: &Environment) -> ResultExpression {
     let l = string_seq(exp, env)?;
     Ok(Environment::create_vector(l))
 }
-fn string_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Error> {
+fn string_seq(exp: &[Expression], env: &Environment) -> Result<Vec<Expression>, Box<Error>>{
     if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
@@ -635,7 +635,7 @@ fn string_range_u8(
         range(&s, v as usize).to_string(),
     ))
 }
-fn inner_substring(exp: &[Expression], env: &Environment, s: String) -> Result<String, Error> {
+fn inner_substring(exp: &[Expression], env: &Environment, s: String) -> Result<String, Box<Error>>{
     let (start, end) = get_start_end(exp, env, &s)?;
 
     // the trait `std::convert::From<str>` is not implemented for `std::string::String`
@@ -647,7 +647,7 @@ fn inner_substring(exp: &[Expression], env: &Environment, s: String) -> Result<S
     }
     Ok(v)
 }
-fn get_start_end(exp: &[Expression], env: &Environment, s: &str) -> Result<(usize, usize), Error> {
+fn get_start_end(exp: &[Expression], env: &Environment, s: &str) -> Result<(usize, usize), Box<Error>>{
     let mut param: [usize; 2] = [0, s.chars().count()];
 
     for (i, e) in exp.iter().enumerate() {

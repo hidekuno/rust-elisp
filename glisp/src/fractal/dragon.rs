@@ -16,9 +16,9 @@ impl Dragon {
     pub fn new(draw_line: DrawLine) -> Self {
         Dragon { draw_line, max: 20 }
     }
-    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Error> {
+    pub fn draw(&self, x0: f64, y0: f64, x1: f64, y1: f64, c: i32) -> Result<(), Box<Error>> {
         let xx = x1 - x0;
-        let yy = (y1 - y0) * -1.0;
+        let yy = -(y1 - y0);
         let xc = x0 + (xx + yy) / 2.0;
         let yc = y1 + (xx + yy) / 2.0;
 
@@ -39,7 +39,7 @@ impl Fractal for Dragon {
     fn get_max(&self) -> i32 {
         self.max
     }
-    fn do_demo(&self, c: i32) -> Result<(), Error> {
+    fn do_demo(&self, c: i32) -> Result<(), Box<Error>> {
         self.draw(0.2777777777777778, 0.25, 0.5972222222222222, 0.625, c)?;
         Ok(())
     }
