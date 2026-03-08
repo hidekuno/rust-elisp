@@ -3,12 +3,20 @@ import sys
 import unittest
 
 rust = ctypes.cdll.LoadLibrary("target/release/libffilisp.so")
+rust.do_scheme.argtypes = [ctypes.c_char_p]
+rust.do_scheme.restype = ctypes.c_void_p
+rust.free_scheme_result.argtypes = [ctypes.c_void_p]
 
 def do_scheme(ex):
-    p = ctypes.create_string_buffer(ex.encode("utf-8"))
-    r = rust.do_scheme(p)
-    return ctypes.c_char_p(r).value.decode("utf-8")
-
+    p = ex.encode("utf-8")
+    ptr = rust.do_scheme(p)
+    if ptr is None:
+        return None
+    try:
+        res_bytes = ctypes.string_at(ptr)
+        return res_bytes.decode("utf-8")
+    finally:
+        rust.free_scheme_result(ptr)
 
 class TestMethods(unittest.TestCase):
     # the testing framework will automatically call for every single test
