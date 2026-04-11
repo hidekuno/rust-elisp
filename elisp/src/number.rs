@@ -19,7 +19,7 @@ use crate::lisp::Expression;
 use crate::lisp::Int;
 
 #[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{debug, error, info, warn}; // ex.) export RUST_LOG=debug
 //========================================================================
 #[derive(Debug)]
 pub struct RatParseError {
@@ -200,7 +200,7 @@ impl Number {
         match self {
             Number::Integer(a) => Expression::Integer(a),
             Number::Float(a) => Expression::Float(a),
-            Number::Rational(a) => Expression::Rational(a),
+            Number::Rational(a) => Expression::Rational(Box::new(a)),
         }
     }
 }

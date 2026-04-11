@@ -80,10 +80,10 @@ pub fn build_lisp_function(env: &Environment) {
     env.add_builtin_ext_func("web-debug", log_debug);
 }
 fn get_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let l = match lisp::eval(&exp[1], env)? {
+    let l = match lisp::eval(&exp[0], env)? {
         Expression::Vector(l) => l,
         e => return Err(create_error_value!(ErrCode::E1022, e)),
     };
@@ -97,14 +97,14 @@ fn get_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpress
     }
 }
 fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let key = match lisp::eval(&exp[1], env)? {
+    let key = match lisp::eval(&exp[0], env)? {
         Expression::String(s) => s,
         e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
-    let l = match lisp::eval(&exp[2], env)? {
+    let l = match lisp::eval(&exp[1], env)? {
         Expression::Vector(l) => l,
         e => return Err(create_error_value!(ErrCode::E1022, e)),
     };
@@ -119,11 +119,11 @@ fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExp
     let l = &*(reference_obj!(l));
     for v in l {
         match eval(v, env)? {
-            Expression::Pair(car, cdr) => match *car {
+            Expression::Pair(v) => match v.0 {
                 Expression::String(s) => {
                     if s == key {
-                        match *cdr {
-                            Expression::String(_) => return Ok(*cdr),
+                        match v.1 {
+                            Expression::String(_) => return Ok(v.1),
                             e => return Err(create_error_value!(ErrCode::E1015, e)),
                         }
                     }
@@ -136,15 +136,15 @@ fn get_key_value(exp: &[Expression], env: &Environment, idx: usize) -> ResultExp
     Ok(Expression::Nil())
 }
 fn create_response(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != RESPONSE_COLUMNS + 1 {
+    if exp.len() != RESPONSE_COLUMNS {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let status = match lisp::eval(&exp[1], env)? {
+    let status = match lisp::eval(&exp[0], env)? {
         Expression::Integer(i) => i,
         e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
 
-    let mime = match lisp::eval(&exp[2], env)? {
+    let mime = match lisp::eval(&exp[1], env)? {
         Expression::String(s) => s,
         e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
@@ -152,18 +152,18 @@ fn create_response(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Environment::create_vector(vec![
         Expression::Integer(status),
         Expression::String(mime),
-        lisp::eval(&exp[3], env)?,
+        lisp::eval(&exp[2], env)?,
     ]))
 }
 fn set_session(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let key = match lisp::eval(&exp[1], env)? {
+    let key = match lisp::eval(&exp[0], env)? {
         Expression::String(s) => s,
         e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
-    let value = lisp::eval(&exp[2], env)?;
+    let value = lisp::eval(&exp[1], env)?;
 
     if env.find(&key).is_some() {
         env.update(&key, value);
@@ -173,10 +173,10 @@ fn set_session(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::String(key))
 }
 fn get_session(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let key = match lisp::eval(&exp[1], env)? {
+    let key = match lisp::eval(&exp[0], env)? {
         Expression::String(s) => s,
         e => return Err(create_error_value!(ErrCode::E1015, e)),
     };
@@ -186,15 +186,11 @@ fn get_session(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn log_debug(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let value = lisp::eval(&exp[1], env)?;
-    println!(
-        "SCM-DEBUG [{}]: {}",
-        Utc::now(),
-        value
-    );
+    let value = lisp::eval(&exp[0], env)?;
+    println!("SCM-DEBUG [{}]: {}", Utc::now(), value);
     Ok(Expression::Nil())
 }
 #[cfg(test)]
@@ -333,10 +329,7 @@ mod error_tests {
             "E1021"
         );
         assert_eq!(
-            do_lisp_env(
-                "(web-get-header \"User-Agent\" #(1 10 10 10 10))",
-                &env
-            ),
+            do_lisp_env("(web-get-header \"User-Agent\" #(1 10 10 10 10))", &env),
             "E1005"
         );
         assert_eq!(

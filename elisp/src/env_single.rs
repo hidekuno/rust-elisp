@@ -93,6 +93,9 @@ impl Environment {
     pub fn create_string(s: String) -> Expression {
         Expression::String(Rc::new(s))
     }
+    pub fn create_symbol(s: String) -> Expression {
+        Expression::Symbol(Rc::new(s))
+    }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Rc::new(RefCell::new(l)))
     }

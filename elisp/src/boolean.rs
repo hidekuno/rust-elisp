@@ -19,23 +19,23 @@ where
     b.regist("boolean=?", boolean_eq);
 }
 fn do_bool(exp: &[Expression], env: &Environment, func: fn(x: bool) -> bool) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    Ok(Expression::Boolean(match eval(&exp[1], env)? {
+    Ok(Expression::Boolean(match eval(&exp[0], env)? {
         Expression::Boolean(b) => func(b),
         _ => func(true),
     }))
 }
 fn boolean_eq(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let a = match eval(&exp[1], env)? {
+    let a = match eval(&exp[0], env)? {
         Expression::Boolean(b) => b,
         e => return Err(create_error_value!(ErrCode::E1001, e)),
     };
-    for e in &exp[2..] {
+    for e in &exp[1..] {
         let b = match eval(e, env)? {
             Expression::Boolean(b) => b,
             e => return Err(create_error_value!(ErrCode::E1001, e)),

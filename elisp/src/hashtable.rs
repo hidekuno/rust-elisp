@@ -5,7 +5,7 @@
    hidekuno@gmail.com
 */
 #[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{debug, error, info, warn}; // ex.) export RUST_LOG=debug
 
 use crate::create_error;
 use crate::create_error_value;
@@ -61,7 +61,7 @@ impl Map<HashTableRc> for HashTableRc {
         let mut m = mut_obj!(self);
         m.clear();
     }
-    fn get_map(exp: &Expression, env: &Environment) -> Result<HashTableRc, Box<Error>>{
+    fn get_map(exp: &Expression, env: &Environment) -> Result<HashTableRc, Box<Error>> {
         match eval(exp, env)? {
             Expression::HashTable(v) => Ok(v),
             e => Err(create_error_value!(ErrCode::E1023, e)),
@@ -71,7 +71,7 @@ impl Map<HashTableRc> for HashTableRc {
         let m = &*reference_obj!(self);
         let mut v = Vec::new();
         for key in m.keys() {
-            v.push(Expression::Symbol(key.to_string()));
+            v.push(Environment::create_symbol(key.to_string()));
         }
         Environment::create_list(v)
     }
@@ -113,7 +113,7 @@ impl Map<TreeMapRc> for TreeMapRc {
         let mut v = mut_obj!(self);
         v.clear();
     }
-    fn get_map(exp: &Expression, env: &Environment) -> Result<TreeMapRc, Box<Error>>{
+    fn get_map(exp: &Expression, env: &Environment) -> Result<TreeMapRc, Box<Error>> {
         match eval(exp, env)? {
             Expression::TreeMap(v) => Ok(v),
             e => Err(create_error_value!(ErrCode::E1024, e)),
@@ -123,7 +123,7 @@ impl Map<TreeMapRc> for TreeMapRc {
         let m = &*reference_obj!(self);
         let mut v = Vec::new();
         for key in m.keys() {
-            v.push(Expression::Symbol(key.to_string()));
+            v.push(Environment::create_symbol(key.to_string()));
         }
         Environment::create_list(v)
     }
@@ -167,7 +167,7 @@ fn make_map<T>(exp: &[Expression], _env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 1 {
+    if !exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     Ok(T::create_map())
@@ -176,16 +176,16 @@ fn map_put<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 4 {
+    if exp.len() != 3 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut map = T::get_map(&exp[1], env)?;
+    let mut map = T::get_map(&exp[0], env)?;
 
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
+    let key = match eval(&exp[1], env)? {
+        Expression::Symbol(v) => (*v).clone(),
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
-    let value = eval(&exp[3], env)?;
+    let value = eval(&exp[2], env)?;
     map.insert(key, value);
 
     Ok(Expression::Nil())
@@ -194,13 +194,13 @@ fn map_get<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let map = T::get_map(&exp[1], env)?;
+    let map = T::get_map(&exp[0], env)?;
 
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
+    let key = match eval(&exp[1], env)? {
+        Expression::Symbol(v) => (*v).clone(),
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
     map.get(&key)
@@ -209,13 +209,13 @@ fn map_delete<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut map = T::get_map(&exp[1], env)?;
+    let mut map = T::get_map(&exp[0], env)?;
 
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
+    let key = match eval(&exp[1], env)? {
+        Expression::Symbol(v) => (*v).clone(),
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
     Ok(Expression::Boolean(map.remove(key)))
@@ -224,10 +224,10 @@ fn map_clear<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut map = T::get_map(&exp[1], env)?;
+    let mut map = T::get_map(&exp[0], env)?;
     map.clear();
 
     Ok(Expression::Nil())
@@ -236,13 +236,13 @@ fn map_exists<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let map = T::get_map(&exp[1], env)?;
+    let map = T::get_map(&exp[0], env)?;
 
-    let key = match eval(&exp[2], env)? {
-        Expression::Symbol(v) => v,
+    let key = match eval(&exp[1], env)? {
+        Expression::Symbol(v) => (*v).clone(),
         e => return Err(create_error_value!(ErrCode::E1004, e)),
     };
     Ok(Expression::Boolean(map.has_key(key)))
@@ -252,30 +252,30 @@ fn map_keys<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let map = T::get_map(&exp[1], env)?;
+    let map = T::get_map(&exp[0], env)?;
     Ok(map.keys())
 }
 fn map_values<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let map = T::get_map(&exp[1], env)?;
+    let map = T::get_map(&exp[0], env)?;
     Ok(map.values())
 }
 fn map_alist<T>(exp: &[Expression], env: &Environment) -> ResultExpression
 where
     T: Map<T>,
 {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let l = match eval(&exp[1], env)? {
+    let l = match eval(&exp[0], env)? {
         Expression::List(l) => l,
         e => return Err(create_error_value!(ErrCode::E1005, e)),
     };
@@ -308,10 +308,10 @@ where
     Ok(m)
 }
 fn hash_table_size(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let hash = match eval(&exp[1], env)? {
+    let hash = match eval(&exp[0], env)? {
         Expression::HashTable(v) => v,
         e => return Err(create_error_value!(ErrCode::E1023, e)),
     };

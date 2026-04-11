@@ -136,7 +136,7 @@ macro_rules! make_path {
         path
     }};
 }
-#[derive(Clone,PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Method {
     Get,
     Post,
@@ -472,7 +472,7 @@ pub fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
     if r.get_method().is_none() {
         return http_error!(RESPONSE_405);
     }
-    return if r.get_resource() == "/" {
+    if r.get_resource() == "/" {
         static_contents("index.html")
     } else if r.get_resource() == LISP {
         crate::lisp::do_repl(r, env)
@@ -482,7 +482,7 @@ pub fn dispatch(r: &Request, env: lisp::Environment, id: usize) -> WebResult {
         crate::lisp::do_scm(r, env, id)
     } else {
         static_contents(r.get_resource())
-    };
+    }
 }
 pub fn set_path_security(path: &mut PathBuf, filename: &str) {
     for s in filename.split('/') {

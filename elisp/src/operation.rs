@@ -4,9 +4,6 @@
 
    hidekuno@gmail.com
 */
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-
 use crate::create_error;
 use crate::create_error_value;
 
@@ -61,7 +58,7 @@ fn eval_to_number(e: &Expression, env: &Environment) -> Result<Number, Box<Error
     match e {
         Expression::Integer(n) => Ok(Number::Integer(*n)),
         Expression::Float(n) => Ok(Number::Float(*n)),
-        Expression::Rational(r) => Ok(Number::Rational(*r)),
+        Expression::Rational(r) => Ok(Number::Rational(**r)),
         Expression::Symbol(s) => match env.find(s) {
             Some(v) => Expression::to_number(&v),
             None => Err(create_error_value!(ErrCode::E1008, s)),
@@ -75,15 +72,15 @@ fn calc(
     func: fn(x: Number, y: Number) -> Number,
     x: Int,
 ) -> ResultExpression {
-    if 1 >= exp.len() {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut result = eval_to_number(&exp[1], env)?;
+    let mut result = eval_to_number(&exp[0], env)?;
 
-    if 2 == exp.len() {
+    if 1 == exp.len() {
         result = func(Number::Integer(x), result);
     } else {
-        for e in &exp[2..] {
+        for e in &exp[1..] {
             result = func(result, eval_to_number(e, env)?);
         }
     }
@@ -94,12 +91,12 @@ fn select_one(
     env: &Environment,
     func: fn(x: Number, y: Number) -> Number,
 ) -> ResultExpression {
-    if 1 >= exp.len() {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let mut result = eval_to_number(&exp[1], env)?;
+    let mut result = eval_to_number(&exp[0], env)?;
 
-    for e in &exp[2..] {
+    for e in &exp[1..] {
         result = func(result, eval_to_number(e, env)?);
     }
     Ok(Number::to_expression(result))
@@ -109,11 +106,11 @@ fn cmp(
     env: &Environment,
     func: fn(x: &Number, y: &Number) -> bool,
 ) -> ResultExpression {
-    if 3 != exp.len() {
+    if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let a = eval_to_number(&exp[1], env)?;
-    let b = eval_to_number(&exp[2], env)?;
+    let a = eval_to_number(&exp[0], env)?;
+    let b = eval_to_number(&exp[1], env)?;
     Ok(Expression::Boolean(func(&a, &b)))
 }
 fn divide(
@@ -121,10 +118,10 @@ fn divide(
     env: &Environment,
     func: fn(x: &Int, y: &Int) -> Int,
 ) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
+    let (a, b) = (eval(&exp[0], env)?, eval(&exp[1], env)?);
     match (a, b) {
         (Expression::Integer(x), Expression::Integer(y)) => {
             if y == 0 {
@@ -137,11 +134,11 @@ fn divide(
     }
 }
 fn shift(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut x: [Int; 2] = [0; 2];
-    for (i, e) in exp[1..].iter().enumerate() {
+    for (i, e) in exp[0..].iter().enumerate() {
         x[i] = match eval(e, env)? {
             Expression::Integer(v) => v,
             e => return Err(create_error_value!(ErrCode::E1002, e)),
@@ -157,10 +154,10 @@ fn bit(exp: &[Expression], env: &Environment, func: fn(x: Int, y: Int) -> Int) -
     let mut result: Int = 0;
     let mut first: bool = true;
 
-    if 1 >= exp.len() {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1..] {
+    for e in &exp[0..] {
         let param = match eval(e, env)? {
             Expression::Integer(v) => v,
             e => return Err(create_error_value!(ErrCode::E1002, e)),
@@ -175,10 +172,10 @@ fn bit(exp: &[Expression], env: &Environment, func: fn(x: Int, y: Int) -> Int) -
     Ok(Expression::Integer(result))
 }
 fn lognot(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
     } else {
-        match eval(&exp[1], env)? {
+        match eval(&exp[0], env)? {
             Expression::Integer(v) => Ok(Expression::Integer(!v)),
             e => Err(create_error_value!(ErrCode::E1002, e)),
         }
@@ -189,10 +186,10 @@ fn bitcount(
     env: &Environment,
     func: fn(x: Int, y: Int) -> bool,
 ) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
     } else {
-        match eval(&exp[1], env)? {
+        match eval(&exp[0], env)? {
             Expression::Integer(v) => {
                 // https://practical-scheme.net/gauche/man/gauche-refe/Numbers.html
                 // (If n is negative, returns the number of 0’s in the bits of 2’s complement)
@@ -212,10 +209,10 @@ fn bitcount(
     }
 }
 fn twos_exponent(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = match eval(&exp[1], env)? {
+    let v = match eval(&exp[0], env)? {
         Expression::Integer(v) => v,
         e => return Err(create_error_value!(ErrCode::E1002, e)),
     };

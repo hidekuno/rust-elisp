@@ -4,8 +4,6 @@
 
    hidekuno@gmail.com
 */
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
 use std::env;
 use std::time::Instant;
 
@@ -77,25 +75,25 @@ where
     b.regist("error", error);
 }
 pub fn identity(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    eval(&exp[1], env)
+    eval(&exp[0], env)
 }
 fn odd_even(exp: &[Expression], env: &Environment, func: fn(Int) -> bool) -> ResultExpression {
-    if 2 != exp.len() {
+    if 1 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    match eval(&exp[1], env)? {
+    match eval(&exp[0], env)? {
         Expression::Integer(i) => Ok(Expression::Boolean(func(i))),
         e => Err(create_error_value!(ErrCode::E1002, e)),
     }
 }
 fn is_sign(exp: &[Expression], env: &Environment, func: fn(&Number) -> bool) -> ResultExpression {
-    if 2 != exp.len() {
+    if 1 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = Expression::to_number(&eval(&exp[1], env)?)?;
+    let v = Expression::to_number(&eval(&exp[0], env)?)?;
 
     Ok(Expression::Boolean(func(&v)))
 }
@@ -104,18 +102,18 @@ fn is_type(
     env: &Environment,
     func: fn(e: &Expression) -> bool,
 ) -> ResultExpression {
-    if 2 != exp.len() {
+    if 1 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = eval(&exp[1], env)?;
+    let v = eval(&exp[0], env)?;
     Ok(Expression::Boolean(func(&v)))
 }
 fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
     //srfi-98
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    match eval(&exp[1], env)? {
+    match eval(&exp[0], env)? {
         Expression::String(s) => match env::var(s.as_ref()) {
             Ok(v) => Ok(Environment::create_string(v)),
             Err(_) => Ok(Expression::Boolean(false)),
@@ -124,49 +122,49 @@ fn get_env(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn time_f(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
 
     let start = Instant::now();
-    let result = eval(&exp[1], env);
+    let result = eval(&exp[0], env);
     let end = start.elapsed();
 
     println!("{}.{:03}(s)", end.as_secs(), end.subsec_millis());
     result
 }
 pub fn eq(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
+    let (a, b) = (eval(&exp[0], env)?, eval(&exp[1], env)?);
     Ok(Expression::Boolean(Expression::eq(&a, &b)))
 }
 pub fn eqv(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let (a, b) = (eval(&exp[1], env)?, eval(&exp[2], env)?);
+    let (a, b) = (eval(&exp[0], env)?, eval(&exp[1], env)?);
     Ok(Expression::Boolean(Expression::eqv(&a, &b)))
 }
 fn native_endian(exp: &[Expression], _env: &Environment) -> ResultExpression {
-    if exp.len() != 1 {
+    if !exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     if cfg!(target_endian = "big") {
-        return Ok(Expression::Symbol("big-endian".to_string()));
+        return Ok(Environment::create_symbol("big-endian".to_string()));
     }
     if cfg!(target_endian = "little") {
-        return Ok(Expression::Symbol("little-endian".to_string()));
+        return Ok(Environment::create_symbol("little-endian".to_string()));
     }
     Err(create_error!(ErrCode::E9999))
 }
 fn error(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 2 {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut s = String::new();
-    for e in &exp[1..] {
+    for e in &exp[0..] {
         s.push(' ');
         let e = eval(e, env)?;
         s.push_str(&e.to_string());
@@ -174,7 +172,7 @@ fn error(exp: &[Expression], env: &Environment) -> ResultExpression {
     Err(create_error_value!(ErrCode::E9001, s))
 }
 pub fn undefined(exp: &[Expression], _env: &Environment) -> ResultExpression {
-    if exp.len() != 1 {
+    if !exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     Ok(Expression::Nil())

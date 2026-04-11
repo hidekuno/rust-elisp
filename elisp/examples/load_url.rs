@@ -34,10 +34,10 @@ fn load_url(url: &str) -> Result<(String,StatusCode),
 }
 pub fn build_lisp_function(env: &Environment) {
     env.add_builtin_ext_func("load-url", move |exp, env| {
-        if exp.len() != 2 {
+        if exp.len() != 1 {
             return Err(create_error!(ErrCode::E1007));
         }
-        let url = if let Expression::String(s) = eval(&exp[1],env)? {
+        let url = if let Expression::String(s) = eval(&exp[0],env)? {
             s
         } else {
             return Err(create_error!(ErrCode::E1015));

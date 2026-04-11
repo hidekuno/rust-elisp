@@ -5,7 +5,7 @@
    hidekuno@gmail.com
 */
 #[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{debug, error, info, warn}; // ex.) export RUST_LOG=debug
 use std::vec::Vec;
 
 use crate::buildin::BuildInTable;
@@ -69,40 +69,40 @@ impl Continuation {
     }
 }
 pub fn call_cc(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::Function(f) = eval(&exp[1], env)? {
+    if let Expression::Function(f) = eval(&exp[0], env)? {
         let e = env.get_cont().unwrap();
         let c = Continuation::new(e);
 
-        let sexp: Vec<Expression> = vec![exp[0].clone(), Expression::Continuation(Box::new(c))];
+        let sexp: Vec<Expression> = vec![Expression::Continuation(Box::new(c))];
         f.execute(&sexp, env)
     } else {
         Err(create_error!(ErrCode::E1006))
     }
 }
 pub fn quote(exp: &[Expression], _env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         Err(create_error_value!(ErrCode::E1007, exp.len()))
     } else {
-        Ok(exp[1].clone())
+        Ok(exp[0].clone())
     }
 }
 fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::Symbol(v) = &exp[1] {
-        if exp.len() != 3 {
+    if let Expression::Symbol(v) = &exp[0] {
+        if exp.len() != 2 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
-        let se = eval(&exp[2], env)?;
+        let se = eval(&exp[1], env)?;
         env.regist(v.to_string(), se);
 
-        return Ok(Expression::Symbol(v.to_string()));
+        return Ok(Expression::Symbol(v.clone()));
     }
-    if let Expression::List(l) = &exp[1] {
+    if let Expression::List(l) = &exp[0] {
         let l = &*(reference_obj!(l));
         if l.is_empty() {
             return Err(create_error_value!(ErrCode::E1007, l.len()));
@@ -119,14 +119,14 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
             }
 
             let mut f = exp.to_vec();
-            f[1] = Environment::create_list(param);
-            let mut func = Function::new(&f, s.to_string(), env.clone());
+            f[0] = Environment::create_list(param);
+            let mut func = Function::new(&f[..], s.to_string(), env.clone());
             if env.is_tail_recursion() {
                 func.set_tail_recurcieve();
             }
             env.regist(s.to_string(), Environment::create_func(func));
 
-            Ok(Expression::Symbol(s.to_string()))
+            Ok(Expression::Symbol(s.clone()))
         } else {
             Err(create_error!(ErrCode::E1004))
         }
@@ -135,10 +135,10 @@ fn define(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::List(l) = &exp[1] {
+    if let Expression::List(l) = &exp[0] {
         let l = &*(reference_obj!(l));
         for e in l {
             match e {
@@ -156,12 +156,12 @@ fn lambda(exp: &[Expression], env: &Environment) -> ResultExpression {
     )))
 }
 fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     // @@@ env.create();
     let param = Environment::with_parent(env);
-    let mut idx = 1;
+    let mut idx = 0;
     let mut name = String::from("lambda");
 
     if let Expression::Symbol(s) = &exp[idx] {
@@ -198,14 +198,14 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
 
     // Setup Function
     let mut vec = vec![
-        Environment::create_string(name.to_string()),
+        //        Environment::create_string(name.to_string()),
         Environment::create_list(param_list),
     ];
     vec.extend_from_slice(&exp[idx..]);
     let mut f = Function::new(&vec[..], name, param.clone());
 
     // Setup label name let
-    if let Expression::Symbol(s) = &exp[1] {
+    if let Expression::Symbol(s) = &exp[0] {
         if env.is_tail_recursion() {
             f.set_tail_recurcieve();
             if !f.get_tail_recurcieve() {
@@ -215,33 +215,33 @@ fn let_f(exp: &[Expression], env: &Environment) -> ResultExpression {
             param.regist(s.to_string(), Environment::create_func(f.clone()));
         }
     }
-    f.execute(&param_value_list, &param)
+    f.execute(&param_value_list[1..], &param)
 }
 fn set_f(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::Symbol(s) = &exp[1] {
+    if let Expression::Symbol(s) = &exp[0] {
         if env.find(s).is_some() {
-            let v = eval(&exp[2], env)?;
+            let v = eval(&exp[1], env)?;
             env.update(s, v);
         } else {
             return Err(create_error_value!(ErrCode::E1008, s));
         }
-        Ok(Expression::Symbol(s.to_string()))
+        Ok(Expression::Symbol(s.clone()))
     } else {
         Err(create_error!(ErrCode::E1004))
     }
 }
 fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::Boolean(b) = eval(&exp[1], env)? {
+    if let Expression::Boolean(b) = eval(&exp[0], env)? {
         if b {
+            eval(&exp[1], env)
+        } else if 3 <= exp.len() {
             eval(&exp[2], env)
-        } else if 4 <= exp.len() {
-            eval(&exp[3], env)
         } else {
             Ok(Expression::Nil())
         }
@@ -250,10 +250,10 @@ fn if_f(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1..] {
+    for e in &exp[0..] {
         if let Expression::Boolean(b) = eval(e, env)? {
             if !b {
                 return Ok(Expression::Boolean(b));
@@ -265,10 +265,10 @@ fn and(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::Boolean(true))
 }
 fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1..] {
+    for e in &exp[0..] {
         if let Expression::Boolean(b) = eval(e, env)? {
             if b {
                 return Ok(Expression::Boolean(b));
@@ -280,17 +280,20 @@ fn or(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::Boolean(false))
 }
 fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 2 {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1..] {
+    for e in &exp[0..] {
+        println!("{}", e);
         if let Expression::List(l) = e {
             let l = &*(reference_obj!(l));
             let mut iter = l.iter();
 
             if let Some(e) = iter.next() {
                 if let Expression::Symbol(s) = e {
-                    if s != "else" {
+                    if **s == "else" {
+                        return begin(&l[1..], env);
+                    } else {
                         eval(e, env)?;
                     }
                 } else {
@@ -317,14 +320,13 @@ fn cond(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::Nil())
 }
 fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 2 {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
 
-    let mut param: Vec<Expression> =
-        vec![Expression::Nil(), eval(&exp[1], env)?, Expression::Nil()];
-    if 3 <= exp.len() {
-        for e in &exp[2..] {
+    let mut param: Vec<Expression> = vec![eval(&exp[0], env)?, Expression::Nil()];
+    if 2 <= exp.len() {
+        for e in &exp[1..] {
             if let Expression::List(l) = e {
                 let l = &*(reference_obj!(l));
                 if l.is_empty() {
@@ -332,11 +334,11 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                 }
                 match &l[0] {
                     Expression::Symbol(s) => {
-                        if s != "else" {
+                        if **s != "else" {
                             return Err(create_error!(ErrCode::E1017));
                         }
                         if 1 < l.len() {
-                            return begin(l, env);
+                            return begin(&l[1..], env);
                         } else {
                             return Ok(Expression::Integer(0));
                         }
@@ -344,11 +346,11 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
                     Expression::List(r) => {
                         let c = &*(reference_obj!(r));
                         for e in c {
-                            param[2] = eval(e, env)?;
+                            param[1] = eval(e, env)?;
                             if let Expression::Boolean(b) = eqv(&param, env)? {
                                 if b {
                                     if 1 < l.len() {
-                                        return begin(l, env);
+                                        return begin(&l[1..], env);
                                     } else {
                                         return Ok(Expression::List(r.clone()));
                                     }
@@ -366,22 +368,22 @@ fn case(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::Nil())
 }
 fn begin(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 2 {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut ret = Expression::Nil();
-    for e in &exp[1..] {
+    for e in &exp[0..] {
         ret = eval(e, env)?;
     }
     Ok(ret)
 }
 fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 3 {
+    if exp.len() != 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    if let Expression::List(l) = eval(&exp[2], env)? {
+    if let Expression::List(l) = eval(&exp[1], env)? {
         let l = &*(reference_obj!(l));
-        let sexp = make_evaled_list(&exp[1], l, &None);
+        let sexp = make_evaled_list(&exp[0], l, &None);
 
         eval(&Environment::create_list(sexp), env)
     } else {
@@ -389,30 +391,27 @@ fn apply(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn delay(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    Ok(Expression::Promise(
-        Box::new(exp[1].clone()),
-        Box::new(env.clone()),
-    ))
+    Ok(Expression::Promise(Box::new((exp[0].clone(), env.clone()))))
 }
 fn force(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = eval(&exp[1], env)?;
-    if let Expression::Promise(p, pe) = v {
-        eval(&p, &pe)
+    let v = eval(&exp[0], env)?;
+    if let Expression::Promise(b) = v {
+        eval(&b.0, &b.1)
     } else {
         Ok(v)
     }
 }
 fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 3 {
+    if exp.len() < 2 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let l = if let Expression::List(l) = &exp[1] {
+    let l = if let Expression::List(l) = &exp[0] {
         l
     } else {
         return Err(create_error!(ErrCode::E1005));
@@ -445,7 +444,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
         update.push(f[2].clone());
     }
 
-    let l = if let Expression::List(l) = &exp[2] {
+    let l = if let Expression::List(l) = &exp[1] {
         l
     } else {
         return Err(create_error!(ErrCode::E1005));
@@ -470,7 +469,7 @@ fn do_f(exp: &[Expression], env: &Environment) -> ResultExpression {
             return Err(create_error!(ErrCode::E1001));
         }
         // eval body
-        for e in exp.iter().skip(3) {
+        for e in exp.iter().skip(2) {
             eval(e, &local_env)?;
         }
 
