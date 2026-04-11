@@ -86,15 +86,15 @@ fn build_example_function(app: &Application) {
     let draw_table = app.draw_table.clone();
     app.env
         .add_builtin_ext_func("load-image-url", move |exp, env| {
-            if exp.len() != 3 {
+            if exp.len() != 2 {
                 return Err(create_error!(ErrCode::E1007));
             }
-            let symbol = match lisp::eval(&exp[1], env)? {
+            let symbol = match lisp::eval(&exp[0], env)? {
                 Expression::String(s) => s,
                 _ => return Err(create_error!(ErrCode::E1015)),
             };
 
-            let url = if let Expression::String(s) = eval(&exp[2], env)? {
+            let url = if let Expression::String(s) = eval(&exp[1], env)? {
                 s
             } else {
                 return Err(create_error!(ErrCode::E1015));

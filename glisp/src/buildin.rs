@@ -55,7 +55,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     {
         let draw_table = draw_table.clone();
         env.add_builtin_ext_func("draw-clear", move |exp, _| {
-            if exp.len() != 1 {
+            if !exp.is_empty() {
                 return Err(create_error_value!(ErrCode::E1007, exp.len()));
             }
             draw_clear(&draw_table);
@@ -84,14 +84,14 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     {
         let draw_table = draw_table.clone();
         env.add_builtin_ext_func("create-image-from-png", move |exp, env| {
-            if exp.len() != 3 {
+            if exp.len() != 2 {
                 return Err(create_error_value!(ErrCode::E1007, exp.len()));
             }
-            let symbol = match lisp::eval(&exp[1], env)? {
+            let symbol = match lisp::eval(&exp[0], env)? {
                 Expression::String(s) => s,
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             };
-            let filename = match lisp::eval(&exp[2], env)? {
+            let filename = match lisp::eval(&exp[1], env)? {
                 Expression::String(s) => s,
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             };
@@ -117,14 +117,14 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     {
         let draw_table = draw_table.clone();
         env.add_builtin_ext_func("load-image", move |exp, env| {
-            if exp.len() != 3 {
+            if exp.len() != 2 {
                 return Err(create_error_value!(ErrCode::E1007, exp.len()));
             }
-            let symbol = match lisp::eval(&exp[1], env)? {
+            let symbol = match lisp::eval(&exp[0], env)? {
                 Expression::String(s) => s,
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             };
-            let filename = match lisp::eval(&exp[2], env)? {
+            let filename = match lisp::eval(&exp[1], env)? {
                 Expression::String(s) => s,
                 e => return Err(create_error_value!(ErrCode::E1015, e)),
             };
@@ -164,18 +164,18 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     let draw_string = create_draw_string(draw_table);
     env.add_builtin_ext_func("draw-string", move |exp, env| {
-        if exp.len() != 5 {
+        if exp.len() != 4 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         const N: usize = 3;
         let mut prm: [f64; N] = [0.0; N];
-        for (i, e) in exp[1..4].iter().enumerate() {
+        for (i, e) in exp[0..3].iter().enumerate() {
             prm[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
                 e => return Err(create_error_value!(ErrCode::E1003, e)),
             };
         }
-        let s = match lisp::eval(&exp[4], env)? {
+        let s = match lisp::eval(&exp[3], env)? {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
@@ -188,10 +188,10 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     //--------------------------------------------------------
     let draw_string = create_draw_string(draw_table);
     env.add_builtin_ext_func("draw-eval", move |exp, env| {
-        if exp.len() != 2 {
+        if exp.len() != 1 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
-        let e = lisp::eval(&exp[1], env)?;
+        let e = lisp::eval(&exp[0], env)?;
 
         let mut h = 0.04;
         let mut s = String::new();
@@ -259,10 +259,10 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     {
         let draw_table = RefCell::new(draw_table.clone());
         env.add_builtin_ext_func("set-line-width", move |exp, env| {
-            if exp.len() != 2 {
+            if exp.len() != 1 {
                 return Err(create_error_value!(ErrCode::E1007, exp.len()));
             }
-            let w = match lisp::eval(&exp[1], env)? {
+            let w = match lisp::eval(&exp[0], env)? {
                 Expression::Float(f) => f,
                 e => return Err(create_error_value!(ErrCode::E1003, e)),
             };
@@ -274,7 +274,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // ex. (screen-width)
     //--------------------------------------------------------
     env.add_builtin_ext_func("screen-width", move |exp, _env| {
-        if exp.len() != 1 {
+        if !exp.is_empty() {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         Ok(Expression::Float(DRAW_WIDTH as f64))
@@ -283,7 +283,7 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     // ex. (screen-height)
     //--------------------------------------------------------
     env.add_builtin_ext_func("screen-height", move |exp, _env| {
-        if exp.len() != 1 {
+        if !exp.is_empty() {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         Ok(Expression::Float(DRAW_HEIGHT as f64))
@@ -301,19 +301,19 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
     for (f, v) in version_tbl.iter() {
         let x = *v;
         env.add_builtin_ext_func(f, move |exp, _env| {
-            if exp.len() != 1 {
+            if !exp.is_empty() {
                 return Err(create_error_value!(ErrCode::E1007, exp.len()));
             }
             Ok(Expression::Integer(x as Int))
         });
     }
     fn get_color(exp: &[Expression], env: &Environment) -> Result<(f64, f64, f64), Box<Error>> {
-        if exp.len() != 4 {
+        if exp.len() != 3 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         const N: usize = 3;
         let mut rgb: [f64; N] = [0.0; N];
-        for (i, e) in exp[1..].iter().enumerate() {
+        for (i, e) in exp[0..].iter().enumerate() {
             rgb[i] = match lisp::eval(e, env)? {
                 Expression::Float(f) => f,
                 e => return Err(create_error_value!(ErrCode::E1003, e)),
@@ -327,10 +327,10 @@ pub fn build_lisp_function(env: &Environment, draw_table: &DrawTable) {
         draw_table: &DrawTable,
         f: fn(&dyn ImageData) -> f64,
     ) -> Result<f64, Box<Error>> {
-        if exp.len() != 2 {
+        if exp.len() != 1 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
-        let symbol = match lisp::eval(&exp[1], env)? {
+        let symbol = match lisp::eval(&exp[0], env)? {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
@@ -352,10 +352,10 @@ pub fn build_demo_function(env: &Environment, draw_table: &DrawTable) {
         let f = fractal.get_func_name();
         let fractal = RefCell::new(fractal);
         env.add_builtin_ext_func(f, move |exp, env| {
-            if exp.len() != 2 {
+            if exp.len() != 1 {
                 return Err(create_error_value!(ErrCode::E1007, exp.len()));
             }
-            let c = match lisp::eval(&exp[1], env)? {
+            let c = match lisp::eval(&exp[0], env)? {
                 Expression::Integer(c) => c,
                 e => return Err(create_error_value!(ErrCode::E1002, e)),
             };

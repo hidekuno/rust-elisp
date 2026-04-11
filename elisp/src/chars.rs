@@ -4,8 +4,6 @@
 
    hidekuno@gmail.com
 */
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
 use std::char;
 
 use crate::create_error;
@@ -86,12 +84,12 @@ fn charcmp(
     env: &Environment,
     func: fn(x: char, y: char) -> bool,
 ) -> ResultExpression {
-    if 3 != exp.len() {
+    if 2 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     let mut v: [char; 2] = [' '; 2];
 
-    for (i, e) in exp[1..].iter().enumerate() {
+    for (i, e) in exp[0..].iter().enumerate() {
         v[i] = match eval(e, env)? {
             Expression::Char(c) => c,
             e => return Err(create_error_value!(ErrCode::E1019, e)),
@@ -104,20 +102,20 @@ fn char_kind(
     env: &Environment,
     func: fn(x: char) -> Expression,
 ) -> ResultExpression {
-    if 2 != exp.len() {
+    if 1 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let c = match eval(&exp[1], env)? {
+    let c = match eval(&exp[0], env)? {
         Expression::Char(c) => c,
         e => return Err(create_error_value!(ErrCode::E1019, e)),
     };
     Ok(func(c))
 }
 fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if 2 != exp.len() {
+    if 1 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let i = match eval(&exp[1], env)? {
+    let i = match eval(&exp[0], env)? {
         Expression::Integer(i) => i,
         e => return Err(create_error_value!(ErrCode::E1002, e)),
     };
@@ -129,10 +127,10 @@ fn integer_char(exp: &[Expression], env: &Environment) -> ResultExpression {
     }
 }
 fn char_integer(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if 2 != exp.len() {
+    if 1 != exp.len() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let c = match eval(&exp[1], env)? {
+    let c = match eval(&exp[0], env)? {
         Expression::Char(c) => c,
         e => return Err(create_error_value!(ErrCode::E1019, e)),
     };

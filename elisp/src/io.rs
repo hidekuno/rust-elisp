@@ -4,9 +4,6 @@
 
    hidekuno@gmail.com
 */
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -37,10 +34,10 @@ where
     });
 }
 fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() != 2 {
+    if exp.len() != 1 {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    let v = eval(&exp[1], env)?;
+    let v = eval(&exp[0], env)?;
     if let Expression::String(s) = v {
         if !Path::new(s.as_ref()).exists() {
             return Err(create_error!(ErrCode::E1014));
@@ -65,10 +62,10 @@ fn load_file(exp: &[Expression], env: &Environment) -> ResultExpression {
     Err(create_error!(ErrCode::E1015))
 }
 fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
-    if exp.len() < 2 {
+    if exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
-    for e in &exp[1..] {
+    for e in &exp[0..] {
         let v = eval(e, env)?;
         if let Expression::Char(c) = v {
             print!("{} ", c);
@@ -82,14 +79,14 @@ fn display(exp: &[Expression], env: &Environment) -> ResultExpression {
     Ok(Expression::Nil())
 }
 fn newline(exp: &[Expression], _env: &Environment) -> ResultExpression {
-    if exp.len() != 1 {
+    if !exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
     println!();
     Ok(Expression::Nil())
 }
 fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
-    if exp.len() != 1 {
+    if !exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
 
@@ -117,7 +114,7 @@ fn read(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> Resu
     result
 }
 fn read_char(exp: &[Expression], env: &Environment, stream: &mut dyn BufRead) -> ResultExpression {
-    if exp.len() != 1 {
+    if !exp.is_empty() {
         return Err(create_error_value!(ErrCode::E1007, exp.len()));
     }
 
@@ -166,7 +163,7 @@ mod tests {
     fn read_char_test(data: &str) -> String {
         let mut cur = Cursor::new(data.as_bytes());
         let env = lisp::Environment::new();
-        match io::read_char(&[Expression::Nil()], &env, &mut cur) {
+        match io::read_char(&[], &env, &mut cur) {
             Ok(s) => s.to_string(),
             Err(_) => "error".to_string(),
         }

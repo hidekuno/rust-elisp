@@ -9,6 +9,7 @@
 extern crate lazy_static;
 pub mod boolean;
 pub mod buildin;
+pub mod bytecode;
 pub mod chars;
 pub mod env;
 pub mod hashtable;
@@ -34,7 +35,10 @@ pub mod env_thread;
 
 #[cfg(test)]
 pub fn do_lisp(program: &str) -> String {
-    let env = lisp::Environment::new();
+    let env = {
+        let _g = lisp::COMPILE_LOCK.lock().unwrap();
+        lisp::Environment::new()
+    };
     do_lisp_env(program, &env)
 }
 #[cfg(test)]

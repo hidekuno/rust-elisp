@@ -17,8 +17,9 @@ from enum import Enum
 
 PROMPT="<rust-elisp> "
 
+ext = 'dylib' if os.uname().sysname == 'Darwin' else 'so'
 sofile = os.path.join(
-    os.environ["HOME"], "rust-elisp", "ffilisp", "target", "release", "libffilisp.so"
+    os.environ["HOME"], "rust-elisp", "ffilisp", "target", "release", f"libffilisp.{ext}"
 )
 if not os.path.isfile(sofile):
     sys.exit(1)

@@ -4,10 +4,8 @@
 
    hidekuno@gmail.com
 */
-#[allow(unused_imports)]
-use log::{debug, error, info, warn};
-
-use crate::lisp::BasicBuiltIn;
+use crate::bytecode;
+use crate::lisp::{is_compile_mode, BasicBuiltIn};
 
 use crate::boolean;
 use crate::chars;
@@ -28,25 +26,33 @@ pub fn create_function<T>(b: &mut T)
 where
     T: BuildInTable + ?Sized,
 {
-    boolean::create_function(b);
+    if is_compile_mode() {
+        bytecode::list::create_function(b);
 
-    chars::create_function(b);
+        bytecode::math::create_function(b);
 
-    list::create_function(b);
+        bytecode::operation::create_function(b);
+    } else {
+        boolean::create_function(b);
 
-    math::create_function(b);
+        chars::create_function(b);
 
-    strings::create_function(b);
+        list::create_function(b);
 
-    operation::create_function(b);
+        math::create_function(b);
 
-    syntax::create_function(b);
+        strings::create_function(b);
 
-    io::create_function(b);
+        operation::create_function(b);
 
-    util::create_function(b);
+        syntax::create_function(b);
 
-    hashtable::create_function(b);
+        io::create_function(b);
+
+        util::create_function(b);
+
+        hashtable::create_function(b);
+    }
 }
 #[cfg(test)]
 mod tests {

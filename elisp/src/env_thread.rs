@@ -107,6 +107,9 @@ impl Environment {
     pub fn create_string(s: String) -> Expression {
         Expression::String(Arc::new(s))
     }
+    pub fn create_symbol(s: String) -> Expression {
+        Expression::Symbol(Arc::new(s))
+    }
     pub fn create_vector(l: Vec<Expression>) -> Expression {
         Expression::Vector(Arc::new(RwLock::new(l)))
     }

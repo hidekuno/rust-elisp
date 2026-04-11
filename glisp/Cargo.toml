@@ -1,11 +1,11 @@
 [package]
 name = "glisp"
-version = "0.8.5"
+version = "0.9.0"
 authors = ["hideki kuno <hidekuno@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-elisp = { path = "../elisp",version = "0.8.5" }
+elisp = { path = "../elisp",version = "0.9.0" }
 gtk = { git = "https://github.com/gtk-rs/gtk3-rs.git" }
 cairo-rs = { git = "https://github.com/gtk-rs/gtk-rs-core.git", package = "cairo-rs", features = ["png"] }
 

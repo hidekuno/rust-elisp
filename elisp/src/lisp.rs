@@ -12,10 +12,12 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
 use std::string::ToString;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::Mutex;
 use std::vec::Vec;
 
 #[allow(unused_imports)]
-use log::{debug, error, info, warn};
+use log::{debug, error, info, warn}; // ex.) export RUST_LOG=debug
 
 #[cfg(feature = "signal")]
 use super::unix::signal::{catch_sig_intr_status, clear_sig_intr_status, init_sig_intr};
@@ -34,6 +36,7 @@ pub use crate::env_single::{ExtFunctionRc, FunctionRc, HashTableRc, ListRc, Stri
 #[cfg(not(feature = "thread"))]
 pub type Environment = crate::env_single::Environment;
 
+use crate::bytecode;
 use crate::get_ptr;
 use crate::mut_obj;
 use crate::reference_obj;
@@ -69,6 +72,13 @@ pub enum ErrCode {
     E1022,
     E1023,
     E1024,
+    E2001,
+    E2002,
+    E2003,
+    E2004,
+    E2005,
+    E2006,
+    E2007,
     E9000,
     E9001,
     E9002,
@@ -107,6 +117,13 @@ impl ErrCode {
             ErrCode::E1022 => "E1022",
             ErrCode::E1023 => "E1023",
             ErrCode::E1024 => "E1024",
+            ErrCode::E2001 => "E2001",
+            ErrCode::E2002 => "E2002",
+            ErrCode::E2003 => "E2003",
+            ErrCode::E2004 => "E2004",
+            ErrCode::E2005 => "E2005",
+            ErrCode::E2006 => "E2006",
+            ErrCode::E2007 => "E2007",
             ErrCode::E9000 => "E9000",
             ErrCode::E9001 => "E9001",
             ErrCode::E9002 => "E9002",
@@ -152,6 +169,13 @@ lazy_static! {
         e.insert(ErrCode::E1022.as_str(), "Not Vector");
         e.insert(ErrCode::E1023.as_str(), "Not HashTable");
         e.insert(ErrCode::E1024.as_str(), "Not TreeMap");
+        e.insert(ErrCode::E2001.as_str(), "Not Enough Parameter Counts");
+        e.insert(ErrCode::E2002.as_str(), "Not List");
+        e.insert(ErrCode::E2003.as_str(), "Empty clause");
+        e.insert(ErrCode::E2004.as_str(), "Invalid function definition");
+        e.insert(ErrCode::E2005.as_str(), "Not Symbol");
+        e.insert(ErrCode::E2006.as_str(), "Not Symbol or List");
+        e.insert(ErrCode::E2007.as_str(), "Invalid parameter list");
         e.insert(ErrCode::E9000.as_str(), "Forced stop");
         e.insert(ErrCode::E9001.as_str(), "*** ERROR");
         e.insert(
@@ -252,17 +276,17 @@ pub enum Expression {
     Char(char),
     Boolean(bool),
     List(ListRc),
-    Pair(Box<Expression>, Box<Expression>),
-    Symbol(String),
+    Pair(Box<(Expression, Expression)>),
+    Symbol(StringRc),
     String(StringRc),
     Function(FunctionRc),
     BuildInFunction(&'static str, BasicBuiltIn),
-    BuildInFunctionExt(ExtFunctionRc),
+    BuildInFunctionExt(Box<ExtFunctionRc>),
     TailLoop(),
     Nil(),
     TailRecursion(FunctionRc),
-    Promise(Box<Expression>, Box<Environment>),
-    Rational(Rat),
+    Promise(Box<(Expression, Environment)>),
+    Rational(Box<Rat>),
     Continuation(Box<Continuation>),
     Vector(ListRc),
     HashTable(HashTableRc),
@@ -282,7 +306,7 @@ impl Expression {
         matches!(exp, Expression::List(_))
     }
     pub fn is_pair(exp: &Expression) -> bool {
-        matches!(exp, Expression::Pair(_, _))
+        matches!(exp, Expression::Pair(_))
     }
     pub fn is_char(exp: &Expression) -> bool {
         matches!(exp, Expression::Char(_))
@@ -320,7 +344,7 @@ impl Expression {
         match x {
             Expression::Float(v) => Ok(Number::Float(*v)),
             Expression::Integer(v) => Ok(Number::Integer(*v)),
-            Expression::Rational(v) => Ok(Number::Rational(*v)),
+            Expression::Rational(v) => Ok(Number::Rational(**v)),
             e => Err(create_error_value!(ErrCode::E1003, e)),
         }
     }
@@ -352,10 +376,10 @@ impl Expression {
     }
     fn eq_value(&self, other: &Self) -> bool {
         if let (Expression::Integer(x), Expression::Rational(y)) = (self, other) {
-            return Number::Integer(*x) == Number::Rational(*y);
+            return Number::Integer(*x) == Number::Rational(**y);
         }
         if let (Expression::Rational(x), Expression::Integer(y)) = (self, other) {
-            return Number::Rational(*x) == Number::Integer(*y);
+            return Number::Rational(**x) == Number::Integer(*y);
         }
 
         if let (Expression::Integer(a), Expression::Integer(b)) = (self, other) {
@@ -453,14 +477,14 @@ impl fmt::Display for Expression {
             }
             Expression::HashTable(_) => write!(f, "HashTable"),
             Expression::TreeMap(_) => write!(f, "TreeMap"),
-            Expression::Pair(car, cdr) => write!(f, "({} . {})", car, cdr),
+            Expression::Pair(b) => write!(f, "({} . {})", b.0, b.1),
             Expression::Function(_) => write!(f, "Function"),
             Expression::BuildInFunction(s, _) => write!(f, "<{}> BuildIn Function", s),
             Expression::BuildInFunctionExt(_) => write!(f, "BuildIn Function Ext"),
             Expression::Nil() => write!(f, "nil"),
             Expression::TailLoop() => write!(f, "tail loop"),
             Expression::TailRecursion(_) => write!(f, "Tail Recursion"),
-            Expression::Promise(_, _) => write!(f, "Promise"),
+            Expression::Promise(_) => write!(f, "Promise"),
             Expression::Rational(v) => write!(f, "{}", v),
             Expression::Continuation(_) => write!(f, "Continuation"),
         }
@@ -533,7 +557,7 @@ impl Function {
     pub fn new(sexp: &[Expression], name: String, closure_env: Environment) -> Self {
         let mut param: Vec<String> = Vec::new();
 
-        if let Expression::List(l) = &sexp[1] {
+        if let Expression::List(l) = &sexp[0] {
             let l = &*(reference_obj!(l));
             for n in l {
                 if let Expression::Symbol(s) = n {
@@ -542,7 +566,7 @@ impl Function {
             }
         }
         let mut vec: Vec<Expression> = Vec::new();
-        vec.extend_from_slice(&sexp[2..]);
+        vec.extend_from_slice(&sexp[1..]);
         Function {
             param,
             body: vec,
@@ -553,18 +577,18 @@ impl Function {
     }
     pub fn set_param(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
         let n = self.param.len();
-        if n != (exp.len() - 1) {
+        if n != exp.len() {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         if n == 1 {
-            let v = eval(&exp[1], env)?;
+            let v = eval(&exp[0], env)?;
             env.update(&self.param[0], v);
             return Ok(Expression::TailLoop());
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::with_capacity(n);
         // env set
-        for e in &exp[1..] {
+        for e in &exp[0..] {
             vec.push(eval(e, env)?);
         }
         for (i, e) in vec.into_iter().enumerate() {
@@ -573,12 +597,12 @@ impl Function {
         Ok(Expression::TailLoop())
     }
     pub fn execute(&self, exp: &[Expression], env: &Environment) -> ResultExpression {
-        if self.param.len() != (exp.len() - 1) {
+        if self.param.len() != exp.len() {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         // param eval
         let mut vec: Vec<Expression> = Vec::new();
-        for e in &exp[1..] {
+        for e in &exp[0..] {
             vec.push(eval(e, env)?);
         }
         // env.create();
@@ -607,7 +631,7 @@ impl Function {
                                 return Err(e);
                             };
                             if self.param.len() == 1 && self.param[0] == s {
-                                if let Expression::Continuation(_) = &exp[1] {
+                                if let Expression::Continuation(_) = &exp[0] {
                                     break *e.exp.unwrap();
                                 }
                             }
@@ -663,7 +687,7 @@ impl Function {
                         }
                         _ => {}
                     }
-                    if *s == self.name {
+                    if **s == self.name {
                         // check tail
                         if (exp.len() - 1) == i {
                             debug!("set tail_recurcieve {}", s);
@@ -673,7 +697,7 @@ impl Function {
                             }
                         }
                         n += 1;
-                    } else if *s == "else" {
+                    } else if s.as_str() == "else" {
                         return self.parse_tail_recurcieve(&l[1..]);
                     }
                 }
@@ -707,10 +731,18 @@ pub fn do_interactive() {
 
     let mut stream = BufReader::new(std::io::stdin());
     let env = Environment::new();
-
     if let Err(e) = repl(&mut stream, &env, Some(PROMPT)) {
         println!("{}", e)
     }
+}
+static COMPILE_MODE: AtomicBool = AtomicBool::new(false);
+pub static COMPILE_LOCK: Mutex<()> = Mutex::new(());
+
+pub fn set_compile_mode(v: bool) {
+    COMPILE_MODE.store(v, AtomicOrdering::Relaxed);
+}
+pub fn is_compile_mode() -> bool {
+    COMPILE_MODE.load(AtomicOrdering::Relaxed)
 }
 pub fn repl(
     stream: &mut dyn BufRead,
@@ -753,19 +785,33 @@ pub fn repl(
         #[cfg(feature = "signal")]
         clear_sig_intr_status();
         debug!("{}", program.iter().cloned().collect::<String>());
-        match do_core_logic(&lisp, env) {
-            Ok(n) => println!("{}", n),
-            Err(e) => {
-                if ErrCode::E9000.as_str() == e.get_code() {
-                    env.set_force_stop(false);
+
+        if is_compile_mode() {
+            match do_core_logic2(&lisp, env) {
+                Ok(n) => println!("{}", n),
+                Err(e) => {
+                    if ErrCode::E9000.as_str() == e.get_code() {
+                        env.set_force_stop(false);
+                    }
+                    print_error!(e);
                 }
-                print_error!(e);
+            }
+        } else {
+            match do_core_logic(&lisp, env) {
+                Ok(n) => println!("{}", n),
+                Err(e) => {
+                    if ErrCode::E9000.as_str() == e.get_code() {
+                        env.set_force_stop(false);
+                    }
+                    print_error!(e);
+                }
             }
         }
         program.clear();
     }
     Ok(())
 }
+
 pub fn count_parenthesis(program: &str) -> (i32, i32) {
     #[derive(PartialEq)]
     enum CharMode {
@@ -804,11 +850,35 @@ pub fn count_parenthesis(program: &str) -> (i32, i32) {
     }
     (left, right)
 }
+// The bytecode VM version of `do_core_logic`.
+// The REPL session state is maintained in a thread-local `VmSession`.
+pub fn do_core_logic2(program: &str, env: &Environment) -> ResultExpression {
+    let mut token = tokenize(program);
+    let mut c: i32 = 1;
+
+    loop {
+        let exp = parse(&token, &mut c, env)?;
+        let ret = bytecode::vm::run_expression(exp, env)?;
+        debug!("{:?} c = {} token = {}", token.to_vec(), c, token.len());
+
+        if c == token.len() as i32 {
+            return Ok(ret);
+        } else {
+            for _ in 0..c as usize {
+                token.remove(0);
+            }
+            c = 1;
+        }
+    }
+}
 pub fn do_core_logic(program: &str, env: &Environment) -> ResultExpression {
     let mut token = tokenize(program);
     let mut c: i32 = 1;
     let mut ret = Expression::Nil();
 
+    // println!("size = {}", size_of::<ResultExpression>());
+    // println!("size = {}", size_of::<Expression>());
+    // println!("size = {}", size_of::<Error>());
     env.reset_eval_count();
     loop {
         let exp = parse(&token, &mut c, env)?;
@@ -1013,6 +1083,7 @@ pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> Re
                 return Err(create_error!(ErrCode::E0002));
             }
         }
+        // ex (1 . 2)
         match dots {
             0 => Ok(Environment::create_list(list)),
             1 => {
@@ -1021,10 +1092,10 @@ pub(crate) fn parse(tokens: &[String], count: &mut i32, env: &Environment) -> Re
                 }
                 if let Expression::Symbol(s) = &list[1] {
                     if s.as_str() == "." {
-                        return Ok(Expression::Pair(
-                            Box::new(list[0].clone()),
-                            Box::new(list[2].clone()),
-                        ));
+                        return Ok(Expression::Pair(Box::new((
+                            list[0].clone(),
+                            list[2].clone(),
+                        ))));
                     }
                 }
                 Err(create_error!(ErrCode::E0005))
@@ -1066,7 +1137,7 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
         Environment::create_string(s)
     } else {
         match Rat::from(token) {
-            Ok(n) => Expression::Rational(n),
+            Ok(n) => Expression::Rational(Box::new(n)),
             Err(n) => {
                 if n.code != ErrCode::E1020 {
                     return Err(create_error!(n.code));
@@ -1075,10 +1146,10 @@ fn atom(token: &str, env: &Environment) -> ResultExpression {
                     if let Some((key, f)) = env.get_builtin_func(token) {
                         return Ok(Expression::BuildInFunction(key, f));
                     } else if let Some(f) = env.get_builtin_ext_func(token) {
-                        return Ok(Expression::BuildInFunctionExt(f));
+                        return Ok(Expression::BuildInFunctionExt(Box::new(f)));
                     }
                 }
-                Expression::Symbol(token.to_string())
+                Environment::create_symbol(token.to_string())
             }
         }
     };
@@ -1088,6 +1159,10 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
     #[cfg(feature = "signal")]
     catch_sig_intr_status(env);
 
+    #[cfg(debug_assertions)]
+    {
+        debug!("eval {}", sexp);
+    }
     if env.is_limit_stop() && env.inc_eval_count() > 100_000_000 {
         return Err(create_error!(ErrCode::E9000));
     }
@@ -1103,7 +1178,7 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
         } else if let Some((key, f)) = env.get_builtin_func(val) {
             Ok(Expression::BuildInFunction(key, f))
         } else if let Some(f) = env.get_builtin_ext_func(val) {
-            Ok(Expression::BuildInFunctionExt(f))
+            Ok(Expression::BuildInFunctionExt(Box::new(f)))
         } else {
             match env.find(val) {
                 Some(v) => Ok(v),
@@ -1111,22 +1186,25 @@ pub fn eval(sexp: &Expression, env: &Environment) -> ResultExpression {
             }
         }
     } else if let Expression::List(val) = sexp {
-        debug!("eval = {:?}", get_ptr!(val));
+        #[cfg(debug_assertions)]
+        {
+            debug!("eval = {:?}", get_ptr!(val));
+        }
 
         let v = &*(reference_obj!(val));
         if v.is_empty() {
             return Ok(sexp.clone());
         }
         match &v[0] {
-            Expression::BuildInFunction(_, f) => f(&v[..], env),
-            Expression::BuildInFunctionExt(f) => f(&v[..], env),
-            Expression::TailRecursion(f) => f.set_param(&v[..], env),
-            Expression::Function(f) => f.execute(&v[..], env),
+            Expression::BuildInFunction(_, f) => f(&v[1..], env),
+            Expression::BuildInFunctionExt(f) => (**f)(&v[1..], env),
+            Expression::TailRecursion(f) => f.set_param(&v[1..], env),
+            Expression::Function(f) => f.execute(&v[1..], env),
             _ => match eval(&v[0], env)? {
-                Expression::Function(f) => f.execute(&v[..], env),
-                Expression::BuildInFunction(_, f) => f(&v[..], env),
-                Expression::BuildInFunctionExt(f) => f(&v[..], env),
-                Expression::Continuation(f) => f.execute(&v[..], env),
+                Expression::Function(f) => f.execute(&v[1..], env),
+                Expression::BuildInFunction(_, f) => f(&v[1..], env),
+                Expression::BuildInFunctionExt(f) => (**f)(&v[1..], env),
+                Expression::Continuation(f) => f.execute(&v[..], env), // adhoc
                 e => Err(create_error_value!(ErrCode::E1006, e)),
             },
         }
@@ -1159,7 +1237,7 @@ fn test_expression_ord() {
         Ordering::Less
     );
     assert_eq!(
-        Expression::Symbol("A".to_string()).cmp(&Expression::Integer(10)),
+        Environment::create_symbol("A".to_string()).cmp(&Expression::Integer(10)),
         Ordering::Less
     );
     assert_eq!(

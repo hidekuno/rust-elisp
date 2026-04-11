@@ -19,9 +19,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     env_logger::init();
 
-    if args.len() < 2 {
+    let compile_flag = args.iter().any(|a| a == "--compile");
+    if compile_flag {
+        lisp::set_compile_mode(true);
+    }
+    let argv: Vec<&String> = args.iter().skip(1).filter(|a| *a != "--compile").collect();
+
+    if argv.is_empty() {
         lisp::do_interactive();
-    } else if args[1] == "--profile" {
+    } else if argv[0] == "--profile" {
         let env = lisp::Environment::new();
         env.set_eval_before_exec(true);
         match lisp::do_core_logic(
@@ -32,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             Err(e) => print_error!(e),
         }
     } else {
-        let filename = &args[1];
+        let filename = argv[0];
         let mut program: Vec<String> = Vec::new();
         let env = lisp::Environment::new();
 

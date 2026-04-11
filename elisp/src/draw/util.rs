@@ -24,12 +24,12 @@ use crate::lisp::Expression;
 // ----------------------------------------------------------------
 pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawLine) {
     env.add_builtin_ext_func(fname, move |exp, env| {
-        if exp.len() != 5 && exp.len() != 3 {
+        if exp.len() != 4 && exp.len() != 2 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         const N: usize = 4;
         let mut loc: [f64; N] = [0.0; N];
-        set_loc(exp, env, &mut loc, (1, N))?;
+        set_loc(exp, env, &mut loc, (0, N))?;
         draw_line(loc[0], loc[1], loc[2], loc[3])?;
         Ok(Expression::Nil())
     });
@@ -39,16 +39,16 @@ pub fn regist_draw_line(fname: &'static str, env: &Environment, draw_line: DrawL
 // ----------------------------------------------------------------
 pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: DrawImage) {
     env.add_builtin_ext_func(fname, move |exp, env| {
-        if exp.len() != 8 && exp.len() != 5 {
+        if exp.len() != 7 && exp.len() != 4 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
-        let symbol = match eval(&exp[1], env)? {
+        let symbol = match eval(&exp[0], env)? {
             Expression::String(s) => s,
             e => return Err(create_error_value!(ErrCode::E1015, e)),
         };
         const N: usize = 6;
         let mut ctm: [f64; N] = [0.0; N];
-        set_loc(exp, env, &mut ctm, (2, N))?;
+        set_loc(exp, env, &mut ctm, (1, N))?;
 
         // Fix panic in a function that cannot unwind.
         //     Invalid cairo state: InvalidMatrix.
@@ -66,12 +66,12 @@ pub fn regist_draw_image(fname: &'static str, env: &Environment, draw_image: Dra
 // ----------------------------------------------------------------
 pub fn regist_draw_arc(fname: &'static str, env: &Environment, draw_arc: DrawArc) {
     env.add_builtin_ext_func(fname, move |exp, env| {
-        if exp.len() != 5 {
+        if exp.len() != 4 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
         const N: usize = 4;
         let mut prm: [f64; N] = [0.0; N];
-        set_loc(exp, env, &mut prm, (1, N))?;
+        set_loc(exp, env, &mut prm, (0, N))?;
         draw_arc(prm[0], prm[1], prm[2], prm[3]);
         Ok(Expression::Nil())
     });
@@ -84,7 +84,7 @@ fn set_loc(
     env: &Environment,
     loc: &mut [f64],
     param: (usize, usize),
-) -> Result<(), Box<Error>>{
+) -> Result<(), Box<Error>> {
     let mut iter = exp[param.0..].iter();
 
     if exp.len() == (param.1 + param.0) {
@@ -100,13 +100,13 @@ fn set_loc(
     } else if exp.len() == (param.1 / 2 + param.0) {
         for i in (0..param.1).step_by(2) {
             if let Some(e) = iter.next() {
-                if let Expression::Pair(x, y) = eval(e, env)? {
-                    if let Expression::Float(f) = eval(&x, env)? {
+                if let Expression::Pair(b) = eval(e, env)? {
+                    if let Expression::Float(f) = eval(&b.0, env)? {
                         loc[i] = f;
                     } else {
                         return Err(create_error_value!(ErrCode::E1003, e));
                     }
-                    if let Expression::Float(f) = eval(&y, env)? {
+                    if let Expression::Float(f) = eval(&b.1, env)? {
                         loc[i + 1] = f;
                     } else {
                         return Err(create_error_value!(ErrCode::E1003, e));
@@ -124,10 +124,10 @@ fn set_loc(
 // ----------------------------------------------------------------
 pub fn make_lisp_function(fractal: Box<dyn Fractal>, env: &Environment) {
     env.add_builtin_ext_func(fractal.get_func_name(), move |exp, env| {
-        if exp.len() != 2 {
+        if exp.len() != 1 {
             return Err(create_error_value!(ErrCode::E1007, exp.len()));
         }
-        let c = match eval(&exp[1], env)? {
+        let c = match eval(&exp[0], env)? {
             Expression::Integer(c) => c,
             e => return Err(create_error_value!(ErrCode::E1002, e)),
         };
@@ -211,7 +211,7 @@ fn test_draw_util() {
         fn get_max(&self) -> i32 {
             10
         }
-        fn do_demo(&self, _: i32) -> Result<(), Box<Error>>{
+        fn do_demo(&self, _: i32) -> Result<(), Box<Error>> {
             Ok(())
         }
     }
